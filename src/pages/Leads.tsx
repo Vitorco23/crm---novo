@@ -339,9 +339,9 @@ export default function Leads() {
           <p className="text-sm text-muted-foreground">{leads.length} leads no total</p>
         </div>
         <div className="flex items-center gap-2">
-          <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
+          <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
           <Button size="sm" variant="outline" onClick={() => csvRef.current?.click()}>
-            <Upload className="h-4 w-4 mr-1" /> Importar CSV
+            <Upload className="h-4 w-4 mr-1" /> Importar
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
