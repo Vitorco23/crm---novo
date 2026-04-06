@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 import {
   PIPELINE_STAGES,
   type Lead,
@@ -259,24 +260,49 @@ export default function Leads() {
     refresh();
   };
 
-  const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!["csv", "xlsx", "xls"].includes(ext || "")) {
+      toast.error("Formato inválido. Use arquivos .csv ou .xlsx");
+      e.target.value = "";
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
-      const rows = parseCSV(reader.result as string);
-      let count = 0;
-      rows.forEach((row) => {
-        const mapped = mapCSVRow(row);
-        if (mapped.company) {
-          addLead(mapped);
-          count++;
+      try {
+        let rows: Record<string, string>[];
+        if (ext === "csv") {
+          rows = parseCSV(reader.result as string);
+        } else {
+          const data = new Uint8Array(reader.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
+          rows = json.map((row) => {
+            const normalized: Record<string, string> = {};
+            Object.entries(row).forEach(([k, v]) => {
+              normalized[k.trim().toLowerCase()] = String(v).trim();
+            });
+            return normalized;
+          });
         }
-      });
-      refresh();
-      toast.success(`${count} leads importados com sucesso!`);
+        let count = 0;
+        rows.forEach((row) => {
+          const mapped = mapCSVRow(row);
+          if (mapped.company) { addLead(mapped); count++; }
+        });
+        refresh();
+        toast.success(`${count} leads importados com sucesso!`);
+      } catch {
+        toast.error("Erro ao ler o arquivo. Verifique o formato.");
+      }
     };
-    reader.readAsText(file);
+    if (ext === "csv") reader.readAsText(file);
+    else reader.readAsArrayBuffer(file);
     e.target.value = "";
   };
 
@@ -313,9 +339,9 @@ export default function Leads() {
           <p className="text-sm text-muted-foreground">{leads.length} leads no total</p>
         </div>
         <div className="flex items-center gap-2">
-          <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCSVImport} />
+          <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
           <Button size="sm" variant="outline" onClick={() => csvRef.current?.click()}>
-            <Upload className="h-4 w-4 mr-1" /> Importar CSV
+            <Upload className="h-4 w-4 mr-1" /> Importar
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
