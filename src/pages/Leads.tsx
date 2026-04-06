@@ -272,6 +272,7 @@ export default function Leads() {
 
   const handleBulkMove = (targetStage: PipelineStage) => {
     const currentLeads = getLeads();
+    const count = selectedIds.size;
     const updated = currentLeads.map((l) => {
       if (selectedIds.has(l.id) && l.stage !== targetStage) {
         trackMovement(l.id, targetStage);
@@ -282,7 +283,27 @@ export default function Leads() {
     saveLeads(updated);
     setSelectedIds(new Set());
     refresh();
-    toast.success(`${selectedIds.size} leads movidos para "${targetStage}"`);
+    toast.success(`${count} leads movidos para "${targetStage}"`);
+  };
+
+  const handleBulkDelete = () => {
+    const count = selectedIds.size;
+    selectedIds.forEach((id) => deleteLead(id));
+    setSelectedIds(new Set());
+    refresh();
+    toast.success(`${count} lead(s) excluído(s)`);
+  };
+
+  const handleSelectAllInStage = (stage: PipelineStage) => {
+    const stageLeadIds = leads.filter((l) => l.stage === stage).map((l) => l.id);
+    const allSelected = stageLeadIds.every((id) => selectedIds.has(id));
+    const next = new Set(selectedIds);
+    if (allSelected) {
+      stageLeadIds.forEach((id) => next.delete(id));
+    } else {
+      stageLeadIds.forEach((id) => next.add(id));
+    }
+    setSelectedIds(next);
   };
 
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
