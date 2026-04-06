@@ -14,11 +14,19 @@ export const PIPELINE_STAGES = [
 
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
+export type ICPProfile = "Fit" | "Não Fit";
+
 export interface Lead {
   id: string;
   company: string;
   contact: string;
   phone: string;
+  niche: string;
+  city: string;
+  gmnLink: string;
+  instagramLink: string;
+  icpProfile: ICPProfile;
+  runsAds: boolean;
   stage: PipelineStage;
   createdAt: string;
   stageChangedAt: string;
@@ -33,6 +41,14 @@ export interface PomodoroSession {
   calls: number;
   messages: number;
   meetings: number;
+}
+
+export interface MovementEvent {
+  id: string;
+  leadId: string;
+  toStage: PipelineStage;
+  timestamp: string;
+  type: "call" | "message" | "other";
 }
 
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -84,6 +100,36 @@ export function updateLeadStage(id: string, stage: PipelineStage) {
 export function deleteLead(id: string) {
   const leads = getLeads().filter((l) => l.id !== id);
   saveLeads(leads);
+}
+
+// Movement Events (auto-tracking)
+export function getMovementEvents(): MovementEvent[] {
+  return loadFromStorage<MovementEvent[]>("p21_movements", []);
+}
+
+export function saveMovementEvents(events: MovementEvent[]) {
+  saveToStorage("p21_movements", events);
+}
+
+const CALL_STAGES: PipelineStage[] = ["Tentativa 1", "Tentativa 2", "Tentativa 3"];
+const MESSAGE_STAGES: PipelineStage[] = ["Mensagem no WhatsApp"];
+
+export function trackMovement(leadId: string, toStage: PipelineStage) {
+  let type: MovementEvent["type"] = "other";
+  if (CALL_STAGES.includes(toStage)) type = "call";
+  else if (MESSAGE_STAGES.includes(toStage)) type = "message";
+
+  if (type === "other") return; // only track calls and messages
+
+  const events = getMovementEvents();
+  events.push({
+    id: crypto.randomUUID(),
+    leadId,
+    toStage,
+    timestamp: new Date().toISOString(),
+    type,
+  });
+  saveMovementEvents(events);
 }
 
 // Pomodoro
