@@ -1,46 +1,55 @@
 import { useState, useMemo } from "react";
-import { getLeads, getSessions, PIPELINE_STAGES } from "@/lib/store";
+import { getLeads, getSessions, getMovementEvents, PIPELINE_STAGES } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, FunnelChart, Funnel, LabelList, Cell } from "recharts";
-import { isToday, isThisWeek, isThisMonth, format } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { isToday, isThisWeek, isThisMonth, format, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TrendingUp, Phone, MessageSquare, CalendarCheck, Trophy } from "lucide-react";
 
 type Filter = "day" | "week" | "month";
 
 const FUNNEL_COLORS = [
-  "hsl(78 56% 47%)",
-  "hsl(78 50% 50%)",
-  "hsl(80 45% 53%)",
-  "hsl(100 40% 50%)",
-  "hsl(140 35% 48%)",
-  "hsl(170 40% 45%)",
-  "hsl(200 45% 45%)",
-  "hsl(216 43% 30%)",
-  "hsl(216 43% 25%)",
+  "hsl(78 56% 47%)", "hsl(78 50% 50%)", "hsl(80 45% 53%)",
+  "hsl(100 40% 50%)", "hsl(140 35% 48%)", "hsl(170 40% 45%)",
+  "hsl(200 45% 45%)", "hsl(216 43% 30%)", "hsl(216 43% 25%)",
   "hsl(216 43% 20%)",
-  "hsl(216 43% 16%)",
 ];
+
+function filterByDate(dateStr: string, filter: Filter) {
+  const d = new Date(dateStr);
+  if (filter === "day") return isToday(d);
+  if (filter === "week") return isThisWeek(d, { weekStartsOn: 1 });
+  return isThisMonth(d);
+}
 
 export default function Dashboard() {
   const [filter, setFilter] = useState<Filter>("month");
   const leads = getLeads();
   const sessions = getSessions();
+  const movements = getMovementEvents();
 
-  const filterDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    if (filter === "day") return isToday(d);
-    if (filter === "week") return isThisWeek(d, { weekStartsOn: 1 });
-    return isThisMonth(d);
-  };
+  const filteredLeads = useMemo(() => leads.filter((l) => filterByDate(l.createdAt, filter)), [leads, filter]);
+  const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter)), [sessions, filter]);
+  const filteredMovements = useMemo(() => movements.filter((m) => filterByDate(m.timestamp, filter)), [movements, filter]);
 
-  const filteredLeads = useMemo(() => leads.filter((l) => filterDate(l.createdAt)), [leads, filter]);
-  const filteredSessions = useMemo(() => sessions.filter((s) => filterDate(s.startTime)), [sessions, filter]);
+  // Movement-based totals
+  const movementCalls = filteredMovements.filter((m) => m.type === "call").length;
+  const movementMessages = filteredMovements.filter((m) => m.type === "message").length;
 
-  // Funnel data
+  // Session-based totals
+  const sessionCalls = filteredSessions.reduce((a, s) => a + s.calls, 0);
+  const sessionMessages = filteredSessions.reduce((a, s) => a + s.messages, 0);
+  const totalMeetings = filteredSessions.reduce((a, s) => a + s.meetings, 0);
+
+  // Combined totals
+  const totalCalls = movementCalls + sessionCalls;
+  const totalMessages = movementMessages + sessionMessages;
+
+  // Funnel: conversion rates between stages (excluding Perdido)
   const funnelData = useMemo(() => {
-    return PIPELINE_STAGES.filter(s => s !== "Perdido").map((stage, i) => {
+    const stages = PIPELINE_STAGES.filter((s) => s !== "Perdido");
+    return stages.map((stage, i) => {
       const count = filteredLeads.filter((l) => {
         const idx = PIPELINE_STAGES.indexOf(l.stage);
         const stageIdx = PIPELINE_STAGES.indexOf(stage);
@@ -50,7 +59,7 @@ export default function Dashboard() {
     });
   }, [filteredLeads]);
 
-  // Session productivity
+  // Session chart
   const sessionChart = useMemo(() => {
     return filteredSessions.map((s) => ({
       label: format(new Date(s.startTime), "HH:mm", { locale: ptBR }),
@@ -60,17 +69,29 @@ export default function Dashboard() {
     }));
   }, [filteredSessions]);
 
-  // Golden hour
+  // Golden Hour: cross-reference sessions with movements during that period
   const goldenHour = useMemo(() => {
     if (filteredSessions.length === 0) return null;
-    const best = [...filteredSessions].sort((a, b) => b.meetings - a.meetings)[0];
-    return best;
-  }, [filteredSessions]);
 
-  // Totals
-  const totalCalls = filteredSessions.reduce((a, s) => a + s.calls, 0);
-  const totalMessages = filteredSessions.reduce((a, s) => a + s.messages, 0);
-  const totalMeetings = filteredSessions.reduce((a, s) => a + s.meetings, 0);
+    const enriched = filteredSessions.map((s) => {
+      const start = new Date(s.startTime);
+      const end = new Date(s.endTime);
+      const movsDuring = movements.filter((m) => {
+        const t = new Date(m.timestamp);
+        return isWithinInterval(t, { start, end });
+      });
+      const autoCallsDuring = movsDuring.filter((m) => m.type === "call").length;
+      const autoMsgsDuring = movsDuring.filter((m) => m.type === "message").length;
+      return {
+        ...s,
+        totalActivity: s.meetings * 3 + (s.calls + autoCallsDuring) + (s.messages + autoMsgsDuring),
+        autoCalls: autoCallsDuring,
+        autoMsgs: autoMsgsDuring,
+      };
+    });
+
+    return enriched.sort((a, b) => b.totalActivity - a.totalActivity)[0];
+  }, [filteredSessions, movements]);
 
   const filterLabels: Record<Filter, string> = { day: "Hoje", week: "Semana", month: "Mês" };
 
@@ -105,6 +126,7 @@ export default function Dashboard() {
               <Phone className="h-3.5 w-3.5" /> Ligações
             </div>
             <p className="text-2xl font-bold text-foreground">{totalCalls}</p>
+            {movementCalls > 0 && <p className="text-[10px] text-muted-foreground">{movementCalls} via pipeline</p>}
           </CardContent>
         </Card>
         <Card>
@@ -113,6 +135,7 @@ export default function Dashboard() {
               <MessageSquare className="h-3.5 w-3.5" /> Mensagens
             </div>
             <p className="text-2xl font-bold text-foreground">{totalMessages}</p>
+            {movementMessages > 0 && <p className="text-[10px] text-muted-foreground">{movementMessages} via pipeline</p>}
           </CardContent>
         </Card>
         <Card>
@@ -190,7 +213,7 @@ export default function Dashboard() {
                   Sessão das {format(new Date(goldenHour.startTime), "HH:mm")} às{" "}
                   {format(new Date(goldenHour.endTime), "HH:mm")} foi a mais produtiva:{" "}
                   <span className="font-medium text-accent">{goldenHour.meetings} reuniões</span>,{" "}
-                  {goldenHour.calls} ligações, {goldenHour.messages} mensagens.
+                  {goldenHour.calls + goldenHour.autoCalls} ligações, {goldenHour.messages + goldenHour.autoMsgs} mensagens.
                 </p>
               </div>
             </div>
