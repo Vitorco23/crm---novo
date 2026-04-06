@@ -464,6 +464,7 @@ export default function Leads() {
       <BulkActionsBar
         count={selectedIds.size}
         onMoveToStage={handleBulkMove}
+        onDelete={handleBulkDelete}
         onClear={() => setSelectedIds(new Set())}
       />
 
@@ -479,9 +480,18 @@ export default function Leads() {
                 className={`w-56 shrink-0 flex flex-col rounded-lg border p-2 ${stageColors[stage] || "bg-muted/30 border-border"}`}
               >
                 <div className="flex items-center justify-between mb-2 px-1">
-                  <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide truncate">
-                    {stage}
-                  </h3>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={stageLeads.length > 0 && stageLeads.every((l) => selectedIds.has(l.id))}
+                        onCheckedChange={() => handleSelectAllInStage(stage)}
+                        className="h-3.5 w-3.5"
+                      />
+                    </div>
+                    <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide truncate">
+                      {stage}
+                    </h3>
+                  </div>
                   <span className="text-[10px] font-medium bg-background/80 text-muted-foreground rounded-full px-1.5 py-0.5">
                     {stageLeads.length}
                   </span>
