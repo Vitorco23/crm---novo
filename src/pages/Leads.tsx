@@ -25,14 +25,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
-  Star, Upload, Paperclip, Play, X, FileAudio,
+  Star, Upload, Paperclip, X, FileAudio,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import LeadDetailDrawer from "@/components/LeadDetailDrawer";
+import BulkActionsBar from "@/components/BulkActionsBar";
 
 function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
@@ -45,7 +48,7 @@ function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPSt
         <button
           key={s}
           type="button"
-          onClick={() => onChange?.(s)}
+          onClick={(e) => { e.stopPropagation(); onChange?.(s); }}
           className={`transition-colors ${onChange ? "cursor-pointer" : "cursor-default"}`}
         >
           <Star
@@ -62,14 +65,19 @@ function LeadCard({
   onDragStart,
   onDelete,
   onRefresh,
+  onClick,
+  selected,
+  onToggleSelect,
 }: {
   lead: Lead;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDelete: (id: string) => void;
   onRefresh: () => void;
+  onClick: (lead: Lead) => void;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [showAttachments, setShowAttachments] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -96,22 +104,32 @@ function LeadCard({
     <div
       draggable
       onDragStart={(e) => onDragStart(e, lead.id)}
-      className="group rounded-md border bg-card p-3 shadow-sm cursor-grab active:cursor-grabbing animate-slide-in hover:shadow-md transition-shadow"
+      onClick={() => onClick(lead)}
+      className={`group rounded-md border p-3 shadow-sm cursor-pointer active:cursor-grabbing animate-slide-in hover:shadow-md transition-all ${
+        selected ? "bg-accent/10 border-accent/50 ring-1 ring-accent/30" : "bg-card"
+      }`}
     >
       <div className="flex items-start justify-between gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
+          <div onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={selected}
+              onCheckedChange={() => onToggleSelect(lead.id)}
+              className="h-3.5 w-3.5"
+            />
+          </div>
           <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
           <p className="font-semibold text-sm truncate text-card-foreground">{lead.company}</p>
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => fileRef.current?.click()}
+            onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
             className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-accent"
           >
             <Paperclip className="h-3.5 w-3.5" />
           </button>
           <button
-            onClick={() => onDelete(lead.id)}
+            onClick={(e) => { e.stopPropagation(); onDelete(lead.id); }}
             className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -159,37 +177,11 @@ function LeadCard({
         )}
       </div>
 
-      {/* Attachments */}
+      {/* Attachments count */}
       {lead.attachments.length > 0 && (
-        <div className="mt-2">
-          <button
-            onClick={() => setShowAttachments(!showAttachments)}
-            className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
-          >
-            <FileAudio className="h-2.5 w-2.5" /> {lead.attachments.length} arquivo(s)
-          </button>
-          {showAttachments && (
-            <div className="mt-1 space-y-1">
-              {lead.attachments.map((att) => (
-                <div key={att.id} className="flex items-center gap-1 text-[10px] bg-muted/50 rounded px-1.5 py-1">
-                  {att.type.startsWith("audio/") ? (
-                    <audio src={att.dataUrl} controls className="h-6 w-full max-w-[140px]" />
-                  ) : (
-                    <a href={att.dataUrl} download={att.name} className="text-accent hover:underline truncate flex-1">
-                      {att.name}
-                    </a>
-                  )}
-                  <button
-                    onClick={() => { removeAttachment(lead.id, att.id); onRefresh(); }}
-                    className="text-muted-foreground hover:text-destructive shrink-0"
-                  >
-                    <X className="h-2.5 w-2.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-0.5">
+          <FileAudio className="h-2.5 w-2.5" /> {lead.attachments.length} arquivo(s)
+        </p>
       )}
 
       <p className="text-[10px] text-muted-foreground/70 mt-2">⏱ {timeInStage(lead.stageChangedAt)}</p>
@@ -200,9 +192,10 @@ function LeadCard({
 function parseCSV(text: string): Record<string, string>[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  const sep = lines[0].includes(";") ? ";" : ",";
+  const headers = lines[0].split(sep).map((h) => h.trim().toLowerCase());
   return lines.slice(1).map((line) => {
-    const vals = line.split(",").map((v) => v.trim());
+    const vals = line.split(sep).map((v) => v.trim());
     const obj: Record<string, string> = {};
     headers.forEach((h, i) => (obj[h] = vals[i] || ""));
     return obj;
@@ -234,6 +227,9 @@ function mapCSVRow(row: Record<string, string>) {
 export default function Leads() {
   const [leads, setLeads] = useState<Lead[]>(getLeads);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({
     company: "", contact: "", phone: "", notes: "",
     niche: "", city: "", gmnLink: "", instagramLink: "",
@@ -257,7 +253,36 @@ export default function Leads() {
 
   const handleDelete = (id: string) => {
     deleteLead(id);
+    selectedIds.delete(id);
+    setSelectedIds(new Set(selectedIds));
     refresh();
+  };
+
+  const handleCardClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setDrawerOpen(true);
+  };
+
+  const handleToggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleBulkMove = (targetStage: PipelineStage) => {
+    const currentLeads = getLeads();
+    const updated = currentLeads.map((l) => {
+      if (selectedIds.has(l.id) && l.stage !== targetStage) {
+        trackMovement(l.id, targetStage);
+        return { ...l, stage: targetStage, stageChangedAt: new Date().toISOString() };
+      }
+      return l;
+    });
+    saveLeads(updated);
+    setSelectedIds(new Set());
+    refresh();
+    toast.success(`${selectedIds.size} leads movidos para "${targetStage}"`);
   };
 
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -414,6 +439,13 @@ export default function Leads() {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      <BulkActionsBar
+        count={selectedIds.size}
+        onMoveToStage={handleBulkMove}
+        onClear={() => setSelectedIds(new Set())}
+      />
+
       <div className="flex-1 overflow-x-auto scrollbar-thin">
         <div className="flex gap-3 h-full min-w-max pb-2">
           {PIPELINE_STAGES.map((stage) => {
@@ -435,7 +467,16 @@ export default function Leads() {
                 </div>
                 <div className="flex-1 space-y-2 overflow-y-auto scrollbar-thin min-h-[100px]">
                   {stageLeads.map((lead) => (
-                    <LeadCard key={lead.id} lead={lead} onDragStart={onDragStart} onDelete={handleDelete} onRefresh={refresh} />
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      onDragStart={onDragStart}
+                      onDelete={handleDelete}
+                      onRefresh={refresh}
+                      onClick={handleCardClick}
+                      selected={selectedIds.has(lead.id)}
+                      onToggleSelect={handleToggleSelect}
+                    />
                   ))}
                 </div>
               </div>
@@ -443,6 +484,20 @@ export default function Leads() {
           })}
         </div>
       </div>
+
+      {/* Lead Detail Drawer */}
+      <LeadDetailDrawer
+        lead={selectedLead}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onRefresh={() => {
+          refresh();
+          if (selectedLead) {
+            const updated = getLeads().find((l) => l.id === selectedLead.id);
+            if (updated) setSelectedLead(updated);
+          }
+        }}
+      />
     </div>
   );
 }
