@@ -14,7 +14,15 @@ export const PIPELINE_STAGES = [
 
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
-export type ICPProfile = "Fit" | "Não Fit";
+export type ICPStars = 1 | 2 | 3;
+
+export interface LeadAttachment {
+  id: string;
+  name: string;
+  type: string;
+  dataUrl: string;
+  createdAt: string;
+}
 
 export interface Lead {
   id: string;
@@ -25,12 +33,13 @@ export interface Lead {
   city: string;
   gmnLink: string;
   instagramLink: string;
-  icpProfile: ICPProfile;
+  icpStars: ICPStars;
   runsAds: boolean;
   stage: PipelineStage;
   createdAt: string;
   stageChangedAt: string;
   notes: string;
+  attachments: LeadAttachment[];
 }
 
 export interface PomodoroSession {
@@ -66,14 +75,20 @@ function saveToStorage<T>(key: string, data: T) {
 
 // Leads
 export function getLeads(): Lead[] {
-  return loadFromStorage<Lead[]>("p21_leads", []);
+  const leads = loadFromStorage<Lead[]>("p21_leads", []);
+  // Migrate old leads
+  return leads.map((l) => ({
+    ...l,
+    icpStars: l.icpStars || ((l as any).icpProfile === "Não Fit" ? 1 : 3),
+    attachments: l.attachments || [],
+  }));
 }
 
 export function saveLeads(leads: Lead[]) {
   saveToStorage("p21_leads", leads);
 }
 
-export function addLead(lead: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage">): Lead {
+export function addLead(lead: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage" | "attachments">): Lead {
   const leads = getLeads();
   const newLead: Lead = {
     ...lead,
@@ -81,6 +96,7 @@ export function addLead(lead: Omit<Lead, "id" | "createdAt" | "stageChangedAt" |
     stage: "Novo Lead",
     createdAt: new Date().toISOString(),
     stageChangedAt: new Date().toISOString(),
+    attachments: [],
   };
   leads.push(newLead);
   saveLeads(leads);
@@ -102,7 +118,29 @@ export function deleteLead(id: string) {
   saveLeads(leads);
 }
 
-// Movement Events (auto-tracking)
+export function addAttachment(leadId: string, attachment: Omit<LeadAttachment, "id" | "createdAt">) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (lead) {
+    lead.attachments.push({
+      ...attachment,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    });
+    saveLeads(leads);
+  }
+}
+
+export function removeAttachment(leadId: string, attachmentId: string) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (lead) {
+    lead.attachments = lead.attachments.filter((a) => a.id !== attachmentId);
+    saveLeads(leads);
+  }
+}
+
+// Movement Events
 export function getMovementEvents(): MovementEvent[] {
   return loadFromStorage<MovementEvent[]>("p21_movements", []);
 }
@@ -119,7 +157,7 @@ export function trackMovement(leadId: string, toStage: PipelineStage) {
   if (CALL_STAGES.includes(toStage)) type = "call";
   else if (MESSAGE_STAGES.includes(toStage)) type = "message";
 
-  if (type === "other") return; // only track calls and messages
+  if (type === "other") return;
 
   const events = getMovementEvents();
   events.push({
