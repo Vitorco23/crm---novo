@@ -1,20 +1,17 @@
 import { useState, useMemo } from "react";
-import { getLeads, getSessions, getMovementEvents, PIPELINE_STAGES } from "@/lib/store";
+import {
+  getLeads, getSessions, getMovementEvents,
+  COLD_CALL_STAGES, OPORTUNIDADES_STAGES, OPERACAO_STAGES,
+  getLeadsForPipeline,
+} from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { isToday, isThisWeek, isThisMonth, format, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { TrendingUp, Phone, MessageSquare, CalendarCheck, Trophy } from "lucide-react";
+import { TrendingUp, Phone, MessageSquare, CalendarCheck, Trophy, DollarSign } from "lucide-react";
 
 type Filter = "day" | "week" | "month";
-
-const FUNNEL_COLORS = [
-  "hsl(78 56% 47%)", "hsl(78 50% 50%)", "hsl(80 45% 53%)",
-  "hsl(100 40% 50%)", "hsl(140 35% 48%)", "hsl(170 40% 45%)",
-  "hsl(200 45% 45%)", "hsl(216 43% 30%)", "hsl(216 43% 25%)",
-  "hsl(216 43% 20%)",
-];
 
 function filterByDate(dateStr: string, filter: Filter) {
   const d = new Date(dateStr);
@@ -33,46 +30,45 @@ export default function Dashboard() {
   const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter)), [sessions, filter]);
   const filteredMovements = useMemo(() => movements.filter((m) => filterByDate(m.timestamp, filter)), [movements, filter]);
 
-  // Movement-based totals
   const movementCalls = filteredMovements.filter((m) => m.type === "call").length;
   const movementMessages = filteredMovements.filter((m) => m.type === "message").length;
+  const movementMeetings = filteredMovements.filter((m) => m.type === "meeting").length;
 
-  // Session-based totals
   const sessionCalls = filteredSessions.reduce((a, s) => a + s.calls, 0);
   const sessionMessages = filteredSessions.reduce((a, s) => a + s.messages, 0);
-  const totalMeetings = filteredSessions.reduce((a, s) => a + s.meetings, 0);
+  const totalSessionMeetings = filteredSessions.reduce((a, s) => a + s.meetings, 0);
 
-  // Combined totals
   const totalCalls = movementCalls + sessionCalls;
   const totalMessages = movementMessages + sessionMessages;
+  const totalMeetings = movementMeetings + totalSessionMeetings;
 
-  // Funnel: conversion rates between stages (excluding Perdido)
+  // MRR from Operação clients
+  const operacaoLeads = getLeadsForPipeline("operacao");
+  const mrr = operacaoLeads.reduce((sum, l) => sum + (l.monthlyFee || 0), 0);
+
+  // Funnel across all pipelines
+  const allStages = [...COLD_CALL_STAGES, ...OPORTUNIDADES_STAGES.filter((s) => s !== "Perdido")];
   const funnelData = useMemo(() => {
-    const stages = PIPELINE_STAGES.filter((s) => s !== "Perdido");
-    return stages.map((stage, i) => {
+    return allStages.map((stage, i) => {
       const count = filteredLeads.filter((l) => {
-        const idx = PIPELINE_STAGES.indexOf(l.stage);
-        const stageIdx = PIPELINE_STAGES.indexOf(stage);
+        const idx = allStages.indexOf(l.stage as any);
+        const stageIdx = i;
         return idx >= stageIdx || l.stage === "Perdido";
       }).length;
-      return { name: stage, value: count || 0, fill: FUNNEL_COLORS[i] };
+      const hue = 78 + i * 15;
+      return { name: stage, value: count || 0, fill: `hsl(${hue} 50% ${47 - i * 2}%)` };
     });
   }, [filteredLeads]);
 
-  // Session chart
   const sessionChart = useMemo(() => {
     return filteredSessions.map((s) => ({
       label: format(new Date(s.startTime), "HH:mm", { locale: ptBR }),
-      calls: s.calls,
-      messages: s.messages,
-      meetings: s.meetings,
+      calls: s.calls, messages: s.messages, meetings: s.meetings,
     }));
   }, [filteredSessions]);
 
-  // Golden Hour: cross-reference sessions with movements during that period
   const goldenHour = useMemo(() => {
     if (filteredSessions.length === 0) return null;
-
     const enriched = filteredSessions.map((s) => {
       const start = new Date(s.startTime);
       const end = new Date(s.endTime);
@@ -83,13 +79,10 @@ export default function Dashboard() {
       const autoCallsDuring = movsDuring.filter((m) => m.type === "call").length;
       const autoMsgsDuring = movsDuring.filter((m) => m.type === "message").length;
       return {
-        ...s,
-        totalActivity: s.meetings * 3 + (s.calls + autoCallsDuring) + (s.messages + autoMsgsDuring),
-        autoCalls: autoCallsDuring,
-        autoMsgs: autoMsgsDuring,
+        ...s, totalActivity: s.meetings * 3 + (s.calls + autoCallsDuring) + (s.messages + autoMsgsDuring),
+        autoCalls: autoCallsDuring, autoMsgs: autoMsgsDuring,
       };
     });
-
     return enriched.sort((a, b) => b.totalActivity - a.totalActivity)[0];
   }, [filteredSessions, movements]);
 
@@ -110,65 +103,49 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <TrendingUp className="h-3.5 w-3.5" /> Leads
-            </div>
-            <p className="text-2xl font-bold text-foreground">{filteredLeads.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <Phone className="h-3.5 w-3.5" /> Ligações
-            </div>
-            <p className="text-2xl font-bold text-foreground">{totalCalls}</p>
-            {movementCalls > 0 && <p className="text-[10px] text-muted-foreground">{movementCalls} via pipeline</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <MessageSquare className="h-3.5 w-3.5" /> Mensagens
-            </div>
-            <p className="text-2xl font-bold text-foreground">{totalMessages}</p>
-            {movementMessages > 0 && <p className="text-[10px] text-muted-foreground">{movementMessages} via pipeline</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <CalendarCheck className="h-3.5 w-3.5" /> Reuniões
-            </div>
-            <p className="text-2xl font-bold text-foreground">{totalMeetings}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Card><CardContent className="pt-4 pb-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><TrendingUp className="h-3.5 w-3.5" /> Leads</div>
+          <p className="text-2xl font-bold text-foreground">{filteredLeads.length}</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><Phone className="h-3.5 w-3.5" /> Ligações</div>
+          <p className="text-2xl font-bold text-foreground">{totalCalls}</p>
+          {movementCalls > 0 && <p className="text-[10px] text-muted-foreground">{movementCalls} via pipeline</p>}
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><MessageSquare className="h-3.5 w-3.5" /> Mensagens</div>
+          <p className="text-2xl font-bold text-foreground">{totalMessages}</p>
+        </CardContent></Card>
+        <Card><CardContent className="pt-4 pb-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><CalendarCheck className="h-3.5 w-3.5" /> Reuniões</div>
+          <p className="text-2xl font-bold text-foreground">{totalMeetings}</p>
+        </CardContent></Card>
+        <Card className="border-accent/30"><CardContent className="pt-4 pb-3">
+          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><DollarSign className="h-3.5 w-3.5" /> MRR</div>
+          <p className="text-2xl font-bold text-accent">R$ {mrr.toLocaleString("pt-BR")}</p>
+          <p className="text-[10px] text-muted-foreground">{operacaoLeads.length} cliente(s)</p>
+        </CardContent></Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Funnel */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Funil de Conversão</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Funil Completo (Cold Call → Oportunidades)</CardTitle></CardHeader>
           <CardContent>
             {filteredLeads.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">Sem dados para o período.</p>
             ) : (
               <div className="space-y-1.5">
-                {funnelData.map((item, i) => {
+                {funnelData.map((item) => {
                   const maxVal = funnelData[0]?.value || 1;
                   const pct = maxVal > 0 ? Math.round((item.value / maxVal) * 100) : 0;
                   return (
                     <div key={item.name} className="flex items-center gap-2 text-xs">
-                      <span className="w-44 truncate text-muted-foreground">{item.name}</span>
+                      <span className="w-40 truncate text-muted-foreground">{item.name}</span>
                       <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
                         <div className="h-full rounded-sm transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: item.fill }} />
                       </div>
-                      <span className="w-12 text-right font-medium text-foreground">{item.value} <span className="text-muted-foreground">({pct}%)</span></span>
+                      <span className="w-12 text-right font-medium text-foreground">{item.value}</span>
                     </div>
                   );
                 })}
@@ -177,11 +154,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Session Chart */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Produtividade por Sessão</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Produtividade por Sessão</CardTitle></CardHeader>
           <CardContent>
             {sessionChart.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">Sem sessões no período.</p>
@@ -201,7 +175,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Golden Hour */}
       {goldenHour && (
         <Card className="border-accent/30 bg-accent/5">
           <CardContent className="pt-4 pb-3">
