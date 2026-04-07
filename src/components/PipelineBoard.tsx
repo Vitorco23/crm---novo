@@ -1,0 +1,460 @@
+import { useState, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
+import {
+  type Lead,
+  type PipelineStage,
+  type PipelineName,
+  type ICPStars,
+  getLeads,
+  saveLeads,
+  addLead,
+  deleteLead,
+  trackMovement,
+  addAttachment,
+  moveLeadToStage,
+  getStagesForPipeline,
+  getLeadsForPipeline,
+} from "@/lib/store";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
+  Star, Upload, Paperclip, X, FileAudio,
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import LeadDetailDrawer from "@/components/LeadDetailDrawer";
+import BulkActionsBar from "@/components/BulkActionsBar";
+
+function timeInStage(stageChangedAt: string) {
+  return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
+}
+
+function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPStars) => void }) {
+  return (
+    <div className="flex gap-0.5">
+      {([1, 2, 3] as ICPStars[]).map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onChange?.(s); }}
+          className={`transition-colors ${onChange ? "cursor-pointer" : "cursor-default"}`}
+        >
+          <Star
+            className={`h-3.5 w-3.5 ${s <= value ? "fill-accent text-accent" : "text-muted-foreground/30"}`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LeadCard({
+  lead, onDragStart, onDelete, onRefresh, onClick, selected, onToggleSelect,
+}: {
+  lead: Lead;
+  onDragStart: (e: React.DragEvent, id: string) => void;
+  onDelete: (id: string) => void;
+  onRefresh: () => void;
+  onClick: (lead: Lead) => void;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 10MB)"); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      addAttachment(lead.id, { name: file.name, type: file.type, dataUrl: reader.result as string });
+      onRefresh();
+      toast.success("Arquivo anexado!");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, lead.id)}
+      onClick={() => onClick(lead)}
+      className={`group rounded-md border p-3 shadow-sm cursor-pointer active:cursor-grabbing animate-slide-in hover:shadow-md transition-all ${
+        selected ? "bg-accent/10 border-accent/50 ring-1 ring-accent/30" : "bg-card"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div onClick={(e) => e.stopPropagation()}>
+            <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(lead.id)} className="h-3.5 w-3.5" />
+          </div>
+          <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+          <p className="font-semibold text-sm truncate text-card-foreground">{lead.company}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-accent">
+            <Paperclip className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onDelete(lead.id); }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <input ref={fileRef} type="file" accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
+      </div>
+
+      {lead.contact && <p className="text-xs text-muted-foreground mt-1 truncate">{lead.contact}</p>}
+
+      <div className="flex flex-wrap items-center gap-1 mt-1.5">
+        {lead.niche && <Badge variant="secondary" className="text-[9px] px-1 py-0">{lead.niche}</Badge>}
+        {lead.city && (
+          <Badge variant="outline" className="text-[9px] px-1 py-0">
+            <MapPin className="h-2 w-2 mr-0.5" />{lead.city}
+          </Badge>
+        )}
+        <StarRating value={lead.icpStars} />
+        {lead.runsAds && <Badge className="text-[9px] px-1 py-0 bg-accent text-accent-foreground">Ads ✓</Badge>}
+      </div>
+
+      <div className="flex gap-1 mt-2">
+        {lead.phone && (
+          <a href={`tel:${lead.phone}`} onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
+            <Phone className="h-2.5 w-2.5" /> Ligar
+          </a>
+        )}
+        {lead.gmnLink && (
+          <a href={lead.gmnLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
+            <ExternalLink className="h-2.5 w-2.5" /> GMN
+          </a>
+        )}
+        {lead.instagramLink && (
+          <a href={lead.instagramLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
+            <Instagram className="h-2.5 w-2.5" /> Insta
+          </a>
+        )}
+      </div>
+
+      {lead.attachments.length > 0 && (
+        <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-0.5">
+          <FileAudio className="h-2.5 w-2.5" /> {lead.attachments.length} arquivo(s)
+        </p>
+      )}
+
+      <p className="text-[10px] text-muted-foreground/70 mt-2">⏱ {timeInStage(lead.stageChangedAt)}</p>
+    </div>
+  );
+}
+
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+  const sep = lines[0].includes(";") ? ";" : ",";
+  const headers = lines[0].split(sep).map((h) => h.trim().toLowerCase());
+  return lines.slice(1).map((line) => {
+    const vals = line.split(sep).map((v) => v.trim());
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => (obj[h] = vals[i] || ""));
+    return obj;
+  });
+}
+
+function mapCSVRow(row: Record<string, string>) {
+  const find = (...keys: string[]) => {
+    for (const k of keys) {
+      const match = Object.keys(row).find((rk) => rk.includes(k));
+      if (match && row[match]) return row[match];
+    }
+    return "";
+  };
+  return {
+    company: find("empresa", "company", "nome"),
+    contact: find("contato", "contact"),
+    phone: find("telefone", "phone", "tel"),
+    niche: find("nicho", "niche"),
+    city: find("cidade", "city"),
+    gmnLink: find("gmn", "google"),
+    instagramLink: find("instagram", "insta"),
+    icpStars: 2 as ICPStars,
+    runsAds: ["sim", "yes", "true", "1"].includes(find("anuncio", "anúncio", "ads", "ad").toLowerCase()),
+    notes: find("observ", "notes", "nota"),
+  };
+}
+
+interface PipelineBoardProps {
+  pipeline: PipelineName;
+  title: string;
+  subtitle?: string;
+  showAddLead?: boolean;
+  showImport?: boolean;
+}
+
+export default function PipelineBoard({ pipeline, title, subtitle, showAddLead = true, showImport = true }: PipelineBoardProps) {
+  const stages = getStagesForPipeline(pipeline);
+  const [leads, setLeads] = useState<Lead[]>(getLeads);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [form, setForm] = useState({
+    company: "", contact: "", phone: "", notes: "",
+    niche: "", city: "", gmnLink: "", instagramLink: "",
+    icpStars: 3 as ICPStars, runsAds: false,
+  });
+  const csvRef = useRef<HTMLInputElement>(null);
+
+  const refresh = useCallback(() => setLeads(getLeads()), []);
+
+  const pipelineLeads = leads.filter((l) => (stages as readonly string[]).includes(l.stage));
+
+  const handleAdd = () => {
+    if (!form.company.trim()) return;
+    addLead(form, stages[0]);
+    setForm({ company: "", contact: "", phone: "", notes: "", niche: "", city: "", gmnLink: "", instagramLink: "", icpStars: 3, runsAds: false });
+    setDialogOpen(false);
+    refresh();
+  };
+
+  const handleDelete = (id: string) => {
+    deleteLead(id);
+    selectedIds.delete(id);
+    setSelectedIds(new Set(selectedIds));
+    refresh();
+  };
+
+  const handleCardClick = (lead: Lead) => { setSelectedLead(lead); setDrawerOpen(true); };
+
+  const handleToggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleBulkMove = (targetStage: PipelineStage) => {
+    const count = selectedIds.size;
+    selectedIds.forEach((id) => moveLeadToStage(id, targetStage));
+    setSelectedIds(new Set());
+    refresh();
+    toast.success(`${count} leads movidos para "${targetStage}"`);
+  };
+
+  const handleBulkDelete = () => {
+    const count = selectedIds.size;
+    selectedIds.forEach((id) => deleteLead(id));
+    setSelectedIds(new Set());
+    refresh();
+    toast.success(`${count} lead(s) excluído(s)`);
+  };
+
+  const handleSelectAllInStage = (stage: PipelineStage) => {
+    const stageLeadIds = pipelineLeads.filter((l) => l.stage === stage).map((l) => l.id);
+    const allSelected = stageLeadIds.every((id) => selectedIds.has(id));
+    const next = new Set(selectedIds);
+    if (allSelected) stageLeadIds.forEach((id) => next.delete(id));
+    else stageLeadIds.forEach((id) => next.add(id));
+    setSelectedIds(next);
+  };
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!["csv", "xlsx", "xls"].includes(ext || "")) {
+      toast.error("Formato inválido. Use .csv ou .xlsx");
+      e.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        let rows: Record<string, string>[];
+        if (ext === "csv") {
+          rows = parseCSV(reader.result as string);
+        } else {
+          const data = new Uint8Array(reader.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
+          rows = json.map((row) => {
+            const normalized: Record<string, string> = {};
+            Object.entries(row).forEach(([k, v]) => { normalized[k.trim().toLowerCase()] = String(v).trim(); });
+            return normalized;
+          });
+        }
+        let count = 0;
+        rows.forEach((row) => {
+          const mapped = mapCSVRow(row);
+          if (mapped.company) { addLead(mapped, stages[0]); count++; }
+        });
+        refresh();
+        toast.success(`${count} leads importados!`);
+      } catch {
+        toast.error("Erro ao ler o arquivo.");
+      }
+    };
+    if (ext === "csv") reader.readAsText(file); else reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
+  const onDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.setData("text/plain", id); };
+
+  const onDrop = (e: React.DragEvent, stage: PipelineStage) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain");
+    const lead = leads.find((l) => l.id === id);
+    if (!lead || lead.stage === stage) return;
+    const result = moveLeadToStage(id, stage);
+    refresh();
+    if (result.autoTransfer) {
+      toast.success(`Lead transferido automaticamente para ${result.autoTransfer === "operacao" ? "Operação" : "Oportunidades"}!`);
+    }
+  };
+
+  const onDragOver = (e: React.DragEvent) => e.preventDefault();
+
+  const stageColors: Record<string, string> = {
+    "Novo Lead": "bg-accent/20 border-accent/40",
+    "Ganho": "bg-success/10 border-success/30",
+    "Perdido": "bg-destructive/10 border-destructive/30",
+    "Onboarding": "bg-accent/15 border-accent/30",
+    "Escala": "bg-success/10 border-success/30",
+  };
+
+  return (
+    <div className="p-4 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+          <p className="text-sm text-muted-foreground">{subtitle || `${pipelineLeads.length} leads`}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {showImport && (
+            <>
+              <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
+              <Button size="sm" variant="outline" onClick={() => csvRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-1" /> Importar
+              </Button>
+            </>
+          )}
+          {showAddLead && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Plus className="h-4 w-4 mr-1" /> Novo Lead
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[85vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Adicionar Lead</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Empresa *</Label><Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} /></div>
+                    <div><Label>Contato</Label><Input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Nicho</Label><Input value={form.niche} onChange={(e) => setForm({ ...form, niche: e.target.value })} placeholder="Ex: Odontologia" /></div>
+                    <div><Label>Cidade</Label><Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Ex: São Paulo" /></div>
+                  </div>
+                  <div><Label>Telefone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+55 11 99999-9999" /></div>
+                  <div><Label>Link Google Meu Negócio</Label><Input value={form.gmnLink} onChange={(e) => setForm({ ...form, gmnLink: e.target.value })} /></div>
+                  <div><Label>Link Instagram</Label><Input value={form.instagramLink} onChange={(e) => setForm({ ...form, instagramLink: e.target.value })} /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Prioridade ICP</Label>
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <StarRating value={form.icpStars} onChange={(v) => setForm({ ...form, icpStars: v })} />
+                        <span className="text-xs text-muted-foreground ml-1">
+                          {form.icpStars === 1 ? "Baixa" : form.icpStars === 2 ? "Média" : "Alta"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-6">
+                      <Switch checked={form.runsAds} onCheckedChange={(v) => setForm({ ...form, runsAds: v })} />
+                      <Label className="text-sm">Faz Anúncios?</Label>
+                    </div>
+                  </div>
+                  <div><Label>Observações</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+                  <Button onClick={handleAdd} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">Adicionar</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </div>
+
+      <BulkActionsBar
+        count={selectedIds.size}
+        stages={[...stages] as PipelineStage[]}
+        onMoveToStage={handleBulkMove}
+        onDelete={handleBulkDelete}
+        onClear={() => setSelectedIds(new Set())}
+      />
+
+      <div className="flex-1 overflow-x-auto scrollbar-thin">
+        <div className="flex gap-3 h-full min-w-max pb-2">
+          {stages.map((stage) => {
+            const stageLeads = pipelineLeads.filter((l) => l.stage === stage);
+            return (
+              <div
+                key={stage}
+                onDrop={(e) => onDrop(e, stage)}
+                onDragOver={onDragOver}
+                className={`w-56 shrink-0 flex flex-col rounded-lg border p-2 ${stageColors[stage] || "bg-muted/30 border-border"}`}
+              >
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={stageLeads.length > 0 && stageLeads.every((l) => selectedIds.has(l.id))}
+                        onCheckedChange={() => handleSelectAllInStage(stage)}
+                        className="h-3.5 w-3.5"
+                      />
+                    </div>
+                    <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide truncate">{stage}</h3>
+                  </div>
+                  <span className="text-[10px] font-medium bg-background/80 text-muted-foreground rounded-full px-1.5 py-0.5">
+                    {stageLeads.length}
+                  </span>
+                </div>
+                <div className="flex-1 space-y-2 overflow-y-auto scrollbar-thin min-h-[100px]">
+                  {stageLeads.map((lead) => (
+                    <LeadCard
+                      key={lead.id} lead={lead} onDragStart={onDragStart} onDelete={handleDelete}
+                      onRefresh={refresh} onClick={handleCardClick} selected={selectedIds.has(lead.id)}
+                      onToggleSelect={handleToggleSelect}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <LeadDetailDrawer
+        lead={selectedLead} open={drawerOpen} onOpenChange={setDrawerOpen}
+        showFinancialFields={pipeline === "operacao"}
+        onRefresh={() => {
+          refresh();
+          if (selectedLead) {
+            const updated = getLeads().find((l) => l.id === selectedLead.id);
+            if (updated) setSelectedLead(updated);
+          }
+        }}
+      />
+    </div>
+  );
+}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PIPELINE_STAGES, type PipelineStage } from "@/lib/store";
+import { type PipelineStage } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -8,11 +8,13 @@ import { ArrowRightLeft, Trash2, X } from "lucide-react";
 
 export default function BulkActionsBar({
   count,
+  stages,
   onMoveToStage,
   onDelete,
   onClear,
 }: {
   count: number;
+  stages: PipelineStage[];
   onMoveToStage: (stage: PipelineStage) => void;
   onDelete: () => void;
   onClear: () => void;
@@ -26,44 +28,25 @@ export default function BulkActionsBar({
       <span className="text-sm font-medium text-foreground">
         {count} lead{count > 1 ? "s" : ""} selecionado{count > 1 ? "s" : ""}
       </span>
-
       <div className="flex items-center gap-2 ml-auto">
         <Select value={targetStage} onValueChange={setTargetStage}>
           <SelectTrigger className="h-8 w-48 text-xs">
             <SelectValue placeholder="Mover para etapa..." />
           </SelectTrigger>
           <SelectContent>
-            {PIPELINE_STAGES.map((stage) => (
-              <SelectItem key={stage} value={stage} className="text-xs">
-                {stage}
-              </SelectItem>
+            {stages.map((stage) => (
+              <SelectItem key={stage} value={stage} className="text-xs">{stage}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-
-        <Button
-          size="sm"
-          className="h-8 bg-accent text-accent-foreground hover:bg-accent/90 text-xs"
+        <Button size="sm" className="h-8 bg-accent text-accent-foreground hover:bg-accent/90 text-xs"
           disabled={!targetStage}
-          onClick={() => {
-            if (targetStage) {
-              onMoveToStage(targetStage as PipelineStage);
-              setTargetStage("");
-            }
-          }}
-        >
+          onClick={() => { if (targetStage) { onMoveToStage(targetStage as PipelineStage); setTargetStage(""); } }}>
           <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Mover
         </Button>
-
-        <Button
-          size="sm"
-          variant="destructive"
-          className="h-8 text-xs"
-          onClick={onDelete}
-        >
+        <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={onDelete}>
           <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
         </Button>
-
         <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={onClear}>
           <X className="h-3.5 w-3.5" />
         </Button>
