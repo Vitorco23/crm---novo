@@ -60,15 +60,17 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
         const start = new Date(`${date}T${time}:00`);
         const end = new Date(start.getTime() + parseInt(duration) * 60 * 1000);
         const description = [
-          notes.trim() && `Pauta:\n${notes.trim()}`,
+          `Empresa: ${lead.company}`,
           (contactName.trim() || lead.contact) && `Contato: ${contactName.trim() || lead.contact}`,
           lead.phone && `Telefone: ${lead.phone}`,
           lead.niche && `Nicho: ${lead.niche}`,
-        ].filter(Boolean).join("\n\n");
+          lead.city && `Cidade: ${lead.city}`,
+          notes.trim() && `\nObservações:\n${notes.trim()}`,
+        ].filter(Boolean).join("\n");
 
         const { data, error } = await supabase.functions.invoke("create-google-meeting", {
           body: {
-            summary: `Reunião — ${lead.company}`,
+            summary: `Reunião de diagnóstico - ${lead.company}`,
             description,
             startISO: start.toISOString(),
             endISO: end.toISOString(),
