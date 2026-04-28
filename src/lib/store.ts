@@ -348,6 +348,12 @@ export function getMeetings(): Meeting[] {
   return loadFromStorage<Meeting[]>("p21_meetings", []);
 }
 
+export function getMeetingsForLead(leadId: string): Meeting[] {
+  return getMeetings()
+    .filter((m) => m.leadId === leadId)
+    .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+}
+
 export function saveMeetings(meetings: Meeting[]) {
   saveToStorage("p21_meetings", meetings);
 }
