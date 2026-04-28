@@ -161,39 +161,32 @@ function LeadCard({
   );
 }
 
-function parseCSV(text: string): Record<string, string>[] {
+function parseCSVText(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
-  if (lines.length < 2) return [];
+  if (lines.length < 1) return { headers: [], rows: [] };
   const sep = lines[0].includes(";") ? ";" : ",";
-  const headers = lines[0].split(sep).map((h) => h.trim().toLowerCase());
-  return lines.slice(1).map((line) => {
-    const vals = line.split(sep).map((v) => v.trim());
+  const splitLine = (line: string) => {
+    // simple CSV split with quote support
+    const out: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === sep && !inQuotes) { out.push(cur); cur = ""; continue; }
+      cur += ch;
+    }
+    out.push(cur);
+    return out.map((s) => s.trim());
+  };
+  const headers = splitLine(lines[0]);
+  const rows = lines.slice(1).map((line) => {
+    const vals = splitLine(line);
     const obj: Record<string, string> = {};
     headers.forEach((h, i) => (obj[h] = vals[i] || ""));
     return obj;
   });
-}
-
-function mapCSVRow(row: Record<string, string>) {
-  const find = (...keys: string[]) => {
-    for (const k of keys) {
-      const match = Object.keys(row).find((rk) => rk.includes(k));
-      if (match && row[match]) return row[match];
-    }
-    return "";
-  };
-  return {
-    company: find("empresa", "company", "nome"),
-    contact: find("contato", "contact"),
-    phone: find("telefone", "phone", "tel"),
-    niche: find("nicho", "niche"),
-    city: find("cidade", "city"),
-    gmnLink: find("gmn", "google"),
-    instagramLink: find("instagram", "insta"),
-    icpStars: 2 as ICPStars,
-    runsAds: ["sim", "yes", "true", "1"].includes(find("anuncio", "anúncio", "ads", "ad").toLowerCase()),
-    notes: find("observ", "notes", "nota"),
-  };
+  return { headers, rows };
 }
 
 interface PipelineBoardProps {
