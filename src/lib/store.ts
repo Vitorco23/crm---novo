@@ -1,5 +1,5 @@
-// ===== Pipeline Definitions =====
-export const COLD_CALL_STAGES = [
+// ===== Pipeline Definitions (defaults; user can edit/persist) =====
+export const DEFAULT_COLD_CALL_STAGES = [
   "Novo Lead",
   "Tentativa 1",
   "Mensagem WhatsApp",
@@ -12,7 +12,7 @@ export const COLD_CALL_STAGES = [
   "Tentativa 8",
 ] as const;
 
-export const OPORTUNIDADES_STAGES = [
+export const DEFAULT_OPORTUNIDADES_STAGES = [
   "Reunião Marcada",
   "Reunião Realizada",
   "Documento de Guerra",
@@ -21,28 +21,12 @@ export const OPORTUNIDADES_STAGES = [
   "Perdido",
 ] as const;
 
-export const OPERACAO_STAGES = [
-  "Onboarding",
-  "Exploração",
-  "Lapidação",
-  "Escala",
-  "Extração",
-] as const;
+// Legacy compatibility (some files still import these names)
+export const COLD_CALL_STAGES = DEFAULT_COLD_CALL_STAGES;
+export const OPORTUNIDADES_STAGES = DEFAULT_OPORTUNIDADES_STAGES;
 
-export const ALL_STAGES = [
-  ...COLD_CALL_STAGES,
-  ...OPORTUNIDADES_STAGES,
-  ...OPERACAO_STAGES,
-] as const;
-
-// Keep legacy export for compatibility
-export const PIPELINE_STAGES = ALL_STAGES;
-
-export type ColdCallStage = (typeof COLD_CALL_STAGES)[number];
-export type OportunidadesStage = (typeof OPORTUNIDADES_STAGES)[number];
-export type OperacaoStage = (typeof OPERACAO_STAGES)[number];
-export type PipelineStage = (typeof ALL_STAGES)[number];
-export type PipelineName = "cold_call" | "oportunidades" | "operacao";
+export type PipelineStage = string;
+export type PipelineName = "cold_call" | "oportunidades";
 
 export type ICPStars = 1 | 2 | 3;
 
@@ -70,12 +54,6 @@ export interface Lead {
   stageChangedAt: string;
   notes: string;
   attachments: LeadAttachment[];
-  // Operação fields
-  setupValue?: number;
-  monthlyFee?: number;
-  adBudget?: number;
-  contractStart?: string;
-  contractRenewal?: string;
 }
 
 export interface PomodoroSession {
@@ -84,8 +62,12 @@ export interface PomodoroSession {
   endTime: string;
   durationMinutes: number;
   calls: number;
-  messages: number;
+  connections: number;
+  decisionMakers: number;
   meetings: number;
+  niche?: string;
+  // legacy
+  messages?: number;
 }
 
 export interface MovementEvent {
@@ -96,25 +78,7 @@ export interface MovementEvent {
   type: "call" | "message" | "meeting" | "other";
 }
 
-// ===== Helpers =====
-export function getPipelineForStage(stage: PipelineStage): PipelineName {
-  if ((COLD_CALL_STAGES as readonly string[]).includes(stage)) return "cold_call";
-  if ((OPORTUNIDADES_STAGES as readonly string[]).includes(stage)) return "oportunidades";
-  return "operacao";
-}
-
-export function getStagesForPipeline(pipeline: PipelineName): readonly PipelineStage[] {
-  if (pipeline === "cold_call") return COLD_CALL_STAGES;
-  if (pipeline === "oportunidades") return OPORTUNIDADES_STAGES;
-  return OPERACAO_STAGES;
-}
-
-export function getLeadsForPipeline(pipeline: PipelineName): Lead[] {
-  const stages = getStagesForPipeline(pipeline) as readonly string[];
-  return getLeads().filter((l) => stages.includes(l.stage));
-}
-
-// ===== Storage =====
+// ===== Storage helpers =====
 function loadFromStorage<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -126,6 +90,67 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 
 function saveToStorage<T>(key: string, data: T) {
   localStorage.setItem(key, JSON.stringify(data));
+}
+
+// ===== Custom stages persistence =====
+const STAGES_KEYS: Record<PipelineName, string> = {
+  cold_call: "p21_stages_cold_call",
+  oportunidades: "p21_stages_oportunidades",
+};
+
+export function getStagesForPipeline(pipeline: PipelineName): PipelineStage[] {
+  const fallback =
+    pipeline === "cold_call"
+      ? [...DEFAULT_COLD_CALL_STAGES]
+      : [...DEFAULT_OPORTUNIDADES_STAGES];
+  const stored = loadFromStorage<string[] | null>(STAGES_KEYS[pipeline], null);
+  return stored && stored.length ? stored : fallback;
+}
+
+export function saveStagesForPipeline(pipeline: PipelineName, stages: PipelineStage[]) {
+  saveToStorage(STAGES_KEYS[pipeline], stages);
+}
+
+export function renameStage(pipeline: PipelineName, oldName: string, newName: string) {
+  if (!newName.trim() || oldName === newName) return;
+  const stages = getStagesForPipeline(pipeline).map((s) => (s === oldName ? newName : s));
+  saveStagesForPipeline(pipeline, stages);
+  // update leads that referenced old name
+  const leads = getLeads().map((l) => (l.stage === oldName ? { ...l, stage: newName } : l));
+  saveLeads(leads);
+}
+
+export function addStage(pipeline: PipelineName, name: string) {
+  if (!name.trim()) return;
+  const stages = getStagesForPipeline(pipeline);
+  if (stages.includes(name)) return;
+  saveStagesForPipeline(pipeline, [...stages, name]);
+}
+
+export function removeStage(pipeline: PipelineName, name: string) {
+  const stages = getStagesForPipeline(pipeline);
+  if (stages.length <= 1) return;
+  const next = stages.filter((s) => s !== name);
+  saveStagesForPipeline(pipeline, next);
+  // move leads from removed stage to first remaining stage
+  const fallback = next[0];
+  const leads = getLeads().map((l) => (l.stage === name ? { ...l, stage: fallback } : l));
+  saveLeads(leads);
+}
+
+export function reorderStages(pipeline: PipelineName, stages: PipelineStage[]) {
+  saveStagesForPipeline(pipeline, stages);
+}
+
+// ===== Pipeline routing =====
+export function getPipelineForStage(stage: PipelineStage): PipelineName {
+  if (getStagesForPipeline("cold_call").includes(stage)) return "cold_call";
+  return "oportunidades";
+}
+
+export function getLeadsForPipeline(pipeline: PipelineName): Lead[] {
+  const stages = getStagesForPipeline(pipeline);
+  return getLeads().filter((l) => stages.includes(l.stage));
 }
 
 // ===== Leads =====
@@ -206,7 +231,7 @@ export function removeAttachment(leadId: string, attachmentId: string) {
   }
 }
 
-// ===== Movement Events (non-linear: only tracks destination) =====
+// ===== Movement Events =====
 export function getMovementEvents(): MovementEvent[] {
   return loadFromStorage<MovementEvent[]>("p21_movements", []);
 }
@@ -215,18 +240,16 @@ export function saveMovementEvents(events: MovementEvent[]) {
   saveToStorage("p21_movements", events);
 }
 
-const CALL_STAGES: string[] = [
-  "Tentativa 1", "Tentativa 2", "Tentativa 3", "Tentativa 4",
-  "Tentativa 5", "Tentativa 6", "Tentativa 7", "Tentativa 8",
-];
-const MESSAGE_STAGES: string[] = ["Mensagem WhatsApp"];
-const MEETING_STAGES: string[] = ["Reunião Marcada", "Reunião Realizada"];
+const CALL_STAGE_HINTS = ["tentativa", "ligação", "ligacao", "call"];
+const MESSAGE_STAGE_HINTS = ["mensagem", "whatsapp", "wpp", "msg"];
+const MEETING_STAGE_HINTS = ["reunião", "reuniao", "meeting"];
 
 export function trackMovement(leadId: string, toStage: PipelineStage) {
+  const lower = toStage.toLowerCase();
   let type: MovementEvent["type"] = "other";
-  if (CALL_STAGES.includes(toStage)) type = "call";
-  else if (MESSAGE_STAGES.includes(toStage)) type = "message";
-  else if (MEETING_STAGES.includes(toStage)) type = "meeting";
+  if (CALL_STAGE_HINTS.some((h) => lower.includes(h))) type = "call";
+  else if (MESSAGE_STAGE_HINTS.some((h) => lower.includes(h))) type = "message";
+  else if (MEETING_STAGE_HINTS.some((h) => lower.includes(h))) type = "meeting";
 
   const events = getMovementEvents();
   events.push({
@@ -239,9 +262,7 @@ export function trackMovement(leadId: string, toStage: PipelineStage) {
   saveMovementEvents(events);
 }
 
-// ===== Auto-transfer logic =====
-// Moving to "Reunião Marcada" from Cold Call → appears in Oportunidades
-// Moving to "Ganho" → auto-creates in Operação "Onboarding"
+// ===== Move lead between stages (cross-pipeline allowed) =====
 export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoTransfer?: PipelineName } {
   trackMovement(leadId, toStage);
   const leads = getLeads();
@@ -253,26 +274,12 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
 
   lead.stage = toStage;
   lead.stageChangedAt = new Date().toISOString();
-
-  // Auto-transfer to Operação when "Ganho"
-  if (toStage === "Ganho") {
-    // Clone lead into Operação
-    const opLead: Lead = {
-      ...lead,
-      id: crypto.randomUUID(),
-      stage: "Onboarding",
-      stageChangedAt: new Date().toISOString(),
-    };
-    leads.push(opLead);
-    saveLeads(leads);
-    return { autoTransfer: "operacao" };
-  }
-
   saveLeads(leads);
+
   return fromPipeline !== toPipeline ? { autoTransfer: toPipeline } : {};
 }
 
-// ===== Pomodoro =====
+// ===== Pomodoro Sessions =====
 export function getSessions(): PomodoroSession[] {
   return loadFromStorage<PomodoroSession[]>("p21_sessions", []);
 }
