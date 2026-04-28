@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import LeadDetailDrawer from "@/components/LeadDetailDrawer";
 import BulkActionsBar from "@/components/BulkActionsBar";
+import ImportMappingDialog, { LEAD_FIELDS, type LeadFieldKey } from "@/components/ImportMappingDialog";
 
 function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
