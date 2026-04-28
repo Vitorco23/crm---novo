@@ -35,6 +35,10 @@ import { toast } from "sonner";
 import LeadDetailDrawer from "@/components/LeadDetailDrawer";
 import BulkActionsBar from "@/components/BulkActionsBar";
 import ImportMappingDialog, { type LeadFieldKey } from "@/components/ImportMappingDialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Filter as FilterIcon } from "lucide-react";
 
 function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
