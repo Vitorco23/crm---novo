@@ -56,6 +56,19 @@ export interface Lead {
   attachments: LeadAttachment[];
 }
 
+export interface Meeting {
+  id: string;
+  leadId: string;
+  company: string;
+  date: string; // ISO date
+  time: string; // HH:mm
+  contactName?: string;
+  channel?: "Google Meet" | "Zoom" | "Presencial" | "Telefone" | "Outro";
+  link?: string;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface PomodoroSession {
   id: string;
   startTime: string;
@@ -294,4 +307,73 @@ export function addSession(session: Omit<PomodoroSession, "id">): PomodoroSessio
   sessions.push(newSession);
   saveSessions(sessions);
   return newSession;
+}
+
+// ===== Meetings =====
+export function getMeetings(): Meeting[] {
+  return loadFromStorage<Meeting[]>("p21_meetings", []);
+}
+
+export function saveMeetings(meetings: Meeting[]) {
+  saveToStorage("p21_meetings", meetings);
+}
+
+export function scheduleMeeting(
+  leadId: string,
+  data: Omit<Meeting, "id" | "leadId" | "company" | "createdAt">
+): { meeting: Meeting; autoTransfer?: PipelineName } {
+  const lead = getLeads().find((l) => l.id === leadId);
+  if (!lead) throw new Error("Lead não encontrado");
+
+  const meeting: Meeting = {
+    ...data,
+    id: crypto.randomUUID(),
+    leadId,
+    company: lead.company,
+    createdAt: new Date().toISOString(),
+  };
+  const meetings = getMeetings();
+  meetings.push(meeting);
+  saveMeetings(meetings);
+
+  // Move lead to "Reunião Marcada" (oportunidades)
+  const result = moveLeadToStage(leadId, "Reunião Marcada");
+  return { meeting, autoTransfer: result.autoTransfer };
+}
+
+// ===== Goals (Metas) settings =====
+export interface GoalsSettings {
+  monthlyRevenueGoal: number;
+  averageTicket: number;
+  // Conversion rates as percentages (0-100)
+  callToConnection: number;
+  connectionToDecisionMaker: number;
+  decisionMakerToMeetingScheduled: number;
+  meetingScheduledToHeld: number;
+  meetingHeldToClose: number;
+  // Time management
+  workingDaysPerWeek: number;
+  hoursPerDay: number;
+  minutesPerCall: number;
+}
+
+export const DEFAULT_GOALS: GoalsSettings = {
+  monthlyRevenueGoal: 30000,
+  averageTicket: 3000,
+  callToConnection: 30,
+  connectionToDecisionMaker: 50,
+  decisionMakerToMeetingScheduled: 25,
+  meetingScheduledToHeld: 70,
+  meetingHeldToClose: 30,
+  workingDaysPerWeek: 5,
+  hoursPerDay: 4,
+  minutesPerCall: 4,
+};
+
+export function getGoalsSettings(): GoalsSettings {
+  return loadFromStorage<GoalsSettings>("p21_goals_settings", DEFAULT_GOALS);
+}
+
+export function saveGoalsSettings(settings: GoalsSettings) {
+  saveToStorage("p21_goals_settings", settings);
 }
