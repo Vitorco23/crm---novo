@@ -304,33 +304,74 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        let rows: Record<string, string>[];
+        let headers: string[] = [];
+        let rows: Record<string, string>[] = [];
         if (ext === "csv") {
-          rows = parseCSV(reader.result as string);
+          const parsed = parseCSVText(reader.result as string);
+          headers = parsed.headers;
+          rows = parsed.rows;
         } else {
           const data = new Uint8Array(reader.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: "array" });
           const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
-          rows = json.map((row) => {
-            const normalized: Record<string, string> = {};
-            Object.entries(row).forEach(([k, v]) => { normalized[k.trim().toLowerCase()] = String(v).trim(); });
-            return normalized;
+          const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+          if (aoa.length === 0) throw new Error("empty");
+          headers = (aoa[0] as unknown[]).map((h) => String(h ?? "").trim()).filter(Boolean);
+          rows = (aoa.slice(1) as unknown[][]).map((arr) => {
+            const obj: Record<string, string> = {};
+            headers.forEach((h, i) => { obj[h] = String(arr[i] ?? "").trim(); });
+            return obj;
           });
         }
-        let count = 0;
-        rows.forEach((row) => {
-          const mapped = mapCSVRow(row);
-          if (mapped.company) { addLead(mapped, stages[0]); count++; }
-        });
-        refresh();
-        toast.success(`${count} leads importados!`);
-      } catch {
-        toast.error("Erro ao ler o arquivo.");
+        if (headers.length === 0 || rows.length === 0) {
+          toast.error("Arquivo vazio ou sem cabeçalho.");
+          return;
+        }
+        setImportHeaders(headers);
+        setImportRows(rows);
+        setMappingOpen(true);
+      } catch (err) {
+        console.error(err);
+        toast.error("Erro ao ler o arquivo. Verifique o formato.");
       }
     };
+    reader.onerror = () => toast.error("Erro ao ler o arquivo.");
     if (ext === "csv") reader.readAsText(file); else reader.readAsArrayBuffer(file);
     e.target.value = "";
+  };
+
+  const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>) => {
+    let count = 0;
+    importRows.forEach((row) => {
+      const get = (k: LeadFieldKey) => {
+        const col = mapping[k];
+        if (!col || col === "__none__") return "";
+        return (row[col] || "").trim();
+      };
+      const company = get("company");
+      if (!company) return;
+      addLead(
+        {
+          company,
+          contact: get("contact"),
+          phone: get("phone"),
+          niche: get("niche"),
+          city: get("city"),
+          gmnLink: get("gmnLink"),
+          instagramLink: get("instagramLink"),
+          notes: get("notes"),
+          icpStars: 2 as ICPStars,
+          runsAds: false,
+        },
+        stages[0]
+      );
+      count++;
+    });
+    setMappingOpen(false);
+    setImportHeaders([]);
+    setImportRows([]);
+    refresh();
+    toast.success(`${count} leads importados!`);
   };
 
   const onDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.setData("text/plain", id); };
