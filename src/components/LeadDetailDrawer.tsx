@@ -1,17 +1,15 @@
-import { type Lead, type ICPStars, addAttachment, removeAttachment, updateLead } from "@/lib/store";
+import { type Lead, type ICPStars, addAttachment, removeAttachment } from "@/lib/store";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
-  Phone, MapPin, Instagram, ExternalLink, Star, Paperclip, X, FileAudio, DollarSign,
+  Phone, MapPin, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { toast } from "sonner";
 
 function StarRating({ value }: { value: ICPStars }) {
@@ -25,17 +23,14 @@ function StarRating({ value }: { value: ICPStars }) {
 }
 
 export default function LeadDetailDrawer({
-  lead, open, onOpenChange, onRefresh, showFinancialFields = false,
+  lead, open, onOpenChange, onRefresh,
 }: {
   lead: Lead | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRefresh: () => void;
-  showFinancialFields?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [editingFinancials, setEditingFinancials] = useState(false);
-  const [financials, setFinancials] = useState({ setupValue: 0, monthlyFee: 0, adBudget: 0, contractStart: "", contractRenewal: "" });
 
   if (!lead) return null;
 
@@ -51,24 +46,6 @@ export default function LeadDetailDrawer({
     };
     reader.readAsDataURL(file);
     e.target.value = "";
-  };
-
-  const handleSaveFinancials = () => {
-    updateLead(lead.id, financials);
-    onRefresh();
-    setEditingFinancials(false);
-    toast.success("Dados financeiros salvos!");
-  };
-
-  const openFinancialEdit = () => {
-    setFinancials({
-      setupValue: lead.setupValue || 0,
-      monthlyFee: lead.monthlyFee || 0,
-      adBudget: lead.adBudget || 0,
-      contractStart: lead.contractStart || "",
-      contractRenewal: lead.contractRenewal || "",
-    });
-    setEditingFinancials(true);
   };
 
   return (
@@ -137,37 +114,6 @@ export default function LeadDetailDrawer({
             </div>
           )}
 
-          {/* Financial fields for Operação */}
-          {showFinancialFields && (
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-foreground flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Dados Financeiros</p>
-                {!editingFinancials && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={openFinancialEdit}>Editar</Button>}
-              </div>
-              {editingFinancials ? (
-                <div className="space-y-2">
-                  <div><Label className="text-xs">Valor do Setup (R$)</Label><Input type="number" value={financials.setupValue} onChange={(e) => setFinancials({ ...financials, setupValue: +e.target.value })} /></div>
-                  <div><Label className="text-xs">Mensalidade / Fee (R$)</Label><Input type="number" value={financials.monthlyFee} onChange={(e) => setFinancials({ ...financials, monthlyFee: +e.target.value })} /></div>
-                  <div><Label className="text-xs">Verba Gerenciada (R$)</Label><Input type="number" value={financials.adBudget} onChange={(e) => setFinancials({ ...financials, adBudget: +e.target.value })} /></div>
-                  <div><Label className="text-xs">Data Início</Label><Input type="date" value={financials.contractStart} onChange={(e) => setFinancials({ ...financials, contractStart: e.target.value })} /></div>
-                  <div><Label className="text-xs">Data Renovação</Label><Input type="date" value={financials.contractRenewal} onChange={(e) => setFinancials({ ...financials, contractRenewal: e.target.value })} /></div>
-                  <div className="flex gap-2">
-                    <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 text-xs" onClick={handleSaveFinancials}>Salvar</Button>
-                    <Button size="sm" variant="ghost" className="text-xs" onClick={() => setEditingFinancials(false)}>Cancelar</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div><p className="text-xs text-muted-foreground">Setup</p><p className="text-foreground">R$ {(lead.setupValue || 0).toLocaleString("pt-BR")}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Fee Mensal</p><p className="text-foreground">R$ {(lead.monthlyFee || 0).toLocaleString("pt-BR")}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Verba Ads</p><p className="text-foreground">R$ {(lead.adBudget || 0).toLocaleString("pt-BR")}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Início</p><p className="text-foreground">{lead.contractStart || "—"}</p></div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Attachments */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs text-muted-foreground flex items-center gap-1"><FileAudio className="h-3 w-3" /> Arquivos ({lead.attachments.length})</p>
