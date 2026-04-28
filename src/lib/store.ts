@@ -38,6 +38,12 @@ export interface LeadAttachment {
   createdAt: string;
 }
 
+export interface CallNote {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface Lead {
   id: string;
   company: string;
@@ -54,6 +60,7 @@ export interface Lead {
   stageChangedAt: string;
   notes: string;
   attachments: LeadAttachment[];
+  callNotes?: CallNote[];
 }
 
 export interface Meeting {
