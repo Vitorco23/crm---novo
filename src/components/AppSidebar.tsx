@@ -1,6 +1,5 @@
-import { PhoneCall, Handshake, Settings2, Timer, BarChart3, Zap } from "lucide-react";
+import { PhoneCall, Handshake, Timer, BarChart3, Zap } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
@@ -9,7 +8,6 @@ import {
 const pipelineItems = [
   { title: "Cold Call", url: "/", icon: PhoneCall },
   { title: "Oportunidades", url: "/oportunidades", icon: Handshake },
-  { title: "Operação", url: "/operacao", icon: Settings2 },
 ];
 
 const toolItems = [
