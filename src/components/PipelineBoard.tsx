@@ -154,10 +154,15 @@ function LeadCard({
         )}
       </div>
 
-      {lead.attachments.length > 0 && (
-        <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-0.5">
-          <FileAudio className="h-2.5 w-2.5" /> {lead.attachments.length} arquivo(s)
-        </p>
+      {(lead.attachments.length > 0 || (lead.callNotes?.length ?? 0) > 0) && (
+        <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
+          {lead.attachments.length > 0 && (
+            <span className="flex items-center gap-0.5"><FileAudio className="h-2.5 w-2.5" /> {lead.attachments.length}</span>
+          )}
+          {(lead.callNotes?.length ?? 0) > 0 && (
+            <span className="flex items-center gap-0.5">💬 {lead.callNotes!.length}</span>
+          )}
+        </div>
       )}
 
       <p className="text-[10px] text-muted-foreground/70 mt-2">⏱ {timeInStage(lead.stageChangedAt)}</p>

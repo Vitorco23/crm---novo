@@ -38,6 +38,12 @@ export interface LeadAttachment {
   createdAt: string;
 }
 
+export interface CallNote {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface Lead {
   id: string;
   company: string;
@@ -54,6 +60,7 @@ export interface Lead {
   stageChangedAt: string;
   notes: string;
   attachments: LeadAttachment[];
+  callNotes?: CallNote[];
 }
 
 export interface Meeting {
@@ -173,6 +180,7 @@ export function getLeads(): Lead[] {
     ...l,
     icpStars: l.icpStars || ((l as any).icpProfile === "Não Fit" ? 1 : 3),
     attachments: l.attachments || [],
+    callNotes: l.callNotes || [],
   }));
 }
 
@@ -240,6 +248,28 @@ export function removeAttachment(leadId: string, attachmentId: string) {
   const lead = leads.find((l) => l.id === leadId);
   if (lead) {
     lead.attachments = lead.attachments.filter((a) => a.id !== attachmentId);
+    saveLeads(leads);
+  }
+}
+
+export function addCallNote(leadId: string, text: string) {
+  if (!text.trim()) return;
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (lead) {
+    lead.callNotes = [
+      ...(lead.callNotes || []),
+      { id: crypto.randomUUID(), text: text.trim(), createdAt: new Date().toISOString() },
+    ];
+    saveLeads(leads);
+  }
+}
+
+export function removeCallNote(leadId: string, noteId: string) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (lead) {
+    lead.callNotes = (lead.callNotes || []).filter((n) => n.id !== noteId);
     saveLeads(leads);
   }
 }
