@@ -1,7 +1,7 @@
 import {
   type Lead, type ICPStars,
   addAttachment, removeAttachment, updateLead,
-  addCallNote, removeCallNote,
+  addCallNote, removeCallNote, getMeetingsForLead,
 } from "@/lib/store";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Phone, MapPin, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
-  CalendarCheck, Pencil, Check, MessageSquarePlus, Trash2,
+  CalendarCheck, Pencil, Check, MessageSquarePlus, Trash2, Video,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
