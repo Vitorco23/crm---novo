@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import LeadDetailDrawer from "@/components/LeadDetailDrawer";
 import BulkActionsBar from "@/components/BulkActionsBar";
+import ImportMappingDialog, { type LeadFieldKey } from "@/components/ImportMappingDialog";
 
 function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
@@ -160,39 +161,32 @@ function LeadCard({
   );
 }
 
-function parseCSV(text: string): Record<string, string>[] {
+function parseCSVText(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
-  if (lines.length < 2) return [];
+  if (lines.length < 1) return { headers: [], rows: [] };
   const sep = lines[0].includes(";") ? ";" : ",";
-  const headers = lines[0].split(sep).map((h) => h.trim().toLowerCase());
-  return lines.slice(1).map((line) => {
-    const vals = line.split(sep).map((v) => v.trim());
+  const splitLine = (line: string) => {
+    // simple CSV split with quote support
+    const out: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === sep && !inQuotes) { out.push(cur); cur = ""; continue; }
+      cur += ch;
+    }
+    out.push(cur);
+    return out.map((s) => s.trim());
+  };
+  const headers = splitLine(lines[0]);
+  const rows = lines.slice(1).map((line) => {
+    const vals = splitLine(line);
     const obj: Record<string, string> = {};
     headers.forEach((h, i) => (obj[h] = vals[i] || ""));
     return obj;
   });
-}
-
-function mapCSVRow(row: Record<string, string>) {
-  const find = (...keys: string[]) => {
-    for (const k of keys) {
-      const match = Object.keys(row).find((rk) => rk.includes(k));
-      if (match && row[match]) return row[match];
-    }
-    return "";
-  };
-  return {
-    company: find("empresa", "company", "nome"),
-    contact: find("contato", "contact"),
-    phone: find("telefone", "phone", "tel"),
-    niche: find("nicho", "niche"),
-    city: find("cidade", "city"),
-    gmnLink: find("gmn", "google"),
-    instagramLink: find("instagram", "insta"),
-    icpStars: 2 as ICPStars,
-    runsAds: ["sim", "yes", "true", "1"].includes(find("anuncio", "anúncio", "ads", "ad").toLowerCase()),
-    notes: find("observ", "notes", "nota"),
-  };
+  return { headers, rows };
 }
 
 interface PipelineBoardProps {
@@ -220,6 +214,9 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     icpStars: 3 as ICPStars, runsAds: false,
   });
   const csvRef = useRef<HTMLInputElement>(null);
+  const [mappingOpen, setMappingOpen] = useState(false);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [importRows, setImportRows] = useState<Record<string, string>[]>([]);
 
   const refresh = useCallback(() => {
     setLeads(getLeads());
@@ -307,33 +304,74 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        let rows: Record<string, string>[];
+        let headers: string[] = [];
+        let rows: Record<string, string>[] = [];
         if (ext === "csv") {
-          rows = parseCSV(reader.result as string);
+          const parsed = parseCSVText(reader.result as string);
+          headers = parsed.headers;
+          rows = parsed.rows;
         } else {
           const data = new Uint8Array(reader.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: "array" });
           const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
-          rows = json.map((row) => {
-            const normalized: Record<string, string> = {};
-            Object.entries(row).forEach(([k, v]) => { normalized[k.trim().toLowerCase()] = String(v).trim(); });
-            return normalized;
+          const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
+          if (aoa.length === 0) throw new Error("empty");
+          headers = (aoa[0] as unknown[]).map((h) => String(h ?? "").trim()).filter(Boolean);
+          rows = (aoa.slice(1) as unknown[][]).map((arr) => {
+            const obj: Record<string, string> = {};
+            headers.forEach((h, i) => { obj[h] = String(arr[i] ?? "").trim(); });
+            return obj;
           });
         }
-        let count = 0;
-        rows.forEach((row) => {
-          const mapped = mapCSVRow(row);
-          if (mapped.company) { addLead(mapped, stages[0]); count++; }
-        });
-        refresh();
-        toast.success(`${count} leads importados!`);
-      } catch {
-        toast.error("Erro ao ler o arquivo.");
+        if (headers.length === 0 || rows.length === 0) {
+          toast.error("Arquivo vazio ou sem cabeçalho.");
+          return;
+        }
+        setImportHeaders(headers);
+        setImportRows(rows);
+        setMappingOpen(true);
+      } catch (err) {
+        console.error(err);
+        toast.error("Erro ao ler o arquivo. Verifique o formato.");
       }
     };
+    reader.onerror = () => toast.error("Erro ao ler o arquivo.");
     if (ext === "csv") reader.readAsText(file); else reader.readAsArrayBuffer(file);
     e.target.value = "";
+  };
+
+  const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>) => {
+    let count = 0;
+    importRows.forEach((row) => {
+      const get = (k: LeadFieldKey) => {
+        const col = mapping[k];
+        if (!col || col === "__none__") return "";
+        return (row[col] || "").trim();
+      };
+      const company = get("company");
+      if (!company) return;
+      addLead(
+        {
+          company,
+          contact: get("contact"),
+          phone: get("phone"),
+          niche: get("niche"),
+          city: get("city"),
+          gmnLink: get("gmnLink"),
+          instagramLink: get("instagramLink"),
+          notes: get("notes"),
+          icpStars: 2 as ICPStars,
+          runsAds: false,
+        },
+        stages[0]
+      );
+      count++;
+    });
+    setMappingOpen(false);
+    setImportHeaders([]);
+    setImportRows([]);
+    refresh();
+    toast.success(`${count} leads importados!`);
   };
 
   const onDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.setData("text/plain", id); };
@@ -538,6 +576,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             if (updated) setSelectedLead(updated);
           }
         }}
+      />
+
+      <ImportMappingDialog
+        open={mappingOpen}
+        onOpenChange={setMappingOpen}
+        headers={importHeaders}
+        rows={importRows}
+        onConfirm={handleConfirmMapping}
       />
     </div>
   );
