@@ -6,14 +6,14 @@ import {
   type PipelineName,
   type ICPStars,
   getLeads,
-  saveLeads,
   addLead,
   deleteLead,
-  trackMovement,
   addAttachment,
   moveLeadToStage,
   getStagesForPipeline,
-  getLeadsForPipeline,
+  addStage,
+  removeStage,
+  renameStage,
 } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
-  Star, Upload, Paperclip, X, FileAudio,
+  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -204,12 +204,16 @@ interface PipelineBoardProps {
 }
 
 export default function PipelineBoard({ pipeline, title, subtitle, showAddLead = true, showImport = true }: PipelineBoardProps) {
-  const stages = getStagesForPipeline(pipeline);
+  const [stages, setStages] = useState<PipelineStage[]>(() => getStagesForPipeline(pipeline));
   const [leads, setLeads] = useState<Lead[]>(getLeads);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editingStage, setEditingStage] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [newStageName, setNewStageName] = useState("");
+  const [showAddStage, setShowAddStage] = useState(false);
   const [form, setForm] = useState({
     company: "", contact: "", phone: "", notes: "",
     niche: "", city: "", gmnLink: "", instagramLink: "",
@@ -217,9 +221,31 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   });
   const csvRef = useRef<HTMLInputElement>(null);
 
-  const refresh = useCallback(() => setLeads(getLeads()), []);
+  const refresh = useCallback(() => {
+    setLeads(getLeads());
+    setStages(getStagesForPipeline(pipeline));
+  }, [pipeline]);
 
-  const pipelineLeads = leads.filter((l) => (stages as readonly string[]).includes(l.stage));
+  const pipelineLeads = leads.filter((l) => stages.includes(l.stage));
+
+  const startEditStage = (s: string) => { setEditingStage(s); setEditingValue(s); };
+  const commitEditStage = () => {
+    if (editingStage && editingValue.trim() && editingValue !== editingStage) {
+      renameStage(pipeline, editingStage, editingValue.trim());
+    }
+    setEditingStage(null); setEditingValue("");
+    refresh();
+  };
+  const handleAddStage = () => {
+    if (newStageName.trim()) addStage(pipeline, newStageName.trim());
+    setNewStageName(""); setShowAddStage(false);
+    refresh();
+  };
+  const handleRemoveStage = (s: string) => {
+    if (!confirm(`Remover etapa "${s}"? Os leads serão movidos para a primeira etapa.`)) return;
+    removeStage(pipeline, s);
+    refresh();
+  };
 
   const handleAdd = () => {
     if (!form.company.trim()) return;
@@ -320,7 +346,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     const result = moveLeadToStage(id, stage);
     refresh();
     if (result.autoTransfer) {
-      toast.success(`Lead transferido automaticamente para ${result.autoTransfer === "operacao" ? "Operação" : "Oportunidades"}!`);
+      toast.success(`Lead transferido automaticamente para ${result.autoTransfer === "cold_call" ? "Cold Call" : "Oportunidades"}!`);
     }
   };
 
@@ -414,8 +440,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                 onDragOver={onDragOver}
                 className={`w-56 shrink-0 flex flex-col rounded-lg border p-2 ${stageColors[stage] || "bg-muted/30 border-border"}`}
               >
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-center justify-between mb-2 px-1 gap-1">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
                     <div onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={stageLeads.length > 0 && stageLeads.every((l) => selectedIds.has(l.id))}
@@ -423,11 +449,45 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                         className="h-3.5 w-3.5"
                       />
                     </div>
-                    <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide truncate">{stage}</h3>
+                    {editingStage === stage ? (
+                      <div className="flex items-center gap-0.5 flex-1 min-w-0">
+                        <Input
+                          autoFocus
+                          value={editingValue}
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") commitEditStage(); if (e.key === "Escape") { setEditingStage(null); setEditingValue(""); } }}
+                          className="h-6 text-xs px-1.5 py-0"
+                        />
+                        <button onClick={commitEditStage} className="text-accent hover:text-accent/70 shrink-0"><Check className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => { setEditingStage(null); setEditingValue(""); }} className="text-muted-foreground hover:text-destructive shrink-0"><XIcon className="h-3.5 w-3.5" /></button>
+                      </div>
+                    ) : (
+                      <h3
+                        onDoubleClick={() => startEditStage(stage)}
+                        title="Duplo clique para renomear"
+                        className="text-xs font-semibold text-foreground uppercase tracking-wide truncate cursor-text"
+                      >
+                        {stage}
+                      </h3>
+                    )}
                   </div>
-                  <span className="text-[10px] font-medium bg-background/80 text-muted-foreground rounded-full px-1.5 py-0.5">
-                    {stageLeads.length}
-                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {editingStage !== stage && (
+                      <>
+                        <button onClick={() => startEditStage(stage)} className="text-muted-foreground/60 hover:text-accent" title="Renomear">
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        {stages.length > 1 && (
+                          <button onClick={() => handleRemoveStage(stage)} className="text-muted-foreground/60 hover:text-destructive" title="Remover etapa">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </>
+                    )}
+                    <span className="text-[10px] font-medium bg-background/80 text-muted-foreground rounded-full px-1.5 py-0.5">
+                      {stageLeads.length}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex-1 space-y-2 overflow-y-auto scrollbar-thin min-h-[100px]">
                   {stageLeads.map((lead) => (
@@ -441,12 +501,36 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
               </div>
             );
           })}
+
+          {/* Add stage column */}
+          <div className="w-56 shrink-0 flex flex-col rounded-lg border-2 border-dashed border-border/50 p-2 bg-muted/10">
+            {showAddStage ? (
+              <div className="flex items-center gap-1">
+                <Input
+                  autoFocus
+                  placeholder="Nome da etapa"
+                  value={newStageName}
+                  onChange={(e) => setNewStageName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddStage(); if (e.key === "Escape") { setShowAddStage(false); setNewStageName(""); } }}
+                  className="h-7 text-xs"
+                />
+                <button onClick={handleAddStage} className="text-accent shrink-0"><Check className="h-4 w-4" /></button>
+                <button onClick={() => { setShowAddStage(false); setNewStageName(""); }} className="text-muted-foreground shrink-0"><XIcon className="h-4 w-4" /></button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAddStage(true)}
+                className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-accent py-2 transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" /> Nova etapa
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       <LeadDetailDrawer
         lead={selectedLead} open={drawerOpen} onOpenChange={setDrawerOpen}
-        showFinancialFields={pipeline === "operacao"}
         onRefresh={() => {
           refresh();
           if (selectedLead) {
