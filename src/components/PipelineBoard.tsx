@@ -577,6 +577,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           }
         }}
       />
+
+      <ImportMappingDialog
+        open={mappingOpen}
+        onOpenChange={setMappingOpen}
+        headers={importHeaders}
+        rows={importRows}
+        onConfirm={handleConfirmMapping}
+      />
     </div>
   );
 }
