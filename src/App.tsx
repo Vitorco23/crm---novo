@@ -10,6 +10,7 @@ import ColdCall from "./pages/ColdCall";
 import Oportunidades from "./pages/Oportunidades";
 import Pomodoro from "./pages/Pomodoro";
 import Dashboard from "./pages/Dashboard";
+import Metas from "./pages/Metas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/oportunidades" element={<Oportunidades />} />
               <Route path="/pomodoro" element={<Pomodoro />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/metas" element={<Metas />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
