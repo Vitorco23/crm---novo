@@ -472,6 +472,43 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         </div>
       </div>
 
+      {(niches.length > 0 || cities.length > 0) && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <FilterIcon className="h-3.5 w-3.5" /> Filtros:
+          </div>
+          <Select value={filterNiche} onValueChange={setFilterNiche}>
+            <SelectTrigger className="h-8 w-[180px] text-xs">
+              <SelectValue placeholder="Nicho" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os nichos</SelectItem>
+              {niches.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterCity} onValueChange={setFilterCity}>
+            <SelectTrigger className="h-8 w-[180px] text-xs">
+              <SelectValue placeholder="Cidade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas as cidades</SelectItem>
+              {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {(filterNiche !== "__all__" || filterCity !== "__all__") && (
+            <>
+              <Button size="sm" variant="ghost" className="h-8 text-xs"
+                onClick={() => { setFilterNiche("__all__"); setFilterCity("__all__"); }}>
+                <XIcon className="h-3 w-3 mr-1" /> Limpar
+              </Button>
+              <Badge variant="outline" className="text-[10px]">
+                {pipelineLeads.length} de {allPipelineLeads.length} leads
+              </Badge>
+            </>
+          )}
+        </div>
+      )}
+
       <BulkActionsBar
         count={selectedIds.size}
         stages={[...stages] as PipelineStage[]}
