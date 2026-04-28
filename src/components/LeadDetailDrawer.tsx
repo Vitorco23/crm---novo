@@ -269,6 +269,48 @@ export default function LeadDetailDrawer({
             )}
           </div>
 
+          {/* Reuniões agendadas */}
+          {(() => {
+            const meetings = getMeetingsForLead(lead.id);
+            if (meetings.length === 0) return null;
+            return (
+              <div>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                  <CalendarCheck className="h-3 w-3" /> Reuniões agendadas ({meetings.length})
+                </Label>
+                <div className="space-y-2">
+                  {meetings.slice(0, 3).map((m) => (
+                    <div key={m.id} className="bg-muted/40 rounded-md p-2 border border-border/40 text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium text-foreground">
+                          {format(new Date(`${m.date}T${m.time}`), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                        <Badge variant="outline" className="text-[10px]">{m.channel || "Reunião"}</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {m.meetLink && (
+                          <a href={m.meetLink} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-accent/15 text-accent hover:bg-accent/25 transition-colors">
+                            <Video className="h-2.5 w-2.5" /> Abrir Meet
+                          </a>
+                        )}
+                        {m.googleEventUrl && (
+                          <a href={m.googleEventUrl} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                            <ExternalLink className="h-2.5 w-2.5" /> Google Agenda
+                          </a>
+                        )}
+                        {m.attendeeEmail && (
+                          <span className="text-[10px] text-muted-foreground">→ {m.attendeeEmail}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Anotações de chamada (timeline) */}
           <div>
             <div className="flex items-center justify-between mb-2">
