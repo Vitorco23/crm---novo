@@ -180,6 +180,7 @@ export function getLeads(): Lead[] {
     ...l,
     icpStars: l.icpStars || ((l as any).icpProfile === "Não Fit" ? 1 : 3),
     attachments: l.attachments || [],
+    callNotes: l.callNotes || [],
   }));
 }
 
