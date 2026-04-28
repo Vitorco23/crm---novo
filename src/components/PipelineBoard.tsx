@@ -214,6 +214,9 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     icpStars: 3 as ICPStars, runsAds: false,
   });
   const csvRef = useRef<HTMLInputElement>(null);
+  const [mappingOpen, setMappingOpen] = useState(false);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [importRows, setImportRows] = useState<Record<string, string>[]>([]);
 
   const refresh = useCallback(() => {
     setLeads(getLeads());
