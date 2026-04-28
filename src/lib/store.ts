@@ -73,6 +73,10 @@ export interface Meeting {
   channel?: "Google Meet" | "Zoom" | "Presencial" | "Telefone" | "Outro";
   link?: string;
   notes?: string;
+  attendeeEmail?: string;
+  googleEventId?: string;
+  googleEventUrl?: string;
+  meetLink?: string;
   createdAt: string;
 }
 
