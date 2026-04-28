@@ -251,6 +251,28 @@ export function removeAttachment(leadId: string, attachmentId: string) {
   }
 }
 
+export function addCallNote(leadId: string, text: string) {
+  if (!text.trim()) return;
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (lead) {
+    lead.callNotes = [
+      ...(lead.callNotes || []),
+      { id: crypto.randomUUID(), text: text.trim(), createdAt: new Date().toISOString() },
+    ];
+    saveLeads(leads);
+  }
+}
+
+export function removeCallNote(leadId: string, noteId: string) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (lead) {
+    lead.callNotes = (lead.callNotes || []).filter((n) => n.id !== noteId);
+    saveLeads(leads);
+  }
+}
+
 // ===== Movement Events =====
 export function getMovementEvents(): MovementEvent[] {
   return loadFromStorage<MovementEvent[]>("p21_movements", []);
