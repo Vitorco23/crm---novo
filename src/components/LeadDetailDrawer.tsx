@@ -5,12 +5,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Phone, MapPin, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
+  Phone, MapPin, Instagram, ExternalLink, Star, Paperclip, X, FileAudio, CalendarCheck,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
+import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 
 function StarRating({ value }: { value: ICPStars }) {
   return (
@@ -31,6 +32,7 @@ export default function LeadDetailDrawer({
   onRefresh: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [meetingOpen, setMeetingOpen] = useState(false);
 
   if (!lead) return null;
 
@@ -58,6 +60,14 @@ export default function LeadDetailDrawer({
             {formatDistanceToNow(new Date(lead.stageChangedAt), { locale: ptBR, addSuffix: true })}
           </SheetDescription>
         </SheetHeader>
+
+        <Button
+          onClick={() => setMeetingOpen(true)}
+          className="w-full bg-accent text-accent-foreground hover:bg-accent/90 mb-4"
+          size="sm"
+        >
+          <CalendarCheck className="h-4 w-4 mr-1.5" /> Marcar Reunião
+        </Button>
 
         <div className="space-y-5 pr-1">
           <div>
@@ -144,6 +154,13 @@ export default function LeadDetailDrawer({
           </div>
         </div>
       </SheetContent>
+
+      <ScheduleMeetingDialog
+        lead={lead}
+        open={meetingOpen}
+        onOpenChange={setMeetingOpen}
+        onScheduled={() => { onRefresh(); onOpenChange(false); }}
+      />
     </Sheet>
   );
 }
