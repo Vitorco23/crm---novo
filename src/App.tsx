@@ -11,6 +11,7 @@ import Oportunidades from "./pages/Oportunidades";
 import Pomodoro from "./pages/Pomodoro";
 import Dashboard from "./pages/Dashboard";
 import Metas from "./pages/Metas";
+import Integracoes from "./pages/Integracoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/pomodoro" element={<Pomodoro />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/metas" element={<Metas />} />
+              <Route path="/integracoes" element={<Integracoes />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>

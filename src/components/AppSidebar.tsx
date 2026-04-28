@@ -1,4 +1,4 @@
-import { PhoneCall, Handshake, Timer, BarChart3, Zap, Target } from "lucide-react";
+import { PhoneCall, Handshake, Timer, BarChart3, Zap, Target, Plug } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -14,6 +14,7 @@ const toolItems = [
   { title: "Pomodoro", url: "/pomodoro", icon: Timer },
   { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
   { title: "Metas", url: "/metas", icon: Target },
+  { title: "Integrações", url: "/integracoes", icon: Plug },
 ];
 
 export function AppSidebar() {
