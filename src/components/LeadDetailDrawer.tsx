@@ -2,7 +2,9 @@ import {
   type Lead, type ICPStars,
   addAttachment, removeAttachment, updateLead,
   addCallNote, removeCallNote, getMeetingsForLead,
+  getPipelineForStage,
 } from "@/lib/store";
+import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/lib/finance";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
@@ -14,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Phone, MapPin, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
-  CalendarCheck, Pencil, Check, MessageSquarePlus, Trash2, Video,
+  CalendarCheck, Pencil, Check, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -61,6 +63,7 @@ export default function LeadDetailDrawer({
   }, [lead?.id]);
 
   if (!lead || !draft) return null;
+  const isOnboarding = getPipelineForStage(lead.stage) === "onboarding";
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -88,7 +91,23 @@ export default function LeadDetailDrawer({
       icpStars: draft.icpStars,
       runsAds: draft.runsAds,
       notes: draft.notes,
+      contractValue: draft.contractValue,
+      serviceType: draft.serviceType,
     });
+    // Sync finance auto-revenue if in onboarding
+    if (isOnboarding) {
+      if ((draft.contractValue ?? 0) > 0) {
+        upsertOnboardingRevenue({
+          clientId: lead.id,
+          clientName: draft.company.trim() || lead.company,
+          amount: draft.contractValue!,
+          serviceType: draft.serviceType,
+        });
+      } else {
+        const existing = findTransactionByClient(lead.id);
+        if (existing) deleteTransaction(existing.id);
+      }
+    }
     setEditing(false);
     onRefresh();
     toast.success("Lead atualizado!");
@@ -146,13 +165,59 @@ export default function LeadDetailDrawer({
           </SheetDescription>
         </SheetHeader>
 
-        <Button
-          onClick={() => setMeetingOpen(true)}
-          className="w-full bg-accent text-accent-foreground hover:bg-accent/90 mb-4"
-          size="sm"
-        >
-          <CalendarCheck className="h-4 w-4 mr-1.5" /> Marcar Reunião
-        </Button>
+        {!isOnboarding && (
+          <Button
+            onClick={() => setMeetingOpen(true)}
+            className="w-full bg-accent text-accent-foreground hover:bg-accent/90 mb-4"
+            size="sm"
+          >
+            <CalendarCheck className="h-4 w-4 mr-1.5" /> Marcar Reunião
+          </Button>
+        )}
+
+        {isOnboarding && (
+          <div className="rounded-md border border-accent/30 bg-accent/5 p-3 mb-4 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-medium text-accent">
+              <DollarSign className="h-3.5 w-3.5" /> Contrato Fechado
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
+                {editing ? (
+                  <Input
+                    type="number" min="0" step="0.01" inputMode="decimal"
+                    value={draft.contractValue ?? ""}
+                    onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
+                    placeholder="0,00"
+                  />
+                ) : (
+                  <p className="text-sm font-semibold text-foreground mt-1">
+                    {typeof lead.contractValue === "number"
+                      ? lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                      : "—"}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Briefcase className="h-3 w-3" /> Tipo de Serviço
+                </Label>
+                {editing ? (
+                  <Input
+                    value={draft.serviceType ?? ""}
+                    onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })}
+                    placeholder="Ex: Tráfego pago"
+                  />
+                ) : (
+                  <p className="text-sm text-foreground mt-1">{lead.serviceType || "—"}</p>
+                )}
+              </div>
+            </div>
+            {!editing && typeof lead.contractValue === "number" && lead.contractValue > 0 && (
+              <p className="text-[10px] text-muted-foreground">✓ Receita registrada no Financeiro</p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-5 pr-1">
           {/* ICP */}

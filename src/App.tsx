@@ -13,6 +13,7 @@ import Scrum from "./pages/Scrum";
 import Pomodoro from "./pages/Pomodoro";
 import Dashboard from "./pages/Dashboard";
 import Metas from "./pages/Metas";
+import Financeiro from "./pages/Financeiro";
 import Integracoes from "./pages/Integracoes";
 import NotFound from "./pages/NotFound";
 
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/pomodoro" element={<Pomodoro />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/metas" element={<Metas />} />
+              <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/integracoes" element={<Integracoes />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
