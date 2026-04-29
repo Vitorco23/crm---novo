@@ -402,6 +402,19 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
   lead.stageChangedAt = new Date().toISOString();
   saveLeads(leads);
 
+  // Auto-create finance revenue when entering onboarding (first time)
+  if (toPipeline === "onboarding" && fromPipeline !== "onboarding" && (lead.contractValue ?? 0) > 0) {
+    // dynamic import to avoid circular deps
+    import("./finance").then(({ upsertOnboardingRevenue }) => {
+      upsertOnboardingRevenue({
+        clientId: lead.id,
+        clientName: lead.company,
+        amount: lead.contractValue!,
+        serviceType: lead.serviceType,
+      });
+    });
+  }
+
   return fromPipeline !== toPipeline ? { autoTransfer: toPipeline } : {};
 }
 
