@@ -191,6 +191,22 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
 export function usePomodoro() {
   const v = useContext(Ctx);
-  if (!v) throw new Error("usePomodoro must be used within PomodoroProvider");
+  if (!v) {
+    // Defensive fallback (e.g. during HMR): return no-op stub instead of crashing the tree.
+    console.warn("usePomodoro called outside PomodoroProvider — using fallback");
+    return {
+      state: { ...DEFAULT_STATE },
+      remaining: DEFAULT_STATE.durationSec,
+      start: () => {},
+      pause: () => {},
+      resume: () => {},
+      stop: () => {},
+      setDuration: () => {},
+      setNiche: () => {},
+      submitForm: () => {},
+      dismissForm: () => {},
+      showForm: false,
+    } as PomodoroContextValue;
+  }
   return v;
 }
