@@ -170,7 +170,17 @@ function LeadCard({
         </div>
       )}
 
-      <p className="text-[10px] text-muted-foreground/70 mt-2">⏱ {timeInStage(lead.stageChangedAt)}</p>
+      <div className="flex items-center justify-between gap-2 mt-2">
+        <p className="text-[10px] text-muted-foreground/70">⏱ {timeInStage(lead.stageChangedAt)}</p>
+        {daysSince(lead.stageChangedAt) >= 1 && (
+          <span
+            title="Sem movimentação há mais de 1 dia"
+            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-medium"
+          >
+            <AlertCircle className="h-2.5 w-2.5" /> Parado
+          </span>
+        )}
+      </div>
     </div>
   );
 }
