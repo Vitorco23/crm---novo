@@ -4,7 +4,10 @@ import {
   getTasks, getSprints, addTask, addSprint, updateTask, deleteTask, updateSprint, deleteSprint,
   sprintBurndown, PRIORITY_LABELS, PRIORITY_COLORS,
 } from "@/lib/scrum";
-import { getLeads } from "@/lib/store";
+import { getLeadsForPipeline } from "@/lib/store";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
