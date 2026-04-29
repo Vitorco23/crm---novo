@@ -227,8 +227,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [mappingOpen, setMappingOpen] = useState(false);
   const [importHeaders, setImportHeaders] = useState<string[]>([]);
   const [importRows, setImportRows] = useState<Record<string, string>[]>([]);
-  const [filterNiche, setFilterNiche] = useState<string>("__all__");
-  const [filterCity, setFilterCity] = useState<string>("__all__");
+  const [filterNiches, setFilterNiches] = useState<string[]>([]);
+  const [filterCities, setFilterCities] = useState<string[]>([]);
 
   const refresh = useCallback(() => {
     setLeads(getLeads());
@@ -240,9 +240,12 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const cities = Array.from(new Set(allPipelineLeads.map((l) => l.city).filter(Boolean))).sort();
   const pipelineLeads = allPipelineLeads.filter(
     (l) =>
-      (filterNiche === "__all__" || l.niche === filterNiche) &&
-      (filterCity === "__all__" || l.city === filterCity)
+      (filterNiches.length === 0 || (l.niche && filterNiches.includes(l.niche))) &&
+      (filterCities.length === 0 || (l.city && filterCities.includes(l.city)))
   );
+
+  const toggleFilterValue = (current: string[], value: string) =>
+    current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
 
   const startEditStage = (s: string) => { setEditingStage(s); setEditingValue(s); };
   const commitEditStage = () => {
