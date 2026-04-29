@@ -4,7 +4,10 @@ import {
   getTasks, getSprints, addTask, addSprint, updateTask, deleteTask, updateSprint, deleteSprint,
   sprintBurndown, PRIORITY_LABELS, PRIORITY_COLORS,
 } from "@/lib/scrum";
-import { getLeads } from "@/lib/store";
+import { getLeadsForPipeline } from "@/lib/store";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,16 +88,16 @@ export default function Scrum() {
 
   const refresh = () => { setTasks(getTasks()); setSprints(getSprints()); };
 
-  // Clients = leads that reached onboarding (any onboarding/oportunidades stage)
-  const allLeads = getLeads();
+  // Clients = leads in the Onboarding pipeline only
+  const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const clientLeads = useMemo(() => {
     const seen = new Set<string>();
-    return allLeads.filter((l) => {
+    return getLeadsForPipeline("onboarding").filter((l) => {
       if (seen.has(l.id)) return false;
       seen.add(l.id);
       return true;
     });
-  }, [allLeads]);
+  }, [tasks, sprints]);
 
   const scopeSprints = sprints.filter((s) => s.scope === scope);
   const scopeTasks = tasks.filter((t) => t.scope === scope);
@@ -145,21 +148,51 @@ export default function Scrum() {
           <p className="text-sm text-muted-foreground">Gestão ágil com sprints, backlog e burndown.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Select value={scope} onValueChange={(v) => { setScope(v); setActiveSprintId(null); }}>
-            <SelectTrigger className="w-[260px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="agency">
-                <span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> Agência (interno)</span>
-              </SelectItem>
-              {clientLeads.map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  <span className="flex items-center gap-2"><Users className="h-3.5 w-3.5" /> {l.company}</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" className="w-[280px] justify-between">
+                <span className="flex items-center gap-2 truncate">
+                  {scope === "agency" ? (
+                    <><Building2 className="h-3.5 w-3.5" /> Agência (interno)</>
+                  ) : (
+                    <><Users className="h-3.5 w-3.5" /> {clientLeads.find((l) => l.id === scope)?.company ?? "Cliente"}</>
+                  )}
+                </span>
+                <ChevronsUpDown className="h-3.5 w-3.5 opacity-50 shrink-0" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[320px] p-0" align="end">
+              <Command>
+                <CommandInput placeholder="Buscar cliente..." />
+                <CommandList>
+                  <CommandEmpty>
+                    {clientLeads.length === 0
+                      ? "Nenhum cliente em Onboarding ainda."
+                      : "Nenhum cliente encontrado."}
+                  </CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="agency"
+                      onSelect={() => { setScope("agency"); setActiveSprintId(null); setClientSearchOpen(false); }}
+                    >
+                      <Check className={`mr-2 h-4 w-4 ${scope === "agency" ? "opacity-100" : "opacity-0"}`} />
+                      <Building2 className="h-3.5 w-3.5 mr-2" /> Agência (interno)
+                    </CommandItem>
+                    {clientLeads.map((l) => (
+                      <CommandItem
+                        key={l.id}
+                        value={`${l.company}`}
+                        onSelect={() => { setScope(l.id); setActiveSprintId(null); setClientSearchOpen(false); }}
+                      >
+                        <Check className={`mr-2 h-4 w-4 ${scope === l.id ? "opacity-100" : "opacity-0"}`} />
+                        <Users className="h-3.5 w-3.5 mr-2" /> {l.company}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
           <SprintDialog
             open={sprintDialogOpen}
             onOpenChange={setSprintDialogOpen}
