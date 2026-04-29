@@ -38,7 +38,8 @@ import ImportMappingDialog, { type LeadFieldKey } from "@/components/ImportMappi
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Filter as FilterIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Filter as FilterIcon, ChevronDown } from "lucide-react";
 
 function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
