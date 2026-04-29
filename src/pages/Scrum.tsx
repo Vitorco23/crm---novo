@@ -88,16 +88,16 @@ export default function Scrum() {
 
   const refresh = () => { setTasks(getTasks()); setSprints(getSprints()); };
 
-  // Clients = leads that reached onboarding (any onboarding/oportunidades stage)
-  const allLeads = getLeads();
+  // Clients = leads in the Onboarding pipeline only
+  const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const clientLeads = useMemo(() => {
     const seen = new Set<string>();
-    return allLeads.filter((l) => {
+    return getLeadsForPipeline("onboarding").filter((l) => {
       if (seen.has(l.id)) return false;
       seen.add(l.id);
       return true;
     });
-  }, [allLeads]);
+  }, [tasks, sprints]);
 
   const scopeSprints = sprints.filter((s) => s.scope === scope);
   const scopeTasks = tasks.filter((t) => t.scope === scope);
