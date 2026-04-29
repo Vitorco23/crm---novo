@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
-  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2,
+  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -43,6 +43,10 @@ import { Filter as FilterIcon, ChevronDown } from "lucide-react";
 
 function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
+}
+
+function daysSince(iso: string) {
+  return (Date.now() - new Date(iso).getTime()) / 86400000;
 }
 
 function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPStars) => void }) {
@@ -166,7 +170,17 @@ function LeadCard({
         </div>
       )}
 
-      <p className="text-[10px] text-muted-foreground/70 mt-2">⏱ {timeInStage(lead.stageChangedAt)}</p>
+      <div className="flex items-center justify-between gap-2 mt-2">
+        <p className="text-[10px] text-muted-foreground/70">⏱ {timeInStage(lead.stageChangedAt)}</p>
+        {daysSince(lead.stageChangedAt) >= 1 && (
+          <span
+            title="Sem movimentação há mais de 1 dia"
+            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-medium"
+          >
+            <AlertCircle className="h-2.5 w-2.5" /> Parado
+          </span>
+        )}
+      </div>
     </div>
   );
 }
