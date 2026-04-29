@@ -386,9 +386,17 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
   if (!lead) return {};
 
   const fromPipeline = getPipelineForStage(lead.stage);
-  const toPipeline = getPipelineForStage(toStage);
 
-  lead.stage = toStage;
+  // Auto-promote: when moved to "Ganho", forward to first Onboarding stage
+  let effectiveStage = toStage;
+  if (toStage === "Ganho") {
+    const onboardingStages = getStagesForPipeline("onboarding");
+    if (onboardingStages.length > 0) effectiveStage = onboardingStages[0];
+  }
+
+  const toPipeline = getPipelineForStage(effectiveStage);
+
+  lead.stage = effectiveStage;
   lead.stageChangedAt = new Date().toISOString();
   saveLeads(leads);
 

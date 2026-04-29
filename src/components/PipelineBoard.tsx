@@ -444,7 +444,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     const result = moveLeadToStage(id, stage);
     refresh();
     if (result.autoTransfer) {
-      toast.success(`Lead transferido automaticamente para ${result.autoTransfer === "cold_call" ? "Cold Call" : "Oportunidades"}!`);
+      const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
+      toast.success(`Lead transferido automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
     }
   };
 
