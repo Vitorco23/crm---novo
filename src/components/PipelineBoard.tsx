@@ -486,28 +486,69 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <FilterIcon className="h-3.5 w-3.5" /> Filtros:
           </div>
-          <Select value={filterNiche} onValueChange={setFilterNiche}>
-            <SelectTrigger className="h-8 w-[180px] text-xs">
-              <SelectValue placeholder="Nicho" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos os nichos</SelectItem>
-              {niches.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterCity} onValueChange={setFilterCity}>
-            <SelectTrigger className="h-8 w-[180px] text-xs">
-              <SelectValue placeholder="Cidade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todas as cidades</SelectItem>
-              {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {(filterNiche !== "__all__" || filterCity !== "__all__") && (
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[180px]">
+                <span className="truncate">
+                  {filterNiches.length === 0
+                    ? "Todos os nichos"
+                    : filterNiches.length === 1
+                    ? filterNiches[0]
+                    : `${filterNiches.length} nichos`}
+                </span>
+                <ChevronDown className="h-3 w-3 ml-2 opacity-60" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[220px] p-2" align="start">
+              <div className="max-h-[260px] overflow-y-auto space-y-1">
+                {niches.length === 0 && <div className="text-xs text-muted-foreground px-1 py-1">Sem opções</div>}
+                {niches.map((n) => (
+                  <label key={n} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                    <Checkbox
+                      checked={filterNiches.includes(n)}
+                      onCheckedChange={() => setFilterNiches((prev) => toggleFilterValue(prev, n))}
+                    />
+                    <span className="truncate">{n}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[180px]">
+                <span className="truncate">
+                  {filterCities.length === 0
+                    ? "Todas as cidades"
+                    : filterCities.length === 1
+                    ? filterCities[0]
+                    : `${filterCities.length} cidades`}
+                </span>
+                <ChevronDown className="h-3 w-3 ml-2 opacity-60" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[220px] p-2" align="start">
+              <div className="max-h-[260px] overflow-y-auto space-y-1">
+                {cities.length === 0 && <div className="text-xs text-muted-foreground px-1 py-1">Sem opções</div>}
+                {cities.map((c) => (
+                  <label key={c} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                    <Checkbox
+                      checked={filterCities.includes(c)}
+                      onCheckedChange={() => setFilterCities((prev) => toggleFilterValue(prev, c))}
+                    />
+                    <span className="truncate">{c}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {(filterNiches.length > 0 || filterCities.length > 0) && (
             <>
               <Button size="sm" variant="ghost" className="h-8 text-xs"
-                onClick={() => { setFilterNiche("__all__"); setFilterCity("__all__"); }}>
+                onClick={() => { setFilterNiches([]); setFilterCities([]); }}>
                 <XIcon className="h-3 w-3 mr-1" /> Limpar
               </Button>
               <Badge variant="outline" className="text-[10px]">
