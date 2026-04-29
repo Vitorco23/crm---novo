@@ -8,6 +8,8 @@ import { PomodoroProvider } from "@/contexts/PomodoroContext";
 import { PomodoroSessionFormDialog } from "@/components/PomodoroSessionFormDialog";
 import ColdCall from "./pages/ColdCall";
 import Oportunidades from "./pages/Oportunidades";
+import Onboarding from "./pages/Onboarding";
+import Scrum from "./pages/Scrum";
 import Pomodoro from "./pages/Pomodoro";
 import Dashboard from "./pages/Dashboard";
 import Metas from "./pages/Metas";
@@ -27,6 +29,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<ColdCall />} />
               <Route path="/oportunidades" element={<Oportunidades />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/scrum" element={<Scrum />} />
               <Route path="/pomodoro" element={<Pomodoro />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/metas" element={<Metas />} />

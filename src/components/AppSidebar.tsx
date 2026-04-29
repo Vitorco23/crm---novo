@@ -1,4 +1,4 @@
-import { PhoneCall, Handshake, Timer, BarChart3, Zap, Target, Plug } from "lucide-react";
+import { PhoneCall, Handshake, Timer, BarChart3, Zap, Target, Plug, Rocket, ListChecks } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -8,9 +8,11 @@ import {
 const pipelineItems = [
   { title: "Cold Call", url: "/", icon: PhoneCall },
   { title: "Oportunidades", url: "/oportunidades", icon: Handshake },
+  { title: "Onboarding", url: "/onboarding", icon: Rocket },
 ];
 
 const toolItems = [
+  { title: "Tarefas / Scrum", url: "/scrum", icon: ListChecks },
   { title: "Pomodoro", url: "/pomodoro", icon: Timer },
   { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
   { title: "Metas", url: "/metas", icon: Target },
