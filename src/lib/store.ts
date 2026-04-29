@@ -71,6 +71,8 @@ export interface Lead {
   notes: string;
   attachments: LeadAttachment[];
   callNotes?: CallNote[];
+  contractValue?: number;
+  serviceType?: string;
 }
 
 export interface Meeting {
