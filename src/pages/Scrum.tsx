@@ -181,7 +181,7 @@ export default function Scrum() {
                     {clientLeads.map((l) => (
                       <CommandItem
                         key={l.id}
-                        value={`${l.company} ${l.contactName ?? ""}`}
+                        value={`${l.company}`}
                         onSelect={() => { setScope(l.id); setActiveSprintId(null); setClientSearchOpen(false); }}
                       >
                         <Check className={`mr-2 h-4 w-4 ${scope === l.id ? "opacity-100" : "opacity-0"}`} />
