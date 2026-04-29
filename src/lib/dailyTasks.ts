@@ -12,13 +12,10 @@ interface DailyChecks {
   done: string[]; // task ids done today
 }
 
+import { uload as load, usave as save } from "./userStorage";
+
 const TASKS_KEY = "p21_daily_tasks";
 const CHECKS_KEY = "p21_daily_checks";
-
-function load<T>(k: string, fb: T): T {
-  try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; }
-}
-function save<T>(k: string, d: T) { localStorage.setItem(k, JSON.stringify(d)); }
 
 const today = () => new Date().toISOString().slice(0, 10);
 

@@ -31,13 +31,10 @@ export interface Sprint {
   createdAt: string;
 }
 
+import { uload as load, usave as save } from "./userStorage";
+
 const TASKS_KEY = "p21_scrum_tasks";
 const SPRINTS_KEY = "p21_scrum_sprints";
-
-function load<T>(k: string, fb: T): T {
-  try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; }
-}
-function save<T>(k: string, d: T) { localStorage.setItem(k, JSON.stringify(d)); }
 
 // Tasks
 export function getTasks(): ScrumTask[] { return load<ScrumTask[]>(TASKS_KEY, []); }

@@ -19,12 +19,9 @@ export interface FinanceTransaction {
   createdAt: string;
 }
 
-const TX_KEY = "p21_finance_tx";
+import { uload as load, usave as save } from "./userStorage";
 
-function load<T>(k: string, fb: T): T {
-  try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; }
-}
-function save<T>(k: string, d: T) { localStorage.setItem(k, JSON.stringify(d)); }
+const TX_KEY = "p21_finance_tx";
 
 export function getTransactions(): FinanceTransaction[] {
   return load<FinanceTransaction[]>(TX_KEY, []);

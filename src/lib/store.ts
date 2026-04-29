@@ -114,19 +114,8 @@ export interface MovementEvent {
   type: "call" | "message" | "meeting" | "other";
 }
 
-// ===== Storage helpers =====
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveToStorage<T>(key: string, data: T) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
+// ===== Storage helpers (user-scoped) =====
+import { uload as loadFromStorage, usave as saveToStorage } from "./userStorage";
 
 // ===== Custom stages persistence =====
 const STAGES_KEYS: Record<PipelineName, string> = {
