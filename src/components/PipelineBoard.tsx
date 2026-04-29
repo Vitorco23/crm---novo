@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
-  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2,
+  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
