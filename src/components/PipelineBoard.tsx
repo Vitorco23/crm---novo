@@ -14,6 +14,8 @@ import {
   addStage,
   removeStage,
   renameStage,
+  dedupeLeads,
+  isDuplicateLead,
 } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
-  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle,
+  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -378,6 +380,11 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
   const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>) => {
     let count = 0;
+    let skipped = 0;
+    const existing = getLeads();
+    const accepted: { phone: string; company: string; gmnLink: string }[] = existing.map((l) => ({
+      phone: l.phone, company: l.company, gmnLink: l.gmnLink,
+    }));
     importRows.forEach((row) => {
       const get = (k: LeadFieldKey) => {
         const col = mapping[k];
@@ -386,14 +393,19 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       };
       const company = get("company");
       if (!company) return;
+      const candidate = { company, phone: get("phone"), gmnLink: get("gmnLink") };
+      if (isDuplicateLead(candidate, accepted)) {
+        skipped++;
+        return;
+      }
       addLead(
         {
           company,
           contact: get("contact"),
-          phone: get("phone"),
+          phone: candidate.phone,
           niche: get("niche"),
           city: get("city"),
-          gmnLink: get("gmnLink"),
+          gmnLink: candidate.gmnLink,
           instagramLink: get("instagramLink"),
           notes: get("notes"),
           icpStars: 2 as ICPStars,
@@ -401,13 +413,25 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         },
         stages[0]
       );
+      accepted.push(candidate);
       count++;
     });
     setMappingOpen(false);
     setImportHeaders([]);
     setImportRows([]);
     refresh();
-    toast.success(`${count} leads importados!`);
+    if (skipped > 0) {
+      toast.success(`${count} leads importados • ${skipped} duplicado(s) ignorado(s)`);
+    } else {
+      toast.success(`${count} leads importados!`);
+    }
+  };
+
+  const handleDedupe = () => {
+    const removed = dedupeLeads();
+    refresh();
+    if (removed === 0) toast.info("Nenhuma duplicata encontrada.");
+    else toast.success(`${removed} duplicata(s) removida(s)`);
   };
 
   const onDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.setData("text/plain", id); };
@@ -447,6 +471,9 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
               <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
               <Button size="sm" variant="outline" onClick={() => csvRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-1" /> Importar
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleDedupe} title="Remove leads com telefone, nome ou link GMN duplicados">
+                <Copy className="h-4 w-4 mr-1" /> Remover duplicatas
               </Button>
             </>
           )}

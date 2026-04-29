@@ -192,6 +192,61 @@ export function saveLeads(leads: Lead[]) {
   saveToStorage("p21_leads", leads);
 }
 
+// ===== Duplicate detection =====
+const normalizePhone = (s: string) => (s || "").replace(/\D+/g, "");
+const normalizeText = (s: string) => (s || "").trim().toLowerCase();
+const normalizeUrl = (s: string) => {
+  const v = (s || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  return v;
+};
+
+export interface LeadDupKeys {
+  phone: string;
+  company: string;
+  gmn: string;
+}
+
+export function leadDupKeys(lead: Pick<Lead, "phone" | "company" | "gmnLink">): LeadDupKeys {
+  return {
+    phone: normalizePhone(lead.phone),
+    company: normalizeText(lead.company),
+    gmn: normalizeUrl(lead.gmnLink),
+  };
+}
+
+export function isDuplicateLead(
+  candidate: Pick<Lead, "phone" | "company" | "gmnLink">,
+  existing: Pick<Lead, "phone" | "company" | "gmnLink">[]
+): boolean {
+  const k = leadDupKeys(candidate);
+  return existing.some((e) => {
+    const ek = leadDupKeys(e);
+    return (
+      (k.phone && ek.phone && k.phone === ek.phone) ||
+      (k.company && ek.company && k.company === ek.company) ||
+      (k.gmn && ek.gmn && k.gmn === ek.gmn)
+    );
+  });
+}
+
+/** Removes duplicates keeping the oldest (first by createdAt). Returns count removed. */
+export function dedupeLeads(): number {
+  const leads = getLeads().slice().sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  const kept: Lead[] = [];
+  let removed = 0;
+  for (const l of leads) {
+    if (isDuplicateLead(l, kept)) {
+      removed++;
+    } else {
+      kept.push(l);
+    }
+  }
+  if (removed > 0) saveLeads(kept);
+  return removed;
+}
+
 export function addLead(
   lead: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage" | "attachments">,
   initialStage: PipelineStage = "Novo Lead"
