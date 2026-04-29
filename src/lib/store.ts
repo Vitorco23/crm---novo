@@ -21,12 +21,22 @@ export const DEFAULT_OPORTUNIDADES_STAGES = [
   "Perdido",
 ] as const;
 
+export const DEFAULT_ONBOARDING_STAGES = [
+  "Assinatura do Contrato",
+  "Pagamento",
+  "Reunião de Integração",
+  "Concepção do Planejamento",
+  "Apresentação do Planejamento",
+  "Sprints",
+] as const;
+
 // Legacy compatibility (some files still import these names)
 export const COLD_CALL_STAGES = DEFAULT_COLD_CALL_STAGES;
 export const OPORTUNIDADES_STAGES = DEFAULT_OPORTUNIDADES_STAGES;
+export const ONBOARDING_STAGES = DEFAULT_ONBOARDING_STAGES;
 
 export type PipelineStage = string;
-export type PipelineName = "cold_call" | "oportunidades";
+export type PipelineName = "cold_call" | "oportunidades" | "onboarding";
 
 export type ICPStars = 1 | 2 | 3;
 
@@ -120,13 +130,16 @@ function saveToStorage<T>(key: string, data: T) {
 const STAGES_KEYS: Record<PipelineName, string> = {
   cold_call: "p21_stages_cold_call",
   oportunidades: "p21_stages_oportunidades",
+  onboarding: "p21_stages_onboarding",
 };
 
 export function getStagesForPipeline(pipeline: PipelineName): PipelineStage[] {
   const fallback =
     pipeline === "cold_call"
       ? [...DEFAULT_COLD_CALL_STAGES]
-      : [...DEFAULT_OPORTUNIDADES_STAGES];
+      : pipeline === "oportunidades"
+      ? [...DEFAULT_OPORTUNIDADES_STAGES]
+      : [...DEFAULT_ONBOARDING_STAGES];
   const stored = loadFromStorage<string[] | null>(STAGES_KEYS[pipeline], null);
   return stored && stored.length ? stored : fallback;
 }
@@ -169,6 +182,7 @@ export function reorderStages(pipeline: PipelineName, stages: PipelineStage[]) {
 // ===== Pipeline routing =====
 export function getPipelineForStage(stage: PipelineStage): PipelineName {
   if (getStagesForPipeline("cold_call").includes(stage)) return "cold_call";
+  if (getStagesForPipeline("onboarding").includes(stage)) return "onboarding";
   return "oportunidades";
 }
 
