@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   type ScrumTask, type Sprint, type TaskStatus, type TaskPriority,
   getTasks, getSprints, addTask, addSprint, updateTask, deleteTask, updateSprint, deleteSprint,
@@ -454,17 +454,21 @@ function TaskDialog({
   const [sprintId, setSprintId] = useState<string>("__backlog__");
   const [status, setStatus] = useState<TaskStatus>("todo");
 
-  // Sync with editing
   const isEditing = !!editing;
-  if (open && editing && title === "" && description === "") {
-    setTitle(editing.title);
-    setDescription(editing.description ?? "");
-    setPriority(editing.priority);
-    setStoryPoints(editing.storyPoints?.toString() ?? "");
-    setAssignee(editing.assignee ?? "");
-    setSprintId(editing.sprintId ?? "__backlog__");
-    setStatus(editing.status);
-  }
+  useEffect(() => {
+    if (open && editing) {
+      setTitle(editing.title);
+      setDescription(editing.description ?? "");
+      setPriority(editing.priority);
+      setStoryPoints(editing.storyPoints?.toString() ?? "");
+      setAssignee(editing.assignee ?? "");
+      setSprintId(editing.sprintId ?? "__backlog__");
+      setStatus(editing.status);
+    } else if (open && !editing) {
+      setSprintId(defaultSprintId ?? "__backlog__");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editing]);
 
   const reset = () => {
     setTitle(""); setDescription(""); setPriority("medium");
