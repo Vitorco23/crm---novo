@@ -45,6 +45,10 @@ function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
 }
 
+function daysSince(iso: string) {
+  return (Date.now() - new Date(iso).getTime()) / 86400000;
+}
+
 function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPStars) => void }) {
   return (
     <div className="flex gap-0.5">
