@@ -2,7 +2,9 @@ import {
   type Lead, type ICPStars,
   addAttachment, removeAttachment, updateLead,
   addCallNote, removeCallNote, getMeetingsForLead,
+  getPipelineForStage,
 } from "@/lib/store";
+import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/lib/finance";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
@@ -14,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Phone, MapPin, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
-  CalendarCheck, Pencil, Check, MessageSquarePlus, Trash2, Video,
+  CalendarCheck, Pencil, Check, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -88,7 +90,23 @@ export default function LeadDetailDrawer({
       icpStars: draft.icpStars,
       runsAds: draft.runsAds,
       notes: draft.notes,
+      contractValue: draft.contractValue,
+      serviceType: draft.serviceType,
     });
+    // Sync finance auto-revenue if in onboarding
+    if (isOnboarding) {
+      if ((draft.contractValue ?? 0) > 0) {
+        upsertOnboardingRevenue({
+          clientId: lead.id,
+          clientName: draft.company.trim() || lead.company,
+          amount: draft.contractValue!,
+          serviceType: draft.serviceType,
+        });
+      } else {
+        const existing = findTransactionByClient(lead.id);
+        if (existing) deleteTransaction(existing.id);
+      }
+    }
     setEditing(false);
     onRefresh();
     toast.success("Lead atualizado!");
