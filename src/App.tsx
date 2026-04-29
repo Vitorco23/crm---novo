@@ -13,6 +13,7 @@ import Scrum from "./pages/Scrum";
 import Pomodoro from "./pages/Pomodoro";
 import Dashboard from "./pages/Dashboard";
 import Metas from "./pages/Metas";
+import Financeiro from "./pages/Financeiro";
 import Integracoes from "./pages/Integracoes";
 import NotFound from "./pages/NotFound";
 
