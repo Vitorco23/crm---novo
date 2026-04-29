@@ -472,6 +472,9 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
               <Button size="sm" variant="outline" onClick={() => csvRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-1" /> Importar
               </Button>
+              <Button size="sm" variant="outline" onClick={handleDedupe} title="Remove leads com telefone, nome ou link GMN duplicados">
+                <Copy className="h-4 w-4 mr-1" /> Remover duplicatas
+              </Button>
             </>
           )}
           {showAddLead && (
