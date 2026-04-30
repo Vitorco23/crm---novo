@@ -1,51 +1,21 @@
-
 ## Problema
 
-A conta `admin@p21.local` foi criada via SQL direto na tabela `auth.users` com campos de token (`confirmation_token`, `recovery_token`, `email_change_token_new`, etc.) como `NULL`. O GoTrue (serviço de auth) faz `Scan` desses campos como `string` e quebra com:
+Na página `/metas`, cada tecla digitada faz o input perder o foco — você só consegue digitar 1 caractere por vez.
 
-> `error finding user: sql: Scan error on column index 3, name "confirmation_token": converting NULL to string is unsupported`
+## Causa raiz
 
-Resultado: qualquer login/signup com esse e-mail retorna 500.
+Em `src/pages/Metas.tsx`, o componente auxiliar `InputNum` é definido **dentro** do componente `Metas`. Toda vez que o estado `g` muda (a cada tecla), o React vê `InputNum` como um *novo* tipo de componente, desmonta o `<Input>` anterior e monta um novo do zero. Resultado: o foco se perde após cada dígito, parecendo que o valor "só pode ser alterado de 1 em 1".
 
-Além disso, a senha `admin` tem 5 caracteres e o projeto exige mínimo 6, então não é uma senha válida no Supabase.
+O mesmo vale para o helper `Stat`.
 
-## Solução
+## Correção
 
-1. **Migration de correção** em `auth.users` para o admin:
-   - Setar todos os campos de token `NULL` para `''` (string vazia) — corrige o erro do GoTrue.
-   - Garantir `email_confirmed_at = now()` (já confirmado, sem precisar verificar e-mail).
-   - Atualizar `encrypted_password` com hash bcrypt de uma senha **com no mínimo 6 caracteres**.
+1. **Mover `InputNum` para fora** do componente `Metas` (declaração no escopo do módulo), recebendo `label`, `value`, `onChange`, `suffix`, `step`, `min` por props. Assim o React mantém a mesma instância do `<Input>` entre renders e o foco é preservado.
+2. **Mover `Stat` para fora** pelo mesmo motivo (evita re-mounts desnecessários).
+3. Tratar `parseFloat("")` para não jogar `NaN` enquanto o usuário apaga o campo (o `update` já faz `isNaN ? 0`, então mantém comportamento — apenas garantir que o input controlado aceite string vazia visualmente sem travar).
 
-2. **Nova senha do admin**: como `admin` é inválida, propor `admin123` (6 caracteres). Se o usuário preferir outra, basta avisar.
+Nenhuma mudança de lógica de cálculo, layout ou design — apenas a estrutura do componente.
 
-3. **Login**: após a migration, entrar em `/auth` com:
-   - Email: `admin@p21.local`
-   - Senha: `admin123`
+## Arquivo afetado
 
-   Na primeira entrada, o `userStorage.ts` migra automaticamente todos os dados antigos (leads, finanças, sprints, metas, tarefas) do localStorage legado para o namespace do admin.
-
-## Detalhes técnicos
-
-SQL planejado (via tool de migration):
-
-```sql
-UPDATE auth.users
-SET
-  encrypted_password    = crypt('admin123', gen_salt('bf')),
-  email_confirmed_at    = COALESCE(email_confirmed_at, now()),
-  confirmation_token    = COALESCE(confirmation_token, ''),
-  recovery_token        = COALESCE(recovery_token, ''),
-  email_change_token_new = COALESCE(email_change_token_new, ''),
-  email_change          = COALESCE(email_change, ''),
-  email_change_token_current = COALESCE(email_change_token_current, ''),
-  reauthentication_token = COALESCE(reauthentication_token, ''),
-  phone_change          = COALESCE(phone_change, ''),
-  phone_change_token    = COALESCE(phone_change_token, '')
-WHERE email = 'admin@p21.local';
-```
-
-Nenhuma alteração de código frontend é necessária — o fluxo de login e a migração de dados já estão implementados.
-
-## Confirme antes de executar
-
-- Senha do admin pode ser **`admin123`**? Se preferir outra (≥ 6 caracteres), me diga qual.
+- `src/pages/Metas.tsx`
