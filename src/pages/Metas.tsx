@@ -15,6 +15,46 @@ const fmtNum = (n: number) => new Intl.NumberFormat("pt-BR").format(Math.ceil(n)
 const fmtMoney = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n);
 
+function InputNum({
+  label, value, onChange, suffix, step = 1, min = 0,
+}: {
+  label: string; value: number; onChange: (n: number) => void;
+  suffix?: string; step?: number; min?: number;
+}) {
+  return (
+    <div>
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="relative">
+        <Input
+          type="number" value={Number.isFinite(value) ? value : ""} step={step} min={min}
+          onChange={(e) => {
+            const v = e.target.value;
+            onChange(v === "" ? 0 : parseFloat(v));
+          }}
+          className={suffix ? "pr-10" : ""}
+        />
+        {suffix && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+            {suffix}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ icon: Icon, label, value, sub, accent }: any) {
+  return (
+    <div className={`rounded-md border p-3 ${accent ? "border-accent/40 bg-accent/5" : "bg-card"}`}>
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+        <Icon className="h-3.5 w-3.5" /> {label}
+      </div>
+      <p className={`text-2xl font-bold ${accent ? "text-accent" : "text-foreground"}`}>{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground/80 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
 export default function Metas() {
   const [g, setG] = useState<GoalsSettings>(() => getGoalsSettings());
 
