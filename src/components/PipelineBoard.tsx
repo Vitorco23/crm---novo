@@ -221,9 +221,10 @@ interface PipelineBoardProps {
   subtitle?: string;
   showAddLead?: boolean;
   showImport?: boolean;
+  extraActions?: React.ReactNode;
 }
 
-export default function PipelineBoard({ pipeline, title, subtitle, showAddLead = true, showImport = true }: PipelineBoardProps) {
+export default function PipelineBoard({ pipeline, title, subtitle, showAddLead = true, showImport = true, extraActions }: PipelineBoardProps) {
   const [stages, setStages] = useState<PipelineStage[]>(() => getStagesForPipeline(pipeline));
   const [leads, setLeads] = useState<Lead[]>(getLeads);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -467,6 +468,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           <p className="text-sm text-muted-foreground">{subtitle || `${pipelineLeads.length} leads`}</p>
         </div>
         <div className="flex items-center gap-2">
+          {extraActions}
           {showImport && (
             <>
               <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />

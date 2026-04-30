@@ -10,7 +10,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { CalendarCheck, Loader2, Video } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button as UIButton } from "@/components/ui/button";
+import { CalendarCheck, CalendarIcon, Loader2, Video } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { scheduleMeeting, type Lead, type Meeting } from "@/lib/store";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -157,7 +162,38 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
           <div className="grid grid-cols-3 gap-2">
             <div className="col-span-1">
               <Label className="text-xs">Data *</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <div className="flex items-center gap-1">
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="flex-1"
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <UIButton
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 shrink-0"
+                      title="Abrir calendário"
+                    >
+                      <CalendarIcon className="h-4 w-4" />
+                    </UIButton>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      locale={ptBR}
+                      selected={date ? parseISO(date) : undefined}
+                      onSelect={(d) => {
+                        if (d) setDate(format(d, "yyyy-MM-dd"));
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
             <div className="col-span-1">
               <Label className="text-xs">Horário *</Label>
