@@ -468,6 +468,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           <p className="text-sm text-muted-foreground">{subtitle || `${pipelineLeads.length} leads`}</p>
         </div>
         <div className="flex items-center gap-2">
+          {extraActions}
           {showImport && (
             <>
               <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
