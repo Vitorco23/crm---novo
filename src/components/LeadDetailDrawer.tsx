@@ -15,8 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
-  Phone, MapPin, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
-  CalendarCheck, Pencil, Check, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase,
+  Phone, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
+  CalendarCheck, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -52,13 +52,11 @@ export default function LeadDetailDrawer({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Lead | null>(lead);
   const [newCallNote, setNewCallNote] = useState("");
 
   useEffect(() => {
     setDraft(lead);
-    setEditing(false);
     setNewCallNote("");
   }, [lead?.id]);
 
@@ -79,43 +77,35 @@ export default function LeadDetailDrawer({
     e.target.value = "";
   };
 
-  const handleSave = () => {
-    updateLead(lead.id, {
-      company: draft.company.trim() || lead.company,
-      contact: draft.contact,
-      phone: draft.phone,
-      niche: draft.niche,
-      city: draft.city,
-      gmnLink: draft.gmnLink,
-      instagramLink: draft.instagramLink,
-      icpStars: draft.icpStars,
-      runsAds: draft.runsAds,
-      notes: draft.notes,
-      contractValue: draft.contractValue,
-      serviceType: draft.serviceType,
-    });
-    // Sync finance auto-revenue if in onboarding
-    if (isOnboarding) {
-      if ((draft.contractValue ?? 0) > 0) {
-        upsertOnboardingRevenue({
-          clientId: lead.id,
-          clientName: draft.company.trim() || lead.company,
-          amount: draft.contractValue!,
-          serviceType: draft.serviceType,
-        });
-      } else {
-        const existing = findTransactionByClient(lead.id);
-        if (existing) deleteTransaction(existing.id);
-      }
-    }
-    setEditing(false);
-    onRefresh();
-    toast.success("Lead atualizado!");
+  // Persist a partial change immediately and refresh dependent lists.
+  const persist = (patch: Partial<Lead>) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    updateLead(lead.id, patch);
   };
 
-  const handleCancel = () => {
-    setDraft(lead);
-    setEditing(false);
+  // Sync finance auto-revenue when contract value/service type changes (onboarding).
+  const syncFinance = (next: Lead) => {
+    if (!isOnboarding) return;
+    if ((next.contractValue ?? 0) > 0) {
+      upsertOnboardingRevenue({
+        clientId: lead.id,
+        clientName: (next.company || lead.company).trim(),
+        amount: next.contractValue!,
+        serviceType: next.serviceType,
+      });
+    } else {
+      const existing = findTransactionByClient(lead.id);
+      if (existing) deleteTransaction(existing.id);
+    }
+  };
+
+  // Commit on blur for text inputs (avoids re-render spam) and refresh lists.
+  const commitOnBlur = (patch: Partial<Lead>) => {
+    const next = { ...draft, ...patch };
+    updateLead(lead.id, patch);
+    syncFinance(next);
+    onRefresh();
   };
 
   const handleAddCallNote = () => {
@@ -134,35 +124,18 @@ export default function LeadDetailDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader className="pb-4">
-          <div className="flex items-start justify-between gap-2">
-            {editing ? (
-              <Input
-                value={draft.company}
-                onChange={(e) => setDraft({ ...draft, company: e.target.value })}
-                className="text-base font-semibold"
-              />
-            ) : (
-              <SheetTitle className="text-lg">{lead.company}</SheetTitle>
-            )}
-            {!editing ? (
-              <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={() => setEditing(true)}>
-                <Pencil className="h-3 w-3 mr-1" /> Editar
-              </Button>
-            ) : (
-              <div className="flex gap-1 shrink-0">
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleCancel}>
-                  <X className="h-3 w-3" />
-                </Button>
-                <Button size="sm" className="h-7 text-xs bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleSave}>
-                  <Check className="h-3 w-3 mr-1" /> Salvar
-                </Button>
-              </div>
-            )}
-          </div>
+          <Input
+            value={draft.company}
+            onChange={(e) => setDraft({ ...draft, company: e.target.value })}
+            onBlur={() => commitOnBlur({ company: draft.company.trim() || lead.company })}
+            className="text-base font-semibold"
+            aria-label="Empresa"
+          />
           <SheetDescription className="text-xs">
             Etapa: <span className="font-medium text-foreground">{lead.stage}</span> · ⏱{" "}
             {formatDistanceToNow(new Date(lead.stageChangedAt), { locale: ptBR, addSuffix: true })}
           </SheetDescription>
+          <SheetTitle className="sr-only">{lead.company}</SheetTitle>
         </SheetHeader>
 
         {!isOnboarding && (
@@ -183,37 +156,27 @@ export default function LeadDetailDrawer({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
-                {editing ? (
-                  <Input
-                    type="number" min="0" step="0.01" inputMode="decimal"
-                    value={draft.contractValue ?? ""}
-                    onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
-                    placeholder="0,00"
-                  />
-                ) : (
-                  <p className="text-sm font-semibold text-foreground mt-1">
-                    {typeof lead.contractValue === "number"
-                      ? lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                      : "—"}
-                  </p>
-                )}
+                <Input
+                  type="number" min="0" step="0.01" inputMode="decimal"
+                  value={draft.contractValue ?? ""}
+                  onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
+                  onBlur={() => commitOnBlur({ contractValue: draft.contractValue })}
+                  placeholder="0,00"
+                />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground flex items-center gap-1">
                   <Briefcase className="h-3 w-3" /> Tipo de Serviço
                 </Label>
-                {editing ? (
-                  <Input
-                    value={draft.serviceType ?? ""}
-                    onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })}
-                    placeholder="Ex: Tráfego pago"
-                  />
-                ) : (
-                  <p className="text-sm text-foreground mt-1">{lead.serviceType || "—"}</p>
-                )}
+                <Input
+                  value={draft.serviceType ?? ""}
+                  onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })}
+                  onBlur={() => commitOnBlur({ serviceType: draft.serviceType })}
+                  placeholder="Ex: Tráfego pago"
+                />
               </div>
             </div>
-            {!editing && typeof lead.contractValue === "number" && lead.contractValue > 0 && (
+            {typeof draft.contractValue === "number" && draft.contractValue > 0 && (
               <p className="text-[10px] text-muted-foreground">✓ Receita registrada no Financeiro</p>
             )}
           </div>
@@ -225,12 +188,11 @@ export default function LeadDetailDrawer({
             <Label className="text-xs text-muted-foreground mb-1 block">Prioridade ICP</Label>
             <div className="flex items-center gap-2">
               <StarRating
-                value={editing ? draft.icpStars : lead.icpStars}
-                onChange={editing ? (v) => setDraft({ ...draft, icpStars: v }) : undefined}
+                value={draft.icpStars}
+                onChange={(v) => { persist({ icpStars: v }); onRefresh(); }}
               />
               <span className="text-sm text-foreground">
-                {(editing ? draft.icpStars : lead.icpStars) === 1 ? "Baixa" :
-                 (editing ? draft.icpStars : lead.icpStars) === 2 ? "Média" : "Alta"}
+                {draft.icpStars === 1 ? "Baixa" : draft.icpStars === 2 ? "Média" : "Alta"}
               </span>
             </div>
           </div>
@@ -238,57 +200,47 @@ export default function LeadDetailDrawer({
           {/* Anúncios */}
           <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
             <Label className="text-sm">Faz Anúncios?</Label>
-            {editing ? (
-              <Switch
-                checked={draft.runsAds}
-                onCheckedChange={(v) => setDraft({ ...draft, runsAds: v })}
-              />
-            ) : (
-              <Badge className={lead.runsAds ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}>
-                {lead.runsAds ? "Sim ✓" : "Não"}
-              </Badge>
-            )}
+            <Switch
+              checked={draft.runsAds}
+              onCheckedChange={(v) => { persist({ runsAds: v }); onRefresh(); }}
+            />
           </div>
 
           {/* Grid: Contato, Nicho, Cidade, Telefone */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground">Contato</Label>
-              {editing ? (
-                <Input value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} />
-              ) : (
-                <p className="text-sm text-foreground mt-1">{lead.contact || "—"}</p>
-              )}
+              <Input
+                value={draft.contact}
+                onChange={(e) => setDraft({ ...draft, contact: e.target.value })}
+                onBlur={() => commitOnBlur({ contact: draft.contact })}
+              />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Nicho</Label>
-              {editing ? (
-                <Input value={draft.niche} onChange={(e) => setDraft({ ...draft, niche: e.target.value })} />
-              ) : (
-                lead.niche
-                  ? <Badge variant="secondary" className="text-xs mt-1.5 block w-fit">{lead.niche}</Badge>
-                  : <p className="text-sm text-muted-foreground mt-1">—</p>
-              )}
+              <Input
+                value={draft.niche}
+                onChange={(e) => setDraft({ ...draft, niche: e.target.value })}
+                onBlur={() => commitOnBlur({ niche: draft.niche })}
+              />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Cidade</Label>
-              {editing ? (
-                <Input value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
-              ) : (
-                <div className="flex items-center gap-1 text-sm text-foreground mt-1">
-                  {lead.city ? <><MapPin className="h-3 w-3" /> {lead.city}</> : "—"}
-                </div>
-              )}
+              <Input
+                value={draft.city}
+                onChange={(e) => setDraft({ ...draft, city: e.target.value })}
+                onBlur={() => commitOnBlur({ city: draft.city })}
+              />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Telefone</Label>
-              {editing ? (
-                <Input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
-              ) : lead.phone ? (
-                <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1 text-sm text-accent hover:underline mt-1">
-                  <Phone className="h-3 w-3" /> {lead.phone}
-                </a>
-              ) : <p className="text-sm text-muted-foreground mt-1">—</p>}
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <Phone className="h-3 w-3" /> Telefone
+              </Label>
+              <Input
+                value={draft.phone}
+                onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+                onBlur={() => commitOnBlur({ phone: draft.phone })}
+              />
             </div>
           </div>
 
@@ -298,40 +250,35 @@ export default function LeadDetailDrawer({
               <Label className="text-xs text-muted-foreground flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" /> Google Meu Negócio
               </Label>
-              {editing ? (
-                <Input value={draft.gmnLink} onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })} placeholder="https://..." />
-              ) : lead.gmnLink ? (
-                <a href={lead.gmnLink} target="_blank" rel="noopener noreferrer"
-                  className="text-sm text-accent hover:underline truncate block mt-1">{lead.gmnLink}</a>
-              ) : <p className="text-sm text-muted-foreground mt-1">—</p>}
+              <Input
+                value={draft.gmnLink}
+                onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })}
+                onBlur={() => commitOnBlur({ gmnLink: draft.gmnLink })}
+                placeholder="https://..."
+              />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground flex items-center gap-1">
                 <Instagram className="h-3 w-3" /> Instagram
               </Label>
-              {editing ? (
-                <Input value={draft.instagramLink} onChange={(e) => setDraft({ ...draft, instagramLink: e.target.value })} placeholder="https://instagram.com/..." />
-              ) : lead.instagramLink ? (
-                <a href={lead.instagramLink} target="_blank" rel="noopener noreferrer"
-                  className="text-sm text-accent hover:underline truncate block mt-1">{lead.instagramLink}</a>
-              ) : <p className="text-sm text-muted-foreground mt-1">—</p>}
+              <Input
+                value={draft.instagramLink}
+                onChange={(e) => setDraft({ ...draft, instagramLink: e.target.value })}
+                onBlur={() => commitOnBlur({ instagramLink: draft.instagramLink })}
+                placeholder="https://instagram.com/..."
+              />
             </div>
           </div>
 
           {/* Observações fixas */}
           <div>
             <Label className="text-xs text-muted-foreground mb-1 block">Observações gerais</Label>
-            {editing ? (
-              <Textarea
-                value={draft.notes}
-                onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-                rows={3}
-              />
-            ) : (
-              <p className="text-sm text-foreground bg-muted/50 rounded-md p-2 min-h-[2.5rem] whitespace-pre-wrap">
-                {lead.notes || <span className="text-muted-foreground/60">Sem observações</span>}
-              </p>
-            )}
+            <Textarea
+              value={draft.notes}
+              onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+              onBlur={() => commitOnBlur({ notes: draft.notes })}
+              rows={3}
+            />
           </div>
 
           {/* Reuniões agendadas */}
