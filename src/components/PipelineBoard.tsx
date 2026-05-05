@@ -667,9 +667,11 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                       </div>
                     ) : (
                       <h3
+                        draggable
+                        onDragStart={(e) => onStageDragStart(e, stage)}
                         onDoubleClick={() => startEditStage(stage)}
-                        title="Duplo clique para renomear"
-                        className="text-xs font-semibold text-foreground uppercase tracking-wide truncate cursor-text"
+                        title="Arraste para reordenar • Duplo clique para renomear"
+                        className="text-xs font-semibold text-foreground uppercase tracking-wide truncate cursor-grab active:cursor-grabbing select-none"
                       >
                         {stage}
                       </h3>
