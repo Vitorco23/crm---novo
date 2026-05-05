@@ -408,53 +408,110 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     e.target.value = "";
   };
 
+  const buildCandidates = (mapping: Record<LeadFieldKey, string>, rows: Record<string, string>[]) => {
+    const get = (row: Record<string, string>, k: LeadFieldKey) => {
+      const col = mapping[k];
+      if (!col || col === "__none__") return "";
+      return (row[col] || "").trim();
+    };
+    return rows
+      .map((row) => {
+        const company = get(row, "company");
+        if (!company) return null;
+        return {
+          company,
+          contact: get(row, "contact"),
+          phone: get(row, "phone"),
+          niche: get(row, "niche"),
+          city: get(row, "city"),
+          gmnLink: get(row, "gmnLink"),
+          instagramLink: get(row, "instagramLink"),
+          notes: get(row, "notes"),
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+  };
+
+  const findDuplicateExistingLead = (
+    candidate: { phone: string; company: string; gmnLink: string },
+    existing: Lead[]
+  ): Lead | undefined => {
+    const k = leadDupKeys(candidate);
+    return existing.find((e) => {
+      const ek = leadDupKeys(e);
+      return (
+        (k.phone && ek.phone && k.phone === ek.phone) ||
+        (k.company && ek.company && k.company === ek.company) ||
+        (k.gmn && ek.gmn && k.gmn === ek.gmn)
+      );
+    });
+  };
+
   const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>) => {
-    let count = 0;
-    let skipped = 0;
+    const candidates = buildCandidates(mapping, importRows);
     const existing = getLeads();
-    const accepted: { phone: string; company: string; gmnLink: string }[] = existing.map((l) => ({
-      phone: l.phone, company: l.company, gmnLink: l.gmnLink,
-    }));
-    importRows.forEach((row) => {
-      const get = (k: LeadFieldKey) => {
-        const col = mapping[k];
-        if (!col || col === "__none__") return "";
-        return (row[col] || "").trim();
-      };
-      const company = get("company");
-      if (!company) return;
-      const candidate = { company, phone: get("phone"), gmnLink: get("gmnLink") };
-      if (isDuplicateLead(candidate, accepted)) {
-        skipped++;
+    let duplicateCount = 0;
+    candidates.forEach((c) => {
+      if (findDuplicateExistingLead(c, existing)) duplicateCount++;
+    });
+
+    if (duplicateCount > 0) {
+      setPendingImport({ mapping, rows: importRows, duplicateCount });
+      setMappingOpen(false);
+      setDuplicatePromptOpen(true);
+      return;
+    }
+    runImport(mapping, importRows, "ignore");
+  };
+
+  const runImport = (
+    mapping: Record<LeadFieldKey, string>,
+    rows: Record<string, string>[],
+    duplicateAction: "ignore" | "replace"
+  ) => {
+    const candidates = buildCandidates(mapping, rows);
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+    let existing = getLeads();
+
+    candidates.forEach((c) => {
+      const dup = findDuplicateExistingLead(c, existing);
+      if (dup) {
+        if (duplicateAction === "replace") {
+          const patch: Partial<Lead> = {};
+          (Object.keys(c) as (keyof typeof c)[]).forEach((key) => {
+            const val = c[key];
+            if (val && String(val).trim()) (patch as any)[key] = val;
+          });
+          updateLead(dup.id, patch);
+          existing = existing.map((l) => (l.id === dup.id ? { ...l, ...patch } : l));
+          updated++;
+        } else {
+          skipped++;
+        }
         return;
       }
-      addLead(
-        {
-          company,
-          contact: get("contact"),
-          phone: candidate.phone,
-          niche: get("niche"),
-          city: get("city"),
-          gmnLink: candidate.gmnLink,
-          instagramLink: get("instagramLink"),
-          notes: get("notes"),
-          icpStars: 2 as ICPStars,
-          runsAds: false,
-        },
+      const newLead = addLead(
+        { ...c, icpStars: 2 as ICPStars, runsAds: false },
         stages[0]
       );
-      accepted.push(candidate);
-      count++;
+      existing.push(newLead);
+      created++;
     });
+
     setMappingOpen(false);
+    setDuplicatePromptOpen(false);
+    setPendingImport(null);
     setImportHeaders([]);
     setImportRows([]);
     refresh();
-    if (skipped > 0) {
-      toast.success(`${count} leads importados • ${skipped} duplicado(s) ignorado(s)`);
-    } else {
-      toast.success(`${count} leads importados!`);
-    }
+
+    const parts: string[] = [];
+    if (created > 0) parts.push(`${created} novo(s)`);
+    if (updated > 0) parts.push(`${updated} atualizado(s)`);
+    if (skipped > 0) parts.push(`${skipped} duplicado(s) ignorado(s)`);
+    toast.success(parts.length ? parts.join(" • ") : "Nada para importar");
   };
 
   const handleDedupe = () => {
