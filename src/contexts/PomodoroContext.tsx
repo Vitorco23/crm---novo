@@ -228,6 +228,8 @@ export function usePomodoro() {
       submitForm: () => {},
       dismissForm: () => {},
       showForm: false,
+      incrementTally: () => {},
+      resetTally: () => {},
     } as PomodoroContextValue;
   }
   return v;
