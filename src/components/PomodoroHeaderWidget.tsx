@@ -1,6 +1,6 @@
 import { usePomodoro } from "@/contexts/PomodoroContext";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Timer } from "lucide-react";
+import { Play, Pause, Square, Timer, Phone, MessageSquare, CalendarCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
 function fmt(sec: number) {
@@ -10,7 +10,7 @@ function fmt(sec: number) {
 }
 
 export function PomodoroHeaderWidget() {
-  const { state, remaining, start, pause, resume, stop } = usePomodoro();
+  const { state, remaining, start, pause, resume, stop, incrementTally } = usePomodoro();
 
   const phaseLabel =
     state.phase === "focus" ? "Foco" :
@@ -19,6 +19,7 @@ export function PomodoroHeaderWidget() {
 
   const isRunning = state.startedAt != null && (state.phase === "focus" || state.phase === "break");
   const isPaused = state.pausedRemaining != null;
+  const tally = state.tally ?? { calls: 0, messages: 0, meetings: 0 };
 
   return (
     <div className="flex items-center gap-2">
@@ -49,6 +50,36 @@ export function PomodoroHeaderWidget() {
             </Button>
           </>
         ) : null}
+      </div>
+
+      <div className="flex items-center gap-1 pl-2 border-l border-border">
+        <button
+          type="button"
+          onClick={() => incrementTally("calls")}
+          title="Registrar ligação"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <Phone className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.calls}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => incrementTally("messages")}
+          title="Registrar mensagem"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <MessageSquare className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.messages}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => incrementTally("meetings")}
+          title="Registrar reunião marcada"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <CalendarCheck className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.meetings}</span>
+        </button>
       </div>
     </div>
   );
