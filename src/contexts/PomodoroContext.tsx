@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from "react";
 import { addSession } from "@/lib/store";
 
+interface TallyCounts {
+  calls: number;
+  messages: number;
+  meetings: number;
+}
+
 interface PomodoroState {
   startedAt: number | null; // epoch ms when current focus phase started
   durationSec: number;
@@ -8,9 +14,12 @@ interface PomodoroState {
   phase: "idle" | "focus" | "break" | "completed"; // completed = focus done, awaiting form
   pausedRemaining: number | null; // when paused
   niche: string;
+  tally: TallyCounts;
 }
 
 const STORAGE_KEY = "p21_pomodoro_state";
+
+const DEFAULT_TALLY: TallyCounts = { calls: 0, messages: 0, meetings: 0 };
 
 const DEFAULT_STATE: PomodoroState = {
   startedAt: null,
@@ -19,6 +28,7 @@ const DEFAULT_STATE: PomodoroState = {
   phase: "idle",
   pausedRemaining: null,
   niche: "",
+  tally: { ...DEFAULT_TALLY },
 };
 
 function loadState(): PomodoroState {
