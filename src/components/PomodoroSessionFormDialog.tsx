@@ -11,8 +11,14 @@ export function PomodoroSessionFormDialog() {
   const [form, setForm] = useState({ calls: 0, connections: 0, decisionMakers: 0, meetings: 0, niche: "" });
 
   useEffect(() => {
-    if (showForm) setForm({ calls: 0, connections: 0, decisionMakers: 0, meetings: 0, niche: state.niche || "" });
-  }, [showForm, state.niche]);
+    if (showForm) setForm({
+      calls: state.tally?.calls ?? 0,
+      connections: 0,
+      decisionMakers: 0,
+      meetings: state.tally?.meetings ?? 0,
+      niche: state.niche || "",
+    });
+  }, [showForm, state.niche, state.tally]);
 
   return (
     <Dialog open={showForm} onOpenChange={(open) => { if (!open) dismissForm(); }}>
