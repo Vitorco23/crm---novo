@@ -838,6 +838,39 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         rows={importRows}
         onConfirm={handleConfirmMapping}
       />
+
+      <AlertDialog open={duplicatePromptOpen} onOpenChange={setDuplicatePromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicatas detectadas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Encontramos {pendingImport?.duplicateCount} lead(s) duplicado(s) (telefone, nome da empresa ou link do Google Meu Negócio já existentes).
+              <br /><br />
+              O que você quer fazer?
+              <br />
+              <strong>Ignorar:</strong> mantém os dados antigos e descarta os duplicados da planilha.
+              <br />
+              <strong>Substituir:</strong> sobrescreve os dados antigos com as informações novas da planilha.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setPendingImport(null); }}>
+              Cancelar importação
+            </AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => pendingImport && runImport(pendingImport.mapping, pendingImport.rows, "ignore")}
+            >
+              Ignorar duplicatas
+            </Button>
+            <AlertDialogAction
+              onClick={() => pendingImport && runImport(pendingImport.mapping, pendingImport.rows, "replace")}
+            >
+              Substituir pelas novas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
