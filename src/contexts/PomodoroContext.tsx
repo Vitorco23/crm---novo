@@ -203,6 +203,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       value={{
         state, remaining, start, pause, resume, stop,
         setDuration, setNiche, submitForm, dismissForm, showForm,
+        incrementTally, resetTally,
       }}
     >
       {children}
