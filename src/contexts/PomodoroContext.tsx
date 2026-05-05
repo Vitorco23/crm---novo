@@ -124,7 +124,16 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       phase: "focus",
       pausedRemaining: null,
       niche: niche ?? state.niche,
+      tally: { ...DEFAULT_TALLY },
     });
+  };
+
+  const incrementTally = (key: keyof TallyCounts) => {
+    setState((prev) => ({ ...prev, tally: { ...prev.tally, [key]: prev.tally[key] + 1 } }));
+  };
+
+  const resetTally = () => {
+    setState((prev) => ({ ...prev, tally: { ...DEFAULT_TALLY } }));
   };
 
   const pause = () => {
