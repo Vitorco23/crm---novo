@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from "react";
 import { addSession } from "@/lib/store";
 
+interface TallyCounts {
+  calls: number;
+  messages: number;
+  meetings: number;
+}
+
 interface PomodoroState {
   startedAt: number | null; // epoch ms when current focus phase started
   durationSec: number;
@@ -8,9 +14,12 @@ interface PomodoroState {
   phase: "idle" | "focus" | "break" | "completed"; // completed = focus done, awaiting form
   pausedRemaining: number | null; // when paused
   niche: string;
+  tally: TallyCounts;
 }
 
 const STORAGE_KEY = "p21_pomodoro_state";
+
+const DEFAULT_TALLY: TallyCounts = { calls: 0, messages: 0, meetings: 0 };
 
 const DEFAULT_STATE: PomodoroState = {
   startedAt: null,
@@ -19,6 +28,7 @@ const DEFAULT_STATE: PomodoroState = {
   phase: "idle",
   pausedRemaining: null,
   niche: "",
+  tally: { ...DEFAULT_TALLY },
 };
 
 function loadState(): PomodoroState {
@@ -47,6 +57,8 @@ interface PomodoroContextValue {
   submitForm: (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string }) => void;
   dismissForm: () => void;
   showForm: boolean;
+  incrementTally: (key: keyof TallyCounts) => void;
+  resetTally: () => void;
 }
 
 const Ctx = createContext<PomodoroContextValue | null>(null);
@@ -112,7 +124,16 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       phase: "focus",
       pausedRemaining: null,
       niche: niche ?? state.niche,
+      tally: { ...DEFAULT_TALLY },
     });
+  };
+
+  const incrementTally = (key: keyof TallyCounts) => {
+    setState((prev) => ({ ...prev, tally: { ...prev.tally, [key]: prev.tally[key] + 1 } }));
+  };
+
+  const resetTally = () => {
+    setState((prev) => ({ ...prev, tally: { ...DEFAULT_TALLY } }));
   };
 
   const pause = () => {
@@ -182,6 +203,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       value={{
         state, remaining, start, pause, resume, stop,
         setDuration, setNiche, submitForm, dismissForm, showForm,
+        incrementTally, resetTally,
       }}
     >
       {children}
@@ -206,6 +228,8 @@ export function usePomodoro() {
       submitForm: () => {},
       dismissForm: () => {},
       showForm: false,
+      incrementTally: () => {},
+      resetTally: () => {},
     } as PomodoroContextValue;
   }
   return v;
