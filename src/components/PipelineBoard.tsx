@@ -14,6 +14,7 @@ import {
   addStage,
   removeStage,
   renameStage,
+  reorderStages,
   dedupeLeads,
   isDuplicateLead,
 } from "@/lib/store";
