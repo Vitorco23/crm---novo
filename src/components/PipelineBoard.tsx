@@ -14,6 +14,7 @@ import {
   addStage,
   removeStage,
   renameStage,
+  reorderStages,
   dedupeLeads,
   isDuplicateLead,
 } from "@/lib/store";
@@ -435,10 +436,31 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     else toast.success(`${removed} duplicata(s) removida(s)`);
   };
 
-  const onDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.setData("text/plain", id); };
+  const onDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData("text/plain", id);
+    e.dataTransfer.setData("application/x-lead", id);
+  };
+
+  const onStageDragStart = (e: React.DragEvent, stage: PipelineStage) => {
+    e.dataTransfer.setData("application/x-stage", stage);
+    e.dataTransfer.effectAllowed = "move";
+  };
 
   const onDrop = (e: React.DragEvent, stage: PipelineStage) => {
     e.preventDefault();
+    const draggedStage = e.dataTransfer.getData("application/x-stage");
+    if (draggedStage) {
+      if (draggedStage === stage) return;
+      const current = [...stages];
+      const from = current.indexOf(draggedStage);
+      const to = current.indexOf(stage);
+      if (from === -1 || to === -1) return;
+      current.splice(from, 1);
+      current.splice(to, 0, draggedStage);
+      reorderStages(pipeline, current);
+      refresh();
+      return;
+    }
     const id = e.dataTransfer.getData("text/plain");
     const lead = leads.find((l) => l.id === id);
     if (!lead || lead.stage === stage) return;
@@ -645,9 +667,11 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                       </div>
                     ) : (
                       <h3
+                        draggable
+                        onDragStart={(e) => onStageDragStart(e, stage)}
                         onDoubleClick={() => startEditStage(stage)}
-                        title="Duplo clique para renomear"
-                        className="text-xs font-semibold text-foreground uppercase tracking-wide truncate cursor-text"
+                        title="Arraste para reordenar • Duplo clique para renomear"
+                        className="text-xs font-semibold text-foreground uppercase tracking-wide truncate cursor-grab active:cursor-grabbing select-none"
                       >
                         {stage}
                       </h3>
