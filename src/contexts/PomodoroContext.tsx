@@ -57,6 +57,8 @@ interface PomodoroContextValue {
   submitForm: (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string }) => void;
   dismissForm: () => void;
   showForm: boolean;
+  incrementTally: (key: keyof TallyCounts) => void;
+  resetTally: () => void;
 }
 
 const Ctx = createContext<PomodoroContextValue | null>(null);
