@@ -254,8 +254,24 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   }, [pipeline]);
 
   const allPipelineLeads = leads.filter((l) => stages.includes(l.stage));
-  const niches = Array.from(new Set(allPipelineLeads.map((l) => l.niche).filter(Boolean))).sort();
-  const cities = Array.from(new Set(allPipelineLeads.map((l) => l.city).filter(Boolean))).sort();
+  // Niches available given selected cities
+  const niches = Array.from(
+    new Set(
+      allPipelineLeads
+        .filter((l) => filterCities.length === 0 || (l.city && filterCities.includes(l.city)))
+        .map((l) => l.niche)
+        .filter(Boolean)
+    )
+  ).sort();
+  // Cities available given selected niches
+  const cities = Array.from(
+    new Set(
+      allPipelineLeads
+        .filter((l) => filterNiches.length === 0 || (l.niche && filterNiches.includes(l.niche)))
+        .map((l) => l.city)
+        .filter(Boolean)
+    )
+  ).sort();
   const pipelineLeads = allPipelineLeads.filter(
     (l) =>
       (filterNiches.length === 0 || (l.niche && filterNiches.includes(l.niche))) &&
