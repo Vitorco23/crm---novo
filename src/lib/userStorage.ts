@@ -126,23 +126,55 @@ export async function syncFromCloud(): Promise<boolean> {
     const cloudMap = new Map<string, unknown>();
     (data ?? []).forEach((r: any) => cloudMap.set(r.key, r.value));
 
+    const isEmpty = (v: unknown) =>
+      v == null ||
+      (Array.isArray(v) && v.length === 0) ||
+      (typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0);
+
     for (const k of SCOPED_KEYS) {
-      const localRaw = localStorage.getItem(`u:${uid}:${k}`);
-      if (cloudMap.has(k)) {
-        const cloudVal = JSON.stringify(cloudMap.get(k));
-        if (localRaw !== cloudVal) {
-          localStorage.setItem(`u:${uid}:${k}`, cloudVal);
+      const scopedRaw = localStorage.getItem(`u:${uid}:${k}`);
+      const legacyRaw = localStorage.getItem(k); // pre-migration unprefixed
+      // Pick the best LOCAL candidate (prefer non-empty)
+      let localRaw: string | null = scopedRaw;
+      try {
+        const scopedParsed = scopedRaw ? JSON.parse(scopedRaw) : null;
+        const legacyParsed = legacyRaw ? JSON.parse(legacyRaw) : null;
+        if (isEmpty(scopedParsed) && !isEmpty(legacyParsed)) {
+          localRaw = legacyRaw;
+        }
+      } catch {}
+
+      const cloudHas = cloudMap.has(k);
+      const cloudVal = cloudHas ? cloudMap.get(k) : undefined;
+      const cloudEmpty = cloudHas && isEmpty(cloudVal);
+
+      let localParsed: unknown = null;
+      try { localParsed = localRaw ? JSON.parse(localRaw) : null; } catch {}
+      const localEmpty = isEmpty(localParsed);
+
+      // Decide source of truth:
+      // - If cloud has data and local is empty -> use cloud
+      // - If local has data and cloud is empty/missing -> push local to cloud
+      // - If both have data -> use cloud (last writer wins, normal sync)
+      // - If both empty -> nothing
+      if (!cloudEmpty && cloudHas) {
+        const cloudStr = JSON.stringify(cloudVal);
+        if (scopedRaw !== cloudStr) {
+          localStorage.setItem(`u:${uid}:${k}`, cloudStr);
           changed = true;
         }
-      } else if (localRaw !== null) {
-        // Local-only -> push to cloud (initial migration from this device)
+      } else if (!localEmpty) {
+        // Restore: push the non-empty local (possibly recovered from legacy) to cloud
+        localStorage.setItem(`u:${uid}:${k}`, localRaw!);
+        changed = true;
         try {
           await supabase.from("user_storage").upsert(
-            { user_id: uid, key: k, value: JSON.parse(localRaw), updated_at: new Date().toISOString() },
+            { user_id: uid, key: k, value: localParsed as any, updated_at: new Date().toISOString() },
             { onConflict: "user_id,key" }
           );
+          console.info("[userStorage] restored", k, "from local/legacy to cloud");
         } catch (e) {
-          console.warn("[userStorage] initial push failed", k, e);
+          console.warn("[userStorage] restore push failed", k, e);
         }
       }
     }
