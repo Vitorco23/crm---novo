@@ -31,11 +31,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       setCurrentUser(s?.user?.id ?? null, s?.user?.email ?? null);
+      if (s?.user) {
+        // Defer to avoid blocking the auth callback
+        setTimeout(() => {
+          syncFromCloud().then((changed) => {
+            if (changed) window.dispatchEvent(new Event("p21:storage-synced"));
+          });
+        }, 0);
+      }
     });
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
       setSession(s);
       setUser(s?.user ?? null);
       setCurrentUser(s?.user?.id ?? null, s?.user?.email ?? null);
+      if (s?.user) {
+        const changed = await syncFromCloud();
+        if (changed) window.dispatchEvent(new Event("p21:storage-synced"));
+      }
       setLoading(false);
     });
     return () => subscription.unsubscribe();
