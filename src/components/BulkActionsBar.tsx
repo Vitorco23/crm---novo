@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowRightLeft, Trash2, X } from "lucide-react";
+import { ArrowRightLeft, Trash2, X, Pencil } from "lucide-react";
 
 export default function BulkActionsBar({
   count,
@@ -12,12 +12,14 @@ export default function BulkActionsBar({
   onMoveToStage,
   onDelete,
   onClear,
+  onEdit,
 }: {
   count: number;
   stages: PipelineStage[];
   onMoveToStage: (stage: PipelineStage) => void;
   onDelete: () => void;
   onClear: () => void;
+  onEdit?: () => void;
 }) {
   const [targetStage, setTargetStage] = useState<string>("");
 
@@ -44,6 +46,11 @@ export default function BulkActionsBar({
           onClick={() => { if (targetStage) { onMoveToStage(targetStage as PipelineStage); setTargetStage(""); } }}>
           <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Mover
         </Button>
+        {onEdit && (
+          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onEdit}>
+            <Pencil className="h-3.5 w-3.5 mr-1" /> Editar campos
+          </Button>
+        )}
         <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={onDelete}>
           <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
         </Button>
