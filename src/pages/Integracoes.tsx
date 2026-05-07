@@ -129,6 +129,106 @@ export default function Integracoes() {
           )}
         </CardContent>
       </Card>
+
+      <BackupCard />
     </div>
+  );
+}
+
+function BackupCard() {
+  const [stats, setStats] = useState(getStorageStats());
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setStats(getStorageStats()), 3000);
+    return () => clearInterval(t);
+  }, []);
+
+  const fmtBytes = (n: number) => n < 1024 ? `${n} B` : n < 1024*1024 ? `${(n/1024).toFixed(1)} KB` : `${(n/1024/1024).toFixed(2)} MB`;
+  const fmtDate = (s: string | null) => s ? new Date(s).toLocaleString("pt-BR") : "—";
+
+  const handleExport = () => {
+    try {
+      const json = exportAllData();
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `crm-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Backup exportado");
+    } catch (e) {
+      toast.error("Falha ao exportar", { description: String(e) });
+    }
+  };
+
+  const handleImport = async (mode: "merge" | "replace") => {
+    const file = fileRef.current?.files?.[0];
+    if (!file) { toast.error("Escolha um arquivo .json primeiro"); return; }
+    if (mode === "replace" && !confirm("Substituir TODOS os dados atuais pelo backup? Um snapshot será salvo automaticamente.")) return;
+    try {
+      const txt = await file.text();
+      const n = await importBackup(txt, mode);
+      toast.success(`Backup importado (${n} chaves)`, { description: "Recarregue a página para ver tudo." });
+      setStats(getStorageStats());
+    } catch (e) {
+      toast.error("Falha ao importar", { description: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-md bg-accent/10 flex items-center justify-center shrink-0">
+            <Database className="h-5 w-5 text-accent" />
+          </div>
+          <div>
+            <CardTitle className="text-base">Backup & Diagnóstico</CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Exporte seus dados como segurança extra ou restaure de um arquivo.
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="bg-muted/40 rounded p-2">
+            <div className="text-muted-foreground">Leads</div>
+            <div className="text-foreground font-semibold">{stats.leadsCount}</div>
+          </div>
+          <div className="bg-muted/40 rounded p-2">
+            <div className="text-muted-foreground">Chaves</div>
+            <div className="text-foreground font-semibold">{stats.keys}</div>
+          </div>
+          <div className="bg-muted/40 rounded p-2">
+            <div className="text-muted-foreground">Tamanho</div>
+            <div className="text-foreground font-semibold">{fmtBytes(stats.sizeBytes)}</div>
+          </div>
+          <div className="bg-muted/40 rounded p-2">
+            <div className="text-muted-foreground">Último sync</div>
+            <div className="text-foreground font-semibold text-[10px]">{fmtDate(stats.lastSync)}</div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={handleExport}>
+            <Download className="h-3.5 w-3.5 mr-1" /> Exportar backup
+          </Button>
+          <input ref={fileRef} type="file" accept="application/json" className="text-xs" />
+          <Button size="sm" variant="outline" onClick={() => handleImport("merge")}>
+            <Upload className="h-3.5 w-3.5 mr-1" /> Importar (mesclar)
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => handleImport("replace")}>
+            <Upload className="h-3.5 w-3.5 mr-1" /> Importar (substituir)
+          </Button>
+        </div>
+
+        <p className="text-[11px] text-muted-foreground">
+          Snapshots automáticos dos seus dados são guardados localmente antes de qualquer sincronização que sobrescreva o cache.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
