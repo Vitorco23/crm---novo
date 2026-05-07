@@ -20,6 +20,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <PomodoroHeaderWidget />
               <HeaderStatsWidget />
               <div className="flex items-center gap-2 pl-2 border-l border-border">
+                <SyncStatusBadge />
                 <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
                   {isAdmin && <Shield className="h-3 w-3 text-primary" />}
                   {user?.email}
