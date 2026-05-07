@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import LeadDetailDrawer from "@/components/LeadDetailDrawer";
 import BulkActionsBar from "@/components/BulkActionsBar";
+import BulkEditDialog from "@/components/BulkEditDialog";
 import ImportMappingDialog, { type LeadFieldKey } from "@/components/ImportMappingDialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -232,6 +233,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const [newStageName, setNewStageName] = useState("");
@@ -647,6 +649,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         onMoveToStage={handleBulkMove}
         onDelete={handleBulkDelete}
         onClear={() => setSelectedIds(new Set())}
+        onEdit={() => setBulkEditOpen(true)}
+      />
+
+      <BulkEditDialog
+        open={bulkEditOpen}
+        onOpenChange={setBulkEditOpen}
+        selectedIds={selectedIds}
+        onDone={() => { setSelectedIds(new Set()); refresh(); }}
       />
 
       <div className="flex-1 overflow-x-auto scrollbar-thin">
