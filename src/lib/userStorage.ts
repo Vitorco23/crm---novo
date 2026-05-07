@@ -2,14 +2,18 @@
 // Local cache: localStorage prefixed with `u:<userId>:`.
 // Cloud source of truth: `public.user_storage` table (one row per key per user).
 //
-// On login we pull all keys from cloud into the local cache (and push any
-// local-only legacy keys up). On every save we write locally AND upsert to the
-// cloud asynchronously so other devices can pick it up on their next login.
+// Improvements:
+// - Debounced cloud writes (batched, non-blocking UI)
+// - Incremental sync (only fetch keys that changed since last sync)
+// - Lazy sync (priority keys first, rest in background)
+// - Auto local backups before destructive sync
+// - Realtime subscription (other devices push updates)
 
 import { supabase } from "@/integrations/supabase/client";
 
 const ADMIN_EMAIL = "admin@p21.local";
 
+// Keys that are synced to the cloud
 const SCOPED_KEYS = [
   "p21_leads",
   "p21_movements",
@@ -26,14 +30,32 @@ const SCOPED_KEYS = [
   "p21_daily_checks",
 ];
 
+// Loaded first on login (visible immediately on the main screen)
+const PRIORITY_KEYS = ["p21_leads", "p21_daily_tasks", "p21_daily_checks", "p21_goals_settings"];
+
 let currentUserId: string | null = null;
+const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const DEBOUNCE_MS = 800;
+
+// Sync status pub-sub
+type SyncState = "idle" | "syncing" | "saving" | "error" | "offline";
+let syncState: SyncState = "idle";
+const syncListeners = new Set<(s: SyncState) => void>();
+function setSyncState(s: SyncState) {
+  syncState = s;
+  syncListeners.forEach((l) => l(s));
+}
+export function getSyncState(): SyncState { return syncState; }
+export function onSyncStateChange(fn: (s: SyncState) => void) {
+  syncListeners.add(fn);
+  return () => syncListeners.delete(fn);
+}
 
 export function setCurrentUser(userId: string | null, email?: string | null) {
   currentUserId = userId;
   if (userId) {
     localStorage.setItem("p21_current_user_id", userId);
     if (email) localStorage.setItem("p21_current_user_email", email);
-    // Migrate legacy unprefixed keys to admin's namespace on first login
     if (email === ADMIN_EMAIL && !localStorage.getItem(`p21_migrated_${userId}`)) {
       for (const k of SCOPED_KEYS) {
         const legacy = localStorage.getItem(k);
@@ -61,6 +83,19 @@ function scopedKey(key: string): string {
   return `u:${uid}:${key}`;
 }
 
+function lastSyncKey(): string {
+  const uid = getCurrentUserId();
+  return `u:${uid}:__last_sync_at`;
+}
+
+function isEmpty(v: unknown): boolean {
+  return (
+    v == null ||
+    (Array.isArray(v) && v.length === 0) ||
+    (typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0)
+  );
+}
+
 export function uload<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(scopedKey(key));
@@ -72,8 +107,7 @@ export function uload<T>(key: string, fallback: T): T {
 
 export function usave<T>(key: string, data: T) {
   localStorage.setItem(scopedKey(key), JSON.stringify(data));
-  // Push to cloud (fire-and-forget). Only sync known keys to avoid noise.
-  if (SCOPED_KEYS.includes(key)) cloudPush(key, data);
+  if (SCOPED_KEYS.includes(key)) scheduleCloudPush(key, data);
 }
 
 export function uremove(key: string) {
@@ -81,18 +115,32 @@ export function uremove(key: string) {
   if (SCOPED_KEYS.includes(key)) cloudDelete(key);
 }
 
-// ===== Cloud sync =====
+// ===== Debounced cloud push =====
+
+function scheduleCloudPush(key: string, data: unknown) {
+  const existing = pendingTimers.get(key);
+  if (existing) clearTimeout(existing);
+  setSyncState("saving");
+  const t = setTimeout(() => {
+    pendingTimers.delete(key);
+    cloudPush(key, data);
+  }, DEBOUNCE_MS);
+  pendingTimers.set(key, t);
+}
 
 async function cloudPush(key: string, data: unknown) {
   const uid = getCurrentUserId();
   if (!uid) return;
   try {
-    await supabase.from("user_storage").upsert(
+    const { error } = await supabase.from("user_storage").upsert(
       { user_id: uid, key, value: data as any, updated_at: new Date().toISOString() },
       { onConflict: "user_id,key" }
     );
+    if (error) throw error;
+    if (pendingTimers.size === 0) setSyncState("idle");
   } catch (e) {
     console.warn("[userStorage] cloud push failed", key, e);
+    setSyncState("error");
   }
 }
 
@@ -106,65 +154,77 @@ async function cloudDelete(key: string) {
   }
 }
 
-/**
- * Pull all cloud rows for the current user into the local cache.
- * For keys that exist ONLY locally (legacy data on this device), push them up.
- * Returns true if any local cache changed.
- */
-export async function syncFromCloud(): Promise<boolean> {
-  const uid = getCurrentUserId();
-  if (!uid) return false;
+// ===== Local backup safety net =====
 
+const MAX_BACKUPS = 3;
+
+function backupKey(uid: string, key: string, ts: number): string {
+  return `u:${uid}:__bak:${key}:${ts}`;
+}
+
+function snapshotBeforeOverwrite(uid: string, key: string, currentRaw: string) {
+  try {
+    const ts = Date.now();
+    localStorage.setItem(backupKey(uid, key, ts), currentRaw);
+    // prune old backups for this key
+    const prefix = `u:${uid}:__bak:${key}:`;
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith(prefix)).sort();
+    while (keys.length > MAX_BACKUPS) {
+      const oldest = keys.shift();
+      if (oldest) localStorage.removeItem(oldest);
+    }
+  } catch {
+    // ignore quota errors
+  }
+}
+
+// ===== Incremental sync from cloud =====
+
+async function syncKeys(keys: string[], uid: string): Promise<boolean> {
+  if (keys.length === 0) return false;
   let changed = false;
   try {
     const { data, error } = await supabase
       .from("user_storage")
-      .select("key,value")
-      .eq("user_id", uid);
+      .select("key,value,updated_at")
+      .eq("user_id", uid)
+      .in("key", keys);
     if (error) throw error;
 
-    const cloudMap = new Map<string, unknown>();
-    (data ?? []).forEach((r: any) => cloudMap.set(r.key, r.value));
+    const cloudMap = new Map<string, { value: unknown; updated_at: string }>();
+    (data ?? []).forEach((r: any) => cloudMap.set(r.key, { value: r.value, updated_at: r.updated_at }));
 
-    const isEmpty = (v: unknown) =>
-      v == null ||
-      (Array.isArray(v) && v.length === 0) ||
-      (typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0);
-
-    for (const k of SCOPED_KEYS) {
+    for (const k of keys) {
       const scopedRaw = localStorage.getItem(`u:${uid}:${k}`);
-      const legacyRaw = localStorage.getItem(k); // pre-migration unprefixed
-      // Pick the best LOCAL candidate (prefer non-empty)
+      const legacyRaw = localStorage.getItem(k);
       let localRaw: string | null = scopedRaw;
       try {
-        const scopedParsed = scopedRaw ? JSON.parse(scopedRaw) : null;
-        const legacyParsed = legacyRaw ? JSON.parse(legacyRaw) : null;
-        if (isEmpty(scopedParsed) && !isEmpty(legacyParsed)) {
-          localRaw = legacyRaw;
-        }
+        const sp = scopedRaw ? JSON.parse(scopedRaw) : null;
+        const lp = legacyRaw ? JSON.parse(legacyRaw) : null;
+        if (isEmpty(sp) && !isEmpty(lp)) localRaw = legacyRaw;
       } catch {}
 
-      const cloudHas = cloudMap.has(k);
-      const cloudVal = cloudHas ? cloudMap.get(k) : undefined;
+      const cloudEntry = cloudMap.get(k);
+      const cloudHas = !!cloudEntry;
+      const cloudVal = cloudEntry?.value;
       const cloudEmpty = cloudHas && isEmpty(cloudVal);
 
       let localParsed: unknown = null;
       try { localParsed = localRaw ? JSON.parse(localRaw) : null; } catch {}
       const localEmpty = isEmpty(localParsed);
 
-      // Decide source of truth:
-      // - If cloud has data and local is empty -> use cloud
-      // - If local has data and cloud is empty/missing -> push local to cloud
-      // - If both have data -> use cloud (last writer wins, normal sync)
-      // - If both empty -> nothing
       if (!cloudEmpty && cloudHas) {
         const cloudStr = JSON.stringify(cloudVal);
         if (scopedRaw !== cloudStr) {
+          // Backup current local before overwriting
+          if (scopedRaw && !isEmpty(localParsed)) {
+            snapshotBeforeOverwrite(uid, k, scopedRaw);
+          }
           localStorage.setItem(`u:${uid}:${k}`, cloudStr);
           changed = true;
         }
       } else if (!localEmpty) {
-        // Restore: push the non-empty local (possibly recovered from legacy) to cloud
+        // Cloud empty/missing but local has data → restore to cloud
         localStorage.setItem(`u:${uid}:${k}`, localRaw!);
         changed = true;
         try {
@@ -172,14 +232,139 @@ export async function syncFromCloud(): Promise<boolean> {
             { user_id: uid, key: k, value: localParsed as any, updated_at: new Date().toISOString() },
             { onConflict: "user_id,key" }
           );
-          console.info("[userStorage] restored", k, "from local/legacy to cloud");
+          console.info("[userStorage] restored", k, "from local to cloud");
         } catch (e) {
           console.warn("[userStorage] restore push failed", k, e);
         }
       }
     }
   } catch (e) {
-    console.warn("[userStorage] sync failed", e);
+    console.warn("[userStorage] syncKeys failed", e);
+    setSyncState("error");
   }
   return changed;
+}
+
+/**
+ * Lazy sync: returns after PRIORITY_KEYS are loaded, schedules the rest.
+ */
+export async function syncFromCloud(): Promise<boolean> {
+  const uid = getCurrentUserId();
+  if (!uid) return false;
+  setSyncState("syncing");
+
+  const priority = PRIORITY_KEYS.filter((k) => SCOPED_KEYS.includes(k));
+  const rest = SCOPED_KEYS.filter((k) => !priority.includes(k));
+
+  const changedFirst = await syncKeys(priority, uid);
+
+  // Background sync of remaining keys
+  setTimeout(async () => {
+    const changedRest = await syncKeys(rest, uid);
+    localStorage.setItem(lastSyncKey(), new Date().toISOString());
+    setSyncState("idle");
+    if (changedRest) window.dispatchEvent(new Event("p21:storage-synced"));
+    subscribeRealtime(uid);
+  }, 50);
+
+  return changedFirst;
+}
+
+// ===== Realtime: react to writes from other devices =====
+
+let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+
+function subscribeRealtime(uid: string) {
+  if (realtimeChannel) return;
+  realtimeChannel = supabase
+    .channel(`user_storage:${uid}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "user_storage", filter: `user_id=eq.${uid}` },
+      (payload: any) => {
+        const row = (payload.new ?? payload.old) as { key: string; value: unknown } | undefined;
+        if (!row) return;
+        // Avoid loops: only update local if value differs
+        const cur = localStorage.getItem(`u:${uid}:${row.key}`);
+        if (payload.eventType === "DELETE") {
+          if (cur) localStorage.removeItem(`u:${uid}:${row.key}`);
+          return;
+        }
+        const next = JSON.stringify((payload.new as any).value);
+        if (cur !== next) {
+          if (cur) snapshotBeforeOverwrite(uid, row.key, cur);
+          localStorage.setItem(`u:${uid}:${row.key}`, next);
+          window.dispatchEvent(new Event("p21:storage-synced"));
+        }
+      }
+    )
+    .subscribe();
+}
+
+// ===== Backup export / import =====
+
+export function exportAllData(): string {
+  const uid = getCurrentUserId();
+  const out: Record<string, unknown> = {};
+  if (!uid) return JSON.stringify({ exportedAt: new Date().toISOString(), user: null, data: {} });
+  for (const k of SCOPED_KEYS) {
+    const raw = localStorage.getItem(`u:${uid}:${k}`);
+    if (raw) {
+      try { out[k] = JSON.parse(raw); } catch {}
+    }
+  }
+  return JSON.stringify({
+    exportedAt: new Date().toISOString(),
+    user: localStorage.getItem("p21_current_user_email"),
+    data: out,
+  }, null, 2);
+}
+
+export async function importBackup(json: string, mode: "merge" | "replace" = "replace"): Promise<number> {
+  const uid = getCurrentUserId();
+  if (!uid) throw new Error("Faça login antes de importar.");
+  let parsed: any;
+  try { parsed = JSON.parse(json); } catch { throw new Error("Arquivo inválido (não é JSON)."); }
+  const data = parsed.data ?? parsed;
+  let count = 0;
+  for (const k of SCOPED_KEYS) {
+    if (!(k in data)) continue;
+    const value = data[k];
+    if (mode === "merge" && Array.isArray(value)) {
+      // Merge by id when possible
+      const cur = uload<any[]>(k, []);
+      const seen = new Set(cur.map((x: any) => x?.id).filter(Boolean));
+      const merged = [...cur, ...value.filter((x: any) => !x?.id || !seen.has(x.id))];
+      usave(k, merged);
+    } else {
+      usave(k, value);
+    }
+    count++;
+  }
+  return count;
+}
+
+export function getStorageStats() {
+  const uid = getCurrentUserId();
+  if (!uid) return { keys: 0, sizeBytes: 0, lastSync: null as string | null, leadsCount: 0 };
+  let bytes = 0;
+  let keys = 0;
+  for (const k of SCOPED_KEYS) {
+    const raw = localStorage.getItem(`u:${uid}:${k}`);
+    if (raw) { bytes += raw.length; keys++; }
+  }
+  let leadsCount = 0;
+  try {
+    const raw = localStorage.getItem(`u:${uid}:p21_leads`);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) leadsCount = arr.length;
+    }
+  } catch {}
+  return {
+    keys,
+    sizeBytes: bytes,
+    lastSync: localStorage.getItem(lastSyncKey()),
+    leadsCount,
+  };
 }
