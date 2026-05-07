@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowRightLeft, Trash2, X } from "lucide-react";
+import { ArrowRightLeft, Trash2, X, Pencil } from "lucide-react";
 
 export default function BulkActionsBar({
   count,
@@ -12,12 +12,14 @@ export default function BulkActionsBar({
   onMoveToStage,
   onDelete,
   onClear,
+  onEdit,
 }: {
   count: number;
   stages: PipelineStage[];
   onMoveToStage: (stage: PipelineStage) => void;
   onDelete: () => void;
   onClear: () => void;
+  onEdit?: () => void;
 }) {
   const [targetStage, setTargetStage] = useState<string>("");
 
