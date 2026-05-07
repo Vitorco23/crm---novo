@@ -1,21 +1,53 @@
-## Problema
+## Diagnóstico rápido
 
-Na página `/metas`, cada tecla digitada faz o input perder o foco — você só consegue digitar 1 caractere por vez.
+Hoje o app guarda tudo em `localStorage` (cache local) e sincroniza com a tabela `user_storage` na nuvem (1 linha por chave, valor JSON inteiro). Isso funciona, mas tem 3 problemas que pioram o uso conforme você cresce:
 
-## Causa raiz
+1. **Cada save reescreve o JSON inteiro** (ex.: salvar 1 lead reenvia os 2.000) → lento e gasta banda/CPU.
+2. **"Last writer wins"**: se você abrir em 2 dispositivos ao mesmo tempo, o último a salvar sobrescreve o outro → risco de perder edições.
+3. **Tudo carrega de uma vez no login** → tela "Carregando…" demora quando há muitos leads.
 
-Em `src/pages/Metas.tsx`, o componente auxiliar `InputNum` é definido **dentro** do componente `Metas`. Toda vez que o estado `g` muda (a cada tecla), o React vê `InputNum` como um *novo* tipo de componente, desmonta o `<Input>` anterior e monta um novo do zero. Resultado: o foco se perde após cada dígito, parecendo que o valor "só pode ser alterado de 1 em 1".
+Tudo isso pode ser melhorado **sem migrar dados** — mantemos o `user_storage` como fonte e só mudamos a forma de ler/gravar.
 
-O mesmo vale para o helper `Stat`.
+---
 
-## Correção
+## Plano de melhorias (incremental, sem perder dados)
 
-1. **Mover `InputNum` para fora** do componente `Metas` (declaração no escopo do módulo), recebendo `label`, `value`, `onChange`, `suffix`, `step`, `min` por props. Assim o React mantém a mesma instância do `<Input>` entre renders e o foco é preservado.
-2. **Mover `Stat` para fora** pelo mesmo motivo (evita re-mounts desnecessários).
-3. Tratar `parseFloat("")` para não jogar `NaN` enquanto o usuário apaga o campo (o `update` já faz `isNaN ? 0`, então mantém comportamento — apenas garantir que o input controlado aceite string vazia visualmente sem travar).
+### Etapa 1 — Segurança dos dados (faço primeiro, prioridade máxima)
+- **Backup automático local**: antes de qualquer `syncFromCloud` sobrescrever o cache, salvar um snapshot em `u:<uid>:p21_leads__backup_<data>` (mantém os 3 últimos). Se algo der errado, dá pra restaurar com 1 clique.
+- **Botão "Exportar backup completo"** em Integrações → baixa um `.json` com todos os dados (leads, finance, scrum, etc.).
+- **Botão "Importar backup"** → restaura de um `.json` exportado.
+- **Trava anti-sobrescrita**: se o cloud responder vazio mas o local tem dados, **não apaga o local** (já existe parcialmente, vou reforçar).
 
-Nenhuma mudança de lógica de cálculo, layout ou design — apenas a estrutura do componente.
+### Etapa 2 — Performance de gravação (debounce + diff)
+- **Debounce de 800ms** nos `usave`: várias edições seguidas viram 1 upload só.
+- **Compressão**: comprimir o JSON com `lz-string` antes de enviar (reduz ~70% do tamanho dos leads).
+- Resultado: salvar fica instantâneo na UI, upload acontece em background sem travar.
 
-## Arquivo afetado
+### Etapa 3 — Performance de carregamento
+- **Sync incremental por `updated_at`**: só baixa do cloud as chaves que mudaram desde o último sync (guardo `lastSyncAt` local).
+- **Lazy load**: ao logar, carrega primeiro `p21_leads` e `p21_daily_tasks` (o que aparece na primeira tela). Resto (`scrum`, `finance`, `pomodoro`) carrega em background.
+- Resultado: tela "Carregando…" some em <1s mesmo com muitos dados.
 
-- `src/pages/Metas.tsx`
+### Etapa 4 — Multi-dispositivo seguro
+- **Realtime subscription** no `user_storage`: quando o desktop salva, o celular recebe o update em segundos sem precisar recarregar.
+- **Detecção de conflito**: se o cloud tem `updated_at` mais novo que o último sync local, avisar "Dados foram atualizados em outro dispositivo, recarregar?" em vez de sobrescrever silenciosamente.
+
+### Etapa 5 — Limpeza / saúde do app
+- **Indicador de sync** no header (✓ sincronizado / ⏳ enviando / ⚠️ offline).
+- **Página "Diagnóstico"** em Integrações mostrando: nº de leads, tamanho dos dados, último sync, último backup.
+- **Limpar caches antigos**: remover chaves `legacy` não-prefixadas após confirmar que tudo está no cloud.
+
+---
+
+## Detalhes técnicos
+
+- Arquivos tocados: `src/lib/userStorage.ts` (principal), `src/contexts/AuthContext.tsx`, novo `src/lib/backup.ts`, novo `src/components/SyncStatusBadge.tsx`, `src/pages/Integracoes.tsx`.
+- Sem migração de banco: a tabela `user_storage` continua igual. Só mudamos como ler/gravar nela.
+- Dependência nova: `lz-string` (~3KB) para compressão.
+- Realtime: já está disponível no Supabase, só ativar publication na tabela `user_storage`.
+
+---
+
+## Como você quer prosseguir?
+
+Posso fazer **tudo de uma vez** ou **só a Etapa 1 (segurança/backup) primeiro** e depois avançar conforme você testar. A Etapa 1 sozinha já elimina qualquer risco de perder dados de novo.

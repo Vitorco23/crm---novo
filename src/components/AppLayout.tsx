@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { PomodoroHeaderWidget } from "@/components/PomodoroHeaderWidget";
 import { HeaderStatsWidget } from "@/components/HeaderStatsWidget";
+import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 import { Button } from "@/components/ui/button";
 import { LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +20,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <PomodoroHeaderWidget />
               <HeaderStatsWidget />
               <div className="flex items-center gap-2 pl-2 border-l border-border">
+                <SyncStatusBadge />
                 <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
                   {isAdmin && <Shield className="h-3 w-3 text-primary" />}
                   {user?.email}
