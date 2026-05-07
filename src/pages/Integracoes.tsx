@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckCircle2, AlertCircle, Loader2, ExternalLink } from "lucide-react";
+import { Calendar, CheckCircle2, AlertCircle, Loader2, ExternalLink, Database, Download, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { exportAllData, importBackup, getStorageStats } from "@/lib/userStorage";
 
 type Status = "loading" | "connected" | "not_connected" | "error";
 
