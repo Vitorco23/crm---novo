@@ -106,22 +106,63 @@ function isEmpty(v: unknown): boolean {
 }
 
 export function uload<T>(key: string, fallback: T): T {
+  const sk = scopedKey(key);
+  if (memCache.has(sk)) return memCache.get(sk) as T;
   try {
-    const raw = localStorage.getItem(scopedKey(key));
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+    const raw = localStorage.getItem(sk);
+    if (raw) {
+      const parsed = JSON.parse(raw) as T;
+      memCache.set(sk, parsed);
+      return parsed;
+    }
+  } catch {}
+  return fallback;
 }
 
 export function usave<T>(key: string, data: T) {
-  localStorage.setItem(scopedKey(key), JSON.stringify(data));
+  const sk = scopedKey(key);
+  // Update memory immediately (sync, O(1)) — UI sees fresh data instantly
+  memCache.set(sk, data);
+  // Debounced localStorage write (avoids JSON.stringify of 2k leads on every keystroke/click)
+  scheduleLocalPersist(sk, data);
   if (SCOPED_KEYS.includes(key)) scheduleCloudPush(key, data);
 }
 
 export function uremove(key: string) {
-  localStorage.removeItem(scopedKey(key));
+  const sk = scopedKey(key);
+  memCache.delete(sk);
+  localStorage.removeItem(sk);
   if (SCOPED_KEYS.includes(key)) cloudDelete(key);
+}
+
+// ===== Debounced local persist (offload JSON.stringify of large blobs) =====
+
+function scheduleLocalPersist(sk: string, data: unknown) {
+  const existing = pendingLocalTimers.get(sk);
+  if (existing) clearTimeout(existing);
+  const t = setTimeout(() => {
+    pendingLocalTimers.delete(sk);
+    try {
+      localStorage.setItem(sk, JSON.stringify(data));
+    } catch (e) {
+      console.warn("[userStorage] local persist failed", sk, e);
+    }
+  }, LOCAL_DEBOUNCE_MS);
+  pendingLocalTimers.set(sk, t);
+}
+
+// Flush pending local writes before unload to avoid data loss
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
+    pendingLocalTimers.forEach((t, sk) => {
+      clearTimeout(t);
+      const v = memCache.get(sk);
+      if (v !== undefined) {
+        try { localStorage.setItem(sk, JSON.stringify(v)); } catch {}
+      }
+    });
+    pendingLocalTimers.clear();
+  });
 }
 
 // ===== Debounced cloud push =====
@@ -141,6 +182,7 @@ async function cloudPush(key: string, data: unknown) {
   const uid = getCurrentUserId();
   if (!uid) return;
   try {
+    recentPushes.set(key, Date.now());
     const { error } = await supabase.from("user_storage").upsert(
       { user_id: uid, key, value: data as any, updated_at: new Date().toISOString() },
       { onConflict: "user_id,key" }
