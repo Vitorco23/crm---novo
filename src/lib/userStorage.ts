@@ -35,7 +35,16 @@ const PRIORITY_KEYS = ["p21_leads", "p21_daily_tasks", "p21_daily_checks", "p21_
 
 let currentUserId: string | null = null;
 const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const DEBOUNCE_MS = 800;
+const pendingLocalTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const DEBOUNCE_MS = 1200;
+const LOCAL_DEBOUNCE_MS = 250;
+
+// In-memory cache: avoids re-parsing huge JSONs on every read.
+// Source of truth during a session; localStorage + cloud are persistence layers.
+const memCache = new Map<string, unknown>();
+// Track our own recent pushes to ignore realtime echo from this device.
+const recentPushes = new Map<string, number>();
+const ECHO_WINDOW_MS = 4000;
 
 // Sync status pub-sub
 type SyncState = "idle" | "syncing" | "saving" | "error" | "offline";
