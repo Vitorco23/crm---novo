@@ -35,7 +35,16 @@ const PRIORITY_KEYS = ["p21_leads", "p21_daily_tasks", "p21_daily_checks", "p21_
 
 let currentUserId: string | null = null;
 const pendingTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const DEBOUNCE_MS = 800;
+const pendingLocalTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const DEBOUNCE_MS = 1200;
+const LOCAL_DEBOUNCE_MS = 250;
+
+// In-memory cache: avoids re-parsing huge JSONs on every read.
+// Source of truth during a session; localStorage + cloud are persistence layers.
+const memCache = new Map<string, unknown>();
+// Track our own recent pushes to ignore realtime echo from this device.
+const recentPushes = new Map<string, number>();
+const ECHO_WINDOW_MS = 4000;
 
 // Sync status pub-sub
 type SyncState = "idle" | "syncing" | "saving" | "error" | "offline";
@@ -66,6 +75,15 @@ export function setCurrentUser(userId: string | null, email?: string | null) {
       localStorage.setItem(`p21_migrated_${userId}`, "1");
     }
   } else {
+    memCache.clear();
+    pendingTimers.forEach((t) => clearTimeout(t));
+    pendingTimers.clear();
+    pendingLocalTimers.forEach((t) => clearTimeout(t));
+    pendingLocalTimers.clear();
+    if (realtimeChannel) {
+      try { supabase.removeChannel(realtimeChannel); } catch {}
+      realtimeChannel = null;
+    }
     localStorage.removeItem("p21_current_user_id");
     localStorage.removeItem("p21_current_user_email");
   }
@@ -97,22 +115,63 @@ function isEmpty(v: unknown): boolean {
 }
 
 export function uload<T>(key: string, fallback: T): T {
+  const sk = scopedKey(key);
+  if (memCache.has(sk)) return memCache.get(sk) as T;
   try {
-    const raw = localStorage.getItem(scopedKey(key));
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+    const raw = localStorage.getItem(sk);
+    if (raw) {
+      const parsed = JSON.parse(raw) as T;
+      memCache.set(sk, parsed);
+      return parsed;
+    }
+  } catch {}
+  return fallback;
 }
 
 export function usave<T>(key: string, data: T) {
-  localStorage.setItem(scopedKey(key), JSON.stringify(data));
+  const sk = scopedKey(key);
+  // Update memory immediately (sync, O(1)) — UI sees fresh data instantly
+  memCache.set(sk, data);
+  // Debounced localStorage write (avoids JSON.stringify of 2k leads on every keystroke/click)
+  scheduleLocalPersist(sk, data);
   if (SCOPED_KEYS.includes(key)) scheduleCloudPush(key, data);
 }
 
 export function uremove(key: string) {
-  localStorage.removeItem(scopedKey(key));
+  const sk = scopedKey(key);
+  memCache.delete(sk);
+  localStorage.removeItem(sk);
   if (SCOPED_KEYS.includes(key)) cloudDelete(key);
+}
+
+// ===== Debounced local persist (offload JSON.stringify of large blobs) =====
+
+function scheduleLocalPersist(sk: string, data: unknown) {
+  const existing = pendingLocalTimers.get(sk);
+  if (existing) clearTimeout(existing);
+  const t = setTimeout(() => {
+    pendingLocalTimers.delete(sk);
+    try {
+      localStorage.setItem(sk, JSON.stringify(data));
+    } catch (e) {
+      console.warn("[userStorage] local persist failed", sk, e);
+    }
+  }, LOCAL_DEBOUNCE_MS);
+  pendingLocalTimers.set(sk, t);
+}
+
+// Flush pending local writes before unload to avoid data loss
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
+    pendingLocalTimers.forEach((t, sk) => {
+      clearTimeout(t);
+      const v = memCache.get(sk);
+      if (v !== undefined) {
+        try { localStorage.setItem(sk, JSON.stringify(v)); } catch {}
+      }
+    });
+    pendingLocalTimers.clear();
+  });
 }
 
 // ===== Debounced cloud push =====
@@ -132,6 +191,7 @@ async function cloudPush(key: string, data: unknown) {
   const uid = getCurrentUserId();
   if (!uid) return;
   try {
+    recentPushes.set(key, Date.now());
     const { error } = await supabase.from("user_storage").upsert(
       { user_id: uid, key, value: data as any, updated_at: new Date().toISOString() },
       { onConflict: "user_id,key" }
@@ -221,13 +281,18 @@ async function syncKeys(keys: string[], uid: string): Promise<boolean> {
             snapshotBeforeOverwrite(uid, k, scopedRaw);
           }
           localStorage.setItem(`u:${uid}:${k}`, cloudStr);
+          memCache.set(`u:${uid}:${k}`, cloudVal);
           changed = true;
+        } else {
+          memCache.set(`u:${uid}:${k}`, cloudVal);
         }
       } else if (!localEmpty) {
         // Cloud empty/missing but local has data → restore to cloud
         localStorage.setItem(`u:${uid}:${k}`, localRaw!);
+        memCache.set(`u:${uid}:${k}`, localParsed);
         changed = true;
         try {
+          recentPushes.set(k, Date.now());
           await supabase.from("user_storage").upsert(
             { user_id: uid, key: k, value: localParsed as any, updated_at: new Date().toISOString() },
             { onConflict: "user_id,key" }
@@ -284,16 +349,27 @@ function subscribeRealtime(uid: string) {
       (payload: any) => {
         const row = (payload.new ?? payload.old) as { key: string; value: unknown } | undefined;
         if (!row) return;
-        // Avoid loops: only update local if value differs
-        const cur = localStorage.getItem(`u:${uid}:${row.key}`);
+
+        // Anti-echo: ignore events caused by this device's own recent pushes
+        const lastPush = recentPushes.get(row.key);
+        if (lastPush && Date.now() - lastPush < ECHO_WINDOW_MS) return;
+
+        // Skip while we have pending local saves for this key (we're the writer)
+        if (pendingTimers.has(row.key) || pendingLocalTimers.has(`u:${uid}:${row.key}`)) return;
+
+        const sk = `u:${uid}:${row.key}`;
         if (payload.eventType === "DELETE") {
-          if (cur) localStorage.removeItem(`u:${uid}:${row.key}`);
+          memCache.delete(sk);
+          if (localStorage.getItem(sk)) localStorage.removeItem(sk);
           return;
         }
-        const next = JSON.stringify((payload.new as any).value);
+        const newVal = (payload.new as any).value;
+        const cur = localStorage.getItem(sk);
+        const next = JSON.stringify(newVal);
         if (cur !== next) {
           if (cur) snapshotBeforeOverwrite(uid, row.key, cur);
-          localStorage.setItem(`u:${uid}:${row.key}`, next);
+          localStorage.setItem(sk, next);
+          memCache.set(sk, newVal);
           window.dispatchEvent(new Event("p21:storage-synced"));
         }
       }
