@@ -272,13 +272,18 @@ async function syncKeys(keys: string[], uid: string): Promise<boolean> {
             snapshotBeforeOverwrite(uid, k, scopedRaw);
           }
           localStorage.setItem(`u:${uid}:${k}`, cloudStr);
+          memCache.set(`u:${uid}:${k}`, cloudVal);
           changed = true;
+        } else {
+          memCache.set(`u:${uid}:${k}`, cloudVal);
         }
       } else if (!localEmpty) {
         // Cloud empty/missing but local has data → restore to cloud
         localStorage.setItem(`u:${uid}:${k}`, localRaw!);
+        memCache.set(`u:${uid}:${k}`, localParsed);
         changed = true;
         try {
+          recentPushes.set(k, Date.now());
           await supabase.from("user_storage").upsert(
             { user_id: uid, key: k, value: localParsed as any, updated_at: new Date().toISOString() },
             { onConflict: "user_id,key" }
