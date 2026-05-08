@@ -340,16 +340,27 @@ function subscribeRealtime(uid: string) {
       (payload: any) => {
         const row = (payload.new ?? payload.old) as { key: string; value: unknown } | undefined;
         if (!row) return;
-        // Avoid loops: only update local if value differs
-        const cur = localStorage.getItem(`u:${uid}:${row.key}`);
+
+        // Anti-echo: ignore events caused by this device's own recent pushes
+        const lastPush = recentPushes.get(row.key);
+        if (lastPush && Date.now() - lastPush < ECHO_WINDOW_MS) return;
+
+        // Skip while we have pending local saves for this key (we're the writer)
+        if (pendingTimers.has(row.key) || pendingLocalTimers.has(`u:${uid}:${row.key}`)) return;
+
+        const sk = `u:${uid}:${row.key}`;
         if (payload.eventType === "DELETE") {
-          if (cur) localStorage.removeItem(`u:${uid}:${row.key}`);
+          memCache.delete(sk);
+          if (localStorage.getItem(sk)) localStorage.removeItem(sk);
           return;
         }
-        const next = JSON.stringify((payload.new as any).value);
+        const newVal = (payload.new as any).value;
+        const cur = localStorage.getItem(sk);
+        const next = JSON.stringify(newVal);
         if (cur !== next) {
           if (cur) snapshotBeforeOverwrite(uid, row.key, cur);
-          localStorage.setItem(`u:${uid}:${row.key}`, next);
+          localStorage.setItem(sk, next);
+          memCache.set(sk, newVal);
           window.dispatchEvent(new Event("p21:storage-synced"));
         }
       }
