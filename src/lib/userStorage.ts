@@ -75,6 +75,15 @@ export function setCurrentUser(userId: string | null, email?: string | null) {
       localStorage.setItem(`p21_migrated_${userId}`, "1");
     }
   } else {
+    memCache.clear();
+    pendingTimers.forEach((t) => clearTimeout(t));
+    pendingTimers.clear();
+    pendingLocalTimers.forEach((t) => clearTimeout(t));
+    pendingLocalTimers.clear();
+    if (realtimeChannel) {
+      try { supabase.removeChannel(realtimeChannel); } catch {}
+      realtimeChannel = null;
+    }
     localStorage.removeItem("p21_current_user_id");
     localStorage.removeItem("p21_current_user_email");
   }
