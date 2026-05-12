@@ -305,6 +305,104 @@ export function deleteLead(id: string) {
   saveLeads(leads);
 }
 
+// ===== Batch APIs (1 read + 1 write for N leads) =====
+
+export function addLeadsBatch(
+  newLeads: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage" | "attachments">[],
+  initialStage: PipelineStage = "Novo Lead"
+): Lead[] {
+  const leads = getLeads();
+  const now = new Date().toISOString();
+  const created: Lead[] = newLeads.map((l) => ({
+    ...l,
+    id: crypto.randomUUID(),
+    stage: initialStage,
+    createdAt: now,
+    stageChangedAt: now,
+    attachments: [],
+  }));
+  saveLeads([...leads, ...created]);
+  return created;
+}
+
+export function updateLeadsBatch(ids: Set<string> | string[], updates: Partial<Lead>) {
+  const idSet = ids instanceof Set ? ids : new Set(ids);
+  if (idSet.size === 0) return;
+  const leads = getLeads().map((l) => (idSet.has(l.id) ? { ...l, ...updates } : l));
+  saveLeads(leads);
+}
+
+export function deleteLeadsBatch(ids: Set<string> | string[]) {
+  const idSet = ids instanceof Set ? ids : new Set(ids);
+  if (idSet.size === 0) return;
+  const leads = getLeads().filter((l) => !idSet.has(l.id));
+  saveLeads(leads);
+}
+
+/** Move N leads to the same stage in a single read+write. */
+export function moveLeadsToStageBatch(
+  ids: Set<string> | string[],
+  toStage: PipelineStage
+): { autoTransfer?: PipelineName; movedCount: number } {
+  const idSet = ids instanceof Set ? ids : new Set(ids);
+  if (idSet.size === 0) return { movedCount: 0 };
+
+  let effectiveStage = toStage;
+  if (toStage === "Ganho") {
+    const onb = getStagesForPipeline("onboarding");
+    if (onb.length > 0) effectiveStage = onb[0];
+  }
+  const toPipeline = getPipelineForStage(effectiveStage);
+  const now = new Date().toISOString();
+
+  const leads = getLeads();
+  const events = getMovementEvents();
+  const lower = effectiveStage.toLowerCase();
+  let type: MovementEvent["type"] = "other";
+  if (CALL_STAGE_HINTS.some((h) => lower.includes(h))) type = "call";
+  else if (MESSAGE_STAGE_HINTS.some((h) => lower.includes(h))) type = "message";
+  else if (MEETING_STAGE_HINTS.some((h) => lower.includes(h))) type = "meeting";
+
+  const onboardingTriggers: Lead[] = [];
+  let autoTransfer: PipelineName | undefined;
+  let movedCount = 0;
+  const next = leads.map((l) => {
+    if (!idSet.has(l.id)) return l;
+    const fromPipeline = getPipelineForStage(l.stage);
+    if (fromPipeline !== toPipeline) autoTransfer = toPipeline;
+    if (toPipeline === "onboarding" && fromPipeline !== "onboarding" && (l.contractValue ?? 0) > 0) {
+      onboardingTriggers.push(l);
+    }
+    movedCount++;
+    events.push({
+      id: crypto.randomUUID(),
+      leadId: l.id,
+      toStage: effectiveStage,
+      timestamp: now,
+      type,
+    });
+    return { ...l, stage: effectiveStage, stageChangedAt: now };
+  });
+
+  saveLeads(next);
+  saveMovementEvents(events);
+
+  if (onboardingTriggers.length > 0) {
+    import("./finance").then(({ upsertOnboardingRevenue }) => {
+      onboardingTriggers.forEach((l) =>
+        upsertOnboardingRevenue({
+          clientId: l.id,
+          clientName: l.company,
+          amount: l.contractValue!,
+          serviceType: l.serviceType,
+        })
+      );
+    });
+  }
+
+  return { autoTransfer, movedCount };
+}
+
 export function addAttachment(leadId: string, attachment: Omit<LeadAttachment, "id" | "createdAt">) {
   const leads = getLeads();
   const lead = leads.find((l) => l.id === leadId);
