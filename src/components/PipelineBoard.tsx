@@ -258,30 +258,55 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     setStages(getStagesForPipeline(pipeline));
   }, [pipeline]);
 
-  const allPipelineLeads = leads.filter((l) => stages.includes(l.stage));
-  // Niches available given selected cities
-  const niches = Array.from(
-    new Set(
-      allPipelineLeads
-        .filter((l) => filterCities.length === 0 || (l.city && filterCities.includes(l.city)))
-        .map((l) => l.niche)
-        .filter(Boolean)
-    )
-  ).sort();
-  // Cities available given selected niches
-  const cities = Array.from(
-    new Set(
-      allPipelineLeads
-        .filter((l) => filterNiches.length === 0 || (l.niche && filterNiches.includes(l.niche)))
-        .map((l) => l.city)
-        .filter(Boolean)
-    )
-  ).sort();
-  const pipelineLeads = allPipelineLeads.filter(
-    (l) =>
-      (filterNiches.length === 0 || (l.niche && filterNiches.includes(l.niche))) &&
-      (filterCities.length === 0 || (l.city && filterCities.includes(l.city)))
+  const stageSet = useMemo(() => new Set(stages), [stages]);
+  const allPipelineLeads = useMemo(
+    () => leads.filter((l) => stageSet.has(l.stage)),
+    [leads, stageSet]
   );
+  const filterNicheSet = useMemo(() => new Set(filterNiches), [filterNiches]);
+  const filterCitySet = useMemo(() => new Set(filterCities), [filterCities]);
+  const niches = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          allPipelineLeads
+            .filter((l) => filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city)))
+            .map((l) => l.niche)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [allPipelineLeads, filterCitySet]
+  );
+  const cities = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          allPipelineLeads
+            .filter((l) => filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche)))
+            .map((l) => l.city)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [allPipelineLeads, filterNicheSet]
+  );
+  const pipelineLeads = useMemo(
+    () =>
+      allPipelineLeads.filter(
+        (l) =>
+          (filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche))) &&
+          (filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city)))
+      ),
+    [allPipelineLeads, filterNicheSet, filterCitySet]
+  );
+  const leadsByStage = useMemo(() => {
+    const map = new Map<string, Lead[]>();
+    for (const s of stages) map.set(s, []);
+    for (const l of pipelineLeads) {
+      const arr = map.get(l.stage);
+      if (arr) arr.push(l);
+    }
+    return map;
+  }, [pipelineLeads, stages]);
 
   const toggleFilterValue = (current: string[], value: string) =>
     current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
