@@ -355,15 +355,19 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
   const handleBulkMove = (targetStage: PipelineStage) => {
     const count = selectedIds.size;
-    selectedIds.forEach((id) => moveLeadToStage(id, targetStage));
+    const result = moveLeadsToStageBatch(selectedIds, targetStage);
     setSelectedIds(new Set());
     refresh();
     toast.success(`${count} leads movidos para "${targetStage}"`);
+    if (result.autoTransfer) {
+      const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
+      toast.success(`Transferidos automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
+    }
   };
 
   const handleBulkDelete = () => {
     const count = selectedIds.size;
-    selectedIds.forEach((id) => deleteLead(id));
+    deleteLeadsBatch(selectedIds);
     setSelectedIds(new Set());
     refresh();
     toast.success(`${count} lead(s) excluído(s)`);
