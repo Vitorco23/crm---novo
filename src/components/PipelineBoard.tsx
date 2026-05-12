@@ -251,6 +251,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [importRows, setImportRows] = useState<Record<string, string>[]>([]);
   const [filterNiches, setFilterNiches] = useState<string[]>([]);
   const [filterCities, setFilterCities] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const refresh = useCallback(() => {
     setLeads(getLeads());
