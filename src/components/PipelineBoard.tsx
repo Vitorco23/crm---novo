@@ -289,15 +289,20 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       ).sort(),
     [allPipelineLeads, filterNicheSet]
   );
-  const pipelineLeads = useMemo(
-    () =>
-      allPipelineLeads.filter(
-        (l) =>
-          (filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche))) &&
-          (filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city)))
-      ),
-    [allPipelineLeads, filterNicheSet, filterCitySet]
-  );
+  const pipelineLeads = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const qDigits = q.replace(/\D+/g, "");
+    return allPipelineLeads.filter((l) => {
+      const matchesNiche = filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche));
+      const matchesCity = filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city));
+      if (!matchesNiche || !matchesCity) return false;
+      if (!q) return true;
+      if (l.company.toLowerCase().includes(q)) return true;
+      const phoneDigits = (l.phone || "").replace(/\D+/g, "");
+      if (qDigits && phoneDigits.includes(qDigits)) return true;
+      return false;
+    });
+  }, [allPipelineLeads, filterNicheSet, filterCitySet, searchQuery]);
   const leadsByStage = useMemo(() => {
     const map = new Map<string, Lead[]>();
     for (const s of stages) map.set(s, []);
