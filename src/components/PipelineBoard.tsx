@@ -374,7 +374,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   };
 
   const handleSelectAllInStage = (stage: PipelineStage) => {
-    const stageLeadIds = pipelineLeads.filter((l) => l.stage === stage).map((l) => l.id);
+    const stageLeadIds = (leadsByStage.get(stage) ?? []).map((l) => l.id);
     const allSelected = stageLeadIds.every((id) => selectedIds.has(id));
     const next = new Set(selectedIds);
     if (allSelected) stageLeadIds.forEach((id) => next.delete(id));
