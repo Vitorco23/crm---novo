@@ -234,17 +234,28 @@ export function isDuplicateLead(
   });
 }
 
-/** Removes duplicates keeping the oldest (first by createdAt). Returns count removed. */
+/** Removes duplicates keeping the oldest (first by createdAt). Returns count removed. O(n). */
 export function dedupeLeads(): number {
   const leads = getLeads().slice().sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
+  const phones = new Set<string>();
+  const companies = new Set<string>();
+  const gmns = new Set<string>();
   const kept: Lead[] = [];
   let removed = 0;
   for (const l of leads) {
-    if (isDuplicateLead(l, kept)) {
+    const k = leadDupKeys(l);
+    const dup =
+      (k.phone && phones.has(k.phone)) ||
+      (k.company && companies.has(k.company)) ||
+      (k.gmn && gmns.has(k.gmn));
+    if (dup) {
       removed++;
     } else {
+      if (k.phone) phones.add(k.phone);
+      if (k.company) companies.add(k.company);
+      if (k.gmn) gmns.add(k.gmn);
       kept.push(l);
     }
   }
