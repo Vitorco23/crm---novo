@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { type Lead, type ICPStars, getLeads, updateLead } from "@/lib/store";
+import { type Lead, type ICPStars, updateLeadsBatch } from "@/lib/store";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
