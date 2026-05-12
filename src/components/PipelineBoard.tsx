@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import * as XLSX from "xlsx";
 import {
   type Lead,
@@ -7,16 +7,18 @@ import {
   type ICPStars,
   getLeads,
   addLead,
+  addLeadsBatch,
   deleteLead,
+  deleteLeadsBatch,
   addAttachment,
   moveLeadToStage,
+  moveLeadsToStageBatch,
   getStagesForPipeline,
   addStage,
   removeStage,
   renameStage,
   reorderStages,
   dedupeLeads,
-  isDuplicateLead,
 } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -255,30 +257,55 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     setStages(getStagesForPipeline(pipeline));
   }, [pipeline]);
 
-  const allPipelineLeads = leads.filter((l) => stages.includes(l.stage));
-  // Niches available given selected cities
-  const niches = Array.from(
-    new Set(
-      allPipelineLeads
-        .filter((l) => filterCities.length === 0 || (l.city && filterCities.includes(l.city)))
-        .map((l) => l.niche)
-        .filter(Boolean)
-    )
-  ).sort();
-  // Cities available given selected niches
-  const cities = Array.from(
-    new Set(
-      allPipelineLeads
-        .filter((l) => filterNiches.length === 0 || (l.niche && filterNiches.includes(l.niche)))
-        .map((l) => l.city)
-        .filter(Boolean)
-    )
-  ).sort();
-  const pipelineLeads = allPipelineLeads.filter(
-    (l) =>
-      (filterNiches.length === 0 || (l.niche && filterNiches.includes(l.niche))) &&
-      (filterCities.length === 0 || (l.city && filterCities.includes(l.city)))
+  const stageSet = useMemo(() => new Set(stages), [stages]);
+  const allPipelineLeads = useMemo(
+    () => leads.filter((l) => stageSet.has(l.stage)),
+    [leads, stageSet]
   );
+  const filterNicheSet = useMemo(() => new Set(filterNiches), [filterNiches]);
+  const filterCitySet = useMemo(() => new Set(filterCities), [filterCities]);
+  const niches = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          allPipelineLeads
+            .filter((l) => filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city)))
+            .map((l) => l.niche)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [allPipelineLeads, filterCitySet]
+  );
+  const cities = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          allPipelineLeads
+            .filter((l) => filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche)))
+            .map((l) => l.city)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [allPipelineLeads, filterNicheSet]
+  );
+  const pipelineLeads = useMemo(
+    () =>
+      allPipelineLeads.filter(
+        (l) =>
+          (filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche))) &&
+          (filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city)))
+      ),
+    [allPipelineLeads, filterNicheSet, filterCitySet]
+  );
+  const leadsByStage = useMemo(() => {
+    const map = new Map<string, Lead[]>();
+    for (const s of stages) map.set(s, []);
+    for (const l of pipelineLeads) {
+      const arr = map.get(l.stage);
+      if (arr) arr.push(l);
+    }
+    return map;
+  }, [pipelineLeads, stages]);
 
   const toggleFilterValue = (current: string[], value: string) =>
     current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
@@ -327,22 +354,26 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
   const handleBulkMove = (targetStage: PipelineStage) => {
     const count = selectedIds.size;
-    selectedIds.forEach((id) => moveLeadToStage(id, targetStage));
+    const result = moveLeadsToStageBatch(selectedIds, targetStage);
     setSelectedIds(new Set());
     refresh();
     toast.success(`${count} leads movidos para "${targetStage}"`);
+    if (result.autoTransfer) {
+      const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
+      toast.success(`Transferidos automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
+    }
   };
 
   const handleBulkDelete = () => {
     const count = selectedIds.size;
-    selectedIds.forEach((id) => deleteLead(id));
+    deleteLeadsBatch(selectedIds);
     setSelectedIds(new Set());
     refresh();
     toast.success(`${count} lead(s) excluído(s)`);
   };
 
   const handleSelectAllInStage = (stage: PipelineStage) => {
-    const stageLeadIds = pipelineLeads.filter((l) => l.stage === stage).map((l) => l.id);
+    const stageLeadIds = (leadsByStage.get(stage) ?? []).map((l) => l.id);
     const allSelected = stageLeadIds.every((id) => selectedIds.has(id));
     const next = new Set(selectedIds);
     if (allSelected) stageLeadIds.forEach((id) => next.delete(id));
@@ -399,12 +430,20 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   };
 
   const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>) => {
-    let count = 0;
     let skipped = 0;
     const existing = getLeads();
-    const accepted: { phone: string; company: string; gmnLink: string }[] = existing.map((l) => ({
-      phone: l.phone, company: l.company, gmnLink: l.gmnLink,
-    }));
+    // Build dup keys once with Sets for O(1) lookup
+    const phoneSet = new Set<string>();
+    const companySet = new Set<string>();
+    const gmnSet = new Set<string>();
+    for (const l of existing) {
+      const k = { phone: (l.phone || "").replace(/\D+/g, ""), company: (l.company || "").trim().toLowerCase(), gmn: (l.gmnLink || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "") };
+      if (k.phone) phoneSet.add(k.phone);
+      if (k.company) companySet.add(k.company);
+      if (k.gmn) gmnSet.add(k.gmn);
+    }
+
+    const toCreate: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage" | "attachments">[] = [];
     importRows.forEach((row) => {
       const get = (k: LeadFieldKey) => {
         const col = mapping[k];
@@ -413,29 +452,33 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       };
       const company = get("company");
       if (!company) return;
-      const candidate = { company, phone: get("phone"), gmnLink: get("gmnLink") };
-      if (isDuplicateLead(candidate, accepted)) {
+      const phone = get("phone");
+      const gmnLink = get("gmnLink");
+      const kPhone = phone.replace(/\D+/g, "");
+      const kCompany = company.trim().toLowerCase();
+      const kGmn = gmnLink.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+      if ((kPhone && phoneSet.has(kPhone)) || (kCompany && companySet.has(kCompany)) || (kGmn && gmnSet.has(kGmn))) {
         skipped++;
         return;
       }
-      addLead(
-        {
-          company,
-          contact: get("contact"),
-          phone: candidate.phone,
-          niche: get("niche"),
-          city: get("city"),
-          gmnLink: candidate.gmnLink,
-          instagramLink: get("instagramLink"),
-          notes: get("notes"),
-          icpStars: 2 as ICPStars,
-          runsAds: false,
-        },
-        stages[0]
-      );
-      accepted.push(candidate);
-      count++;
+      if (kPhone) phoneSet.add(kPhone);
+      if (kCompany) companySet.add(kCompany);
+      if (kGmn) gmnSet.add(kGmn);
+      toCreate.push({
+        company,
+        contact: get("contact"),
+        phone,
+        niche: get("niche"),
+        city: get("city"),
+        gmnLink,
+        instagramLink: get("instagramLink"),
+        notes: get("notes"),
+        icpStars: 2 as ICPStars,
+        runsAds: false,
+      });
     });
+    if (toCreate.length > 0) addLeadsBatch(toCreate, stages[0]);
+    const count = toCreate.length;
     setMappingOpen(false);
     setImportHeaders([]);
     setImportRows([]);
@@ -662,7 +705,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       <div className="flex-1 overflow-x-auto scrollbar-thin">
         <div className="flex gap-3 h-full min-w-max pb-2">
           {stages.map((stage) => {
-            const stageLeads = pipelineLeads.filter((l) => l.stage === stage);
+            const stageLeads = leadsByStage.get(stage) ?? [];
             return (
               <div
                 key={stage}

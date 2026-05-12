@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { type Lead, type ICPStars, getLeads, updateLead } from "@/lib/store";
+import { useState } from "react";
+import { type Lead, type ICPStars, updateLeadsBatch } from "@/lib/store";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -78,7 +78,7 @@ export default function BulkEditDialog({
       return;
     }
 
-    selectedIds.forEach((id) => updateLead(id, updates));
+    updateLeadsBatch(selectedIds, updates);
     toast.success(`${count} lead(s) atualizado(s)`);
     onOpenChange(false);
     onDone();

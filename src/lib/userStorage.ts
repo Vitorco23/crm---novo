@@ -72,8 +72,8 @@ export function uload<T>(key: string, fallback: T): T {
 
 export function usave<T>(key: string, data: T) {
   localStorage.setItem(scopedKey(key), JSON.stringify(data));
-  // Push to cloud (fire-and-forget). Only sync known keys to avoid noise.
-  if (SCOPED_KEYS.includes(key)) cloudPush(key, data);
+  // Push to cloud (debounced, fire-and-forget). Only sync known keys.
+  if (SCOPED_KEYS.includes(key)) scheduleCloudPush(key, data);
 }
 
 export function uremove(key: string) {
@@ -81,7 +81,38 @@ export function uremove(key: string) {
   if (SCOPED_KEYS.includes(key)) cloudDelete(key);
 }
 
-// ===== Cloud sync =====
+// ===== Cloud sync (debounced) =====
+
+const pendingPushes = new Map<string, { data: unknown; timer: ReturnType<typeof setTimeout> }>();
+const PUSH_DEBOUNCE_MS = 800;
+
+function scheduleCloudPush(key: string, data: unknown) {
+  const existing = pendingPushes.get(key);
+  if (existing) clearTimeout(existing.timer);
+  const timer = setTimeout(() => {
+    const entry = pendingPushes.get(key);
+    pendingPushes.delete(key);
+    if (entry) cloudPush(key, entry.data);
+  }, PUSH_DEBOUNCE_MS);
+  pendingPushes.set(key, { data, timer });
+}
+
+// Flush pending pushes when the tab is hidden/closed so we don't lose the
+// last edit if the user navigates away within the debounce window.
+if (typeof window !== "undefined") {
+  window.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushPendingPushes();
+  });
+  window.addEventListener("beforeunload", flushPendingPushes);
+}
+
+function flushPendingPushes() {
+  pendingPushes.forEach((entry, key) => {
+    clearTimeout(entry.timer);
+    cloudPush(key, entry.data);
+  });
+  pendingPushes.clear();
+}
 
 async function cloudPush(key: string, data: unknown) {
   const uid = getCurrentUserId();

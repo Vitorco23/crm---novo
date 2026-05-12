@@ -27,24 +27,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+    let syncedForUser: string | null = null;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
       setCurrentUser(s?.user?.id ?? null, s?.user?.email ?? null);
-      if (s?.user) {
-        // Defer to avoid blocking the auth callback
+      // Only sync on actual sign-in events, not on TOKEN_REFRESHED / focus rehydrations
+      if (s?.user && event === "SIGNED_IN" && syncedForUser !== s.user.id) {
+        syncedForUser = s.user.id;
         setTimeout(() => {
           syncFromCloud().then((changed) => {
             if (changed) window.dispatchEvent(new Event("p21:storage-synced"));
           });
         }, 0);
       }
+      if (!s?.user) syncedForUser = null;
     });
     supabase.auth.getSession().then(async ({ data: { session: s } }) => {
       setSession(s);
       setUser(s?.user ?? null);
       setCurrentUser(s?.user?.id ?? null, s?.user?.email ?? null);
-      if (s?.user) {
+      if (s?.user && syncedForUser !== s.user.id) {
+        syncedForUser = s.user.id;
         const changed = await syncFromCloud();
         if (changed) window.dispatchEvent(new Event("p21:storage-synced"));
       }
