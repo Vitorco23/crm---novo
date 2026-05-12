@@ -706,7 +706,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       <div className="flex-1 overflow-x-auto scrollbar-thin">
         <div className="flex gap-3 h-full min-w-max pb-2">
           {stages.map((stage) => {
-            const stageLeads = pipelineLeads.filter((l) => l.stage === stage);
+            const stageLeads = leadsByStage.get(stage) ?? [];
             return (
               <div
                 key={stage}
