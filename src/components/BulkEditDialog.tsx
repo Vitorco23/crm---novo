@@ -78,7 +78,7 @@ export default function BulkEditDialog({
       return;
     }
 
-    selectedIds.forEach((id) => updateLead(id, updates));
+    updateLeadsBatch(selectedIds, updates);
     toast.success(`${count} lead(s) atualizado(s)`);
     onOpenChange(false);
     onDone();
