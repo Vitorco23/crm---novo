@@ -614,83 +614,95 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         </div>
       </div>
 
-      {(niches.length > 0 || cities.length > 0) && (
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <FilterIcon className="h-3.5 w-3.5" /> Filtros:
-          </div>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[180px]">
-                <span className="truncate">
-                  {filterNiches.length === 0
-                    ? "Todos os nichos"
-                    : filterNiches.length === 1
-                    ? filterNiches[0]
-                    : `${filterNiches.length} nichos`}
-                </span>
-                <ChevronDown className="h-3 w-3 ml-2 opacity-60" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-2" align="start">
-              <div className="max-h-[260px] overflow-y-auto space-y-1">
-                {niches.length === 0 && <div className="text-xs text-muted-foreground px-1 py-1">Sem opções</div>}
-                {niches.map((n) => (
-                  <label key={n} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-accent cursor-pointer text-xs">
-                    <Checkbox
-                      checked={filterNiches.includes(n)}
-                      onCheckedChange={() => setFilterNiches((prev) => toggleFilterValue(prev, n))}
-                    />
-                    <span className="truncate">{n}</span>
-                  </label>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[180px]">
-                <span className="truncate">
-                  {filterCities.length === 0
-                    ? "Todas as cidades"
-                    : filterCities.length === 1
-                    ? filterCities[0]
-                    : `${filterCities.length} cidades`}
-                </span>
-                <ChevronDown className="h-3 w-3 ml-2 opacity-60" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-2" align="start">
-              <div className="max-h-[260px] overflow-y-auto space-y-1">
-                {cities.length === 0 && <div className="text-xs text-muted-foreground px-1 py-1">Sem opções</div>}
-                {cities.map((c) => (
-                  <label key={c} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-accent cursor-pointer text-xs">
-                    <Checkbox
-                      checked={filterCities.includes(c)}
-                      onCheckedChange={() => setFilterCities((prev) => toggleFilterValue(prev, c))}
-                    />
-                    <span className="truncate">{c}</span>
-                  </label>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {(filterNiches.length > 0 || filterCities.length > 0) && (
-            <>
-              <Button size="sm" variant="ghost" className="h-8 text-xs"
-                onClick={() => { setFilterNiches([]); setFilterCities([]); }}>
-                <XIcon className="h-3 w-3 mr-1" /> Limpar
-              </Button>
-              <Badge variant="outline" className="text-[10px]">
-                {pipelineLeads.length} de {allPipelineLeads.length} leads
-              </Badge>
-            </>
-          )}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Pesquisar por nome ou número..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 text-xs pl-8 w-64"
+          />
         </div>
-      )}
+
+        {(niches.length > 0 || cities.length > 0) && (
+          <>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <FilterIcon className="h-3.5 w-3.5" /> Filtros:
+            </div>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[180px]">
+                  <span className="truncate">
+                    {filterNiches.length === 0
+                      ? "Todos os nichos"
+                      : filterNiches.length === 1
+                      ? filterNiches[0]
+                      : `${filterNiches.length} nichos`}
+                  </span>
+                  <ChevronDown className="h-3 w-3 ml-2 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-2" align="start">
+                <div className="max-h-[260px] overflow-y-auto space-y-1">
+                  {niches.length === 0 && <div className="text-xs text-muted-foreground px-1 py-1">Sem opções</div>}
+                  {niches.map((n) => (
+                    <label key={n} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                      <Checkbox
+                        checked={filterNiches.includes(n)}
+                        onCheckedChange={() => setFilterNiches((prev) => toggleFilterValue(prev, n))}
+                      />
+                      <span className="truncate">{n}</span>
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[180px]">
+                  <span className="truncate">
+                    {filterCities.length === 0
+                      ? "Todas as cidades"
+                      : filterCities.length === 1
+                      ? filterCities[0]
+                      : `${filterCities.length} cidades`}
+                  </span>
+                  <ChevronDown className="h-3 w-3 ml-2 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-2" align="start">
+                <div className="max-h-[260px] overflow-y-auto space-y-1">
+                  {cities.length === 0 && <div className="text-xs text-muted-foreground px-1 py-1">Sem opções</div>}
+                  {cities.map((c) => (
+                    <label key={c} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                      <Checkbox
+                        checked={filterCities.includes(c)}
+                        onCheckedChange={() => setFilterCities((prev) => toggleFilterValue(prev, c))}
+                      />
+                      <span className="truncate">{c}</span>
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {(filterNiches.length > 0 || filterCities.length > 0 || searchQuery) && (
+              <>
+                <Button size="sm" variant="ghost" className="h-8 text-xs"
+                  onClick={() => { setFilterNiches([]); setFilterCities([]); setSearchQuery(""); }}>
+                  <XIcon className="h-3 w-3 mr-1" /> Limpar
+                </Button>
+                <Badge variant="outline" className="text-[10px]">
+                  {pipelineLeads.length} de {allPipelineLeads.length} leads
+                </Badge>
+              </>
+            )}
+          </>
+        )}
+      </div>
 
       <BulkActionsBar
         count={selectedIds.size}
