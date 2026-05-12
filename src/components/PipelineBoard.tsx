@@ -431,12 +431,20 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   };
 
   const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>) => {
-    let count = 0;
     let skipped = 0;
     const existing = getLeads();
-    const accepted: { phone: string; company: string; gmnLink: string }[] = existing.map((l) => ({
-      phone: l.phone, company: l.company, gmnLink: l.gmnLink,
-    }));
+    // Build dup keys once with Sets for O(1) lookup
+    const phoneSet = new Set<string>();
+    const companySet = new Set<string>();
+    const gmnSet = new Set<string>();
+    for (const l of existing) {
+      const k = { phone: (l.phone || "").replace(/\D+/g, ""), company: (l.company || "").trim().toLowerCase(), gmn: (l.gmnLink || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "") };
+      if (k.phone) phoneSet.add(k.phone);
+      if (k.company) companySet.add(k.company);
+      if (k.gmn) gmnSet.add(k.gmn);
+    }
+
+    const toCreate: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage" | "attachments">[] = [];
     importRows.forEach((row) => {
       const get = (k: LeadFieldKey) => {
         const col = mapping[k];
@@ -445,29 +453,33 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       };
       const company = get("company");
       if (!company) return;
-      const candidate = { company, phone: get("phone"), gmnLink: get("gmnLink") };
-      if (isDuplicateLead(candidate, accepted)) {
+      const phone = get("phone");
+      const gmnLink = get("gmnLink");
+      const kPhone = phone.replace(/\D+/g, "");
+      const kCompany = company.trim().toLowerCase();
+      const kGmn = gmnLink.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+      if ((kPhone && phoneSet.has(kPhone)) || (kCompany && companySet.has(kCompany)) || (kGmn && gmnSet.has(kGmn))) {
         skipped++;
         return;
       }
-      addLead(
-        {
-          company,
-          contact: get("contact"),
-          phone: candidate.phone,
-          niche: get("niche"),
-          city: get("city"),
-          gmnLink: candidate.gmnLink,
-          instagramLink: get("instagramLink"),
-          notes: get("notes"),
-          icpStars: 2 as ICPStars,
-          runsAds: false,
-        },
-        stages[0]
-      );
-      accepted.push(candidate);
-      count++;
+      if (kPhone) phoneSet.add(kPhone);
+      if (kCompany) companySet.add(kCompany);
+      if (kGmn) gmnSet.add(kGmn);
+      toCreate.push({
+        company,
+        contact: get("contact"),
+        phone,
+        niche: get("niche"),
+        city: get("city"),
+        gmnLink,
+        instagramLink: get("instagramLink"),
+        notes: get("notes"),
+        icpStars: 2 as ICPStars,
+        runsAds: false,
+      });
     });
+    if (toCreate.length > 0) addLeadsBatch(toCreate, stages[0]);
+    const count = toCreate.length;
     setMappingOpen(false);
     setImportHeaders([]);
     setImportRows([]);
