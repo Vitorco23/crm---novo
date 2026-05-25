@@ -184,6 +184,21 @@ export default function LeadDetailDrawer({
           </div>
         )}
 
+        {isOportunidades && (
+          <div className="rounded-md border border-accent/30 bg-accent/5 p-3 mb-4">
+            <Label className="text-xs text-accent flex items-center gap-1 mb-1.5">
+              <DollarSign className="h-3.5 w-3.5" /> Valor do Contrato (R$)
+            </Label>
+            <Input
+              type="number" min="0" step="0.01" inputMode="decimal"
+              value={draft.contractValue ?? ""}
+              onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
+              onBlur={() => commitOnBlur({ contractValue: draft.contractValue })}
+              placeholder="0,00"
+            />
+          </div>
+        )}
+
         <div className="space-y-5 pr-1">
           {/* ICP */}
           <div>
