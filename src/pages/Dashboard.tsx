@@ -254,3 +254,64 @@ export default function Dashboard() {
     </div>
   );
 }
+
+function FinancialHealthRow() {
+  const data = useMemo(() => {
+    const m = new Date().toISOString().slice(0, 7);
+    const txs = getTransactions();
+    const revenue = txs
+      .filter((t) => t.kind === "revenue" && monthKey(t.date) === m)
+      .reduce((s, t) => s + t.amount, 0);
+    const goal = getGoalsSettings().monthlyRevenueGoal;
+
+    const oppLeads = getLeadsForPipeline("oportunidades");
+    const negotiating = oppLeads
+      .filter((l) => l.stage !== "Ganho" && l.stage !== "Perdido")
+      .reduce((s, l) => s + (l.contractValue || 0), 0);
+
+    const wonThisMonth = oppLeads.filter(
+      (l) => l.stage === "Ganho" && monthKey(l.stageChangedAt) === m
+    );
+    const wonAmount = wonThisMonth.reduce((s, l) => s + (l.contractValue || 0), 0);
+
+    return { revenue, goal, negotiating, wonCount: wonThisMonth.length, wonAmount };
+  }, []);
+
+  const pct = data.goal > 0 ? Math.min((data.revenue / data.goal) * 100, 100) : 0;
+  const barColor =
+    pct < 30 ? "bg-red-500" : pct < 70 ? "bg-yellow-500" : "bg-accent";
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <Card><CardContent className="pt-4 pb-3">
+        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+          <DollarSign className="h-3.5 w-3.5" /> Receita do mês
+        </div>
+        <p className="text-2xl font-bold text-foreground">{formatBRL(data.revenue)}</p>
+        <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <div className={`h-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">
+          {formatBRL(data.revenue)} / {formatBRL(data.goal)}
+        </p>
+      </CardContent></Card>
+
+      <Card><CardContent className="pt-4 pb-3">
+        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+          <Handshake className="h-3.5 w-3.5" /> Em negociação
+        </div>
+        <p className="text-2xl font-bold text-foreground">{formatBRL(data.negotiating)}</p>
+        <p className="text-[10px] text-muted-foreground mt-1">Oportunidades em aberto</p>
+      </CardContent></Card>
+
+      <Card><CardContent className="pt-4 pb-3">
+        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+          <TrophyIcon className="h-3.5 w-3.5" /> Fechamentos no mês
+        </div>
+        <p className="text-2xl font-bold text-foreground">{data.wonCount}</p>
+        <p className="text-[10px] text-accent mt-1 tabular-nums">{formatBRL(data.wonAmount)}</p>
+      </CardContent></Card>
+    </div>
+  );
+}
+
