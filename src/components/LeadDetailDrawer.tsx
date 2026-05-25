@@ -1,8 +1,8 @@
 import {
-  type Lead, type ICPStars,
+  type Lead, type ICPStars, type PipelineName,
   addAttachment, removeAttachment, updateLead,
   addCallNote, removeCallNote, getMeetingsForLead,
-  getPipelineForStage,
+  getPipelineForStage, getStagesForPipeline, moveLeadToStage,
 } from "@/lib/store";
 import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/lib/finance";
 import {
@@ -14,10 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import {
   Phone, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
-  CalendarCheck, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase,
+  CalendarCheck, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase, ArrowRightLeft,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -140,6 +140,51 @@ export default function LeadDetailDrawer({
           </SheetDescription>
           <SheetTitle className="sr-only">{lead.company}</SheetTitle>
         </SheetHeader>
+
+        {/* Mover lead entre pipelines/etapas */}
+        <div className="mb-4">
+          <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
+            <ArrowRightLeft className="h-3 w-3" /> Mover lead para...
+          </Label>
+          <Select
+            value={lead.stage}
+            onValueChange={(toStage) => {
+              if (toStage === lead.stage) return;
+              const result = moveLeadToStage(lead.id, toStage);
+              const labels: Record<PipelineName, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
+              if (result.missingContractValue) {
+                toast.warning("Lead movido para Ganho sem valor de contrato definido", {
+                  style: { background: "hsl(28 90% 55%)", color: "white", border: "none" },
+                });
+              }
+              if (result.autoTransfer) {
+                toast.success(`Lead transferido para ${labels[result.autoTransfer]}!`);
+              } else {
+                toast.success("Lead movido!");
+              }
+              onRefresh();
+              onOpenChange(false);
+            }}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent className="max-h-80">
+              {(["cold_call", "oportunidades", "onboarding"] as PipelineName[]).map((p) => {
+                const label = p === "cold_call" ? "Cold Call" : p === "oportunidades" ? "Oportunidades" : "Onboarding";
+                const stages = getStagesForPipeline(p);
+                if (stages.length === 0) return null;
+                return (
+                  <SelectGroup key={p}>
+                    <SelectLabel className="text-[10px] uppercase tracking-wider text-accent">{label}</SelectLabel>
+                    {stages.map((s) => (
+                      <SelectItem key={`${p}-${s}`} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
 
         {!isOnboarding && (
           <Button
