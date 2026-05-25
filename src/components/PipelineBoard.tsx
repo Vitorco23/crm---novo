@@ -784,6 +784,12 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                     </span>
                   </div>
                 </div>
+                {pipeline === "oportunidades" && (
+                  <p className="text-[10px] font-medium text-accent px-1 -mt-1 mb-2">
+                    {stageLeads.reduce((sum, l) => sum + (l.contractValue ?? 0), 0)
+                      .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </p>
+                )}
                 <div className="flex-1 space-y-2 overflow-y-auto scrollbar-thin min-h-[100px]">
                   {stageLeads.map((lead) => (
                     <LeadCard
