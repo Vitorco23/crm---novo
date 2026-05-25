@@ -178,6 +178,11 @@ function LeadCard({
 
       <div className="flex items-center justify-between gap-2 mt-2">
         <p className="text-[10px] text-muted-foreground/70">⏱ {timeInStage(lead.stageChangedAt)}</p>
+        {lead.contractValue && lead.contractValue > 0 && (
+          <span className="text-[10px] font-semibold text-accent">
+            {lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          </span>
+        )}
         {daysSince(lead.stageChangedAt) >= 1 && (
           <span
             title="Sem movimentação há mais de 1 dia"
