@@ -61,7 +61,9 @@ export default function LeadDetailDrawer({
   }, [lead?.id]);
 
   if (!lead || !draft) return null;
-  const isOnboarding = getPipelineForStage(lead.stage) === "onboarding";
+  const pipeline = getPipelineForStage(lead.stage);
+  const isOnboarding = pipeline === "onboarding";
+  const isOportunidades = pipeline === "oportunidades";
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -179,6 +181,21 @@ export default function LeadDetailDrawer({
             {typeof draft.contractValue === "number" && draft.contractValue > 0 && (
               <p className="text-[10px] text-muted-foreground">✓ Receita registrada no Financeiro</p>
             )}
+          </div>
+        )}
+
+        {isOportunidades && (
+          <div className="rounded-md border border-accent/30 bg-accent/5 p-3 mb-4">
+            <Label className="text-xs text-accent flex items-center gap-1 mb-1.5">
+              <DollarSign className="h-3.5 w-3.5" /> Valor do Contrato (R$)
+            </Label>
+            <Input
+              type="number" min="0" step="0.01" inputMode="decimal"
+              value={draft.contractValue ?? ""}
+              onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
+              onBlur={() => commitOnBlur({ contractValue: draft.contractValue })}
+              placeholder="0,00"
+            />
           </div>
         )}
 

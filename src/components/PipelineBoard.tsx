@@ -75,9 +75,10 @@ function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPSt
 }
 
 function LeadCard({
-  lead, onDragStart, onDelete, onRefresh, onClick, selected, onToggleSelect,
+  lead, pipeline, onDragStart, onDelete, onRefresh, onClick, selected, onToggleSelect,
 }: {
   lead: Lead;
+  pipeline: PipelineName;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDelete: (id: string) => void;
   onRefresh: () => void;
@@ -178,7 +179,7 @@ function LeadCard({
 
       <div className="flex items-center justify-between gap-2 mt-2">
         <p className="text-[10px] text-muted-foreground/70">⏱ {timeInStage(lead.stageChangedAt)}</p>
-        {lead.contractValue && lead.contractValue > 0 && (
+        {pipeline === "oportunidades" && lead.contractValue && lead.contractValue > 0 && (
           <span className="text-[10px] font-semibold text-accent">
             {lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </span>
@@ -786,7 +787,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                 <div className="flex-1 space-y-2 overflow-y-auto scrollbar-thin min-h-[100px]">
                   {stageLeads.map((lead) => (
                     <LeadCard
-                      key={lead.id} lead={lead} onDragStart={onDragStart} onDelete={handleDelete}
+                      key={lead.id} lead={lead} pipeline={pipeline} onDragStart={onDragStart} onDelete={handleDelete}
                       onRefresh={refresh} onClick={handleCardClick} selected={selectedIds.has(lead.id)}
                       onToggleSelect={handleToggleSelect}
                     />
