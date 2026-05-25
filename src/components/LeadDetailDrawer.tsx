@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Phone, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
   CalendarCheck, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase,
@@ -184,20 +185,56 @@ export default function LeadDetailDrawer({
           </div>
         )}
 
-        {isOportunidades && (
-          <div className="rounded-md border border-accent/30 bg-accent/5 p-3 mb-4">
-            <Label className="text-xs text-accent flex items-center gap-1 mb-1.5">
-              <DollarSign className="h-3.5 w-3.5" /> Valor do Contrato (R$)
-            </Label>
-            <Input
-              type="number" min="0" step="0.01" inputMode="decimal"
-              value={draft.contractValue ?? ""}
-              onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
-              onBlur={() => commitOnBlur({ contractValue: draft.contractValue })}
-              placeholder="0,00"
-            />
-          </div>
-        )}
+        {isOportunidades && (() => {
+          const PRESETS = ["Gestão Recorrente", "Implementação Comercial"];
+          const current = draft.serviceType ?? "";
+          const selectValue = current === "" ? "" : (PRESETS.includes(current) ? current : "Outro");
+          return (
+            <div className="rounded-md border border-accent/30 bg-accent/5 p-3 mb-4 space-y-3">
+              <div>
+                <Label className="text-xs text-accent flex items-center gap-1 mb-1.5">
+                  <DollarSign className="h-3.5 w-3.5" /> Valor do Contrato (R$)
+                </Label>
+                <Input
+                  type="number" min="0" step="0.01" inputMode="decimal"
+                  value={draft.contractValue ?? ""}
+                  onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
+                  onBlur={() => commitOnBlur({ contractValue: draft.contractValue })}
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-accent flex items-center gap-1 mb-1.5">
+                  <Briefcase className="h-3.5 w-3.5" /> Tipo de Serviço
+                </Label>
+                <Select
+                  value={selectValue || undefined}
+                  onValueChange={(v) => {
+                    const next = v === "Outro" ? "" : v;
+                    setDraft({ ...draft, serviceType: next });
+                    commitOnBlur({ serviceType: next });
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Gestão Recorrente">Gestão Recorrente</SelectItem>
+                    <SelectItem value="Implementação Comercial">Implementação Comercial</SelectItem>
+                    <SelectItem value="Outro">Outro (especificar)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {selectValue === "Outro" && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Especifique o tipo de serviço"
+                    value={draft.serviceType ?? ""}
+                    onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })}
+                    onBlur={() => commitOnBlur({ serviceType: draft.serviceType })}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="space-y-5 pr-1">
           {/* ICP */}

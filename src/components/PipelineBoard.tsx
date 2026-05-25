@@ -193,6 +193,20 @@ function LeadCard({
           </span>
         )}
       </div>
+      {pipeline === "oportunidades" && lead.serviceType && lead.serviceType.trim() !== "" && (() => {
+        const t = lead.serviceType.trim();
+        const cls =
+          t === "Gestão Recorrente" ? "bg-blue-500/15 text-blue-400 border-blue-500/30" :
+          t === "Implementação Comercial" ? "bg-orange-500/15 text-orange-400 border-orange-500/30" :
+          "bg-muted text-muted-foreground border-border";
+        return (
+          <div className="mt-1.5 flex justify-end">
+            <span className={`inline-block text-[9px] font-medium px-1.5 py-0.5 rounded border ${cls}`}>
+              {t}
+            </span>
+          </div>
+        );
+      })()}
     </div>
   );
 }
