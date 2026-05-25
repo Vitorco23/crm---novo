@@ -42,19 +42,54 @@ export default function Dashboard() {
   const totalCalls = movementCalls + sessionCalls;
   const totalMeetings = movementMeetings + totalSessionMeetings;
 
+  const goals = getGoalsSettings();
+
+  // Expected conversion rate (%) from previous funnel stage into this stage
+  const expectedRateByStage: Record<string, number> = {
+    "Reunião Marcada": goals.decisionMakerToMeetingScheduled,
+    "Reunião Realizada": goals.meetingScheduledToHeld,
+    "Ganho": goals.meetingHeldToClose,
+  };
+
   // Funnel across cold call + oportunidades
   const allStages = [...COLD_CALL_STAGES, ...OPORTUNIDADES_STAGES.filter((s) => s !== "Perdido")];
   const funnelData = useMemo(() => {
-    return allStages.map((stage, i) => {
-      const count = filteredLeads.filter((l) => {
+    const counts = allStages.map((_, i) =>
+      filteredLeads.filter((l) => {
         const idx = allStages.indexOf(l.stage as any);
         return idx >= i || l.stage === "Perdido";
-      }).length;
+      }).length
+    );
+    return allStages.map((stage, i) => {
+      const count = counts[i] || 0;
+      const prev = i > 0 ? counts[i - 1] : 0;
+      const realRate = prev > 0 ? (count / prev) * 100 : null;
+      const expectedRate = expectedRateByStage[stage] ?? null;
       const hue = 78 + i * 15;
-      return { name: stage, value: count || 0, fill: `hsl(${hue} 50% ${47 - i * 2}%)` };
+      return {
+        name: stage,
+        value: count,
+        prev,
+        realRate,
+        expectedRate,
+        fill: `hsl(${hue} 50% ${47 - i * 2}%)`,
+      };
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredLeads]);
+
+  const bottleneck = useMemo(() => {
+    let worst: { name: string; prevName: string; real: number; expected: number; diff: number } | null = null;
+    funnelData.forEach((d, i) => {
+      if (d.expectedRate == null || d.realRate == null || d.prev === 0) return;
+      const diff = d.realRate - d.expectedRate;
+      if (worst == null || diff < worst.diff) {
+        worst = { name: d.name, prevName: funnelData[i - 1].name, real: d.realRate, expected: d.expectedRate, diff };
+      }
+    });
+    return worst;
+  }, [funnelData]);
+
 
   const sessionChart = useMemo(() => {
     return filteredSessions.map((s) => ({
@@ -156,20 +191,42 @@ export default function Dashboard() {
                 {funnelData.map((item) => {
                   const maxVal = funnelData[0]?.value || 1;
                   const pct = maxVal > 0 ? Math.round((item.value / maxVal) * 100) : 0;
+                  let badge: { label: string; cls: string } | null = null;
+                  if (item.expectedRate != null && item.realRate != null && item.prev > 0) {
+                    const diff = item.realRate - item.expectedRate;
+                    const tol = item.expectedRate * 0.15; // ±15% tolerance
+                    const cls =
+                      diff >= tol
+                        ? "bg-accent/15 text-accent border-accent/30"
+                        : diff <= -tol
+                        ? "bg-red-500/15 text-red-400 border-red-500/30"
+                        : "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
+                    badge = { label: `${Math.round(item.realRate)}% / ${Math.round(item.expectedRate)}%`, cls };
+                  }
                   return (
                     <div key={item.name} className="flex items-center gap-2 text-xs">
                       <span className="w-40 truncate text-muted-foreground">{item.name}</span>
                       <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
                         <div className="h-full rounded-sm transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: item.fill }} />
                       </div>
-                      <span className="w-12 text-right font-medium text-foreground">{item.value}</span>
+                      <span className="w-10 text-right font-medium text-foreground">{item.value}</span>
+                      <span className={`w-24 text-[10px] text-center px-1.5 py-0.5 rounded border tabular-nums ${badge ? badge.cls : "border-transparent text-muted-foreground/40"}`}>
+                        {badge ? badge.label : "—"}
+                      </span>
                     </div>
                   );
                 })}
               </div>
             )}
+            {bottleneck && (
+              <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border">
+                <span className="text-red-400 font-medium">Gargalo atual:</span>{" "}
+                {bottleneck.prevName} → {bottleneck.name} ({Math.round(bottleneck.real)}% real vs {Math.round(bottleneck.expected)}% esperado)
+              </p>
+            )}
           </CardContent>
         </Card>
+
 
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Produtividade por Sessão</CardTitle></CardHeader>
