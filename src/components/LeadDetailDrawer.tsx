@@ -1,8 +1,8 @@
 import {
-  type Lead, type ICPStars,
+  type Lead, type ICPStars, type PipelineName,
   addAttachment, removeAttachment, updateLead,
   addCallNote, removeCallNote, getMeetingsForLead,
-  getPipelineForStage,
+  getPipelineForStage, getStagesForPipeline, moveLeadToStage,
 } from "@/lib/store";
 import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/lib/finance";
 import {
@@ -14,10 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import {
   Phone, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
-  CalendarCheck, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase,
+  CalendarCheck, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase, ArrowRightLeft,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
