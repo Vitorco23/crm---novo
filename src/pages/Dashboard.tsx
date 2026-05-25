@@ -2,13 +2,15 @@ import { useState, useMemo } from "react";
 import {
   getLeads, getSessions, getMovementEvents,
   COLD_CALL_STAGES, OPORTUNIDADES_STAGES,
+  getGoalsSettings, getLeadsForPipeline,
 } from "@/lib/store";
+import { getTransactions, formatBRL, monthKey } from "@/lib/finance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { isToday, isThisWeek, isThisMonth, format, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy } from "lucide-react";
+import { TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign, Handshake, Trophy as TrophyIcon } from "lucide-react";
 
 type Filter = "day" | "week" | "month";
 
