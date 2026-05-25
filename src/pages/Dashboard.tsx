@@ -142,6 +142,9 @@ export default function Dashboard() {
         </CardContent></Card>
       </div>
 
+      <FinancialHealthRow />
+
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Funil (Cold Call → Oportunidades)</CardTitle></CardHeader>
