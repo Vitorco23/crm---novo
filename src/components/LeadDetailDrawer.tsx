@@ -61,7 +61,9 @@ export default function LeadDetailDrawer({
   }, [lead?.id]);
 
   if (!lead || !draft) return null;
-  const isOnboarding = getPipelineForStage(lead.stage) === "onboarding";
+  const pipeline = getPipelineForStage(lead.stage);
+  const isOnboarding = pipeline === "onboarding";
+  const isOportunidades = pipeline === "oportunidades";
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
