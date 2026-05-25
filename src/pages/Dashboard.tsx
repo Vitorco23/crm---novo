@@ -42,19 +42,54 @@ export default function Dashboard() {
   const totalCalls = movementCalls + sessionCalls;
   const totalMeetings = movementMeetings + totalSessionMeetings;
 
+  const goals = getGoalsSettings();
+
+  // Expected conversion rate (%) from previous funnel stage into this stage
+  const expectedRateByStage: Record<string, number> = {
+    "Reunião Marcada": goals.decisionMakerToMeetingScheduled,
+    "Reunião Realizada": goals.meetingScheduledToHeld,
+    "Ganho": goals.meetingHeldToClose,
+  };
+
   // Funnel across cold call + oportunidades
   const allStages = [...COLD_CALL_STAGES, ...OPORTUNIDADES_STAGES.filter((s) => s !== "Perdido")];
   const funnelData = useMemo(() => {
-    return allStages.map((stage, i) => {
-      const count = filteredLeads.filter((l) => {
+    const counts = allStages.map((_, i) =>
+      filteredLeads.filter((l) => {
         const idx = allStages.indexOf(l.stage as any);
         return idx >= i || l.stage === "Perdido";
-      }).length;
+      }).length
+    );
+    return allStages.map((stage, i) => {
+      const count = counts[i] || 0;
+      const prev = i > 0 ? counts[i - 1] : 0;
+      const realRate = prev > 0 ? (count / prev) * 100 : null;
+      const expectedRate = expectedRateByStage[stage] ?? null;
       const hue = 78 + i * 15;
-      return { name: stage, value: count || 0, fill: `hsl(${hue} 50% ${47 - i * 2}%)` };
+      return {
+        name: stage,
+        value: count,
+        prev,
+        realRate,
+        expectedRate,
+        fill: `hsl(${hue} 50% ${47 - i * 2}%)`,
+      };
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredLeads]);
+
+  const bottleneck = useMemo(() => {
+    let worst: { name: string; prevName: string; real: number; expected: number; diff: number } | null = null;
+    funnelData.forEach((d, i) => {
+      if (d.expectedRate == null || d.realRate == null || d.prev === 0) return;
+      const diff = d.realRate - d.expectedRate;
+      if (worst == null || diff < worst.diff) {
+        worst = { name: d.name, prevName: funnelData[i - 1].name, real: d.realRate, expected: d.expectedRate, diff };
+      }
+    });
+    return worst;
+  }, [funnelData]);
+
 
   const sessionChart = useMemo(() => {
     return filteredSessions.map((s) => ({
