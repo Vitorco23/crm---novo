@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import {
-  getLeads, getSessions, getMovementEvents,
+  getLeads, getSessions, getMovementEvents, getMeetings,
   COLD_CALL_STAGES, OPORTUNIDADES_STAGES,
   getGoalsSettings, getLeadsForPipeline,
 } from "@/lib/store";
