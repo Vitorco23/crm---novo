@@ -787,7 +787,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                 <div className="flex-1 space-y-2 overflow-y-auto scrollbar-thin min-h-[100px]">
                   {stageLeads.map((lead) => (
                     <LeadCard
-                      key={lead.id} lead={lead} onDragStart={onDragStart} onDelete={handleDelete}
+                      key={lead.id} lead={lead} pipeline={pipeline} onDragStart={onDragStart} onDelete={handleDelete}
                       onRefresh={refresh} onClick={handleCardClick} selected={selectedIds.has(lead.id)}
                       onToggleSelect={handleToggleSelect}
                     />
