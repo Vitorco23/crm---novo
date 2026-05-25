@@ -539,6 +539,11 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     if (!lead || lead.stage === stage) return;
     const result = moveLeadToStage(id, stage);
     refresh();
+    if (result.missingContractValue) {
+      toast.warning("Lead movido para Ganho sem valor de contrato definido", {
+        style: { background: "hsl(28 90% 55%)", color: "white", border: "none" },
+      });
+    }
     if (result.autoTransfer) {
       const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
       toast.success(`Lead transferido automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
