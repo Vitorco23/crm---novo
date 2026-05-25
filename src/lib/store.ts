@@ -479,7 +479,7 @@ export function trackMovement(leadId: string, toStage: PipelineStage) {
 }
 
 // ===== Move lead between stages (cross-pipeline allowed) =====
-export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoTransfer?: PipelineName } {
+export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoTransfer?: PipelineName; missingContractValue?: boolean } {
   trackMovement(leadId, toStage);
   const leads = getLeads();
   const lead = leads.find((l) => l.id === leadId);
@@ -500,20 +500,28 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
   lead.stageChangedAt = new Date().toISOString();
   saveLeads(leads);
 
-  // Auto-create finance revenue when entering onboarding (first time)
-  if (toPipeline === "onboarding" && fromPipeline !== "onboarding" && (lead.contractValue ?? 0) > 0) {
-    // dynamic import to avoid circular deps
-    import("./finance").then(({ upsertOnboardingRevenue }) => {
-      upsertOnboardingRevenue({
-        clientId: lead.id,
-        clientName: lead.company,
-        amount: lead.contractValue!,
-        serviceType: lead.serviceType,
+  let missingContractValue = false;
+
+  // Auto-create finance revenue when WINNING an Oportunidade (moved to "Ganho" from Oportunidades)
+  if (toStage === "Ganho" && fromPipeline === "oportunidades") {
+    if ((lead.contractValue ?? 0) > 0) {
+      import("./finance").then(({ upsertOnboardingRevenue }) => {
+        upsertOnboardingRevenue({
+          clientId: lead.id,
+          clientName: lead.company,
+          amount: lead.contractValue!,
+          serviceType: lead.serviceType,
+        });
       });
-    });
+    } else {
+      missingContractValue = true;
+    }
   }
 
-  return fromPipeline !== toPipeline ? { autoTransfer: toPipeline } : {};
+  return {
+    ...(fromPipeline !== toPipeline ? { autoTransfer: toPipeline } : {}),
+    ...(missingContractValue ? { missingContractValue: true } : {}),
+  };
 }
 
 // ===== Pomodoro Sessions =====
