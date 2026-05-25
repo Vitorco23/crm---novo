@@ -75,9 +75,10 @@ function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPSt
 }
 
 function LeadCard({
-  lead, onDragStart, onDelete, onRefresh, onClick, selected, onToggleSelect,
+  lead, pipeline, onDragStart, onDelete, onRefresh, onClick, selected, onToggleSelect,
 }: {
   lead: Lead;
+  pipeline: PipelineName;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDelete: (id: string) => void;
   onRefresh: () => void;
