@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   getGoalsSettings, saveGoalsSettings, type GoalsSettings,
+  getSessions, getMovementEvents,
 } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Target, DollarSign, TrendingUp, Phone, UserCheck, CalendarCheck,
-  Trophy, Calendar, Clock, Percent,
+  Trophy, Calendar, Clock, Percent, Activity,
 } from "lucide-react";
+import { isToday } from "date-fns";
 
 const fmtNum = (n: number) => new Intl.NumberFormat("pt-BR").format(Math.ceil(n));
 const fmtMoney = (n: number) =>
