@@ -160,6 +160,13 @@ export default function Metas() {
 
         {/* RIGHT: Outputs */}
         <div className="space-y-4">
+          {/* Today's progress */}
+          <TodayProgress
+            callsGoal={calc.callsPerDay}
+            decisionMakersGoal={calc.decisionMakersPerDay}
+            meetingsGoal={calc.meetingsPerDay}
+          />
+
           {/* Daily */}
           <Card>
             <CardHeader className="pb-2">
