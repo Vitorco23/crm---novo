@@ -277,3 +277,62 @@ function FunnelLine({ label, pct }: { label: string; pct: number }) {
     </div>
   );
 }
+
+function TodayProgress({
+  callsGoal, decisionMakersGoal, meetingsGoal,
+}: { callsGoal: number; decisionMakersGoal: number; meetingsGoal: number }) {
+  const today = useMemo(() => {
+    const sessions = getSessions().filter((s) => isToday(new Date(s.startTime)));
+    const movements = getMovementEvents().filter((m) => isToday(new Date(m.timestamp)));
+    const sessionCalls = sessions.reduce((a, s) => a + (s.calls || 0), 0);
+    const sessionDM = sessions.reduce((a, s) => a + (s.decisionMakers || 0), 0);
+    const sessionMeetings = sessions.reduce((a, s) => a + (s.meetings || 0), 0);
+    const movCalls = movements.filter((m) => m.type === "call").length;
+    const movMeetings = movements.filter((m) => m.type === "meeting").length;
+    return {
+      calls: sessionCalls + movCalls,
+      decisionMakers: sessionDM,
+      meetings: sessionMeetings + movMeetings,
+    };
+  }, []);
+
+  const rows = [
+    { icon: Phone, label: "Ligações hoje", real: today.calls, goal: Math.ceil(callsGoal) },
+    { icon: UserCheck, label: "Decisores hoje", real: today.decisionMakers, goal: Math.ceil(decisionMakersGoal) },
+    { icon: CalendarCheck, label: "Reuniões hoje", real: today.meetings, goal: Math.ceil(meetingsGoal) },
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-1.5">
+          <Activity className="h-4 w-4 text-accent" /> Progresso de Hoje
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {rows.map((r) => {
+          const pct = r.goal > 0 ? Math.min((r.real / r.goal) * 100, 100) : 0;
+          const barColor =
+            pct < 30 ? "bg-destructive" : pct < 70 ? "bg-yellow-500" : "bg-accent";
+          const Icon = r.icon;
+          return (
+            <div key={r.label} className="flex items-center gap-2 text-xs">
+              <span className="w-36 flex items-center gap-1.5 text-muted-foreground truncate">
+                <Icon className="h-3.5 w-3.5" /> {r.label}
+              </span>
+              <div className="flex-1 h-3 bg-muted rounded-sm overflow-hidden">
+                <div
+                  className={`h-full ${barColor} transition-all`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="w-20 text-right font-bold text-foreground tabular-nums">
+                {r.real} <span className="text-muted-foreground font-normal">/ {r.goal}</span>
+              </span>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
