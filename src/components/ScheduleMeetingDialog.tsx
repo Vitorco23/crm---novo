@@ -159,47 +159,42 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-1">
-              <Label className="text-xs">Data *</Label>
-              <div className="flex items-center gap-1">
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="flex-1"
+          <div>
+            <Label className="text-xs">Data *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <UIButton
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal h-10"
+                >
+                  <CalendarIcon className="h-4 w-4 mr-2 text-accent" />
+                  {date
+                    ? format(parseISO(date), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                    : "Selecione uma data"}
+                </UIButton>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
+                <Calendar
+                  mode="single"
+                  locale={ptBR}
+                  selected={date ? parseISO(date) : undefined}
+                  onSelect={(d) => {
+                    if (d) setDate(format(d, "yyyy-MM-dd"));
+                  }}
+                  initialFocus
+                  className="pointer-events-auto"
                 />
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <UIButton
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-10 w-10 shrink-0"
-                      title="Abrir calendário"
-                    >
-                      <CalendarIcon className="h-4 w-4" />
-                    </UIButton>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      locale={ptBR}
-                      selected={date ? parseISO(date) : undefined}
-                      onSelect={(d) => {
-                        if (d) setDate(format(d, "yyyy-MM-dd"));
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-            <div className="col-span-1">
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
               <Label className="text-xs">Horário *</Label>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
-            <div className="col-span-1">
+            <div>
               <Label className="text-xs">Duração</Label>
               <Select value={duration} onValueChange={setDuration}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
