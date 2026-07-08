@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { uload, usave } from "@/lib/userStorage";
 import * as XLSX from "xlsx";
 import {
   type Lead,
@@ -269,9 +270,20 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [mappingOpen, setMappingOpen] = useState(false);
   const [importHeaders, setImportHeaders] = useState<string[]>([]);
   const [importRows, setImportRows] = useState<Record<string, string>[]>([]);
-  const [filterNiches, setFilterNiches] = useState<string[]>([]);
-  const [filterCities, setFilterCities] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const filtersKey = `p21_filters_${pipeline}`;
+  const [filterNiches, setFilterNiches] = useState<string[]>(
+    () => uload<{ niches?: string[]; cities?: string[]; search?: string }>(filtersKey, {}).niches ?? []
+  );
+  const [filterCities, setFilterCities] = useState<string[]>(
+    () => uload<{ niches?: string[]; cities?: string[]; search?: string }>(filtersKey, {}).cities ?? []
+  );
+  const [searchQuery, setSearchQuery] = useState<string>(
+    () => uload<{ niches?: string[]; cities?: string[]; search?: string }>(filtersKey, {}).search ?? ""
+  );
+
+  useEffect(() => {
+    usave(filtersKey, { niches: filterNiches, cities: filterCities, search: searchQuery });
+  }, [filtersKey, filterNiches, filterCities, searchQuery]);
 
   const refresh = useCallback(() => {
     setLeads(getLeads());
