@@ -32,13 +32,15 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
-  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search,
+  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search, LayoutGrid, List as ListIcon,
 } from "lucide-react";
+
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import LeadDetailDrawer from "@/components/LeadDetailDrawer";
+import PipelineListView from "@/components/PipelineListView";
 import BulkActionsBar from "@/components/BulkActionsBar";
 import BulkEditDialog from "@/components/BulkEditDialog";
 import ImportMappingDialog, { type LeadFieldKey } from "@/components/ImportMappingDialog";
@@ -284,6 +286,13 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   useEffect(() => {
     usave(filtersKey, { niches: filterNiches, cities: filterCities, search: searchQuery });
   }, [filtersKey, filterNiches, filterCities, searchQuery]);
+
+  const viewKey = `p21_view_${pipeline}`;
+  const [view, setView] = useState<"kanban" | "list">(
+    () => (uload<"kanban" | "list">(viewKey, "kanban") === "list" ? "list" : "kanban")
+  );
+  useEffect(() => { usave(viewKey, view); }, [viewKey, view]);
+
 
   const refresh = useCallback(() => {
     setLeads(getLeads());
@@ -594,7 +603,24 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           <p className="text-sm text-muted-foreground">{subtitle || `${pipelineLeads.length} leads`}</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="inline-flex items-center rounded-md border border-border bg-muted/40 p-0.5">
+            <button
+              onClick={() => setView("kanban")}
+              className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${view === "kanban" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              title="Visualização Kanban"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+            </button>
+            <button
+              onClick={() => setView("list")}
+              className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${view === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              title="Visualização Lista"
+            >
+              <ListIcon className="h-3.5 w-3.5" /> Lista
+            </button>
+          </div>
           {extraActions}
+
           {showImport && (
             <>
               <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
@@ -753,8 +779,37 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         onDone={() => { setSelectedIds(new Set()); refresh(); }}
       />
 
+      {view === "list" ? (
+        <PipelineListView
+          leads={pipelineLeads}
+          stages={stages}
+          selectedIds={selectedIds}
+          onToggleSelect={handleToggleSelect}
+          onToggleSelectAll={(ids) => {
+            const allSel = ids.length > 0 && ids.every((id) => selectedIds.has(id));
+            const next = new Set(selectedIds);
+            if (allSel) ids.forEach((id) => next.delete(id));
+            else ids.forEach((id) => next.add(id));
+            setSelectedIds(next);
+          }}
+          onRowClick={handleCardClick}
+          onChangeStage={(id, stage) => {
+            const result = moveLeadToStage(id, stage);
+            refresh();
+            if (result.missingContractValue) {
+              toast.warning("Lead movido para Ganho sem valor de contrato definido");
+            }
+            if (result.autoTransfer) {
+              const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
+              toast.success(`Lead transferido automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
+            }
+          }}
+          showContractValue={pipeline === "oportunidades"}
+        />
+      ) : (
       <div className="flex-1 overflow-x-auto scrollbar-thin">
         <div className="flex gap-3 h-full min-w-max pb-2">
+
           {stages.map((stage) => {
             const stageLeads = leadsByStage.get(stage) ?? [];
             return (
@@ -860,6 +915,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           </div>
         </div>
       </div>
+      )}
+
 
       <LeadDetailDrawer
         lead={selectedLead} open={drawerOpen} onOpenChange={setDrawerOpen}
