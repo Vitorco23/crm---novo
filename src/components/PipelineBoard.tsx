@@ -779,8 +779,37 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         onDone={() => { setSelectedIds(new Set()); refresh(); }}
       />
 
+      {view === "list" ? (
+        <PipelineListView
+          leads={pipelineLeads}
+          stages={stages}
+          selectedIds={selectedIds}
+          onToggleSelect={handleToggleSelect}
+          onToggleSelectAll={(ids) => {
+            const allSel = ids.length > 0 && ids.every((id) => selectedIds.has(id));
+            const next = new Set(selectedIds);
+            if (allSel) ids.forEach((id) => next.delete(id));
+            else ids.forEach((id) => next.add(id));
+            setSelectedIds(next);
+          }}
+          onRowClick={handleCardClick}
+          onChangeStage={(id, stage) => {
+            const result = moveLeadToStage(id, stage);
+            refresh();
+            if (result.missingContractValue) {
+              toast.warning("Lead movido para Ganho sem valor de contrato definido");
+            }
+            if (result.autoTransfer) {
+              const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
+              toast.success(`Lead transferido automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
+            }
+          }}
+          showContractValue={pipeline === "oportunidades"}
+        />
+      ) : (
       <div className="flex-1 overflow-x-auto scrollbar-thin">
         <div className="flex gap-3 h-full min-w-max pb-2">
+
           {stages.map((stage) => {
             const stageLeads = leadsByStage.get(stage) ?? [];
             return (
