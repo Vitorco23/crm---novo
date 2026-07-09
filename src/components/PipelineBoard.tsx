@@ -287,6 +287,13 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     usave(filtersKey, { niches: filterNiches, cities: filterCities, search: searchQuery });
   }, [filtersKey, filterNiches, filterCities, searchQuery]);
 
+  const viewKey = `p21_view_${pipeline}`;
+  const [view, setView] = useState<"kanban" | "list">(
+    () => (uload<"kanban" | "list">(viewKey, "kanban") === "list" ? "list" : "kanban")
+  );
+  useEffect(() => { usave(viewKey, view); }, [viewKey, view]);
+
+
   const refresh = useCallback(() => {
     setLeads(getLeads());
     setStages(getStagesForPipeline(pipeline));
