@@ -603,7 +603,24 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           <p className="text-sm text-muted-foreground">{subtitle || `${pipelineLeads.length} leads`}</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="inline-flex items-center rounded-md border border-border bg-muted/40 p-0.5">
+            <button
+              onClick={() => setView("kanban")}
+              className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${view === "kanban" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              title="Visualização Kanban"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+            </button>
+            <button
+              onClick={() => setView("list")}
+              className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${view === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              title="Visualização Lista"
+            >
+              <ListIcon className="h-3.5 w-3.5" /> Lista
+            </button>
+          </div>
           {extraActions}
+
           {showImport && (
             <>
               <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
