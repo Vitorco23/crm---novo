@@ -915,6 +915,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           </div>
         </div>
       </div>
+      )}
+
 
       <LeadDetailDrawer
         lead={selectedLead} open={drawerOpen} onOpenChange={setDrawerOpen}
