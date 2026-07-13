@@ -477,65 +477,85 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   };
 
   const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>) => {
-    let skipped = 0;
-    const existing = getLeads();
-    // Build dup keys once with Sets for O(1) lookup
-    const phoneSet = new Set<string>();
-    const companySet = new Set<string>();
-    const gmnSet = new Set<string>();
-    for (const l of existing) {
-      const k = { phone: (l.phone || "").replace(/\D+/g, ""), company: (l.company || "").trim().toLowerCase(), gmn: (l.gmnLink || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "") };
-      if (k.phone) phoneSet.add(k.phone);
-      if (k.company) companySet.add(k.company);
-      if (k.gmn) gmnSet.add(k.gmn);
-    }
+    try {
+      let skipped = 0;
+      const existing = getLeads();
+      // Build dup keys once with Sets for O(1) lookup
+      const phoneSet = new Set<string>();
+      const companySet = new Set<string>();
+      const gmnSet = new Set<string>();
+      for (const l of existing) {
+        const k = { phone: (l.phone || "").replace(/\D+/g, ""), company: (l.company || "").trim().toLowerCase(), gmn: (l.gmnLink || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "") };
+        if (k.phone) phoneSet.add(k.phone);
+        if (k.company) companySet.add(k.company);
+        if (k.gmn) gmnSet.add(k.gmn);
+      }
 
-    const toCreate: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage" | "attachments">[] = [];
-    importRows.forEach((row) => {
-      const get = (k: LeadFieldKey) => {
-        const col = mapping[k];
-        if (!col || col === "__none__") return "";
-        return (row[col] || "").trim();
-      };
-      const company = get("company");
-      if (!company) return;
-      const phone = get("phone");
-      const gmnLink = get("gmnLink");
-      const kPhone = phone.replace(/\D+/g, "");
-      const kCompany = company.trim().toLowerCase();
-      const kGmn = gmnLink.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-      if ((kPhone && phoneSet.has(kPhone)) || (kCompany && companySet.has(kCompany)) || (kGmn && gmnSet.has(kGmn))) {
-        skipped++;
+      const toCreate: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage" | "attachments">[] = [];
+      importRows.forEach((row) => {
+        const get = (k: LeadFieldKey) => {
+          const col = mapping[k];
+          if (!col || col === "__none__") return "";
+          return (row[col] || "").trim();
+        };
+        const company = get("company");
+        if (!company) return;
+        const phone = get("phone");
+        const gmnLink = get("gmnLink");
+        const kPhone = phone.replace(/\D+/g, "");
+        const kCompany = company.trim().toLowerCase();
+        const kGmn = gmnLink.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+        if ((kPhone && phoneSet.has(kPhone)) || (kCompany && companySet.has(kCompany)) || (kGmn && gmnSet.has(kGmn))) {
+          skipped++;
+          return;
+        }
+        if (kPhone) phoneSet.add(kPhone);
+        if (kCompany) companySet.add(kCompany);
+        if (kGmn) gmnSet.add(kGmn);
+        toCreate.push({
+          company,
+          contact: get("contact"),
+          phone,
+          niche: get("niche"),
+          city: get("city"),
+          gmnLink,
+          instagramLink: get("instagramLink"),
+          notes: get("notes"),
+          icpStars: 2 as ICPStars,
+          runsAds: false,
+        });
+      });
+
+      const initialStage = stages[0];
+      if (!initialStage) {
+        toast.error("Nenhuma etapa disponível neste pipeline. Crie uma etapa antes de importar.");
         return;
       }
-      if (kPhone) phoneSet.add(kPhone);
-      if (kCompany) companySet.add(kCompany);
-      if (kGmn) gmnSet.add(kGmn);
-      toCreate.push({
-        company,
-        contact: get("contact"),
-        phone,
-        niche: get("niche"),
-        city: get("city"),
-        gmnLink,
-        instagramLink: get("instagramLink"),
-        notes: get("notes"),
-        icpStars: 2 as ICPStars,
-        runsAds: false,
-      });
-    });
-    if (toCreate.length > 0) addLeadsBatch(toCreate, stages[0]);
-    const count = toCreate.length;
-    setMappingOpen(false);
-    setImportHeaders([]);
-    setImportRows([]);
-    refresh();
-    if (skipped > 0) {
-      toast.success(`${count} leads importados • ${skipped} duplicado(s) ignorado(s)`);
-    } else {
-      toast.success(`${count} leads importados!`);
+
+      if (toCreate.length > 0) addLeadsBatch(toCreate, initialStage);
+      const count = toCreate.length;
+      setMappingOpen(false);
+      setImportHeaders([]);
+      setImportRows([]);
+      refresh();
+      if (count === 0 && skipped === 0) {
+        toast.warning("Nenhum lead válido encontrado. Verifique se a coluna de Nome da Empresa está preenchida.");
+      } else if (skipped > 0) {
+        toast.success(`${count} leads importados • ${skipped} duplicado(s) ignorado(s)`);
+      } else {
+        toast.success(`${count} leads importados!`);
+      }
+    } catch (err) {
+      console.error("[import] failed:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/quota|exceed/i.test(msg)) {
+        toast.error("Armazenamento local cheio. Exclua leads antigos e tente novamente.");
+      } else {
+        toast.error(`Erro ao importar: ${msg}`);
+      }
     }
   };
+
 
   const handleDedupe = () => {
     const removed = dedupeLeads();

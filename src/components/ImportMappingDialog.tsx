@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -67,11 +67,13 @@ interface Props {
 }
 
 export default function ImportMappingDialog({ open, onOpenChange, headers, rows, onConfirm }: Props) {
-  const initial = useMemo(() => autoDetect(headers), [headers]);
-  const [mapping, setMapping] = useState<Record<LeadFieldKey, string>>(initial);
+  const [mapping, setMapping] = useState<Record<LeadFieldKey, string>>(() => autoDetect(headers));
 
-  // reset when headers change
-  useMemo(() => setMapping(autoDetect(headers)), [headers]);
+  // reset when a new file is opened (headers change)
+  useEffect(() => {
+    setMapping(autoDetect(headers));
+  }, [headers]);
+
 
   const previewRows = rows.slice(0, 3);
   const companyMapped = mapping.company && mapping.company !== NONE;
