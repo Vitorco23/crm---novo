@@ -99,6 +99,13 @@ export default function Auth() {
                 <Button type="submit" className="w-full" disabled={busy}>
                   {busy ? "Entrando…" : "Entrar"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
+                  className="w-full text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                >
+                  Esqueci minha senha
+                </button>
               </form>
             </TabsContent>
 
