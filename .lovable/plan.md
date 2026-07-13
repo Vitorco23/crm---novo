@@ -1,51 +1,40 @@
-# Por que está travando
+## Objetivo
 
-Investigando o código, encontrei 5 gargalos que se somam quando você tem 2.000+ leads:
+Aumentar drasticamente o limite de leads no CRM (hoje ~2-5 mil leads dependendo do navegador) **sem mudar nenhum comportamento visível**: mesmos pipelines, mesmos filtros, mesma importação, mesmo sync com a nuvem, mesmos dados já salvos.
 
-1. **Cada ação reescreve TODA a lista de leads.** Funções como `addLead`, `updateLead`, `deleteLead`, `moveLeadToStage` chamam `getLeads()` (parse do JSON inteiro) → modificam → `saveLeads()` (stringify do JSON inteiro). Com 2k leads, cada ação serializa ~vários MB.
+## Diagnóstico
 
-2. **Cada save dispara um upload completo para a nuvem** (`cloudPush` em `userStorage.ts`). Sem debounce. Mover 1 lead = mandar a lista inteira para o servidor. Ações em rajada (importar, bulk move) = dezenas de uploads pesados em paralelo travando a aba.
+Hoje tudo é salvo em `localStorage` via `uload`/`usave` (`src/lib/userStorage.ts`). O `localStorage` do navegador tem um teto rígido de **~5MB por origem** (10MB no Chrome). Com ~2000 leads + importações grandes (ex.: 607 novos de uma vez) esse teto estoura e dispara `QuotaExceededError` — é exatamente o erro que já apareceu no bug do botão "Importar" recentemente.
 
-3. **Bulk actions são O(n) de saves.** `handleBulkMove`, `handleBulkDelete`, `BulkEditDialog` e o importador iteram chamando `moveLeadToStage`/`updateLead`/`addLead` um por um. 100 leads selecionados = 100 reads + 100 writes + 100 uploads completos.
+Aumentar o limite significa trocar o backend local por um que aguenta centenas de MB: **IndexedDB** (padrão dos navegadores, cabem GBs). A nuvem (`user_storage` no Lovable Cloud) continua igual como fonte de verdade entre dispositivos.
 
-4. **`syncFromCloud` roda em todo evento de auth** (`TOKEN_REFRESHED`, foco da janela, etc.), baixando tudo de novo e reescrevendo o cache local.
+## O que muda (interno, invisível pro usuário)
 
-5. **`niches`/`cities`/`pipelineLeads` recalculam a cada render** sem `useMemo`, varrendo todos os leads várias vezes por render.
+1. **Novo módulo `src/lib/idbCache.ts`** — wrapper mínimo em IndexedDB (uma object store `kv` com chave `u:<userId>:<key>`). Sem dependências externas.
+2. **`src/lib/userStorage.ts`** — as chaves "pesadas" (`p21_leads`, `p21_movements`, `p21_sessions`, `p21_meetings`) passam a ler/gravar no IndexedDB; as leves continuam em `localStorage` (metas, stages, tarefas diárias, etc., que já cabem tranquilo).
+   - `uload` vira async internamente, mas mantemos uma **camada síncrona em memória** (hidratada no boot) pra não quebrar nenhum componente que hoje chama `uload(...)` de forma síncrona (`PipelineBoard`, `Dashboard`, `Metas`, etc.). Ou seja: nenhum arquivo de UI precisa ser tocado.
+   - `usave` continua síncrono do ponto de vista do chamador: atualiza a cache em memória na hora e persiste no IndexedDB em background (mesmo padrão do debounce que já existe pra nuvem).
+3. **Migração automática, uma vez por usuário:** no primeiro login após o update, se houver dados dessas chaves em `localStorage`, eles são copiados pro IndexedDB e removidos do `localStorage` (libera o espaço travado). Marcador `p21_idb_migrated_<uid>` evita rodar de novo.
+4. **Sync com a nuvem (`syncFromCloud`, `cloudPush`, `cloudDelete`)** continua igual — só muda a fonte local (IDB em vez de LS) pras chaves pesadas.
+5. **Tratamento de erro do Import** continua com o `try/catch` já adicionado, mas o `QuotaExceededError` praticamente deixa de acontecer.
 
-# O que vou fazer
+## O que NÃO muda
 
-## 1. Reescrever camada de storage (`src/lib/userStorage.ts`)
-- Adicionar **debounce de ~800ms** em `cloudPush` por chave: várias chamadas seguidas viram 1 upload com o último valor.
-- Coalescer uploads em background (não bloqueia UI; já é fire-and-forget, mas o `JSON.stringify` agora roda só 1 vez por rajada).
-- Limitar `syncFromCloud` para rodar **apenas no `SIGNED_IN` inicial** (e não em `TOKEN_REFRESHED`/refoco), evitando re-downloads desnecessários.
+- Nada de UI, componente, filtro, pipeline, etapa, importação, lead, campo, meta, financeiro, pomodoro.
+- Assinaturas de `uload`/`usave`/`uremove` continuam idênticas pros componentes.
+- Cloud sync (`user_storage`), auth, e todas as outras chaves continuam iguais.
+- Dados atuais do usuário são preservados (migração automática).
 
-## 2. APIs em lote no `src/lib/store.ts`
-Adicionar funções que fazem **1 read + 1 write** para N leads:
-- `updateLeadsBatch(ids, updater)` — usado por `BulkEditDialog` e `handleBulkMove`.
-- `deleteLeadsBatch(ids)` — usado por `handleBulkDelete`.
-- `addLeadsBatch(leads, stage)` — usado pelo importador (substitui o loop de `addLead`).
-- `moveLeadsToStageBatch(ids, stage)` — usa lote + dispara movement events de uma vez.
+## Resultado
 
-## 3. Atualizar componentes para usar as APIs em lote
-- `PipelineBoard.tsx`: `handleBulkMove`, `handleBulkDelete`, `handleConfirmMapping` (importação) passam a chamar as funções batch.
-- `BulkEditDialog.tsx`: troca o loop de `updateLead` por uma única chamada `updateLeadsBatch`.
+- Teto prático de leads passa de ~poucos milhares para dezenas/centenas de milhares (limitado só pela performance de render do Kanban, não pelo storage).
+- Importações grandes deixam de estourar quota.
+- Zero mudança perceptível no dia a dia.
 
-## 4. Memoizar derivações pesadas em `PipelineBoard.tsx`
-- `useMemo` em `allPipelineLeads`, `niches`, `cities`, `pipelineLeads`.
-- `useMemo` para o agrupamento `leads por stage` (hoje filtra leads dentro do `stages.map`, gerando O(stages × leads) por render).
-- `useCallback` nos handlers passados para `LeadCard` para evitar re-render de todos os cards quando muda 1 seleção.
+## Arquivos afetados
 
-## 5. Otimizar `dedupeLeads` (O(n²) hoje)
-Trocar pelo uso de 3 `Map`s (telefone/empresa/gmn) para ficar O(n).
+- `src/lib/idbCache.ts` (novo, ~60 linhas)
+- `src/lib/userStorage.ts` (editado: cache em memória + roteamento IDB p/ chaves pesadas + migração)
+- `src/main.tsx` **ou** `src/contexts/AuthContext.tsx` (hidratação da cache no login, antes de renderizar as rotas protegidas — pra manter `uload` síncrono)
 
-# Resultado esperado
-
-- Adicionar/mover/editar 1 lead deixa de re-uploadar a lista inteira a cada clique.
-- Bulk de 100 leads: 1 write local + 1 upload (em vez de 100+100).
-- Importar 500 leads: 1 write + 1 upload no fim (em vez de 500+500).
-- UI deixa de re-renderizar todos os cards a cada seleção.
-
-# Fora do escopo (posso fazer depois se quiser)
-
-- Migrar `p21_leads` de "1 linha JSON gigante" para "1 linha por lead" no `user_storage` (resolveria de vez o custo do payload na nuvem, mas exige migração de dados e mudanças maiores).
-- Virtualização da lista de cards (só vira gargalo de render se uma coluna tiver centenas de cards visíveis).
+Nenhum outro arquivo precisa ser tocado.

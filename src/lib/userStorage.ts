@@ -1,12 +1,11 @@
 // ===== User-scoped storage with Lovable Cloud sync =====
-// Local cache: localStorage prefixed with `u:<userId>:`.
-// Cloud source of truth: `public.user_storage` table (one row per key per user).
-//
-// On login we pull all keys from cloud into the local cache (and push any
-// local-only legacy keys up). On every save we write locally AND upsert to the
-// cloud asynchronously so other devices can pick it up on their next login.
+// Local cache: heavy keys (leads, movements, sessions, meetings) live in
+// IndexedDB fronted by an in-memory cache so `uload`/`usave` can stay
+// synchronous for callers. Light keys stay in localStorage.
+// Cloud source of truth: `public.user_storage` table.
 
 import { supabase } from "@/integrations/supabase/client";
+import { idbGet, idbSet, idbDelete } from "./idbCache";
 
 const ADMIN_EMAIL = "admin@p21.local";
 
@@ -26,6 +25,21 @@ const SCOPED_KEYS = [
   "p21_daily_checks",
 ];
 
+// Big / write-heavy keys — moved to IndexedDB to avoid the ~5MB localStorage
+// quota. Everything else stays in localStorage (small, low-churn).
+const HEAVY_KEYS = new Set([
+  "p21_leads",
+  "p21_movements",
+  "p21_sessions",
+  "p21_meetings",
+]);
+
+const isHeavy = (key: string) => HEAVY_KEYS.has(key);
+
+// In-memory cache for heavy keys so `uload` stays synchronous.
+// Values are JSON strings (same shape as localStorage).
+const memCache = new Map<string, string>();
+
 let currentUserId: string | null = null;
 
 export function setCurrentUser(userId: string | null, email?: string | null) {
@@ -33,7 +47,8 @@ export function setCurrentUser(userId: string | null, email?: string | null) {
   if (userId) {
     localStorage.setItem("p21_current_user_id", userId);
     if (email) localStorage.setItem("p21_current_user_email", email);
-    // Migrate legacy unprefixed keys to admin's namespace on first login
+    // Migrate legacy unprefixed keys to admin's namespace on first login.
+    // These land in localStorage; hydrateLocal() will move heavy ones to IDB.
     if (email === ADMIN_EMAIL && !localStorage.getItem(`p21_migrated_${userId}`)) {
       for (const k of SCOPED_KEYS) {
         const legacy = localStorage.getItem(k);
@@ -46,6 +61,7 @@ export function setCurrentUser(userId: string | null, email?: string | null) {
   } else {
     localStorage.removeItem("p21_current_user_id");
     localStorage.removeItem("p21_current_user_email");
+    memCache.clear();
   }
 }
 
@@ -61,9 +77,34 @@ function scopedKey(key: string): string {
   return `u:${uid}:${key}`;
 }
 
+// Low-level scoped read/write that respects the heavy/light routing.
+function readScoped(scoped: string, heavy: boolean): string | null {
+  if (heavy) return memCache.has(scoped) ? memCache.get(scoped)! : null;
+  return localStorage.getItem(scoped);
+}
+
+function writeScoped(scoped: string, val: string, heavy: boolean) {
+  if (heavy) {
+    memCache.set(scoped, val);
+    // fire-and-forget — durability comes from the mem cache + IDB write
+    void idbSet(scoped, val);
+  } else {
+    localStorage.setItem(scoped, val);
+  }
+}
+
+function deleteScoped(scoped: string, heavy: boolean) {
+  if (heavy) {
+    memCache.delete(scoped);
+    void idbDelete(scoped);
+  } else {
+    localStorage.removeItem(scoped);
+  }
+}
+
 export function uload<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(scopedKey(key));
+    const raw = readScoped(scopedKey(key), isHeavy(key));
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
     return fallback;
@@ -71,14 +112,41 @@ export function uload<T>(key: string, fallback: T): T {
 }
 
 export function usave<T>(key: string, data: T) {
-  localStorage.setItem(scopedKey(key), JSON.stringify(data));
-  // Push to cloud (debounced, fire-and-forget). Only sync known keys.
+  const str = JSON.stringify(data);
+  writeScoped(scopedKey(key), str, isHeavy(key));
   if (SCOPED_KEYS.includes(key)) scheduleCloudPush(key, data);
 }
 
 export function uremove(key: string) {
-  localStorage.removeItem(scopedKey(key));
+  deleteScoped(scopedKey(key), isHeavy(key));
   if (SCOPED_KEYS.includes(key)) cloudDelete(key);
+}
+
+// ===== Local hydration (IndexedDB -> memCache, + one-time LS->IDB migration) =====
+
+export async function hydrateLocal(): Promise<void> {
+  const uid = getCurrentUserId();
+  if (!uid) return;
+  for (const k of HEAVY_KEYS) {
+    const scoped = `u:${uid}:${k}`;
+    let val: string | null = null;
+    try {
+      val = await idbGet(scoped);
+    } catch {}
+    // First-run migration: pull existing localStorage payload into IDB,
+    // then free the localStorage slot to unblock quota.
+    if (val == null) {
+      const ls = localStorage.getItem(scoped);
+      if (ls != null) {
+        val = ls;
+        try {
+          await idbSet(scoped, ls);
+          localStorage.removeItem(scoped);
+        } catch {}
+      }
+    }
+    if (val != null) memCache.set(scoped, val);
+  }
 }
 
 // ===== Cloud sync (debounced) =====
@@ -97,8 +165,6 @@ function scheduleCloudPush(key: string, data: unknown) {
   pendingPushes.set(key, { data, timer });
 }
 
-// Flush pending pushes when the tab is hidden/closed so we don't lose the
-// last edit if the user navigates away within the debounce window.
 if (typeof window !== "undefined") {
   window.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushPendingPushes();
@@ -163,9 +229,13 @@ export async function syncFromCloud(): Promise<boolean> {
       (typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0);
 
     for (const k of SCOPED_KEYS) {
-      const scopedRaw = localStorage.getItem(`u:${uid}:${k}`);
-      const legacyRaw = localStorage.getItem(k); // pre-migration unprefixed
-      // Pick the best LOCAL candidate (prefer non-empty)
+      const heavy = isHeavy(k);
+      const scoped = `u:${uid}:${k}`;
+      // Best local candidate: scoped store (mem for heavy, LS for light).
+      // Also check legacy unprefixed LS as a fallback.
+      const scopedRaw = readScoped(scoped, heavy);
+      const legacyRaw = localStorage.getItem(k);
+
       let localRaw: string | null = scopedRaw;
       try {
         const scopedParsed = scopedRaw ? JSON.parse(scopedRaw) : null;
@@ -183,20 +253,15 @@ export async function syncFromCloud(): Promise<boolean> {
       try { localParsed = localRaw ? JSON.parse(localRaw) : null; } catch {}
       const localEmpty = isEmpty(localParsed);
 
-      // Decide source of truth:
-      // - If cloud has data and local is empty -> use cloud
-      // - If local has data and cloud is empty/missing -> push local to cloud
-      // - If both have data -> use cloud (last writer wins, normal sync)
-      // - If both empty -> nothing
       if (!cloudEmpty && cloudHas) {
         const cloudStr = JSON.stringify(cloudVal);
         if (scopedRaw !== cloudStr) {
-          localStorage.setItem(`u:${uid}:${k}`, cloudStr);
+          writeScoped(scoped, cloudStr, heavy);
           changed = true;
         }
       } else if (!localEmpty) {
         // Restore: push the non-empty local (possibly recovered from legacy) to cloud
-        localStorage.setItem(`u:${uid}:${k}`, localRaw!);
+        writeScoped(scoped, localRaw!, heavy);
         changed = true;
         try {
           await supabase.from("user_storage").upsert(

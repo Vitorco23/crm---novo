@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
-import { setCurrentUser, syncFromCloud } from "@/lib/userStorage";
+import { setCurrentUser, syncFromCloud, hydrateLocal } from "@/lib/userStorage";
 
 const ADMIN_EMAIL = "admin@p21.local";
 
@@ -35,10 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Only sync on actual sign-in events, not on TOKEN_REFRESHED / focus rehydrations
       if (s?.user && event === "SIGNED_IN" && syncedForUser !== s.user.id) {
         syncedForUser = s.user.id;
-        setTimeout(() => {
-          syncFromCloud().then((changed) => {
-            if (changed) window.dispatchEvent(new Event("p21:storage-synced"));
-          });
+        setTimeout(async () => {
+          await hydrateLocal();
+          const changed = await syncFromCloud();
+          if (changed) window.dispatchEvent(new Event("p21:storage-synced"));
         }, 0);
       }
       if (!s?.user) syncedForUser = null;
@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCurrentUser(s?.user?.id ?? null, s?.user?.email ?? null);
       if (s?.user && syncedForUser !== s.user.id) {
         syncedForUser = s.user.id;
+        await hydrateLocal();
         const changed = await syncFromCloud();
         if (changed) window.dispatchEvent(new Event("p21:storage-synced"));
       }
