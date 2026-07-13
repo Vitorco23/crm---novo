@@ -30,25 +30,11 @@ export default function ResetPassword() {
     if (password.length < 6) return toast.error("Senha precisa ter ao menos 6 caracteres");
     if (password !== confirm) return toast.error("As senhas não conferem");
     setBusy(true);
-    const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase.auth.updateUser({ password });
     setBusy(false);
     if (error) {
       toast.error(error.message);
       return;
-    }
-    // Fire-and-forget notification email
-    if (userData.user?.email) {
-      supabase.functions
-        .invoke("send-transactional-email", {
-          body: {
-            templateName: "password-changed",
-            recipientEmail: userData.user.email,
-            idempotencyKey: `pw-changed-${userData.user.id}-${Date.now()}`,
-            templateData: { email: userData.user.email },
-          },
-        })
-        .catch(() => {});
     }
     toast.success("Senha atualizada!");
     navigate("/", { replace: true });
