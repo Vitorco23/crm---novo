@@ -3,6 +3,8 @@ import { addSession } from "@/lib/store";
 
 interface TallyCounts {
   calls: number;
+  connections: number;
+  decisionMakers: number;
   messages: number;
   meetings: number;
 }
