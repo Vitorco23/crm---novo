@@ -37,7 +37,12 @@ function loadState(): PomodoroState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_STATE;
-    return { ...DEFAULT_STATE, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    return {
+      ...DEFAULT_STATE,
+      ...parsed,
+      tally: { ...DEFAULT_TALLY, ...(parsed?.tally ?? {}) },
+    };
   } catch {
     return DEFAULT_STATE;
   }
