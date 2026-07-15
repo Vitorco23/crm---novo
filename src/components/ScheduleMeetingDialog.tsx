@@ -26,10 +26,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onScheduled?: () => void;
 }
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onScheduled?: () => void;
-}
+
 
 const todayISO = () => new Date().toISOString().split("T")[0];
 const browserTZ = () =>
