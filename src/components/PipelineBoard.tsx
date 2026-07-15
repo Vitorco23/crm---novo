@@ -32,7 +32,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
-  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search, LayoutGrid, List as ListIcon,
+  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search, LayoutGrid, List as ListIcon, Download,
 } from "lucide-react";
 
 import { formatDistanceToNow } from "date-fns";
@@ -875,6 +875,30 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                   <div className="flex items-center gap-1 shrink-0">
                     {editingStage !== stage && (
                       <>
+                        {pipeline === "cold_call" && (
+                          <button
+                            onClick={() => {
+                              const rows = stageLeads
+                                .map((l) => (l.phone || "").replace(/\D+/g, ""))
+                                .filter((p) => p.length > 0)
+                                .map((p) => [p]);
+                              if (rows.length === 0) {
+                                toast.error("Nenhum número para exportar nesta etapa");
+                                return;
+                              }
+                              const ws = XLSX.utils.aoa_to_sheet(rows);
+                              const wb = XLSX.utils.book_new();
+                              XLSX.utils.book_append_sheet(wb, ws, "Numeros");
+                              const safe = stage.replace(/[^\w\-]+/g, "_");
+                              XLSX.writeFile(wb, `numeros_${safe}.xlsx`);
+                              toast.success(`${rows.length} número(s) exportado(s)`);
+                            }}
+                            className="text-muted-foreground/60 hover:text-accent"
+                            title="Exportar números (Excel)"
+                          >
+                            <Download className="h-3 w-3" />
+                          </button>
+                        )}
                         <button onClick={() => startEditStage(stage)} className="text-muted-foreground/60 hover:text-accent" title="Renomear">
                           <Pencil className="h-3 w-3" />
                         </button>
@@ -889,6 +913,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                       {stageLeads.length}
                     </span>
                   </div>
+
                 </div>
                 {pipeline === "oportunidades" && (
                   <p className="text-[10px] font-medium text-accent px-1 -mt-1 mb-2">
