@@ -26,10 +26,31 @@ export default function Dashboard() {
   const leads = getLeads();
   const sessions = getSessions();
   const movements = getMovementEvents();
+  const meetings = getMeetings();
 
   const filteredLeads = useMemo(() => leads.filter((l) => filterByDate(l.createdAt, filter)), [leads, filter]);
   const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter)), [sessions, filter]);
   const filteredMovements = useMemo(() => movements.filter((m) => filterByDate(m.timestamp, filter)), [movements, filter]);
+  const filteredMeetings = useMemo(
+    () => meetings.filter((m) => filterByDate(`${m.date}T${m.time || "00:00"}`, filter)),
+    [meetings, filter]
+  );
+
+  // Meetings by source
+  const meetingsBySource = useMemo(() => {
+    const acc: Record<string, number> = { "Ligação": 0, "Disparo": 0, "Instagram": 0, "Email": 0 };
+    filteredMeetings.forEach((m) => {
+      const s = m.source || "Ligação"; // legacy meetings assumed as Ligação
+      acc[s] = (acc[s] || 0) + 1;
+    });
+    return acc;
+  }, [filteredMeetings]);
+
+  const callMeetings = meetingsBySource["Ligação"] || 0;
+  const otherChannelsMeetings =
+    (meetingsBySource["Disparo"] || 0) +
+    (meetingsBySource["Instagram"] || 0) +
+    (meetingsBySource["Email"] || 0);
 
   const movementCalls = filteredMovements.filter((m) => m.type === "call").length;
   const movementMeetings = filteredMovements.filter((m) => m.type === "meeting").length;
