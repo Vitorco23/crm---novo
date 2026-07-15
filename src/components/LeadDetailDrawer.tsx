@@ -1,8 +1,9 @@
 import {
-  type Lead, type ICPStars, type PipelineName,
+  type Lead, type ICPStars, type PipelineName, type MeetingSource,
   addAttachment, removeAttachment, updateLead,
   addCallNote, removeCallNote, getMeetingsForLead,
   getPipelineForStage, getStagesForPipeline, moveLeadToStage,
+  updateMeetingSource,
 } from "@/lib/store";
 import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/lib/finance";
 import {
