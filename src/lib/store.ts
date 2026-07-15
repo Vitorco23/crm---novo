@@ -75,6 +75,8 @@ export interface Lead {
   serviceType?: string;
 }
 
+export type MeetingSource = "Ligação" | "Disparo" | "Instagram" | "Email";
+
 export interface Meeting {
   id: string;
   leadId: string;
@@ -83,6 +85,7 @@ export interface Meeting {
   time: string; // HH:mm
   contactName?: string;
   channel?: "Google Meet" | "Zoom" | "Presencial" | "Telefone" | "Outro";
+  source?: MeetingSource; // canal pelo qual a reunião veio
   link?: string;
   notes?: string;
   attendeeEmail?: string;
