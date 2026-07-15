@@ -119,6 +119,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
         time,
         contactName: contactName.trim() || lead.contact,
         channel,
+        source,
         link: googleData.meetLink || link.trim(),
         notes: notes.trim(),
         attendeeEmail: attendeeEmail.trim() || undefined,
