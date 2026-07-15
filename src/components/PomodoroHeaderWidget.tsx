@@ -64,6 +64,24 @@ export function PomodoroHeaderWidget() {
         </button>
         <button
           type="button"
+          onClick={() => incrementTally("connections")}
+          title="Registrar conexão (atenderam)"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <Users className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.connections}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => incrementTally("decisionMakers")}
+          title="Registrar decisor (falei com o responsável)"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <UserCheck className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.decisionMakers}</span>
+        </button>
+        <button
+          type="button"
           onClick={() => incrementTally("messages")}
           title="Registrar mensagem"
           className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
