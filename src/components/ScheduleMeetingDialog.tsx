@@ -16,12 +16,16 @@ import { Button as UIButton } from "@/components/ui/button";
 import { CalendarCheck, CalendarIcon, Loader2, Video } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { scheduleMeeting, type Lead, type Meeting } from "@/lib/store";
+import { scheduleMeeting, type Lead, type Meeting, type MeetingSource } from "@/lib/store";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   lead: Lead | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onScheduled?: () => void;
+}
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onScheduled?: () => void;
