@@ -233,6 +233,22 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
           </div>
 
           <div>
+            <Label className="text-xs">Por qual canal essa reunião veio? *</Label>
+            <Select value={source} onValueChange={(v) => setSource(v as MeetingSource)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Ligação">Ligação</SelectItem>
+                <SelectItem value="Disparo">Disparo</SelectItem>
+                <SelectItem value="Instagram">Instagram</SelectItem>
+                <SelectItem value="Email">Email</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Ligação entra no funil de outreach. Os outros entram no funil de canais alternativos.
+            </p>
+          </div>
+
+          <div>
             <Label className="text-xs">Canal</Label>
             <Select value={channel} onValueChange={(v) => setChannel(v as NonNullable<Meeting["channel"]>)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
