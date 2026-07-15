@@ -41,6 +41,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
   const [contactName, setContactName] = useState("");
   const [attendeeEmail, setAttendeeEmail] = useState("");
   const [channel, setChannel] = useState<NonNullable<Meeting["channel"]>>("Google Meet");
+  const [source, setSource] = useState<MeetingSource>("Ligação");
   const [link, setLink] = useState("");
   const [notes, setNotes] = useState("");
   const [syncToGoogle, setSyncToGoogle] = useState(true);
