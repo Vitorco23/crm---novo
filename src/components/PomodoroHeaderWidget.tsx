@@ -1,6 +1,6 @@
 import { usePomodoro } from "@/contexts/PomodoroContext";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Timer, Phone, MessageSquare, CalendarCheck } from "lucide-react";
+import { Play, Pause, Square, Timer, Phone, Users, UserCheck, MessageSquare, CalendarCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
 function fmt(sec: number) {
@@ -19,7 +19,7 @@ export function PomodoroHeaderWidget() {
 
   const isRunning = state.startedAt != null && (state.phase === "focus" || state.phase === "break");
   const isPaused = state.pausedRemaining != null;
-  const tally = state.tally ?? { calls: 0, messages: 0, meetings: 0 };
+  const tally = state.tally ?? { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0 };
 
   return (
     <div className="flex items-center gap-2">
@@ -61,6 +61,24 @@ export function PomodoroHeaderWidget() {
         >
           <Phone className="h-3.5 w-3.5 text-accent" />
           <span className="text-xs font-bold tabular-nums text-foreground">{tally.calls}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => incrementTally("connections")}
+          title="Registrar conexão (atenderam)"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <Users className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.connections}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => incrementTally("decisionMakers")}
+          title="Registrar decisor (falei com o responsável)"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <UserCheck className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.decisionMakers}</span>
         </button>
         <button
           type="button"

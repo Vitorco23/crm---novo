@@ -182,6 +182,50 @@ export default function Dashboard() {
       <UpcomingMeetingsBlock />
 
 
+      {/* Funil de Outreach (Pomodoro) */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Funil de Outreach (Pomodoro)</CardTitle></CardHeader>
+        <CardContent>
+          {(() => {
+            const outreachStages = [
+              { name: "Ligações", value: totalCalls },
+              { name: "Conexões", value: sessionConnections },
+              { name: "Decisores", value: sessionDecisionMakers },
+              { name: "Reuniões Marcadas", value: totalMeetings },
+            ];
+            const maxVal = outreachStages[0].value || 1;
+            if (outreachStages.every((s) => s.value === 0)) {
+              return <p className="text-sm text-muted-foreground py-8 text-center">Sem atividade de outreach no período.</p>;
+            }
+            return (
+              <div className="space-y-1.5">
+                {outreachStages.map((s, i) => {
+                  const pct = maxVal > 0 ? Math.round((s.value / maxVal) * 100) : 0;
+                  const prev = i > 0 ? outreachStages[i - 1].value : 0;
+                  const rate = i > 0 && prev > 0 ? Math.round((s.value / prev) * 100) : null;
+                  const hue = 78 + i * 20;
+                  return (
+                    <div key={s.name} className="flex items-center gap-2 text-xs">
+                      <span className="w-40 truncate text-muted-foreground">{s.name}</span>
+                      <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
+                        <div
+                          className="h-full rounded-sm transition-all duration-500"
+                          style={{ width: `${pct}%`, backgroundColor: `hsl(${hue} 50% ${47 - i * 2}%)` }}
+                        />
+                      </div>
+                      <span className="w-10 text-right font-medium text-foreground tabular-nums">{s.value}</span>
+                      <span className="w-24 text-[10px] text-center px-1.5 py-0.5 rounded border tabular-nums border-transparent text-muted-foreground/60">
+                        {rate != null ? `${rate}% conv.` : "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Funil (Cold Call → Oportunidades)</CardTitle></CardHeader>

@@ -13,8 +13,8 @@ export function PomodoroSessionFormDialog() {
   useEffect(() => {
     if (showForm) setForm({
       calls: state.tally?.calls ?? 0,
-      connections: 0,
-      decisionMakers: 0,
+      connections: state.tally?.connections ?? 0,
+      decisionMakers: state.tally?.decisionMakers ?? 0,
       meetings: state.tally?.meetings ?? 0,
       niche: state.niche || "",
     });

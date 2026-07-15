@@ -3,6 +3,8 @@ import { addSession } from "@/lib/store";
 
 interface TallyCounts {
   calls: number;
+  connections: number;
+  decisionMakers: number;
   messages: number;
   meetings: number;
 }
@@ -19,7 +21,7 @@ interface PomodoroState {
 
 const STORAGE_KEY = "p21_pomodoro_state";
 
-const DEFAULT_TALLY: TallyCounts = { calls: 0, messages: 0, meetings: 0 };
+const DEFAULT_TALLY: TallyCounts = { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0 };
 
 const DEFAULT_STATE: PomodoroState = {
   startedAt: null,
