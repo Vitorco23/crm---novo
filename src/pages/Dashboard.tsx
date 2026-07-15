@@ -249,7 +249,67 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Reuniões por Canal (Disparo / Instagram / Email) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Reuniões por Canal Alternativo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {otherChannelsMeetings === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Sem reuniões marcadas por Disparo, Instagram ou Email no período.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {([
+                  { key: "Disparo", icon: Send, hue: 200 },
+                  { key: "Instagram", icon: Instagram, hue: 320 },
+                  { key: "Email", icon: Mail, hue: 40 },
+                ] as const).map(({ key, icon: Icon, hue }) => (
+                  <div key={key} className="rounded-md border border-border bg-muted/30 p-3">
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                      <Icon className="h-3.5 w-3.5" style={{ color: `hsl(${hue} 50% 55%)` }} />
+                      {key}
+                    </div>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">
+                      {meetingsBySource[key] || 0}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1.5">
+                {(["Disparo", "Instagram", "Email"] as const).map((k, i) => {
+                  const v = meetingsBySource[k] || 0;
+                  const pct = otherChannelsMeetings > 0 ? Math.round((v / otherChannelsMeetings) * 100) : 0;
+                  const hue = [200, 320, 40][i];
+                  return (
+                    <div key={k} className="flex items-center gap-2 text-xs">
+                      <span className="w-24 truncate text-muted-foreground">{k}</span>
+                      <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
+                        <div
+                          className="h-full rounded-sm transition-all duration-500"
+                          style={{ width: `${pct}%`, backgroundColor: `hsl(${hue} 50% 50%)` }}
+                        />
+                      </div>
+                      <span className="w-10 text-right font-medium text-foreground tabular-nums">{v}</span>
+                      <span className="w-16 text-[10px] text-right tabular-nums text-muted-foreground/70">
+                        {pct}% do total
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border">
+                Total de reuniões por canais alternativos: <span className="font-medium text-foreground">{otherChannelsMeetings}</span> · Ligação: <span className="font-medium text-foreground">{callMeetings}</span>
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Funil (Cold Call → Oportunidades)</CardTitle></CardHeader>
           <CardContent>
