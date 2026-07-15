@@ -1,6 +1,6 @@
 import { usePomodoro } from "@/contexts/PomodoroContext";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Timer, Phone, MessageSquare, CalendarCheck } from "lucide-react";
+import { Play, Pause, Square, Timer, Phone, Users, UserCheck, MessageSquare, CalendarCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
 function fmt(sec: number) {
