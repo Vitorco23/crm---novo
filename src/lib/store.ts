@@ -559,6 +559,15 @@ export function saveMeetings(meetings: Meeting[]) {
   saveToStorage("p21_meetings", meetings);
 }
 
+export function updateMeetingSource(meetingId: string, source: MeetingSource) {
+  const meetings = getMeetings();
+  const idx = meetings.findIndex((m) => m.id === meetingId);
+  if (idx !== -1) {
+    meetings[idx] = { ...meetings[idx], source };
+    saveMeetings(meetings);
+  }
+}
+
 export function scheduleMeeting(
   leadId: string,
   data: Omit<Meeting, "id" | "leadId" | "company" | "createdAt">
