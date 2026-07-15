@@ -187,11 +187,13 @@ export default function Dashboard() {
         <CardHeader className="pb-2"><CardTitle className="text-sm">Funil de Outreach (Pomodoro)</CardTitle></CardHeader>
         <CardContent>
           {(() => {
+            // Funil usa APENAS contadores do Pomodoro (sessionCalls / totalSessionMeetings)
+            // para evitar duplicação com ligações/reuniões logadas no pipeline de leads.
             const outreachStages = [
-              { name: "Ligações", value: totalCalls },
+              { name: "Ligações", value: sessionCalls },
               { name: "Conexões", value: sessionConnections },
               { name: "Decisores", value: sessionDecisionMakers },
-              { name: "Reuniões Marcadas", value: totalMeetings },
+              { name: "Reuniões Marcadas", value: totalSessionMeetings },
             ];
             const maxVal = outreachStages[0].value || 1;
             if (outreachStages.every((s) => s.value === 0)) {
