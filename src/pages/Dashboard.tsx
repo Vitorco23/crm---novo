@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { isToday, isThisWeek, isThisMonth, format, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign, Handshake, Trophy as TrophyIcon } from "lucide-react";
+import { TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign, Handshake, Trophy as TrophyIcon, Send, Instagram, Mail } from "lucide-react";
 
 type Filter = "day" | "week" | "month";
 
