@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { isToday, isThisWeek, isThisMonth, format, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign, Handshake, Trophy as TrophyIcon } from "lucide-react";
+import { TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign, Handshake, Trophy as TrophyIcon, Send, Instagram, Mail } from "lucide-react";
 
 type Filter = "day" | "week" | "month";
 
@@ -26,10 +26,31 @@ export default function Dashboard() {
   const leads = getLeads();
   const sessions = getSessions();
   const movements = getMovementEvents();
+  const meetings = getMeetings();
 
   const filteredLeads = useMemo(() => leads.filter((l) => filterByDate(l.createdAt, filter)), [leads, filter]);
   const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter)), [sessions, filter]);
   const filteredMovements = useMemo(() => movements.filter((m) => filterByDate(m.timestamp, filter)), [movements, filter]);
+  const filteredMeetings = useMemo(
+    () => meetings.filter((m) => filterByDate(`${m.date}T${m.time || "00:00"}`, filter)),
+    [meetings, filter]
+  );
+
+  // Meetings by source
+  const meetingsBySource = useMemo(() => {
+    const acc: Record<string, number> = { "Ligação": 0, "Disparo": 0, "Instagram": 0, "Email": 0 };
+    filteredMeetings.forEach((m) => {
+      const s = m.source || "Ligação"; // legacy meetings assumed as Ligação
+      acc[s] = (acc[s] || 0) + 1;
+    });
+    return acc;
+  }, [filteredMeetings]);
+
+  const callMeetings = meetingsBySource["Ligação"] || 0;
+  const otherChannelsMeetings =
+    (meetingsBySource["Disparo"] || 0) +
+    (meetingsBySource["Instagram"] || 0) +
+    (meetingsBySource["Email"] || 0);
 
   const movementCalls = filteredMovements.filter((m) => m.type === "call").length;
   const movementMeetings = filteredMovements.filter((m) => m.type === "meeting").length;
@@ -187,13 +208,13 @@ export default function Dashboard() {
         <CardHeader className="pb-2"><CardTitle className="text-sm">Funil de Outreach (Pomodoro)</CardTitle></CardHeader>
         <CardContent>
           {(() => {
-            // Funil usa APENAS contadores do Pomodoro (sessionCalls / totalSessionMeetings)
-            // para evitar duplicação com ligações/reuniões logadas no pipeline de leads.
+            // Funil de outreach por LIGAÇÃO: contadores do Pomodoro + reuniões marcadas com origem "Ligação".
+            const meetingsFromCalls = Math.max(callMeetings, totalSessionMeetings);
             const outreachStages = [
               { name: "Ligações", value: sessionCalls },
               { name: "Conexões", value: sessionConnections },
               { name: "Decisores", value: sessionDecisionMakers },
-              { name: "Reuniões Marcadas", value: totalSessionMeetings },
+              { name: "Reuniões Marcadas (Ligação)", value: meetingsFromCalls },
             ];
             const maxVal = outreachStages[0].value || 1;
             if (outreachStages.every((s) => s.value === 0)) {
@@ -228,7 +249,67 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Reuniões por Canal (Disparo / Instagram / Email) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Reuniões por Canal Alternativo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {otherChannelsMeetings === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Sem reuniões marcadas por Disparo, Instagram ou Email no período.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {([
+                  { key: "Disparo", icon: Send, hue: 200 },
+                  { key: "Instagram", icon: Instagram, hue: 320 },
+                  { key: "Email", icon: Mail, hue: 40 },
+                ] as const).map(({ key, icon: Icon, hue }) => (
+                  <div key={key} className="rounded-md border border-border bg-muted/30 p-3">
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                      <Icon className="h-3.5 w-3.5" style={{ color: `hsl(${hue} 50% 55%)` }} />
+                      {key}
+                    </div>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">
+                      {meetingsBySource[key] || 0}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1.5">
+                {(["Disparo", "Instagram", "Email"] as const).map((k, i) => {
+                  const v = meetingsBySource[k] || 0;
+                  const pct = otherChannelsMeetings > 0 ? Math.round((v / otherChannelsMeetings) * 100) : 0;
+                  const hue = [200, 320, 40][i];
+                  return (
+                    <div key={k} className="flex items-center gap-2 text-xs">
+                      <span className="w-24 truncate text-muted-foreground">{k}</span>
+                      <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
+                        <div
+                          className="h-full rounded-sm transition-all duration-500"
+                          style={{ width: `${pct}%`, backgroundColor: `hsl(${hue} 50% 50%)` }}
+                        />
+                      </div>
+                      <span className="w-10 text-right font-medium text-foreground tabular-nums">{v}</span>
+                      <span className="w-16 text-[10px] text-right tabular-nums text-muted-foreground/70">
+                        {pct}% do total
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border">
+                Total de reuniões por canais alternativos: <span className="font-medium text-foreground">{otherChannelsMeetings}</span> · Ligação: <span className="font-medium text-foreground">{callMeetings}</span>
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Funil (Cold Call → Oportunidades)</CardTitle></CardHeader>
           <CardContent>

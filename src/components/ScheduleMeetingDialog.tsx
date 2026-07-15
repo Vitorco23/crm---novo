@@ -16,7 +16,7 @@ import { Button as UIButton } from "@/components/ui/button";
 import { CalendarCheck, CalendarIcon, Loader2, Video } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { scheduleMeeting, type Lead, type Meeting } from "@/lib/store";
+import { scheduleMeeting, type Lead, type Meeting, type MeetingSource } from "@/lib/store";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,6 +26,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onScheduled?: () => void;
 }
+
 
 const todayISO = () => new Date().toISOString().split("T")[0];
 const browserTZ = () =>
@@ -40,6 +41,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
   const [contactName, setContactName] = useState("");
   const [attendeeEmail, setAttendeeEmail] = useState("");
   const [channel, setChannel] = useState<NonNullable<Meeting["channel"]>>("Google Meet");
+  const [source, setSource] = useState<MeetingSource>("Ligação");
   const [link, setLink] = useState("");
   const [notes, setNotes] = useState("");
   const [syncToGoogle, setSyncToGoogle] = useState(true);
@@ -117,6 +119,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
         time,
         contactName: contactName.trim() || lead.contact,
         channel,
+        source,
         link: googleData.meetLink || link.trim(),
         notes: notes.trim(),
         attendeeEmail: attendeeEmail.trim() || undefined,
@@ -227,6 +230,22 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
                 onChange={(e) => setAttendeeEmail(e.target.value)}
               />
             </div>
+          </div>
+
+          <div>
+            <Label className="text-xs">Por qual canal essa reunião veio? *</Label>
+            <Select value={source} onValueChange={(v) => setSource(v as MeetingSource)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Ligação">Ligação</SelectItem>
+                <SelectItem value="Disparo">Disparo</SelectItem>
+                <SelectItem value="Instagram">Instagram</SelectItem>
+                <SelectItem value="Email">Email</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Ligação entra no funil de outreach. Os outros entram no funil de canais alternativos.
+            </p>
           </div>
 
           <div>
