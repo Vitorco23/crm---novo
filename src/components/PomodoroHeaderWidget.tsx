@@ -19,7 +19,7 @@ export function PomodoroHeaderWidget() {
 
   const isRunning = state.startedAt != null && (state.phase === "focus" || state.phase === "break");
   const isPaused = state.pausedRemaining != null;
-  const tally = state.tally ?? { calls: 0, messages: 0, meetings: 0 };
+  const tally = state.tally ?? { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0 };
 
   return (
     <div className="flex items-center gap-2">
