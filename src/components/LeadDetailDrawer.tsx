@@ -1,8 +1,9 @@
 import {
-  type Lead, type ICPStars, type PipelineName,
+  type Lead, type ICPStars, type PipelineName, type MeetingSource,
   addAttachment, removeAttachment, updateLead,
   addCallNote, removeCallNote, getMeetingsForLead,
   getPipelineForStage, getStagesForPipeline, moveLeadToStage,
+  updateMeetingSource,
 } from "@/lib/store";
 import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/lib/finance";
 import {
@@ -397,6 +398,25 @@ export default function LeadDetailDrawer({
                           {format(new Date(`${m.date}T${m.time}`), "dd/MM 'às' HH:mm", { locale: ptBR })}
                         </p>
                         <Badge variant="outline" className="text-[10px]">{m.channel || "Reunião"}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Label className="text-[10px] text-muted-foreground shrink-0">Canal de origem:</Label>
+                        <Select
+                          value={m.source || "Ligação"}
+                          onValueChange={(v) => {
+                            updateMeetingSource(m.id, v as MeetingSource);
+                            toast.success("Canal atualizado — funis recalculados");
+                            onRefresh();
+                          }}
+                        >
+                          <SelectTrigger className="h-7 text-xs w-36"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Ligação">Ligação</SelectItem>
+                            <SelectItem value="Disparo">Disparo</SelectItem>
+                            <SelectItem value="Instagram">Instagram</SelectItem>
+                            <SelectItem value="Email">Email</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {m.meetLink && (
