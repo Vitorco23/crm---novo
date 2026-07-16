@@ -60,8 +60,11 @@ export default function Dashboard() {
   const sessionDecisionMakers = filteredSessions.reduce((a, s) => a + (s.decisionMakers || 0), 0);
   const totalSessionMeetings = filteredSessions.reduce((a, s) => a + s.meetings, 0);
 
-  const totalCalls = movementCalls + sessionCalls;
-  const totalMeetings = movementMeetings + totalSessionMeetings;
+  // Métricas contabilizadas EXCLUSIVAMENTE pelo registro do Pomodoro (não por movimentos no pipeline).
+  // movementCalls / movementMeetings ficam disponíveis apenas para o cálculo da Golden Hour.
+  void movementCalls; void movementMeetings;
+  const totalCalls = sessionCalls;
+  const totalMeetings = totalSessionMeetings;
 
   const goals = getGoalsSettings();
 
