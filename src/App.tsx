@@ -51,6 +51,8 @@ const App = () => (
                         <Route path="/metas" element={<Metas />} />
                         <Route path="/financeiro" element={<Financeiro />} />
                         <Route path="/integracoes" element={<Integracoes />} />
+                        <Route path="/lembretes" element={<Lembretes />} />
+
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </AppLayout>
