@@ -590,8 +590,15 @@ export function scheduleMeeting(
 
   // Move lead to "Reunião Marcada" (oportunidades)
   const result = moveLeadToStage(leadId, "Reunião Marcada");
+
+  // Auto-create reminders for this meeting
+  import("./reminders").then(({ createRemindersForMeeting }) => {
+    createRemindersForMeeting(lead, meeting);
+  });
+
   return { meeting, autoTransfer: result.autoTransfer };
 }
+
 
 // ===== Goals (Metas) settings =====
 export interface GoalsSettings {
