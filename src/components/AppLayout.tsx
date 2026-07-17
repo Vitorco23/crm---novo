@@ -5,9 +5,12 @@ import { HeaderStatsWidget } from "@/components/HeaderStatsWidget";
 import { Button } from "@/components/ui/button";
 import { LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useReminderNotifications } from "@/hooks/useReminderNotifications";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, signOut } = useAuth();
+  useReminderNotifications();
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
