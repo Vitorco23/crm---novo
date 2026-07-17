@@ -15,11 +15,13 @@ export const DEFAULT_COLD_CALL_STAGES = [
 export const DEFAULT_OPORTUNIDADES_STAGES = [
   "Reunião Marcada",
   "Reunião Realizada",
+  "No Show",
   "Documento de Guerra",
   "Proposta Enviada",
   "Ganho",
   "Perdido",
 ] as const;
+
 
 export const DEFAULT_ONBOARDING_STAGES = [
   "Assinatura do Contrato",
