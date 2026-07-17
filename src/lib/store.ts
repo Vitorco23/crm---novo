@@ -15,11 +15,13 @@ export const DEFAULT_COLD_CALL_STAGES = [
 export const DEFAULT_OPORTUNIDADES_STAGES = [
   "Reunião Marcada",
   "Reunião Realizada",
+  "No Show",
   "Documento de Guerra",
   "Proposta Enviada",
   "Ganho",
   "Perdido",
 ] as const;
+
 
 export const DEFAULT_ONBOARDING_STAGES = [
   "Assinatura do Contrato",
@@ -521,11 +523,27 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
     }
   }
 
+  // Reminders side-effects
+  const stageLower = effectiveStage.toLowerCase();
+  if (stageLower.includes("no show") || stageLower.includes("no-show")) {
+    const latest = getMeetingsForLead(leadId)[0];
+    if (latest) {
+      import("./reminders").then(({ createNoShowRemindersForLead }) => {
+        createNoShowRemindersForLead(lead, latest);
+      });
+    }
+  } else if (toStage === "Ganho" || toStage === "Perdido" || toPipeline === "onboarding") {
+    import("./reminders").then(({ cancelPendingReminders }) => {
+      cancelPendingReminders(lead.id);
+    });
+  }
+
   return {
     ...(fromPipeline !== toPipeline ? { autoTransfer: toPipeline } : {}),
     ...(missingContractValue ? { missingContractValue: true } : {}),
   };
 }
+
 
 // ===== Pomodoro Sessions =====
 export function getSessions(): PomodoroSession[] {
@@ -588,8 +606,15 @@ export function scheduleMeeting(
 
   // Move lead to "Reunião Marcada" (oportunidades)
   const result = moveLeadToStage(leadId, "Reunião Marcada");
+
+  // Auto-create reminders for this meeting
+  import("./reminders").then(({ createRemindersForMeeting }) => {
+    createRemindersForMeeting(lead, meeting);
+  });
+
   return { meeting, autoTransfer: result.autoTransfer };
 }
+
 
 // ===== Goals (Metas) settings =====
 export interface GoalsSettings {
