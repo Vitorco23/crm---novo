@@ -17,6 +17,8 @@ import Dashboard from "./pages/Dashboard";
 import Metas from "./pages/Metas";
 import Financeiro from "./pages/Financeiro";
 import Integracoes from "./pages/Integracoes";
+import Lembretes from "./pages/Lembretes";
+
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
