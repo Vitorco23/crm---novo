@@ -3,8 +3,13 @@ import {
   addAttachment, removeAttachment, updateLead,
   addCallNote, removeCallNote, getMeetingsForLead,
   getPipelineForStage, getStagesForPipeline, moveLeadToStage,
-  updateMeetingSource,
+  updateMeetingSource, updateMeetingDateTime,
 } from "@/lib/store";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { supabase } from "@/integrations/supabase/client";
+import { parseISO } from "date-fns";
+import { CalendarIcon, Loader2, Pencil } from "lucide-react";
 import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/lib/finance";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
