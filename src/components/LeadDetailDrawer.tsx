@@ -49,6 +49,113 @@ function StarRating({
   );
 }
 
+const browserTZ = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
+
+function MeetingRow({ meeting, onChanged }: { meeting: ReturnType<typeof getMeetingsForLead>[number]; onChanged: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [date, setDate] = useState(meeting.date);
+  const [time, setTime] = useState(meeting.time);
+  const [saving, setSaving] = useState(false);
+
+  const dirty = date !== meeting.date || time !== meeting.time;
+
+  const handleSave = async () => {
+    if (!date || !time) {
+      toast.error("Informe data e horário.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (meeting.googleEventId) {
+        const start = new Date(`${date}T${time}:00`);
+        const end = new Date(start.getTime() + 30 * 60 * 1000);
+        const { data, error } = await supabase.functions.invoke("update-google-meeting", {
+          body: {
+            eventId: meeting.googleEventId,
+            startISO: start.toISOString(),
+            endISO: end.toISOString(),
+            timeZone: browserTZ(),
+          },
+        });
+        if (error) throw error;
+        if (data?.error) {
+          toast.warning("Falha ao atualizar Google Agenda", {
+            description: data.details || data.error,
+          });
+        } else {
+          toast.success("Google Agenda atualizado e convidado notificado");
+        }
+      }
+      updateMeetingDateTime(meeting.id, date, time);
+      toast.success("Reunião reagendada");
+      setEditing(false);
+      onChanged();
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao reagendar reunião");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-medium text-foreground">
+          {format(new Date(`${meeting.date}T${meeting.time}`), "dd/MM 'às' HH:mm", { locale: ptBR })}
+        </p>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline" className="text-[10px]">{meeting.channel || "Reunião"}</Badge>
+          <Button size="sm" variant="ghost" className="h-6 px-1.5" onClick={() => setEditing(true)}>
+            <Pencil className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded border border-accent/40 bg-accent/5 p-2">
+      <div className="grid grid-cols-2 gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="justify-start text-left font-normal h-8 text-xs">
+              <CalendarIcon className="h-3 w-3 mr-1 text-accent" />
+              {format(parseISO(date), "dd/MM/yyyy", { locale: ptBR })}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
+            <Calendar
+              mode="single"
+              locale={ptBR}
+              selected={parseISO(date)}
+              onSelect={(d) => d && setDate(format(d, "yyyy-MM-dd"))}
+              initialFocus
+              className="pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+        <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-8 text-xs" />
+      </div>
+      <div className="flex gap-1.5">
+        <Button size="sm" className="h-7 text-xs flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
+          onClick={handleSave} disabled={saving || !dirty}>
+          {saving ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Salvando</> : "Salvar"}
+        </Button>
+        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
+          setDate(meeting.date); setTime(meeting.time); setEditing(false);
+        }} disabled={saving}>Cancelar</Button>
+      </div>
+      {meeting.googleEventId && (
+        <p className="text-[10px] text-muted-foreground">
+          Google Agenda será atualizado e o convidado receberá aviso.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function LeadDetailDrawer({
   lead, open, onOpenChange, onRefresh,
 }: {
