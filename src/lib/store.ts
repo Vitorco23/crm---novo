@@ -586,6 +586,24 @@ export function updateMeetingSource(meetingId: string, source: MeetingSource) {
   }
 }
 
+export function updateMeetingDateTime(meetingId: string, date: string, time: string) {
+  const meetings = getMeetings();
+  const idx = meetings.findIndex((m) => m.id === meetingId);
+  if (idx === -1) return;
+  const updated = { ...meetings[idx], date, time };
+  meetings[idx] = updated;
+  saveMeetings(meetings);
+
+  // Recreate reminders for the new date/time
+  const lead = getLeads().find((l) => l.id === updated.leadId);
+  if (lead) {
+    import("./reminders").then(({ createRemindersForMeeting }) => {
+      createRemindersForMeeting(lead, updated);
+    });
+  }
+  return updated;
+}
+
 export function scheduleMeeting(
   leadId: string,
   data: Omit<Meeting, "id" | "leadId" | "company" | "createdAt">
