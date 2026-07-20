@@ -505,12 +505,7 @@ export default function LeadDetailDrawer({
                 <div className="space-y-2">
                   {meetings.slice(0, 3).map((m) => (
                     <div key={m.id} className="bg-muted/40 rounded-md p-2 border border-border/40 text-sm">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-medium text-foreground">
-                          {format(new Date(`${m.date}T${m.time}`), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                        </p>
-                        <Badge variant="outline" className="text-[10px]">{m.channel || "Reunião"}</Badge>
-                      </div>
+                      <MeetingRow meeting={m} onChanged={onRefresh} />
                       <div className="flex items-center gap-2 mt-2">
                         <Label className="text-[10px] text-muted-foreground shrink-0">Canal de origem:</Label>
                         <Select
