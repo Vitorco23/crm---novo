@@ -648,6 +648,14 @@ export default function LeadDetailDrawer({
         onOpenChange={setMeetingOpen}
         onScheduled={() => { onRefresh(); onOpenChange(false); }}
       />
+
+      <ScheduleMeetingDialog
+        lead={lead}
+        open={alignmentOpen}
+        onOpenChange={setAlignmentOpen}
+        onScheduled={() => { setAlignmentOpen(false); onRefresh(); onOpenChange(false); }}
+        kind="alinhamento"
+      />
     </Sheet>
   );
 }
