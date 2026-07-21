@@ -42,6 +42,7 @@ import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import LeadDetailDrawer from "@/components/LeadDetailDrawer";
+import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 import PipelineListView from "@/components/PipelineListView";
 import BulkActionsBar from "@/components/BulkActionsBar";
 import BulkEditDialog from "@/components/BulkEditDialog";
