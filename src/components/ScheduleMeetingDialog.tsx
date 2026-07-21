@@ -135,7 +135,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
           googleEventUrl: googleData.htmlLink,
           meetLink: googleData.meetLink,
           title: isAlinhamento ? `Reunião de Alinhamento: ${lead.company} - P21` : undefined,
-        } as any,
+        },
         { skipAutoMove: isAlinhamento }
       );
       toast.success(
