@@ -68,7 +68,11 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
       try {
         const start = new Date(`${date}T${time}:00`);
         const end = new Date(start.getTime() + parseInt(duration) * 60 * 1000);
+        const summary = isAlinhamento
+          ? `Reunião de Alinhamento: ${lead.company} - P21`
+          : `Reunião de diagnóstico - ${lead.company}`;
         const description = [
+          isAlinhamento && "Apresentação do planejamento / projeto P21.",
           `Empresa: ${lead.company}`,
           (contactName.trim() || lead.contact) && `Contato: ${contactName.trim() || lead.contact}`,
           lead.phone && `Telefone: ${lead.phone}`,
@@ -79,7 +83,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
 
         const { data, error } = await supabase.functions.invoke("create-google-meeting", {
           body: {
-            summary: `Reunião de diagnóstico - ${lead.company}`,
+            summary,
             description,
             startISO: start.toISOString(),
             endISO: end.toISOString(),
