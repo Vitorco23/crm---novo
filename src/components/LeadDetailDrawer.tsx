@@ -277,7 +277,19 @@ export default function LeadDetailDrawer({
                 toast.success("Lead movido!");
               }
               onRefresh();
-              onOpenChange(false);
+              // Se moveu para "Reunião Realizada" (Oportunidades) e ainda não tem reunião de alinhamento,
+              // abre o diálogo para agendar a segunda reunião. Não fecha o drawer nesse caso.
+              const isAlinhamentoStage =
+                toStage === "Reunião Realizada" &&
+                getPipelineForStage(toStage) === "oportunidades";
+              const alreadyHasAlinhamento = getMeetingsForLead(lead.id).some((m) =>
+                (m.title || "").toLowerCase().startsWith("reunião de alinhamento")
+              );
+              if (isAlinhamentoStage && !alreadyHasAlinhamento) {
+                setAlignmentOpen(true);
+              } else {
+                onOpenChange(false);
+              }
             }}
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
