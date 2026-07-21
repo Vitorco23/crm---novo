@@ -166,11 +166,22 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarCheck className="h-5 w-5 text-accent" /> Marcar Reunião
+            <CalendarCheck className="h-5 w-5 text-accent" />
+            {isAlinhamento ? "Marcar Reunião de Alinhamento" : "Marcar Reunião"}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            <span className="font-medium text-foreground">{lead.company}</span> será movido para{" "}
-            <span className="text-accent">Oportunidades → Reunião Marcada</span>
+            {isAlinhamento ? (
+              <>
+                Agende a apresentação do planejamento para{" "}
+                <span className="font-medium text-foreground">{lead.company}</span>.
+                O lead permanece em <span className="text-accent">Reunião Realizada</span>.
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-foreground">{lead.company}</span> será movido para{" "}
+                <span className="text-accent">Oportunidades → Reunião Marcada</span>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
