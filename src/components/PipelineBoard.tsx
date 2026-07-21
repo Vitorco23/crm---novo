@@ -20,6 +20,8 @@ import {
   renameStage,
   reorderStages,
   dedupeLeads,
+  getMeetingsForLead,
+  getPipelineForStage,
 } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +42,7 @@ import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import LeadDetailDrawer from "@/components/LeadDetailDrawer";
+import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 import PipelineListView from "@/components/PipelineListView";
 import BulkActionsBar from "@/components/BulkActionsBar";
 import BulkEditDialog from "@/components/BulkEditDialog";
@@ -259,6 +262,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [alignmentLead, setAlignmentLead] = useState<Lead | null>(null);
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const [newStageName, setNewStageName] = useState("");
@@ -399,8 +403,21 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     setSelectedIds(next);
   };
 
+  const maybePromptAlignment = useCallback((leadId: string) => {
+    const fresh = getLeads().find((l) => l.id === leadId);
+    if (!fresh) return;
+    if (getPipelineForStage(fresh.stage) !== "oportunidades") return;
+    if (fresh.stage !== "Reunião Realizada") return;
+    const already = getMeetingsForLead(leadId).some((m) =>
+      (m.title || "").toLowerCase().startsWith("reunião de alinhamento")
+    );
+    if (already) return;
+    setAlignmentLead(fresh);
+  }, []);
+
   const handleBulkMove = (targetStage: PipelineStage) => {
     const count = selectedIds.size;
+    const idsSnapshot = Array.from(selectedIds);
     const result = moveLeadsToStageBatch(selectedIds, targetStage);
     setSelectedIds(new Set());
     refresh();
@@ -408,6 +425,9 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     if (result.autoTransfer) {
       const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
       toast.success(`Transferidos automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
+    }
+    if (targetStage === "Reunião Realizada" && idsSnapshot.length === 1) {
+      maybePromptAlignment(idsSnapshot[0]);
     }
   };
 
@@ -603,6 +623,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
       toast.success(`Lead transferido automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
     }
+    if (stage === "Reunião Realizada") maybePromptAlignment(id);
   };
 
   const onDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -823,6 +844,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
               const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
               toast.success(`Lead transferido automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
             }
+            if (stage === "Reunião Realizada") maybePromptAlignment(id);
           }}
           showContractValue={pipeline === "oportunidades"}
         />
@@ -980,6 +1002,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         headers={importHeaders}
         rows={importRows}
         onConfirm={handleConfirmMapping}
+      />
+
+      <ScheduleMeetingDialog
+        lead={alignmentLead}
+        open={!!alignmentLead}
+        onOpenChange={(o) => { if (!o) setAlignmentLead(null); }}
+        onScheduled={() => { setAlignmentLead(null); refresh(); }}
+        kind="alinhamento"
       />
     </div>
   );

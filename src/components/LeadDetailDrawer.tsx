@@ -166,6 +166,7 @@ export default function LeadDetailDrawer({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
+  const [alignmentOpen, setAlignmentOpen] = useState(false);
   const [draft, setDraft] = useState<Lead | null>(lead);
   const [newCallNote, setNewCallNote] = useState("");
 
@@ -276,7 +277,19 @@ export default function LeadDetailDrawer({
                 toast.success("Lead movido!");
               }
               onRefresh();
-              onOpenChange(false);
+              // Se moveu para "Reunião Realizada" (Oportunidades) e ainda não tem reunião de alinhamento,
+              // abre o diálogo para agendar a segunda reunião. Não fecha o drawer nesse caso.
+              const isAlinhamentoStage =
+                toStage === "Reunião Realizada" &&
+                getPipelineForStage(toStage) === "oportunidades";
+              const alreadyHasAlinhamento = getMeetingsForLead(lead.id).some((m) =>
+                (m.title || "").toLowerCase().startsWith("reunião de alinhamento")
+              );
+              if (isAlinhamentoStage && !alreadyHasAlinhamento) {
+                setAlignmentOpen(true);
+              } else {
+                onOpenChange(false);
+              }
             }}
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -634,6 +647,14 @@ export default function LeadDetailDrawer({
         open={meetingOpen}
         onOpenChange={setMeetingOpen}
         onScheduled={() => { onRefresh(); onOpenChange(false); }}
+      />
+
+      <ScheduleMeetingDialog
+        lead={lead}
+        open={alignmentOpen}
+        onOpenChange={setAlignmentOpen}
+        onScheduled={() => { setAlignmentOpen(false); onRefresh(); onOpenChange(false); }}
+        kind="alinhamento"
       />
     </Sheet>
   );

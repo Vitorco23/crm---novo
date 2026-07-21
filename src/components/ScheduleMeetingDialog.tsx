@@ -25,6 +25,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onScheduled?: () => void;
+  kind?: "diagnostico" | "alinhamento";
 }
 
 
@@ -34,7 +35,8 @@ const browserTZ = () =>
 
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 
-export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onScheduled }: Props) {
+export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onScheduled, kind = "diagnostico" }: Props) {
+  const isAlinhamento = kind === "alinhamento";
   const [date, setDate] = useState(todayISO());
   const [time, setTime] = useState("10:00");
   const [duration, setDuration] = useState("30"); // minutes
@@ -43,7 +45,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
   const [channel, setChannel] = useState<NonNullable<Meeting["channel"]>>("Google Meet");
   const [source, setSource] = useState<MeetingSource>("Ligação");
   const [link, setLink] = useState("");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(isAlinhamento ? "Apresentação do planejamento / projeto P21." : "");
   const [syncToGoogle, setSyncToGoogle] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -66,7 +68,11 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
       try {
         const start = new Date(`${date}T${time}:00`);
         const end = new Date(start.getTime() + parseInt(duration) * 60 * 1000);
+        const summary = isAlinhamento
+          ? `Reunião de Alinhamento: ${lead.company} - P21`
+          : `Reunião de diagnóstico - ${lead.company}`;
         const description = [
+          isAlinhamento && "Apresentação do planejamento / projeto P21.",
           `Empresa: ${lead.company}`,
           (contactName.trim() || lead.contact) && `Contato: ${contactName.trim() || lead.contact}`,
           lead.phone && `Telefone: ${lead.phone}`,
@@ -77,7 +83,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
 
         const { data, error } = await supabase.functions.invoke("create-google-meeting", {
           body: {
-            summary: `Reunião de diagnóstico - ${lead.company}`,
+            summary,
             description,
             startISO: start.toISOString(),
             endISO: end.toISOString(),
@@ -114,33 +120,40 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
     }
 
     try {
-      const { autoTransfer } = scheduleMeeting(lead.id, {
-        date,
-        time,
-        contactName: contactName.trim() || lead.contact,
-        channel,
-        source,
-        link: googleData.meetLink || link.trim(),
-        notes: notes.trim(),
-        attendeeEmail: attendeeEmail.trim() || undefined,
-        googleEventId: googleData.eventId,
-        googleEventUrl: googleData.htmlLink,
-        meetLink: googleData.meetLink,
-      });
+      const { autoTransfer } = scheduleMeeting(
+        lead.id,
+        {
+          date,
+          time,
+          contactName: contactName.trim() || lead.contact,
+          channel,
+          source,
+          link: googleData.meetLink || link.trim(),
+          notes: notes.trim(),
+          attendeeEmail: attendeeEmail.trim() || undefined,
+          googleEventId: googleData.eventId,
+          googleEventUrl: googleData.htmlLink,
+          meetLink: googleData.meetLink,
+          title: isAlinhamento ? `Reunião de Alinhamento: ${lead.company} - P21` : undefined,
+        },
+        { skipAutoMove: isAlinhamento }
+      );
       toast.success(
-        `Reunião agendada para ${new Date(date + "T" + time).toLocaleString("pt-BR")}`,
+        `${isAlinhamento ? "Reunião de alinhamento" : "Reunião"} agendada para ${new Date(date + "T" + time).toLocaleString("pt-BR")}`,
         {
           description: googleData.eventId
             ? "Evento criado no Google Agenda e convite enviado!"
-            : autoTransfer
-              ? "Lead movido para Oportunidades → Reunião Marcada"
-              : "Lead movido para Reunião Marcada",
+            : isAlinhamento
+              ? "Reunião salva no histórico do lead"
+              : autoTransfer
+                ? "Lead movido para Oportunidades → Reunião Marcada"
+                : "Lead movido para Reunião Marcada",
         }
       );
       onOpenChange(false);
       onScheduled?.();
       // reset
-      setContactName(""); setAttendeeEmail(""); setLink(""); setNotes("");
+      setContactName(""); setAttendeeEmail(""); setLink(""); setNotes(isAlinhamento ? "Apresentação do planejamento / projeto P21." : "");
     } catch (e) {
       toast.error("Erro ao agendar reunião");
     } finally {
@@ -153,11 +166,22 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarCheck className="h-5 w-5 text-accent" /> Marcar Reunião
+            <CalendarCheck className="h-5 w-5 text-accent" />
+            {isAlinhamento ? "Marcar Reunião de Alinhamento" : "Marcar Reunião"}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            <span className="font-medium text-foreground">{lead.company}</span> será movido para{" "}
-            <span className="text-accent">Oportunidades → Reunião Marcada</span>
+            {isAlinhamento ? (
+              <>
+                Agende a apresentação do planejamento para{" "}
+                <span className="font-medium text-foreground">{lead.company}</span>.
+                O lead permanece em <span className="text-accent">Reunião Realizada</span>.
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-foreground">{lead.company}</span> será movido para{" "}
+                <span className="text-accent">Oportunidades → Reunião Marcada</span>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -304,7 +328,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
             {submitting ? (
               <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Agendando...</>
             ) : (
-              <><CalendarCheck className="h-4 w-4 mr-1" /> Confirmar Reunião</>
+              <><CalendarCheck className="h-4 w-4 mr-1" /> {isAlinhamento ? "Confirmar Reunião de Alinhamento" : "Confirmar Reunião"}</>
             )}
           </Button>
         </div>

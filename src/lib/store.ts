@@ -85,6 +85,7 @@ export interface Meeting {
   company: string;
   date: string; // ISO date
   time: string; // HH:mm
+  title?: string; // e.g. "Reunião de Alinhamento: Empresa - P21"
   contactName?: string;
   channel?: "Google Meet" | "Zoom" | "Presencial" | "Telefone" | "Outro";
   source?: MeetingSource; // canal pelo qual a reunião veio
@@ -596,7 +597,8 @@ export function updateMeetingDateTime(meetingId: string, date: string, time: str
 
 export function scheduleMeeting(
   leadId: string,
-  data: Omit<Meeting, "id" | "leadId" | "company" | "createdAt">
+  data: Omit<Meeting, "id" | "leadId" | "company" | "createdAt">,
+  options?: { skipAutoMove?: boolean }
 ): { meeting: Meeting; autoTransfer?: PipelineName } {
   const lead = getLeads().find((l) => l.id === leadId);
   if (!lead) throw new Error("Lead não encontrado");
@@ -611,6 +613,10 @@ export function scheduleMeeting(
   const meetings = getMeetings();
   meetings.push(meeting);
   saveMeetings(meetings);
+
+  if (options?.skipAutoMove) {
+    return { meeting };
+  }
 
   // Move lead to "Reunião Marcada" (oportunidades) — this triggers
   // any user-configured reminder templates for that stage.
