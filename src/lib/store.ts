@@ -584,11 +584,11 @@ export function updateMeetingDateTime(meetingId: string, date: string, time: str
   meetings[idx] = updated;
   saveMeetings(meetings);
 
-  // Recreate reminders for the new date/time
+  // Recreate reminders anchored to the meeting for the current stage
   const lead = getLeads().find((l) => l.id === updated.leadId);
   if (lead) {
-    import("./reminders").then(({ createRemindersForMeeting }) => {
-      createRemindersForMeeting(lead, updated);
+    import("./reminders").then(({ createRemindersForStageChange }) => {
+      createRemindersForStageChange(lead, lead.stage);
     });
   }
   return updated;
