@@ -120,33 +120,40 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
     }
 
     try {
-      const { autoTransfer } = scheduleMeeting(lead.id, {
-        date,
-        time,
-        contactName: contactName.trim() || lead.contact,
-        channel,
-        source,
-        link: googleData.meetLink || link.trim(),
-        notes: notes.trim(),
-        attendeeEmail: attendeeEmail.trim() || undefined,
-        googleEventId: googleData.eventId,
-        googleEventUrl: googleData.htmlLink,
-        meetLink: googleData.meetLink,
-      });
+      const { autoTransfer } = scheduleMeeting(
+        lead.id,
+        {
+          date,
+          time,
+          contactName: contactName.trim() || lead.contact,
+          channel,
+          source,
+          link: googleData.meetLink || link.trim(),
+          notes: notes.trim(),
+          attendeeEmail: attendeeEmail.trim() || undefined,
+          googleEventId: googleData.eventId,
+          googleEventUrl: googleData.htmlLink,
+          meetLink: googleData.meetLink,
+          title: isAlinhamento ? `Reunião de Alinhamento: ${lead.company} - P21` : undefined,
+        } as any,
+        { skipAutoMove: isAlinhamento }
+      );
       toast.success(
-        `Reunião agendada para ${new Date(date + "T" + time).toLocaleString("pt-BR")}`,
+        `${isAlinhamento ? "Reunião de alinhamento" : "Reunião"} agendada para ${new Date(date + "T" + time).toLocaleString("pt-BR")}`,
         {
           description: googleData.eventId
             ? "Evento criado no Google Agenda e convite enviado!"
-            : autoTransfer
-              ? "Lead movido para Oportunidades → Reunião Marcada"
-              : "Lead movido para Reunião Marcada",
+            : isAlinhamento
+              ? "Reunião salva no histórico do lead"
+              : autoTransfer
+                ? "Lead movido para Oportunidades → Reunião Marcada"
+                : "Lead movido para Reunião Marcada",
         }
       );
       onOpenChange(false);
       onScheduled?.();
       // reset
-      setContactName(""); setAttendeeEmail(""); setLink(""); setNotes("");
+      setContactName(""); setAttendeeEmail(""); setLink(""); setNotes(isAlinhamento ? "Apresentação do planejamento / projeto P21." : "");
     } catch (e) {
       toast.error("Erro ao agendar reunião");
     } finally {
