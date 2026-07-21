@@ -25,6 +25,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onScheduled?: () => void;
+  kind?: "diagnostico" | "alinhamento";
 }
 
 
