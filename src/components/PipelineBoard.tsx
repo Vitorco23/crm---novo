@@ -403,8 +403,21 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     setSelectedIds(next);
   };
 
+  const maybePromptAlignment = useCallback((leadId: string) => {
+    const fresh = getLeads().find((l) => l.id === leadId);
+    if (!fresh) return;
+    if (getPipelineForStage(fresh.stage) !== "oportunidades") return;
+    if (fresh.stage !== "Reunião Realizada") return;
+    const already = getMeetingsForLead(leadId).some((m) =>
+      (m.title || "").toLowerCase().startsWith("reunião de alinhamento")
+    );
+    if (already) return;
+    setAlignmentLead(fresh);
+  }, []);
+
   const handleBulkMove = (targetStage: PipelineStage) => {
     const count = selectedIds.size;
+    const idsSnapshot = Array.from(selectedIds);
     const result = moveLeadsToStageBatch(selectedIds, targetStage);
     setSelectedIds(new Set());
     refresh();
@@ -412,6 +425,9 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     if (result.autoTransfer) {
       const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
       toast.success(`Transferidos automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
+    }
+    if (targetStage === "Reunião Realizada" && idsSnapshot.length === 1) {
+      maybePromptAlignment(idsSnapshot[0]);
     }
   };
 
