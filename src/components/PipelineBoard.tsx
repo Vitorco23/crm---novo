@@ -844,6 +844,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
               const labels: Record<string, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
               toast.success(`Lead transferido automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
             }
+            if (stage === "Reunião Realizada") maybePromptAlignment(id);
           }}
           showContractValue={pipeline === "oportunidades"}
         />
