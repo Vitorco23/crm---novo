@@ -262,6 +262,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [alignmentLead, setAlignmentLead] = useState<Lead | null>(null);
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const [newStageName, setNewStageName] = useState("");
