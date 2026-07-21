@@ -612,13 +612,9 @@ export function scheduleMeeting(
   meetings.push(meeting);
   saveMeetings(meetings);
 
-  // Move lead to "Reunião Marcada" (oportunidades)
+  // Move lead to "Reunião Marcada" (oportunidades) — this triggers
+  // any user-configured reminder templates for that stage.
   const result = moveLeadToStage(leadId, "Reunião Marcada");
-
-  // Auto-create reminders for this meeting
-  import("./reminders").then(({ createRemindersForMeeting }) => {
-    createRemindersForMeeting(lead, meeting);
-  });
 
   return { meeting, autoTransfer: result.autoTransfer };
 }
