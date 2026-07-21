@@ -23,6 +23,11 @@ const SCOPED_KEYS = [
   "p21_scrum_sprints",
   "p21_daily_tasks",
   "p21_daily_checks",
+  "p21_reminders",
+  "p21_reminder_templates",
+  "p21_filters_cold_call",
+  "p21_filters_oportunidades",
+  "p21_filters_onboarding",
 ];
 
 // Big / write-heavy keys — moved to IndexedDB to avoid the ~5MB localStorage
