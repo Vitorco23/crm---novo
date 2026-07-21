@@ -85,6 +85,7 @@ export interface Meeting {
   company: string;
   date: string; // ISO date
   time: string; // HH:mm
+  title?: string; // e.g. "Reunião de Alinhamento: Empresa - P21"
   contactName?: string;
   channel?: "Google Meet" | "Zoom" | "Presencial" | "Telefone" | "Outro";
   source?: MeetingSource; // canal pelo qual a reunião veio
