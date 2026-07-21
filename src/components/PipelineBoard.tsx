@@ -1003,6 +1003,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         rows={importRows}
         onConfirm={handleConfirmMapping}
       />
+
+      <ScheduleMeetingDialog
+        lead={alignmentLead}
+        open={!!alignmentLead}
+        onOpenChange={(o) => { if (!o) setAlignmentLead(null); }}
+        onScheduled={() => { setAlignmentLead(null); refresh(); }}
+        kind="alinhamento"
+      />
     </div>
   );
 }
