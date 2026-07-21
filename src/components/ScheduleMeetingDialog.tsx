@@ -35,7 +35,8 @@ const browserTZ = () =>
 
 const isEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 
-export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onScheduled }: Props) {
+export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onScheduled, kind = "diagnostico" }: Props) {
+  const isAlinhamento = kind === "alinhamento";
   const [date, setDate] = useState(todayISO());
   const [time, setTime] = useState("10:00");
   const [duration, setDuration] = useState("30"); // minutes
@@ -44,7 +45,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
   const [channel, setChannel] = useState<NonNullable<Meeting["channel"]>>("Google Meet");
   const [source, setSource] = useState<MeetingSource>("Ligação");
   const [link, setLink] = useState("");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(isAlinhamento ? "Apresentação do planejamento / projeto P21." : "");
   const [syncToGoogle, setSyncToGoogle] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
