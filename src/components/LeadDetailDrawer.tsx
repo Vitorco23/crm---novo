@@ -166,6 +166,7 @@ export default function LeadDetailDrawer({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
+  const [alignmentOpen, setAlignmentOpen] = useState(false);
   const [draft, setDraft] = useState<Lead | null>(lead);
   const [newCallNote, setNewCallNote] = useState("");
 
