@@ -328,7 +328,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
             {submitting ? (
               <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Agendando...</>
             ) : (
-              <><CalendarCheck className="h-4 w-4 mr-1" /> Confirmar Reunião</>
+              <><CalendarCheck className="h-4 w-4 mr-1" /> {isAlinhamento ? "Confirmar Reunião de Alinhamento" : "Confirmar Reunião"}</>
             )}
           </Button>
         </div>
