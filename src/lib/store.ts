@@ -523,20 +523,10 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
     }
   }
 
-  // Reminders side-effects
-  const stageLower = effectiveStage.toLowerCase();
-  if (stageLower.includes("no show") || stageLower.includes("no-show")) {
-    const latest = getMeetingsForLead(leadId)[0];
-    if (latest) {
-      import("./reminders").then(({ createNoShowRemindersForLead }) => {
-        createNoShowRemindersForLead(lead, latest);
-      });
-    }
-  } else if (toStage === "Ganho" || toStage === "Perdido" || toPipeline === "onboarding") {
-    import("./reminders").then(({ cancelPendingReminders }) => {
-      cancelPendingReminders(lead.id);
-    });
-  }
+  // Reminders: fire user-configured templates for the destination stage.
+  import("./reminders").then(({ createRemindersForStageChange }) => {
+    createRemindersForStageChange(lead, effectiveStage);
+  });
 
   return {
     ...(fromPipeline !== toPipeline ? { autoTransfer: toPipeline } : {}),
