@@ -143,16 +143,17 @@ export default function Dashboard() {
 /* ============================================================
    PAINEL 1 — OPERACIONAL
    ============================================================ */
-function OperationalPanel({ filter }: { filter: Filter }) {
+function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
   const sessions = getSessions();
   const movements = getMovementEvents();
   const meetings = getMeetings();
 
-  const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter)), [sessions, filter]);
+  const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter, custom)), [sessions, filter, custom]);
   const filteredMeetings = useMemo(
-    () => meetings.filter((m) => filterByDate(`${m.date}T${m.time || "00:00"}`, filter)),
-    [meetings, filter]
+    () => meetings.filter((m) => filterByDate(`${m.date}T${m.time || "00:00"}`, filter, custom)),
+    [meetings, filter, custom]
   );
+
 
   const meetingsBySource = useMemo(() => {
     const acc: Record<string, number> = { "Ligação": 0, "Disparo": 0, "Instagram": 0, "Email": 0 };
