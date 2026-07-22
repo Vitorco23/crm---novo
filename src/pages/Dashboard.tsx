@@ -115,7 +115,7 @@ export default function Dashboard() {
             <p className="text-[11px] text-muted-foreground">Ligações, conexões, decisores e reuniões registrados no período.</p>
           </div>
         </div>
-        <OperationalPanel filter={filter} />
+        <OperationalPanel filter={filter} custom={custom} />
         <PriorityCard />
       </section>
 
