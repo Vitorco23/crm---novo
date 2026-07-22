@@ -30,6 +30,9 @@ const SCOPED_KEYS = [
   "p21_filters_onboarding",
   "p21_selected_script",
   "p21_call_logs",
+  "p21_insights",
+  "p21_rule_overrides",
+  "p21_insights_last_run",
 ];
 
 // Big / write-heavy keys — moved to IndexedDB to avoid the ~5MB localStorage
