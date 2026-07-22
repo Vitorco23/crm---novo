@@ -12,6 +12,8 @@ import {
   Trophy, Calendar, Clock, Percent, Activity,
 } from "lucide-react";
 import { isToday } from "date-fns";
+import ExportExcelDialog from "@/components/ExportExcelDialog";
+import { buildMetasSheets } from "@/lib/exportBuilders";
 
 const fmtNum = (n: number) => new Intl.NumberFormat("pt-BR").format(Math.ceil(n));
 const fmtMoney = (n: number) =>
