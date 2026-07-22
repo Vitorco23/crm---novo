@@ -53,6 +53,7 @@ export default function Dashboard() {
           </div>
         </div>
         <OperationalPanel filter={filter} />
+        <PriorityCard />
       </section>
 
       {/* ============ PAINEL 2: PIPELINE COMERCIAL (independente) ============ */}
