@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import { usePomodoro } from "@/contexts/PomodoroContext";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Timer, Phone, Users, UserCheck, MessageSquare, CalendarCheck } from "lucide-react";
+import { Play, Pause, Square, Timer, Phone, Users, UserCheck, MessageSquare, CalendarCheck, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SCRIPT_OPTIONS, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/lib/scripts";
 
 function fmt(sec: number) {
   const m = Math.floor(sec / 60);
@@ -11,6 +14,20 @@ function fmt(sec: number) {
 
 export function PomodoroHeaderWidget() {
   const { state, remaining, start, pause, resume, stop, incrementTally } = usePomodoro();
+  const [script, setScript] = useState<ScriptOption>(SCRIPT_OPTIONS[0]);
+
+  useEffect(() => { setScript(getSelectedScript()); }, []);
+
+  const handleScriptChange = (v: string) => {
+    const s = v as ScriptOption;
+    setScript(s);
+    setSelectedScript(s);
+  };
+
+  const registerCall = () => {
+    incrementTally("calls");
+    logCall({ scriptUsed: script, source: "pomodoro_header" });
+  };
 
   const phaseLabel =
     state.phase === "focus" ? "Foco" :
@@ -53,10 +70,24 @@ export function PomodoroHeaderWidget() {
       </div>
 
       <div className="flex items-center gap-1 pl-2 border-l border-border">
+        <Select value={script} onValueChange={handleScriptChange}>
+          <SelectTrigger
+            className="h-7 w-[110px] text-xs gap-1 px-2"
+            title="Script utilizado nas ligações"
+          >
+            <FileText className="h-3 w-3 text-accent shrink-0" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SCRIPT_OPTIONS.map((s) => (
+              <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <button
           type="button"
-          onClick={() => incrementTally("calls")}
-          title="Registrar ligação"
+          onClick={registerCall}
+          title={`Registrar ligação (${script})`}
           className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
         >
           <Phone className="h-3.5 w-3.5 text-accent" />

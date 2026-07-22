@@ -61,7 +61,7 @@ interface PomodoroContextValue {
   stop: () => void;
   setDuration: (focusSec: number, breakSec: number) => void;
   setNiche: (niche: string) => void;
-  submitForm: (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string }) => void;
+  submitForm: (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string; scriptUsed?: string }) => void;
   dismissForm: () => void;
   showForm: boolean;
   incrementTally: (key: keyof TallyCounts) => void;
@@ -173,7 +173,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const setNiche = (niche: string) => setState({ ...state, niche });
 
-  const submitForm = (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string }) => {
+  const submitForm = (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string; scriptUsed?: string }) => {
     const start = sessionStartRef.current ?? Date.now() - state.durationSec * 1000;
     const end = Date.now();
     addSession({
@@ -185,6 +185,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       decisionMakers: data.decisionMakers,
       meetings: data.meetings,
       niche: data.niche || state.niche || undefined,
+      scriptUsed: data.scriptUsed || undefined,
     });
     sessionStartRef.current = null;
     setShowForm(false);

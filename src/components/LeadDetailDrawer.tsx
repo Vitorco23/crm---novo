@@ -28,6 +28,7 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useRef, useState } from "react";
+import { SCRIPT_OPTIONS, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/lib/scripts";
 import { toast } from "sonner";
 import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 
@@ -169,10 +170,12 @@ export default function LeadDetailDrawer({
   const [alignmentOpen, setAlignmentOpen] = useState(false);
   const [draft, setDraft] = useState<Lead | null>(lead);
   const [newCallNote, setNewCallNote] = useState("");
+  const [callScript, setCallScript] = useState<ScriptOption>(SCRIPT_OPTIONS[0]);
 
   useEffect(() => {
     setDraft(lead);
     setNewCallNote("");
+    setCallScript(getSelectedScript());
   }, [lead?.id]);
 
   if (!lead || !draft) return null;
@@ -227,7 +230,8 @@ export default function LeadDetailDrawer({
 
   const handleAddCallNote = () => {
     if (!newCallNote.trim()) return;
-    addCallNote(lead.id, newCallNote);
+    addCallNote(lead.id, newCallNote, callScript);
+    logCall({ scriptUsed: callScript, source: "call_note", leadId: lead.id });
     setNewCallNote("");
     onRefresh();
     toast.success("Anotação adicionada!");
@@ -577,6 +581,24 @@ export default function LeadDetailDrawer({
                 rows={2}
                 className="text-sm"
               />
+              <div>
+                <Label className="text-[10px] text-muted-foreground">Script utilizado</Label>
+                <Select
+                  value={callScript}
+                  onValueChange={(v) => {
+                    const s = v as ScriptOption;
+                    setCallScript(s);
+                    setSelectedScript(s);
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SCRIPT_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
                 size="sm"
                 onClick={handleAddCallNote}
@@ -599,9 +621,16 @@ export default function LeadDetailDrawer({
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/70 mt-1">
-                      {format(new Date(n.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[10px] text-muted-foreground/70">
+                        {format(new Date(n.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                      {n.scriptUsed && (
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                          {n.scriptUsed}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -4,11 +4,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, Users, UserCheck, CalendarCheck } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Phone, Users, UserCheck, CalendarCheck, FileText } from "lucide-react";
+import { SCRIPT_OPTIONS, getSelectedScript, setSelectedScript, type ScriptOption } from "@/lib/scripts";
 
 export function PomodoroSessionFormDialog() {
   const { showForm, submitForm, dismissForm, state } = usePomodoro();
-  const [form, setForm] = useState({ calls: 0, connections: 0, decisionMakers: 0, meetings: 0, niche: "" });
+  const [form, setForm] = useState({ calls: 0, connections: 0, decisionMakers: 0, meetings: 0, niche: "", scriptUsed: SCRIPT_OPTIONS[0] as ScriptOption });
 
   useEffect(() => {
     if (showForm) setForm({
@@ -17,6 +19,7 @@ export function PomodoroSessionFormDialog() {
       decisionMakers: state.tally?.decisionMakers ?? 0,
       meetings: state.tally?.meetings ?? 0,
       niche: state.niche || "",
+      scriptUsed: getSelectedScript(),
     });
   }, [showForm, state.niche, state.tally]);
 
@@ -38,6 +41,25 @@ export function PomodoroSessionFormDialog() {
               value={form.niche}
               onChange={(e) => setForm({ ...form, niche: e.target.value })}
             />
+          </div>
+
+          <div>
+            <Label className="text-xs flex items-center gap-1"><FileText className="h-3 w-3" /> Script utilizado</Label>
+            <Select
+              value={form.scriptUsed}
+              onValueChange={(v) => {
+                const s = v as ScriptOption;
+                setForm({ ...form, scriptUsed: s });
+                setSelectedScript(s);
+              }}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SCRIPT_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

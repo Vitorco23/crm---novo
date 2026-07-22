@@ -54,6 +54,7 @@ export interface CallNote {
   id: string;
   text: string;
   createdAt: string;
+  scriptUsed?: string;
 }
 
 export interface Lead {
@@ -108,6 +109,7 @@ export interface PomodoroSession {
   decisionMakers: number;
   meetings: number;
   niche?: string;
+  scriptUsed?: string;
   // legacy
   messages?: number;
 }
@@ -431,14 +433,19 @@ export function removeAttachment(leadId: string, attachmentId: string) {
   }
 }
 
-export function addCallNote(leadId: string, text: string) {
+export function addCallNote(leadId: string, text: string, scriptUsed?: string) {
   if (!text.trim()) return;
   const leads = getLeads();
   const lead = leads.find((l) => l.id === leadId);
   if (lead) {
     lead.callNotes = [
       ...(lead.callNotes || []),
-      { id: crypto.randomUUID(), text: text.trim(), createdAt: new Date().toISOString() },
+      {
+        id: crypto.randomUUID(),
+        text: text.trim(),
+        createdAt: new Date().toISOString(),
+        ...(scriptUsed ? { scriptUsed } : {}),
+      },
     ];
     saveLeads(leads);
   }
