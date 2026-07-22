@@ -581,6 +581,24 @@ export default function LeadDetailDrawer({
                 rows={2}
                 className="text-sm"
               />
+              <div>
+                <Label className="text-[10px] text-muted-foreground">Script utilizado</Label>
+                <Select
+                  value={callScript}
+                  onValueChange={(v) => {
+                    const s = v as ScriptOption;
+                    setCallScript(s);
+                    setSelectedScript(s);
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SCRIPT_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
                 size="sm"
                 onClick={handleAddCallNote}
@@ -603,9 +621,16 @@ export default function LeadDetailDrawer({
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/70 mt-1">
-                      {format(new Date(n.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[10px] text-muted-foreground/70">
+                        {format(new Date(n.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                      {n.scriptUsed && (
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                          {n.scriptUsed}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
