@@ -18,6 +18,7 @@ import Metas from "./pages/Metas";
 import Financeiro from "./pages/Financeiro";
 import Integracoes from "./pages/Integracoes";
 import Lembretes from "./pages/Lembretes";
+import InteligenciaComercial from "./pages/InteligenciaComercial";
 
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -52,6 +53,7 @@ const App = () => (
                         <Route path="/financeiro" element={<Financeiro />} />
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/lembretes" element={<Lembretes />} />
+                        <Route path="/inteligencia" element={<InteligenciaComercial />} />
 
                         <Route path="*" element={<NotFound />} />
                       </Routes>
