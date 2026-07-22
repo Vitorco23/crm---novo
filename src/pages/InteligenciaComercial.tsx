@@ -22,6 +22,7 @@ import {
   getSessions, getLeads, getMovementEvents, getMeetings,
   type PomodoroSession, type Lead, type MovementEvent, type Meeting,
 } from "@/lib/store";
+import InsightsPanel from "@/components/InsightsPanel";
 
 // ============================================================
 // NORMALIZAÇÃO (não altera dados originais — apenas p/ análise)
