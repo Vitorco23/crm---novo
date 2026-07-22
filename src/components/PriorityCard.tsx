@@ -7,20 +7,26 @@ import {
   getStagesForPipeline,
 } from "@/lib/store";
 import { getReminders } from "@/lib/reminders";
-import { CalendarClock, CalendarCheck, FileText, FileSignature, Phone, Target } from "lucide-react";
+import {
+  CalendarClock,
+  CalendarCheck,
+  FileText,
+  FileSignature,
+  Phone,
+  Target,
+  CheckCircle2,
+} from "lucide-react";
 
 type Priority = {
   icon: React.ReactNode;
   label: string;
   title: string;
-  subtitle?: string;
-  action: string;
-  cta?: { text: string; href?: string; onClick?: () => void };
-  tone: "urgent" | "warn" | "info" | "idle";
+  reason: string;
+  cta?: { text: string; href?: string };
+  tone: "urgent" | "warn" | "info" | "idle" | "none";
 };
 
 function toneClasses(tone: Priority["tone"]) {
-  // green/yellow highlight, premium look
   switch (tone) {
     case "urgent":
       return "border-l-4 border-l-[#f4c542] bg-gradient-to-r from-[#f4c542]/10 via-accent/5 to-transparent";
@@ -29,8 +35,10 @@ function toneClasses(tone: Priority["tone"]) {
     case "info":
       return "border-l-4 border-l-accent bg-accent/5";
     case "idle":
-    default:
       return "border-l-4 border-l-accent/60 bg-accent/5";
+    case "none":
+    default:
+      return "border-l-4 border-l-muted bg-muted/10";
   }
 }
 
@@ -38,9 +46,10 @@ function computePriority(): Priority {
   const now = new Date();
   const leads = getLeads();
   const meetings = getMeetings();
+  const reminders = getReminders();
 
-  // 1️⃣ Meeting starting within 30 minutes
-  const upcomingMeeting = meetings
+  // 1) Reunião em menos de 30 minutos
+  const upcoming = meetings
     .map((m) => ({ m, at: new Date(`${m.date}T${m.time || "00:00"}:00`) }))
     .filter(({ at }) => {
       const diff = at.getTime() - now.getTime();
@@ -48,132 +57,155 @@ function computePriority(): Priority {
     })
     .sort((a, b) => a.at.getTime() - b.at.getTime())[0];
 
-  if (upcomingMeeting) {
-    const { m } = upcomingMeeting;
+  if (upcoming) {
+    const { m, at } = upcoming;
+    const mins = Math.max(1, Math.round((at.getTime() - now.getTime()) / 60_000));
     const link = m.meetLink || m.link || m.googleEventUrl;
     return {
       icon: <CalendarClock className="h-5 w-5" />,
-      label: "Reunião em breve",
-      title: m.company,
-      subtitle: `Horário: ${m.time}${m.contactName ? ` · ${m.contactName}` : ""}`,
-      action: "Envie o link e confirme a presença.",
+      label: "Reunião iminente",
+      title: `Entrar na reunião com ${m.company}`,
+      reason: `Reunião começa em ${mins} min (${m.time}).`,
       cta: link ? { text: "Abrir sala", href: link } : undefined,
       tone: "urgent",
     };
   }
 
-  // 2️⃣ Meeting today, still unconfirmed (heuristic: no reminder marked 'sent' for that meeting)
+  // 2) Reunião hoje sem confirmação
   const todayStr = now.toISOString().slice(0, 10);
-  const reminders = getReminders();
-  const confirmedMeetingIds = new Set(
+  const confirmedIds = new Set(
     reminders
       .filter((r) => r.status === "sent" && r.meetingId)
       .map((r) => r.meetingId as string)
   );
-  const todayMeeting = meetings
+  const unconfirmed = meetings
     .filter((m) => m.date === todayStr)
-    .filter((m) => !confirmedMeetingIds.has(m.id))
+    .filter((m) => new Date(`${m.date}T${m.time}:00`).getTime() > now.getTime())
+    .filter((m) => !confirmedIds.has(m.id))
     .sort((a, b) => a.time.localeCompare(b.time))[0];
 
-  if (todayMeeting) {
+  if (unconfirmed) {
     return {
       icon: <CalendarCheck className="h-5 w-5" />,
       label: "Confirmar reunião",
-      title: todayMeeting.company,
-      subtitle: `Hoje às ${todayMeeting.time}`,
-      action: "Envie a confirmação de presença para o lead.",
+      title: `Confirmar reunião da ${unconfirmed.company}`,
+      reason: `Reunião marcada para hoje às ${unconfirmed.time} e ainda não foi confirmada com o lead.`,
       tone: "warn",
     };
   }
 
-  // 3️⃣ Documento de Guerra (internal — build diagnóstico)
+  // 3) Lead em "Documento de Guerra" (Diagnóstico em Construção) — mais antigo
   const dgLead = leads
     .filter((l) => l.stage === "Documento de Guerra")
-    .sort((a, b) => new Date(a.stageChangedAt).getTime() - new Date(b.stageChangedAt).getTime())[0];
+    .sort(
+      (a, b) =>
+        new Date(a.stageChangedAt).getTime() - new Date(b.stageChangedAt).getTime()
+    )[0];
   if (dgLead) {
+    const days = Math.max(
+      0,
+      Math.floor((now.getTime() - new Date(dgLead.stageChangedAt).getTime()) / 86_400_000)
+    );
     return {
       icon: <FileText className="h-5 w-5" />,
-      label: "Documento de Guerra",
-      title: dgLead.company,
-      subtitle: "Uso interno — base da Reunião 2",
-      action: "Construa o diagnóstico estratégico para apresentar na Reunião de Alinhamento.",
+      label: "Diagnóstico em Construção",
+      title: `Construir diagnóstico para ${dgLead.company}`,
+      reason:
+        days > 0
+          ? `Lead está há ${days} dia(s) na etapa "Documento de Guerra" aguardando o diagnóstico.`
+          : `Lead entrou hoje na etapa "Documento de Guerra" e precisa do diagnóstico.`,
       tone: "info",
     };
   }
 
-  // 4️⃣ Proposta pendente — em "Proposta Enviada" há mais de 2 dias sem movimento
-  const propostaLead = leads
+  // 4) Proposta enviada aguardando retorno (>2 dias sem movimento)
+  const proposta = leads
     .filter((l) => l.stage === "Proposta Enviada")
-    .filter((l) => (now.getTime() - new Date(l.stageChangedAt).getTime()) > 2 * 86_400_000)
-    .sort((a, b) => new Date(a.stageChangedAt).getTime() - new Date(b.stageChangedAt).getTime())[0];
-  if (propostaLead) {
+    .map((l) => ({
+      l,
+      days: Math.floor(
+        (now.getTime() - new Date(l.stageChangedAt).getTime()) / 86_400_000
+      ),
+    }))
+    .filter(({ days }) => days >= 2)
+    .sort((a, b) => b.days - a.days)[0];
+  if (proposta) {
     return {
       icon: <FileSignature className="h-5 w-5" />,
       label: "Proposta pendente",
-      title: propostaLead.company,
-      subtitle: "Aguardando retorno / envio",
-      action: "Finalize e envie a proposta comercial ou faça o follow-up.",
+      title: `Follow-up de proposta com ${proposta.l.company}`,
+      reason: `Proposta enviada há ${proposta.days} dia(s) sem retorno registrado.`,
       tone: "info",
     };
   }
 
-  // 5️⃣ Follow-up pendente — reminder vencido
-  const overdueReminder = reminders
+  // 5) Follow-up vencido
+  const overdue = reminders
     .filter((r) => r.status === "pending" && new Date(r.scheduledFor).getTime() < now.getTime())
     .sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor))[0];
-  if (overdueReminder) {
-    const lead = leads.find((l) => l.id === overdueReminder.leadId);
+  if (overdue) {
+    const lead = leads.find((l) => l.id === overdue.leadId);
+    const hoursLate = Math.max(
+      1,
+      Math.round((now.getTime() - new Date(overdue.scheduledFor).getTime()) / 3_600_000)
+    );
     return {
       icon: <Phone className="h-5 w-5" />,
-      label: "Follow-up pendente",
-      title: lead?.company || overdueReminder.title,
-      subtitle: overdueReminder.title,
-      action: "Entre em contato hoje.",
+      label: "Follow-up vencido",
+      title: `Fazer follow-up com ${lead?.company || overdue.title}`,
+      reason: `Lembrete "${overdue.title}" venceu há ${hoursLate}h e ainda está pendente.`,
       tone: "warn",
     };
   }
 
-  // 6️⃣ Sem pendências — próxima cidade para prospecção
-  const coldStages = getStagesForPipeline("cold_call");
-  const coldStagesSet = new Set(coldStages);
+  // 6) Campanha de prospecção ativa
+  // Regra objetiva: par (cidade, nicho) que já teve leads contatados E ainda tem leads em "Novo Lead".
+  // Escolhe a campanha com maior progresso (mais leads já trabalhados) — quem está mais avançado
+  // deve ser finalizado antes de iniciar outro. Empate: maior volume total.
+  const coldStagesSet = new Set(getStagesForPipeline("cold_call"));
   const coldLeads = leads.filter((l) => coldStagesSet.has(l.stage));
-  const perCity = new Map<string, { contacted: number; untouched: number; niches: Map<string, number> }>();
+  const perCampaign = new Map<
+    string,
+    { city: string; niche: string; contacted: number; pending: number }
+  >();
   for (const l of coldLeads) {
     const city = (l.city || "").trim();
-    if (!city) continue;
-    const entry = perCity.get(city) || { contacted: 0, untouched: 0, niches: new Map() };
-    if (l.stage === "Novo Lead") {
-      entry.untouched += 1;
-      const n = (l.niche || "").trim();
-      if (n) entry.niches.set(n, (entry.niches.get(n) || 0) + 1);
-    } else {
-      entry.contacted += 1;
-    }
-    perCity.set(city, entry);
+    const niche = (l.niche || "").trim();
+    if (!city || !niche) continue;
+    const key = `${city}||${niche}`;
+    const entry =
+      perCampaign.get(key) || { city, niche, contacted: 0, pending: 0 };
+    if (l.stage === "Novo Lead") entry.pending += 1;
+    else entry.contacted += 1;
+    perCampaign.set(key, entry);
   }
-  const candidates = [...perCity.entries()]
-    .filter(([, v]) => v.untouched > 0)
-    .sort((a, b) => a[1].contacted - b[1].contacted);
+  const activeCampaigns = [...perCampaign.values()]
+    .filter((c) => c.contacted > 0 && c.pending > 0)
+    .sort((a, b) => {
+      if (b.contacted !== a.contacted) return b.contacted - a.contacted;
+      return b.contacted + b.pending - (a.contacted + a.pending);
+    });
 
-  if (candidates.length > 0) {
-    const [city, data] = candidates[0];
-    const topNiche = [...data.niches.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (activeCampaigns.length > 0) {
+    const c = activeCampaigns[0];
+    const total = c.contacted + c.pending;
     return {
       icon: <Target className="h-5 w-5" />,
-      label: "Próxima prospecção",
-      title: city,
-      subtitle: topNiche ? `Nicho sugerido: ${topNiche} · ${data.untouched} leads novos` : `${data.untouched} leads novos`,
-      action: "Meta: 20 ligações no próximo pomodoro.",
+      label: "Campanha ativa",
+      title: `Continuar campanha "${c.niche} - ${c.city}"`,
+      reason: `Campanha em andamento com ${c.contacted} de ${total} leads já trabalhados (${c.pending} restantes).`,
       tone: "idle",
     };
   }
 
+  // Nenhuma prioridade
   return {
-    icon: <Target className="h-5 w-5" />,
-    label: "Sem pendências",
-    title: "Tudo em dia",
-    action: "Importe novos leads ou revise o pipeline.",
-    tone: "idle",
+    icon: <CheckCircle2 className="h-5 w-5" />,
+    label: "Sem prioridades",
+    title: "Nenhuma prioridade operacional no momento.",
+    reason:
+      "Não há reuniões próximas, diagnósticos pendentes, propostas em atraso, follow-ups vencidos ou campanhas ativas em andamento.",
+    tone: "none",
   };
 }
 
@@ -190,23 +222,17 @@ export default function PriorityCard() {
             Prioridade do Momento · {p.label}
           </p>
           <p className="text-base font-semibold text-foreground truncate">{p.title}</p>
-          {p.subtitle && (
-            <p className="text-xs text-muted-foreground truncate">{p.subtitle}</p>
-          )}
-          <p className="text-xs text-foreground/80 mt-0.5">{p.action}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            <span className="font-semibold text-foreground/80">Motivo: </span>
+            {p.reason}
+          </p>
         </div>
-        {p.cta && (
-          p.cta.href ? (
-            <a href={p.cta.href} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
-                {p.cta.text}
-              </Button>
-            </a>
-          ) : (
-            <Button size="sm" onClick={p.cta.onClick} className="bg-accent text-accent-foreground hover:bg-accent/90">
+        {p.cta?.href && (
+          <a href={p.cta.href} target="_blank" rel="noopener noreferrer">
+            <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
               {p.cta.text}
             </Button>
-          )
+          </a>
         )}
       </CardContent>
     </Card>
