@@ -28,6 +28,8 @@ const SCOPED_KEYS = [
   "p21_filters_cold_call",
   "p21_filters_oportunidades",
   "p21_filters_onboarding",
+  "p21_selected_script",
+  "p21_call_logs",
 ];
 
 // Big / write-heavy keys — moved to IndexedDB to avoid the ~5MB localStorage
