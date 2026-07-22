@@ -70,10 +70,24 @@ export function PomodoroHeaderWidget() {
       </div>
 
       <div className="flex items-center gap-1 pl-2 border-l border-border">
+        <Select value={script} onValueChange={handleScriptChange}>
+          <SelectTrigger
+            className="h-7 w-[110px] text-xs gap-1 px-2"
+            title="Script utilizado nas ligações"
+          >
+            <FileText className="h-3 w-3 text-accent shrink-0" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SCRIPT_OPTIONS.map((s) => (
+              <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <button
           type="button"
-          onClick={() => incrementTally("calls")}
-          title="Registrar ligação"
+          onClick={registerCall}
+          title={`Registrar ligação (${script})`}
           className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
         >
           <Phone className="h-3.5 w-3.5 text-accent" />
