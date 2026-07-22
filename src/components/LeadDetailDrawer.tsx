@@ -28,6 +28,7 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useRef, useState } from "react";
+import { SCRIPT_OPTIONS, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/lib/scripts";
 import { toast } from "sonner";
 import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 
@@ -169,10 +170,12 @@ export default function LeadDetailDrawer({
   const [alignmentOpen, setAlignmentOpen] = useState(false);
   const [draft, setDraft] = useState<Lead | null>(lead);
   const [newCallNote, setNewCallNote] = useState("");
+  const [callScript, setCallScript] = useState<ScriptOption>(SCRIPT_OPTIONS[0]);
 
   useEffect(() => {
     setDraft(lead);
     setNewCallNote("");
+    setCallScript(getSelectedScript());
   }, [lead?.id]);
 
   if (!lead || !draft) return null;
@@ -227,7 +230,8 @@ export default function LeadDetailDrawer({
 
   const handleAddCallNote = () => {
     if (!newCallNote.trim()) return;
-    addCallNote(lead.id, newCallNote);
+    addCallNote(lead.id, newCallNote, callScript);
+    logCall({ scriptUsed: callScript, source: "call_note", leadId: lead.id });
     setNewCallNote("");
     onRefresh();
     toast.success("Anotação adicionada!");
