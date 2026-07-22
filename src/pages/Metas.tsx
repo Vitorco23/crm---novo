@@ -12,6 +12,8 @@ import {
   Trophy, Calendar, Clock, Percent, Activity,
 } from "lucide-react";
 import { isToday } from "date-fns";
+import ExportExcelDialog from "@/components/ExportExcelDialog";
+import { buildMetasSheets } from "@/lib/exportBuilders";
 
 const fmtNum = (n: number) => new Intl.NumberFormat("pt-BR").format(Math.ceil(n));
 const fmtMoney = (n: number) =>
@@ -94,15 +96,19 @@ export default function Metas() {
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
-      <div className="flex items-center gap-2 mb-4">
-        <Target className="h-5 w-5 text-accent" />
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Metas e Calculadora</h1>
-          <p className="text-xs text-muted-foreground">
-            Engenharia reversa do seu objetivo financeiro
-          </p>
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <Target className="h-5 w-5 text-accent" />
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Metas e Calculadora</h1>
+            <p className="text-xs text-muted-foreground">
+              Engenharia reversa do seu objetivo financeiro
+            </p>
+          </div>
         </div>
+        <ExportExcelDialog moduleName="Metas" moduleSlug="Metas" build={buildMetasSheets} />
       </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* LEFT: Inputs */}

@@ -23,6 +23,8 @@ import {
   type PomodoroSession, type Lead, type MovementEvent, type Meeting,
 } from "@/lib/store";
 import InsightsPanel from "@/components/InsightsPanel";
+import ExportExcelDialog from "@/components/ExportExcelDialog";
+import { buildInteligenciaSheets } from "@/lib/exportBuilders";
 
 // ============================================================
 // NORMALIZAÇÃO (não altera dados originais — apenas p/ análise)
@@ -816,13 +818,19 @@ export default function InteligenciaComercial() {
           <div className="h-10 w-10 rounded-md bg-accent/15 text-accent flex items-center justify-center">
             <Brain className="h-5 w-5" />
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold tracking-tight">Inteligência Comercial</h1>
             <p className="text-sm text-muted-foreground">
               Análises históricas e comparativas para apoiar decisões estratégicas da operação.
             </p>
           </div>
+          <ExportExcelDialog
+            moduleName="Inteligência Comercial"
+            moduleSlug="Inteligencia_Comercial"
+            build={buildInteligenciaSheets}
+          />
         </header>
+
 
         <FiltersBar />
 

@@ -7,42 +7,104 @@ import {
 import { getTransactions, formatBRL, monthKey } from "@/lib/finance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { isToday, isThisWeek, isThisMonth, format, isWithinInterval } from "date-fns";
+import { Calendar as CalendarUI } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { isToday, isThisWeek, isThisMonth, isWithinInterval, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign,
   Handshake, Trophy as TrophyIcon, Send, Instagram, Mail, Activity, Layers, Crown,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import PriorityCard from "@/components/PriorityCard";
+import ExportExcelDialog from "@/components/ExportExcelDialog";
+import { buildDashboardSheets } from "@/lib/exportBuilders";
+import { resolvePeriod } from "@/lib/exportEngine";
+import { cn } from "@/lib/utils";
 
-type Filter = "day" | "week" | "month";
+type Filter = "day" | "week" | "month" | "custom";
 
-function filterByDate(dateStr: string, filter: Filter) {
+interface CustomRange { start: Date; end: Date }
+
+function filterByDate(dateStr: string, filter: Filter, custom?: CustomRange) {
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
   if (filter === "day") return isToday(d);
   if (filter === "week") return isThisWeek(d, { weekStartsOn: 1 });
-  return isThisMonth(d);
+  if (filter === "month") return isThisMonth(d);
+  if (filter === "custom" && custom) {
+    return isWithinInterval(d, { start: custom.start, end: custom.end });
+  }
+  return false;
 }
 
-const filterLabels: Record<Filter, string> = { day: "Hoje", week: "Semana", month: "Mês" };
+const filterLabels: Record<Filter, string> = {
+  day: "Hoje", week: "Semana", month: "Mês", custom: "Personalizado",
+};
 
 export default function Dashboard() {
   const [filter, setFilter] = useState<Filter>("month");
+  const [customStart, setCustomStart] = useState<Date | undefined>();
+  const [customEnd, setCustomEnd] = useState<Date | undefined>();
+  const custom = customStart && customEnd
+    ? { start: new Date(customStart.setHours(0, 0, 0, 0)), end: new Date(customEnd.setHours(23, 59, 59, 999)) }
+    : undefined;
 
   return (
     <div className="p-4 max-w-6xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-        <div className="flex gap-1 bg-muted rounded-lg p-0.5">
-          {(["day", "week", "month"] as Filter[]).map((f) => (
-            <Button key={f} size="sm" variant={filter === f ? "default" : "ghost"}
-              onClick={() => setFilter(f)}
-              className={filter === f ? "bg-accent text-accent-foreground hover:bg-accent/90 h-7 text-xs" : "h-7 text-xs"}>
-              {filterLabels[f]}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 bg-muted rounded-lg p-0.5">
+            {(["day", "week", "month", "custom"] as Filter[]).map((f) => (
+              <Button key={f} size="sm" variant={filter === f ? "default" : "ghost"}
+                onClick={() => setFilter(f)}
+                className={filter === f ? "bg-accent text-accent-foreground hover:bg-accent/90 h-7 text-xs" : "h-7 text-xs"}>
+                {filterLabels[f]}
+              </Button>
+            ))}
+          </div>
+          {filter === "custom" && (
+            <div className="flex items-center gap-1">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {customStart ? format(customStart, "dd/MM/yyyy") : "Início"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarUI mode="single" selected={customStart} onSelect={setCustomStart}
+                    initialFocus className={cn("p-3 pointer-events-auto")} locale={ptBR} />
+                </PopoverContent>
+              </Popover>
+              <span className="text-xs text-muted-foreground">até</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {customEnd ? format(customEnd, "dd/MM/yyyy") : "Fim"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarUI mode="single" selected={customEnd} onSelect={setCustomEnd}
+                    initialFocus className={cn("p-3 pointer-events-auto")} locale={ptBR} />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+          <ExportExcelDialog
+            moduleName="Dashboard"
+            moduleSlug="Dashboard"
+            build={(range) => buildDashboardSheets(range)}
+            defaultPreset={
+              filter === "day" ? "today" : filter === "week" ? "last7" :
+              filter === "month" ? "thisMonth" : "custom"
+            }
+          />
         </div>
       </div>
+
 
       {/* ============ PAINEL 1: OPERACIONAL (período) ============ */}
       <section className="space-y-4">
@@ -53,7 +115,7 @@ export default function Dashboard() {
             <p className="text-[11px] text-muted-foreground">Ligações, conexões, decisores e reuniões registrados no período.</p>
           </div>
         </div>
-        <OperationalPanel filter={filter} />
+        <OperationalPanel filter={filter} custom={custom} />
         <PriorityCard />
       </section>
 
@@ -81,16 +143,17 @@ export default function Dashboard() {
 /* ============================================================
    PAINEL 1 — OPERACIONAL
    ============================================================ */
-function OperationalPanel({ filter }: { filter: Filter }) {
+function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
   const sessions = getSessions();
   const movements = getMovementEvents();
   const meetings = getMeetings();
 
-  const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter)), [sessions, filter]);
+  const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter, custom)), [sessions, filter, custom]);
   const filteredMeetings = useMemo(
-    () => meetings.filter((m) => filterByDate(`${m.date}T${m.time || "00:00"}`, filter)),
-    [meetings, filter]
+    () => meetings.filter((m) => filterByDate(`${m.date}T${m.time || "00:00"}`, filter, custom)),
+    [meetings, filter, custom]
   );
+
 
   const meetingsBySource = useMemo(() => {
     const acc: Record<string, number> = { "Ligação": 0, "Disparo": 0, "Instagram": 0, "Email": 0 };
