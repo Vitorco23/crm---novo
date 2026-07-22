@@ -13,6 +13,7 @@ import {
   TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign,
   Handshake, Trophy as TrophyIcon, Send, Instagram, Mail, Activity, Layers, Crown,
 } from "lucide-react";
+import PriorityCard from "@/components/PriorityCard";
 
 type Filter = "day" | "week" | "month";
 
@@ -53,6 +54,7 @@ export default function Dashboard() {
           </div>
         </div>
         <OperationalPanel filter={filter} />
+        <PriorityCard />
       </section>
 
       {/* ============ PAINEL 2: PIPELINE COMERCIAL (independente) ============ */}
