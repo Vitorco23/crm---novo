@@ -23,6 +23,8 @@ import {
   type PomodoroSession, type Lead, type MovementEvent, type Meeting,
 } from "@/lib/store";
 import InsightsPanel from "@/components/InsightsPanel";
+import ExportExcelDialog from "@/components/ExportExcelDialog";
+import { buildInteligenciaSheets } from "@/lib/exportBuilders";
 
 // ============================================================
 // NORMALIZAÇÃO (não altera dados originais — apenas p/ análise)
