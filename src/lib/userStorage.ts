@@ -128,16 +128,36 @@ export function uload<T>(key: string, fallback: T): T {
   }
 }
 
+// Config keys whose "empty" value must NEVER overwrite a non-empty cloud value.
+// Prevents a fresh device (with defaults / no data) from wiping cloud config.
+const PROTECTED_CONFIG_KEYS = new Set([
+  "p21_cadence_overrides",
+  "p21_reminder_templates",
+]);
+
+function isEmptyValue(v: unknown): boolean {
+  return (
+    v == null ||
+    (Array.isArray(v) && v.length === 0) ||
+    (typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0)
+  );
+}
+
 export function usave<T>(key: string, data: T) {
   const str = JSON.stringify(data);
   writeScoped(scopedKey(key), str, isHeavy(key));
-  if (SCOPED_KEYS.includes(key)) scheduleCloudPush(key, data);
+  if (SCOPED_KEYS.includes(key)) {
+    // Guard: never push an empty value for protected config keys.
+    if (PROTECTED_CONFIG_KEYS.has(key) && isEmptyValue(data)) return;
+    scheduleCloudPush(key, data);
+  }
 }
 
 export function uremove(key: string) {
   deleteScoped(scopedKey(key), isHeavy(key));
   if (SCOPED_KEYS.includes(key)) cloudDelete(key);
 }
+
 
 // ===== Local hydration (IndexedDB -> memCache, + one-time LS->IDB migration) =====
 
@@ -197,7 +217,44 @@ function flushPendingPushes() {
   pendingPushes.clear();
 }
 
+/**
+ * Force-pull specific keys from the cloud into local cache.
+ * Only overwrites local when the cloud value is non-empty (protects config
+ * from being wiped by a stale/empty backend row).
+ * Returns list of keys that actually changed locally.
+ */
+export async function pullKeysFromCloud(keys: string[]): Promise<string[]> {
+  const uid = getCurrentUserId();
+  if (!uid || keys.length === 0) return [];
+  const changed: string[] = [];
+  try {
+    const { data, error } = await supabase
+      .from("user_storage")
+      .select("key,value")
+      .eq("user_id", uid)
+      .in("key", keys);
+    if (error) throw error;
+    for (const row of (data ?? []) as Array<{ key: string; value: unknown }>) {
+      if (isEmptyValue(row.value)) continue;
+      const scoped = `u:${uid}:${row.key}`;
+      const heavy = isHeavy(row.key);
+      const str = JSON.stringify(row.value);
+      if (readScoped(scoped, heavy) !== str) {
+        writeScoped(scoped, str, heavy);
+        changed.push(row.key);
+      }
+    }
+  } catch (e) {
+    console.warn("[userStorage] pullKeysFromCloud failed", keys, e);
+  }
+  if (changed.length > 0) {
+    try { window.dispatchEvent(new Event("p21:storage-synced")); } catch {}
+  }
+  return changed;
+}
+
 async function cloudPush(key: string, data: unknown) {
+
   const uid = getCurrentUserId();
   if (!uid) return;
   try {
