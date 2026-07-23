@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      leads_inbound: {
+        Row: {
+          created_at: string
+          dados: Json
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          dados: Json
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          dados?: Json
+          id?: string
+        }
+        Relationships: []
+      }
       user_storage: {
         Row: {
           key: string
