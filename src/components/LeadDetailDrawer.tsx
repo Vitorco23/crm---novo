@@ -456,7 +456,14 @@ export default function LeadDetailDrawer({
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" /> Telefone</Label>
-                  <Input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} onBlur={() => commitOnBlur({ phone: draft.phone })} />
+                  <div className="flex gap-1.5">
+                    <Input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} onBlur={() => commitOnBlur({ phone: draft.phone })} />
+                    {draft.phone && (
+                      <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
+                        <a href={`tel:${draft.phone.replace(/[^\d+]/g, "")}`} aria-label="Ligar"><Phone className="h-3.5 w-3.5" /></a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground flex items-center gap-1"><MessageCircle className="h-3 w-3" /> WhatsApp</Label>
