@@ -603,6 +603,20 @@ export function addSession(session: Omit<PomodoroSession, "id">): PomodoroSessio
   const newSession: PomodoroSession = { ...session, id: crypto.randomUUID() };
   sessions.push(newSession);
   saveSessions(sessions);
+  emit(
+    "PomodoroFinalizado",
+    {
+      sessionId: newSession.id,
+      durationMinutes: newSession.durationMinutes,
+      calls: newSession.calls,
+      connections: newSession.connections,
+      decisionMakers: newSession.decisionMakers,
+      meetings: newSession.meetings,
+      niche: newSession.niche,
+      scriptUsed: newSession.scriptUsed,
+    },
+    `pomo:${newSession.id}`
+  );
   return newSession;
 }
 
