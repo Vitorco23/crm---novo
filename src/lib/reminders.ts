@@ -92,10 +92,11 @@ export function cancelPendingReminders(leadId: string, stages?: string[]) {
 export function getReminderTemplates(): ReminderTemplate[] {
   const stored = loadFromStorage<ReminderTemplate[] | null>(TEMPLATES_KEY, null);
   if (stored) return stored;
-  // Seed with a few sensible defaults so the UI isn't empty on first use.
-  const seed = defaultSeedTemplates();
-  saveToStorage(TEMPLATES_KEY, seed);
-  return seed;
+  // IMPORTANT: don't persist the seed here. Doing so during boot (before cloud
+  // hydration finishes) would push defaults up and overwrite templates the
+  // user configured on another device. Return seed in-memory only; the first
+  // real user edit (upsert/delete) is what persists.
+  return defaultSeedTemplates();
 }
 export function saveReminderTemplates(list: ReminderTemplate[]) {
   saveToStorage(TEMPLATES_KEY, list);

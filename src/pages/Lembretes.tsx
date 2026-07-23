@@ -231,7 +231,19 @@ function TemplatesConfig() {
   const [stage, setStage] = useState<string>(CONFIGURABLE_STAGES[0] || "Reunião Marcada");
 
   const refresh = () => setTemplates(getReminderTemplates());
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key.endsWith("p21_reminder_templates")) refresh();
+    };
+    const onSynced = () => refresh();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("p21:storage-synced", onSynced as EventListener);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("p21:storage-synced", onSynced as EventListener);
+    };
+  }, []);
 
   const forStage = useMemo(
     () => templates.filter((t) => t.stage.toLowerCase() === stage.toLowerCase()),
