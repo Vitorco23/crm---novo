@@ -296,6 +296,7 @@ export function addLead(
   };
   leads.push(newLead);
   saveLeads(leads);
+  emit("LeadCriado", { leadId: newLead.id, company: newLead.company, stage: newLead.stage });
   return newLead;
 }
 
