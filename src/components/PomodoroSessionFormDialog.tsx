@@ -62,7 +62,7 @@ export function PomodoroSessionFormDialog() {
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {SCRIPT_OPTIONS.map((s) => (
+                {scripts.map((s) => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
