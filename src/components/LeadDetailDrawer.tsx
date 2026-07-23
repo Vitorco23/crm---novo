@@ -263,7 +263,46 @@ export default function LeadDetailDrawer({
           <SheetTitle className="sr-only">{lead.company}</SheetTitle>
         </SheetHeader>
 
-        {/* Mover lead entre pipelines/etapas */}
+        {/* Próxima Ação (apenas cold_call, exceto colunas finais) */}
+        {pipeline === "cold_call" && (() => {
+          const stageLower = lead.stage.toLowerCase();
+          const finalCol = stageLower.includes("não quer") || stageLower.includes("nao quer") || stageLower.includes("sem contato");
+          if (finalCol) return null;
+          const step = getStepForLead(lead);
+          if (!step) return null;
+          return (
+            <div className="mb-4 rounded-lg border border-accent/40 bg-accent/5 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] uppercase tracking-wide text-accent font-semibold flex items-center gap-1">
+                  <Target className="h-3 w-3" /> Próxima Ação
+                </span>
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> {executionMoment(lead)}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mb-2">
+                <div><span className="text-muted-foreground">Dia:</span> <span className="font-medium">D{step.day}</span></div>
+                <div><span className="text-muted-foreground">Tentativa:</span> <span className="font-medium">{step.attempt}</span></div>
+                <div><span className="text-muted-foreground">Canal:</span> <span className="font-medium">{step.channel}</span></div>
+                <div><span className="text-muted-foreground">Estimado:</span> <span className="font-medium">{step.estimatedMinutes} min</span></div>
+              </div>
+              <div className="text-xs mb-1"><span className="text-muted-foreground">Objetivo:</span> <span className="font-medium">{step.objective}</span></div>
+              <div className="text-xs mb-2"><span className="text-muted-foreground">Ação:</span> <span className="font-medium text-accent">{step.nextAction}</span></div>
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Ver script completo</summary>
+                <pre className="mt-1.5 whitespace-pre-wrap font-sans text-[11px] leading-relaxed rounded bg-background/60 border border-border/60 p-2">{step.script}</pre>
+              </details>
+              <Button
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => setConcluirOpen(true)}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Concluir tentativa
+              </Button>
+            </div>
+          );
+        })()}
+
         <div className="mb-4">
           <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
             <ArrowRightLeft className="h-3 w-3" /> Mover lead para...
