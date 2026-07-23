@@ -404,16 +404,28 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const startEditStage = (s: string) => { setEditingStage(s); setEditingValue(s); };
   const commitEditStage = () => {
     if (editingStage && editingValue.trim() && editingValue !== editingStage) {
-      renameStage(pipeline, editingStage, editingValue.trim());
+      const r = renameStage(pipeline, editingStage, editingValue.trim());
+      if (!r.ok) {
+        toast.error(r.error || "Não foi possível renomear");
+        return; // mantém o input aberto para o usuário corrigir
+      }
     }
     setEditingStage(null); setEditingValue("");
     refresh();
   };
   const handleAddStage = () => {
-    if (newStageName.trim()) addStage(pipeline, newStageName.trim());
+    const name = newStageName.trim();
+    if (name) {
+      const r = addStage(pipeline, name);
+      if (!r.ok) {
+        toast.error(r.error || "Não foi possível adicionar");
+        return;
+      }
+    }
     setNewStageName(""); setShowAddStage(false);
     refresh();
   };
+
   const handleRemoveStage = (s: string) => {
     if (!confirm(`Remover etapa "${s}"? Os leads serão movidos para a primeira etapa.`)) return;
     removeStage(pipeline, s);
