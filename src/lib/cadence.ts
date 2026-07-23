@@ -109,10 +109,43 @@ const NICHE_OVERRIDES: Record<string, CadenceStep[]> = {
   // Iteração futura: cadências customizadas por nicho.
 };
 
+const OVERRIDES_KEY = "p21_cadence_overrides";
+
+function readOverrides(): Record<string, CadenceStep[]> {
+  try {
+    if (typeof localStorage === "undefined") return {};
+    const raw = localStorage.getItem(OVERRIDES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function writeOverrides(map: Record<string, CadenceStep[]>) {
+  try { localStorage.setItem(OVERRIDES_KEY, JSON.stringify(map)); } catch {}
+  try { window.dispatchEvent(new CustomEvent("p21:cadence-changed")); } catch {}
+}
+
+function nicheKey(niche?: string): string {
+  return (niche || "").trim().toLowerCase() || "__default__";
+}
+
 export function getCadenceForNiche(niche?: string): CadenceStep[] {
-  if (!niche) return DEFAULT_CADENCE;
-  const key = niche.trim().toLowerCase();
-  return NICHE_OVERRIDES[key] || DEFAULT_CADENCE;
+  const key = nicheKey(niche);
+  const overrides = readOverrides();
+  if (overrides[key]?.length) return overrides[key];
+  if (niche && NICHE_OVERRIDES[key]) return NICHE_OVERRIDES[key];
+  return DEFAULT_CADENCE;
+}
+
+export function saveCadenceForNiche(niche: string | undefined, steps: CadenceStep[]) {
+  const map = readOverrides();
+  map[nicheKey(niche)] = steps;
+  writeOverrides(map);
+}
+
+export function resetCadenceForNiche(niche?: string) {
+  const map = readOverrides();
+  delete map[nicheKey(niche)];
+  writeOverrides(map);
 }
 
 /** Resolve o passo da cadência a partir do stage atual do lead. */
