@@ -19,9 +19,30 @@ export default function Oportunidades() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [createdLead, setCreatedLead] = useState<Lead | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pulling, setPulling] = useState(false);
   const [form, setForm] = useState({
     company: "", contact: "", phone: "", email: "", niche: "", city: "", notes: "",
   });
+
+  const handlePullInbound = async () => {
+    if (pulling) return;
+    setPulling(true);
+    try {
+      const n = await pullInboundLeads();
+      if (n > 0) {
+        toast.success(`${n} lead${n > 1 ? "s" : ""} importado${n > 1 ? "s" : ""} da Landing Page`);
+        setRefreshKey((k) => k + 1);
+      } else {
+        toast("Nenhum lead novo na caixa de entrada");
+      }
+    } catch (e: any) {
+      console.error("[pullInboundLeads]", e);
+      toast.error("Falha ao buscar leads da Landing Page");
+    } finally {
+      setPulling(false);
+    }
+  };
+
 
   const reset = () => setForm({ company: "", contact: "", phone: "", email: "", niche: "", city: "", notes: "" });
 
