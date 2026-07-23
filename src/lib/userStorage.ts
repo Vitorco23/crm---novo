@@ -303,3 +303,72 @@ export async function syncFromCloud(): Promise<boolean> {
   }
   return changed;
 }
+
+// ===== Landing Page inbound queue =====
+// Drena `public.leads_inbound`: converte cada registro em um lead do CRM,
+// insere na primeira etapa de Oportunidades (p21_leads) e apaga da fila.
+
+const FIRST_OPP_STAGE = "Reunião Marcada";
+
+type InboundRow = { id: string; dados: any; created_at: string };
+type Lead = Record<string, any>;
+
+function inboundToLead(row: InboundRow): Lead {
+  const d = row.dados ?? {};
+  const nowISO = new Date().toISOString();
+  const contact = String(d.contact ?? d.nome ?? d.name ?? "").trim();
+  const company = String(d.company ?? d.empresa ?? "").trim();
+  const phone = String(d.phone ?? d.whatsapp ?? d.telefone ?? "").trim();
+  const email = String(d.email ?? "").trim();
+  const notesBase = String(d.notes ?? d.observacoes ?? "").trim();
+  const source = String(d.source ?? "landing_page");
+  return {
+    id: (globalThis.crypto?.randomUUID?.() as string | undefined) ??
+      `lead_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+    company: company || contact || "Sem nome",
+    contact,
+    phone,
+    email,
+    niche: String(d.niche ?? d.nicho ?? ""),
+    city: String(d.city ?? d.cidade ?? ""),
+    gmnLink: "",
+    instagramLink: String(d.instagram ?? ""),
+    icpStars: 2,
+    runsAds: false,
+    stage: FIRST_OPP_STAGE,
+    createdAt: row.created_at || nowISO,
+    stageChangedAt: row.created_at || nowISO,
+    notes: [notesBase, `Origem: Landing Page${source && source !== "landing_page" ? ` (${source})` : ""}`]
+      .filter(Boolean).join("\n"),
+    attachments: [],
+    callNotes: [],
+    source: "landing_page",
+  };
+}
+
+export async function syncInboundLeads(): Promise<number> {
+  const uid = getCurrentUserId();
+  if (!uid) return 0;
+
+  const { data, error } = await supabase
+    .from("leads_inbound")
+    .select("id,dados,created_at")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  const rows = (data ?? []) as InboundRow[];
+  if (rows.length === 0) return 0;
+
+  const existing = uload<Lead[]>("p21_leads", []);
+  const newLeads = rows.map(inboundToLead);
+  usave<Lead[]>("p21_leads", [...newLeads, ...existing]);
+
+  const ids = rows.map((r) => r.id);
+  const { error: delErr } = await supabase.from("leads_inbound").delete().in("id", ids);
+  if (delErr) {
+    console.warn("[userStorage] failed to delete drained inbound rows", delErr);
+  }
+
+  window.dispatchEvent(new Event("p21:storage-synced"));
+  return newLeads.length;
+}
+
