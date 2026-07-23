@@ -31,6 +31,9 @@ import { useEffect, useRef, useState } from "react";
 import { SCRIPT_OPTIONS, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/lib/scripts";
 import { toast } from "sonner";
 import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
+import ConcluirTentativaDialog from "@/components/ConcluirTentativaDialog";
+import { getStepForLead, executionMoment } from "@/lib/cadence";
+import { CheckCircle2, Clock, Target } from "lucide-react";
 
 function StarRating({
   value, onChange,
