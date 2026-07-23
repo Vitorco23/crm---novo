@@ -33,6 +33,19 @@ export default function CadenceEditor({
     setDirty(false);
   }, [niche]);
 
+  useEffect(() => {
+    const reload = () => {
+      if (dirty) return; // don't overwrite unsaved edits
+      setSteps(getCadenceForNiche(niche));
+    };
+    window.addEventListener("p21:cadence-changed", reload);
+    window.addEventListener("p21:storage-synced", reload);
+    return () => {
+      window.removeEventListener("p21:cadence-changed", reload);
+      window.removeEventListener("p21:storage-synced", reload);
+    };
+  }, [niche, dirty]);
+
   const label = niche ? `Cadência para nicho "${niche}"` : "Cadência padrão";
 
   const update = (i: number, patch: Partial<CadenceStep>) => {
