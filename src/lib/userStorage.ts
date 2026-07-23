@@ -228,6 +228,14 @@ export async function syncFromCloud(): Promise<boolean> {
   const uid = getCurrentUserId();
   if (!uid) return false;
 
+  // Drena a caixa de entrada de leads vindos da Landing Page antes de puxar o resto.
+  try {
+    await syncInboundLeads();
+  } catch (e) {
+    console.warn("[userStorage] inbound sync failed", e);
+  }
+
+
   let changed = false;
   try {
     const { data, error } = await supabase
