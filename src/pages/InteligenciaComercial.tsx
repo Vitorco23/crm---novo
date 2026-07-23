@@ -23,6 +23,7 @@ import {
   type PomodoroSession, type Lead, type MovementEvent, type Meeting,
 } from "@/lib/store";
 import InsightsPanel from "@/components/InsightsPanel";
+import ScriptManager from "@/components/ScriptManager";
 import ExportExcelDialog from "@/components/ExportExcelDialog";
 import { buildInteligenciaSheets } from "@/lib/exportBuilders";
 
@@ -854,22 +855,7 @@ export default function InteligenciaComercial() {
           <CampaignModule />
 
 
-          <Card className="border-l-4 border-l-muted">
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="h-9 w-9 rounded-md bg-muted text-muted-foreground flex items-center justify-center shrink-0">
-                  <FlaskConical className="h-5 w-5" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Teste A/B de Scripts</CardTitle>
-                  <CardDescription>
-                    Compare variações de script de abordagem para identificar qual gera mais conexões, decisores e reuniões.
-                  </CardDescription>
-                </div>
-              </div>
-              <Badge variant="outline" className="text-[10px] uppercase tracking-wider">Em breve</Badge>
-            </CardHeader>
-          </Card>
+          <ScriptManager />
         </section>
       </div>
     </FiltersProvider>

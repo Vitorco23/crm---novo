@@ -6,11 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Phone, Users, UserCheck, CalendarCheck, FileText } from "lucide-react";
-import { SCRIPT_OPTIONS, getSelectedScript, setSelectedScript, type ScriptOption } from "@/lib/scripts";
+import { getScripts, getSelectedScript, setSelectedScript, type ScriptOption } from "@/lib/scripts";
 
 export function PomodoroSessionFormDialog() {
   const { showForm, submitForm, dismissForm, state } = usePomodoro();
-  const [form, setForm] = useState({ calls: 0, connections: 0, decisionMakers: 0, meetings: 0, niche: "", scriptUsed: SCRIPT_OPTIONS[0] as ScriptOption });
+  const [scripts, setScripts] = useState<string[]>(() => getScripts());
+  const [form, setForm] = useState({ calls: 0, connections: 0, decisionMakers: 0, meetings: 0, niche: "", scriptUsed: getScripts()[0] as ScriptOption });
+
+  useEffect(() => {
+    const refresh = () => setScripts(getScripts());
+    window.addEventListener("p21:scripts-changed", refresh);
+    return () => window.removeEventListener("p21:scripts-changed", refresh);
+  }, []);
 
   useEffect(() => {
     if (showForm) setForm({
@@ -55,7 +62,7 @@ export function PomodoroSessionFormDialog() {
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {SCRIPT_OPTIONS.map((s) => (
+                {scripts.map((s) => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
