@@ -240,10 +240,6 @@ export default function LeadDetailDrawer({
     setNewCallNote(""); onRefresh(); toast.success("Anotação adicionada!");
   };
 
-  const callNotes = useMemo(() => [...(lead.callNotes || [])].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  ), [lead.callNotes]);
-
   const meetings = getMeetingsForLead(lead.id);
 
   const copyScript = async () => {
