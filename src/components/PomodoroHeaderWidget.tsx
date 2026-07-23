@@ -89,7 +89,7 @@ export function PomodoroHeaderWidget() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {SCRIPT_OPTIONS.map((s) => (
+            {scripts.map((s) => (
               <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
             ))}
           </SelectContent>
