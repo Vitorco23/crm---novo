@@ -179,6 +179,10 @@ export default function LeadDetailDrawer({
     return () => window.removeEventListener("p21:scripts-changed", h);
   }, []);
 
+  const callNotes = useMemo(() => [...(lead?.callNotes || [])].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  ), [lead?.callNotes]);
+
   if (!lead || !draft) return null;
   const pipeline = getPipelineForStage(lead.stage);
   const isOnboarding = pipeline === "onboarding";
@@ -235,10 +239,6 @@ export default function LeadDetailDrawer({
     logCall({ scriptUsed: callScript, source: "call_note", leadId: lead.id });
     setNewCallNote(""); onRefresh(); toast.success("Anotação adicionada!");
   };
-
-  const callNotes = useMemo(() => [...(lead.callNotes || [])].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  ), [lead.callNotes]);
 
   const meetings = getMeetingsForLead(lead.id);
 
