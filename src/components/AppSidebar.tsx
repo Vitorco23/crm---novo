@@ -1,4 +1,4 @@
-import { PhoneCall, Handshake, Timer, BarChart3, Zap, Target, Plug, Rocket, ListChecks, DollarSign, Bell, Brain, Compass } from "lucide-react";
+import { PhoneCall, Handshake, Timer, BarChart3, Zap, Target, Plug, Rocket, ListChecks, DollarSign, Bell, Brain, Compass, FlaskConical } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -21,6 +21,7 @@ const toolItems = [
   { title: "Lembretes", url: "/lembretes", icon: Bell },
   { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
   { title: "Inteligência Comercial", url: "/inteligencia", icon: Brain },
+  { title: "Laboratório Comercial", url: "/laboratorio", icon: FlaskConical },
   { title: "Metas", url: "/metas", icon: Target },
   { title: "Financeiro", url: "/financeiro", icon: DollarSign },
   { title: "Integrações", url: "/integracoes", icon: Plug },
