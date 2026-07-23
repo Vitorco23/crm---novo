@@ -217,7 +217,44 @@ function flushPendingPushes() {
   pendingPushes.clear();
 }
 
+/**
+ * Force-pull specific keys from the cloud into local cache.
+ * Only overwrites local when the cloud value is non-empty (protects config
+ * from being wiped by a stale/empty backend row).
+ * Returns list of keys that actually changed locally.
+ */
+export async function pullKeysFromCloud(keys: string[]): Promise<string[]> {
+  const uid = getCurrentUserId();
+  if (!uid || keys.length === 0) return [];
+  const changed: string[] = [];
+  try {
+    const { data, error } = await supabase
+      .from("user_storage")
+      .select("key,value")
+      .eq("user_id", uid)
+      .in("key", keys);
+    if (error) throw error;
+    for (const row of (data ?? []) as Array<{ key: string; value: unknown }>) {
+      if (isEmptyValue(row.value)) continue;
+      const scoped = `u:${uid}:${row.key}`;
+      const heavy = isHeavy(row.key);
+      const str = JSON.stringify(row.value);
+      if (readScoped(scoped, heavy) !== str) {
+        writeScoped(scoped, str, heavy);
+        changed.push(row.key);
+      }
+    }
+  } catch (e) {
+    console.warn("[userStorage] pullKeysFromCloud failed", keys, e);
+  }
+  if (changed.length > 0) {
+    try { window.dispatchEvent(new Event("p21:storage-synced")); } catch {}
+  }
+  return changed;
+}
+
 async function cloudPush(key: string, data: unknown) {
+
   const uid = getCurrentUserId();
   if (!uid) return;
   try {
