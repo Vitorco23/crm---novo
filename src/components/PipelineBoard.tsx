@@ -185,26 +185,26 @@ function LeadCard({
       )}
 
       {pipeline === "cold_call" && (() => {
+        const stageLower = lead.stage.toLowerCase();
+        const finalCol = stageLower.includes("não quer") || stageLower.includes("nao quer") || stageLower.includes("sem contato");
+        if (finalCol) return null;
         const temp = computeLeadTemperature(lead);
-        const last = lastInteractionLabel(lead);
-        const next = nextActionLabel(lead);
+        const step = getStepForLead(lead);
+        const moment = executionMoment(lead);
         const dotClass =
           temp === "hot" ? "bg-green-500" :
           temp === "warm" ? "bg-yellow-500" :
           temp === "cold" ? "bg-destructive" :
           "bg-muted-foreground/40";
-        const dotTitle =
-          temp === "hot" ? "Lead quente" :
-          temp === "warm" ? "Follow-up necessário" :
-          temp === "cold" ? "Parado" : "Novo";
+        if (!step) return null;
         return (
-          <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground border-t border-border/50 pt-1.5">
-            <span title={dotTitle} className="flex items-center gap-1">
+          <div className="mt-2 flex flex-col gap-0.5 text-[10px] text-muted-foreground border-t border-border/50 pt-1.5">
+            <span className="flex items-center gap-1">
               <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
-              <span className="truncate">{last.label} · {last.when}</span>
+              <span className="truncate">D{step.day} · {step.channel} · {moment}</span>
             </span>
             <span className="inline-flex items-center gap-0.5 text-accent font-medium">
-              <ArrowRight className="h-2.5 w-2.5" />{next}
+              <ArrowRight className="h-2.5 w-2.5" />{step.nextAction}
             </span>
           </div>
         );
