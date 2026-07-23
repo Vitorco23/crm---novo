@@ -14,6 +14,12 @@ export function PomodoroSessionFormDialog() {
   const [form, setForm] = useState({ calls: 0, connections: 0, decisionMakers: 0, meetings: 0, niche: "", scriptUsed: getScripts()[0] as ScriptOption });
 
   useEffect(() => {
+    const refresh = () => setScripts(getScripts());
+    window.addEventListener("p21:scripts-changed", refresh);
+    return () => window.removeEventListener("p21:scripts-changed", refresh);
+  }, []);
+
+  useEffect(() => {
     if (showForm) setForm({
       calls: state.tally?.calls ?? 0,
       connections: state.tally?.connections ?? 0,
