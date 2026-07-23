@@ -34,8 +34,9 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
-  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search, LayoutGrid, List as ListIcon, Download,
+  Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search, LayoutGrid, List as ListIcon, Download, ArrowRight,
 } from "lucide-react";
+import { computeLeadTemperature, lastInteractionLabel, nextActionLabel } from "@/lib/coldCallMetrics";
 
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -182,6 +183,32 @@ function LeadCard({
           )}
         </div>
       )}
+
+      {pipeline === "cold_call" && (() => {
+        const temp = computeLeadTemperature(lead);
+        const last = lastInteractionLabel(lead);
+        const next = nextActionLabel(lead);
+        const dotClass =
+          temp === "hot" ? "bg-green-500" :
+          temp === "warm" ? "bg-yellow-500" :
+          temp === "cold" ? "bg-destructive" :
+          "bg-muted-foreground/40";
+        const dotTitle =
+          temp === "hot" ? "Lead quente" :
+          temp === "warm" ? "Follow-up necessário" :
+          temp === "cold" ? "Parado" : "Novo";
+        return (
+          <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground border-t border-border/50 pt-1.5">
+            <span title={dotTitle} className="flex items-center gap-1">
+              <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
+              <span className="truncate">{last.label} · {last.when}</span>
+            </span>
+            <span className="inline-flex items-center gap-0.5 text-accent font-medium">
+              <ArrowRight className="h-2.5 w-2.5" />{next}
+            </span>
+          </div>
+        );
+      })()}
 
       <div className="flex items-center justify-between gap-2 mt-2">
         <p className="text-[10px] text-muted-foreground/70">⏱ {timeInStage(lead.stageChangedAt)}</p>
