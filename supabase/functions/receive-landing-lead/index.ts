@@ -150,76 +150,33 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 1. Localizar user_id do dono pelo email
-  const { data: userList, error: usersErr } = await admin.auth.admin.listUsers();
-  if (usersErr) {
-    console.error("listUsers error", usersErr);
-    return json(500, { error: "auth_lookup_failed", details: usersErr.message });
-  }
-  const owner = userList?.users?.find(
-    (u) => (u.email || "").toLowerCase() === OWNER_EMAIL.toLowerCase()
-  );
-  if (!owner) {
-    return json(404, { error: "owner_not_found", email: OWNER_EMAIL });
-  }
-  const userId = owner.id;
-
-  // 2. Buscar p21_leads atual
-  const { data: existing, error: selErr } = await admin
-    .from("user_storage")
-    .select("value")
-    .eq("user_id", userId)
-    .eq("key", "p21_leads")
-    .maybeSingle();
-  if (selErr) {
-    console.error("select p21_leads failed", selErr);
-    return json(500, { error: "storage_read_failed", details: selErr.message });
-  }
-  const currentLeads: any[] = Array.isArray(existing?.value) ? (existing!.value as any[]) : [];
-
-  // 3. Montar novo lead
+  // Enfileira na caixa de entrada. O CRM lê e drena via syncInboundLeads().
   const nowISO = new Date().toISOString();
-  const leadId =
-    (globalThis.crypto?.randomUUID?.() as string | undefined) ||
-    `lead_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-
-  const newLead = {
-    id: leadId,
-    company: company || contact || "Sem nome",
-    contact: contact || "",
+  const dados = {
+    contact,
+    company,
     phone,
     email,
     niche: (payload.nicho || payload.niche || "").toString(),
     city: (payload.cidade || payload.city || "").toString(),
-    gmnLink: "",
-    instagramLink: (payload.instagram || "").toString(),
-    icpStars: 2,
-    runsAds: false,
-    stage: FIRST_OPP_STAGE,
-    createdAt: nowISO,
-    stageChangedAt: nowISO,
-    notes: [
-      payload.observacoes || payload.notes || "",
-      `Origem: Landing Page${payload.source ? ` (${payload.source})` : ""}`,
-    ].filter(Boolean).join("\n"),
-    attachments: [],
-    callNotes: [],
-    source: "landing_page",
+    instagram: (payload.instagram || "").toString(),
+    notes: (payload.observacoes || payload.notes || "").toString(),
+    source: payload.source || "landing_page",
+    receivedAt: nowISO,
+    raw: payload,
   };
 
-  const updatedLeads = [newLead, ...currentLeads];
-
-  // 4. Update / upsert
-  const { error: upErr } = await admin
-    .from("user_storage")
-    .upsert(
-      { user_id: userId, key: "p21_leads", value: updatedLeads, updated_at: nowISO },
-      { onConflict: "user_id,key" }
-    );
-  if (upErr) {
-    console.error("upsert p21_leads failed", upErr);
-    return json(500, { error: "storage_write_failed", details: upErr.message });
+  const { data: inserted, error: insErr } = await admin
+    .from("leads_inbound")
+    .insert({ dados })
+    .select("id")
+    .single();
+  if (insErr) {
+    console.error("insert leads_inbound failed", insErr);
+    return json(500, { error: "inbound_write_failed", details: insErr.message });
   }
+  const leadId = inserted.id as string;
+
 
   // 5. Google Calendar (opcional)
   let meeting: Awaited<ReturnType<typeof createCalendarEvent>> | null = null;
