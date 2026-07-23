@@ -8,9 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, Inbox, Loader2 } from "lucide-react";
 import { addLead, getLeads, type Lead, type ICPStars } from "@/lib/store";
+import { pullInboundLeads } from "@/lib/userStorage";
 import { toast } from "sonner";
+
 
 export default function Oportunidades() {
   const [quickOpen, setQuickOpen] = useState(false);
