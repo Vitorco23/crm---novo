@@ -80,6 +80,9 @@ export interface Lead {
   contractValue?: number;
   serviceType?: string;
   phoneInvalid?: boolean;
+  temperature?: "Quente" | "Morno" | "Frio";
+  website?: string;
+  whatsapp?: string;
 }
 
 export type MeetingSource = "Ligação" | "Disparo" | "Instagram" | "Email";
