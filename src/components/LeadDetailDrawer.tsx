@@ -699,29 +699,7 @@ export default function LeadDetailDrawer({
           {/* CADÊNCIA */}
           {isColdCall && (
             <TabsContent value="cadencia" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-3">
-              <p className="text-xs text-muted-foreground">
-                {lead.niche ? `Cadência para nicho "${lead.niche}"` : "Cadência padrão"} · {cadence.length} etapas
-              </p>
-              <div className="space-y-2">
-                {cadence.map((s) => {
-                  const current = step?.attempt === s.attempt;
-                  return (
-                    <div key={s.attempt} className={`rounded-md border p-3 ${current ? "border-accent/60 bg-accent/5" : "border-border/60 bg-muted/20"}`}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Badge variant="outline" className="text-[10px]">D{s.day} · Tentativa {s.attempt}</Badge>
-                          <Badge variant="outline" className="text-[10px]">{s.channel}</Badge>
-                          {current && <Badge className="bg-accent text-accent-foreground text-[10px]">Atual</Badge>}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">{s.estimatedMinutes} min</span>
-                      </div>
-                      <p className="text-xs mb-1"><span className="text-muted-foreground">Objetivo:</span> {s.objective}</p>
-                      <p className="text-xs mb-2"><span className="text-muted-foreground">Ação:</span> <span className="text-accent">{s.nextAction}</span></p>
-                      <pre className="whitespace-pre-wrap font-sans text-[11px] leading-relaxed rounded bg-background/60 border border-border/60 p-2">{s.script}</pre>
-                    </div>
-                  );
-                })}
-              </div>
+              <CadenceEditor niche={lead.niche} currentAttempt={step?.attempt} onChanged={onRefresh} />
             </TabsContent>
           )}
         </Tabs>
