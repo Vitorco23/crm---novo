@@ -17,6 +17,7 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import PriorityCard from "@/components/PriorityCard";
+import BottleneckCard from "@/components/BottleneckCard";
 import ExportExcelDialog from "@/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/lib/exportBuilders";
 import { resolvePeriod } from "@/lib/exportEngine";
@@ -116,6 +117,7 @@ export default function Dashboard() {
           </div>
         </div>
         <OperationalPanel filter={filter} custom={custom} />
+        <BottleneckCard />
         <PriorityCard />
       </section>
 
