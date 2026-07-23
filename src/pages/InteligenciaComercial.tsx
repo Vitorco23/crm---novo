@@ -23,6 +23,7 @@ import {
   type PomodoroSession, type Lead, type MovementEvent, type Meeting,
 } from "@/lib/store";
 import InsightsPanel from "@/components/InsightsPanel";
+import ScriptManager from "@/components/ScriptManager";
 import ExportExcelDialog from "@/components/ExportExcelDialog";
 import { buildInteligenciaSheets } from "@/lib/exportBuilders";
 
