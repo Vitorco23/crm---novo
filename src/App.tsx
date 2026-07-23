@@ -24,6 +24,7 @@ import { lazy, Suspense } from "react";
 const Laboratorio = lazy(() => import("./pages/Laboratorio"));
 
 import Auth from "./pages/Auth";
+import OAuthConsent from "./pages/OAuthConsent";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
