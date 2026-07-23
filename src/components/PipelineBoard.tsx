@@ -324,6 +324,19 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   );
   useEffect(() => { usave(viewKey, view); }, [viewKey, view]);
 
+  useEffect(() => {
+    const onSync = () => {
+      setLeads(getLeads());
+      setStages(getStagesForPipeline(pipeline));
+    };
+    window.addEventListener("p21:storage-synced", onSync);
+    window.addEventListener("p21:leads-changed", onSync);
+    return () => {
+      window.removeEventListener("p21:storage-synced", onSync);
+      window.removeEventListener("p21:leads-changed", onSync);
+    };
+  }, [pipeline]);
+
 
   const refresh = useCallback(() => {
     setLeads(getLeads());
