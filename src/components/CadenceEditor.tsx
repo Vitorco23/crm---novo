@@ -33,6 +33,12 @@ export default function CadenceEditor({
   useEffect(() => {
     setSteps(getCadenceForNiche(niche));
     setDirty(false);
+    // Force pull from backend so cadence edited on another device shows up.
+    pullKeysFromCloud(["p21_cadence_overrides"]).then((changed) => {
+      if (changed.length > 0) {
+        setSteps(getCadenceForNiche(niche));
+      }
+    });
   }, [niche]);
 
   useEffect(() => {
@@ -40,13 +46,22 @@ export default function CadenceEditor({
       if (dirty) return; // don't overwrite unsaved edits
       setSteps(getCadenceForNiche(niche));
     };
+    const onFocus = () => {
+      if (dirty) return;
+      pullKeysFromCloud(["p21_cadence_overrides"]).then(() => reload());
+    };
     window.addEventListener("p21:cadence-changed", reload);
     window.addEventListener("p21:storage-synced", reload);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
     return () => {
       window.removeEventListener("p21:cadence-changed", reload);
       window.removeEventListener("p21:storage-synced", reload);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
     };
   }, [niche, dirty]);
+
 
   const label = niche ? `Cadência para nicho "${niche}"` : "Cadência padrão";
 
