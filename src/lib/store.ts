@@ -2,7 +2,6 @@
 export const DEFAULT_COLD_CALL_STAGES = [
   "Novo Lead",
   "Tentativa 1",
-  "Mensagem WhatsApp",
   "Tentativa 2",
   "Tentativa 3",
   "Tentativa 4",
@@ -10,6 +9,10 @@ export const DEFAULT_COLD_CALL_STAGES = [
   "Tentativa 6",
   "Tentativa 7",
   "Tentativa 8",
+  "Tentativa 9",
+  "Tentativa 10",
+  "Não Quer",
+  "Sem contato",
 ] as const;
 
 export const DEFAULT_OPORTUNIDADES_STAGES = [
