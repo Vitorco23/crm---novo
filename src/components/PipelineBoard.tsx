@@ -37,6 +37,7 @@ import {
   Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search, LayoutGrid, List as ListIcon, Download, ArrowRight,
 } from "lucide-react";
 import { computeLeadTemperature, lastInteractionLabel, nextActionLabel } from "@/lib/coldCallMetrics";
+import { getStepForLead, executionMoment } from "@/lib/cadence";
 
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
