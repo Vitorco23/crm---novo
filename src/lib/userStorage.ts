@@ -313,7 +313,7 @@ const FIRST_OPP_STAGE = "Reunião Marcada";
 type InboundRow = { id: string; dados: any; created_at: string };
 type Lead = Record<string, any>;
 
-function inboundToLead(row: InboundRow): Lead {
+function inboundToLead(row: InboundRow): { lead: Lead; meeting: any | null } {
   const d = row.dados ?? {};
   const nowISO = new Date().toISOString();
   const contact = String(d.contact ?? d.nome ?? d.name ?? "").trim();
@@ -322,9 +322,43 @@ function inboundToLead(row: InboundRow): Lead {
   const email = String(d.email ?? "").trim();
   const notesBase = String(d.notes ?? d.observacoes ?? "").trim();
   const source = String(d.source ?? "landing_page");
-  return {
-    id: (globalThis.crypto?.randomUUID?.() as string | undefined) ??
-      `lead_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+  const leadId = (globalThis.crypto?.randomUUID?.() as string | undefined) ??
+      `lead_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+  const mtg = d.meeting ?? null;
+  let meeting: any | null = null;
+  if (mtg?.startISO) {
+    const start = new Date(mtg.startISO);
+    const tz = mtg.timeZone || "America/Sao_Paulo";
+    const dateStr = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(start); // yyyy-mm-dd
+    const timeStr = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(start); // HH:mm
+    meeting = {
+      id: (globalThis.crypto?.randomUUID?.() as string | undefined) ??
+        `mtg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      leadId,
+      company: company || contact || "Sem nome",
+      date: dateStr,
+      time: timeStr,
+      title: `Reunião — ${company || contact || "Landing Page"}`,
+      contactName: contact,
+      channel: mtg.channel || "Google Meet",
+      source: "Disparo",
+      link: mtg.meetLink || mtg.htmlLink || "",
+      meetLink: mtg.meetLink || null,
+      googleEventId: mtg.eventId || undefined,
+      googleEventUrl: mtg.htmlLink || undefined,
+      attendeeEmail: email || undefined,
+      notes: "Agendada via Landing Page",
+      createdAt: row.created_at || nowISO,
+    };
+  }
+
+  const lead: Lead = {
+    id: leadId,
     company: company || contact || "Sem nome",
     contact,
     phone,
@@ -338,12 +372,16 @@ function inboundToLead(row: InboundRow): Lead {
     stage: FIRST_OPP_STAGE,
     createdAt: row.created_at || nowISO,
     stageChangedAt: row.created_at || nowISO,
-    notes: [notesBase, `Origem: Landing Page${source && source !== "landing_page" ? ` (${source})` : ""}`]
-      .filter(Boolean).join("\n"),
+    notes: [
+      notesBase,
+      `Origem: Landing Page${source && source !== "landing_page" ? ` (${source})` : ""}`,
+      meeting ? `Reunião marcada: ${meeting.date} às ${meeting.time}${meeting.meetLink ? ` — ${meeting.meetLink}` : ""}` : "",
+    ].filter(Boolean).join("\n"),
     attachments: [],
     callNotes: [],
     source: "landing_page",
   };
+  return { lead, meeting };
 }
 
 export async function syncInboundLeads(): Promise<number> {
@@ -359,8 +397,15 @@ export async function syncInboundLeads(): Promise<number> {
   if (rows.length === 0) return 0;
 
   const existing = uload<Lead[]>("p21_leads", []);
-  const newLeads = rows.map(inboundToLead);
+  const converted = rows.map(inboundToLead);
+  const newLeads = converted.map(c => c.lead);
   usave<Lead[]>("p21_leads", [...newLeads, ...existing]);
+
+  const newMeetings = converted.map(c => c.meeting).filter(Boolean);
+  if (newMeetings.length > 0) {
+    const existingMeetings = uload<any[]>("p21_meetings", []);
+    usave<any[]>("p21_meetings", [...newMeetings, ...existingMeetings]);
+  }
 
   const ids = rows.map((r) => r.id);
   const { error: delErr } = await supabase.from("leads_inbound").delete().in("id", ids);
@@ -370,8 +415,10 @@ export async function syncInboundLeads(): Promise<number> {
 
   window.dispatchEvent(new Event("p21:storage-synced"));
   window.dispatchEvent(new CustomEvent("p21:leads-changed", { detail: { source: "inbound", count: newLeads.length } }));
+  window.dispatchEvent(new CustomEvent("p21:meetings-changed", { detail: { source: "inbound", count: newMeetings.length } }));
   return newLeads.length;
 }
+
 
 // Alias público — mesma rotina, nome dedicado para chamadas manuais (botão UI).
 export async function pullInboundLeads(): Promise<number> {
