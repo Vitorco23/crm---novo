@@ -27,7 +27,6 @@ import Auth from "./pages/Auth";
 import OAuthConsent from "./pages/OAuthConsent";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
-import Landing from "./pages/Landing";
 
 const queryClient = new QueryClient();
 
@@ -43,8 +42,6 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
-              <Route path="/home" element={<Landing />} />
-              <Route path="/landing" element={<Landing />} />
               <Route
                 path="/*"
                 element={
