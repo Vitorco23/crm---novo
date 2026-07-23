@@ -658,6 +658,11 @@ export function updateMeetingDateTime(meetingId: string, date: string, time: str
     import("./reminders").then(({ createRemindersForStageChange }) => {
       createRemindersForStageChange(lead, lead.stage);
     });
+    emit(
+      "ReuniaoAtualizada",
+      { meetingId, leadId: updated.leadId, company: lead.company, date, time },
+      `mtg:${meetingId}:${date}:${time}`
+    );
   }
   return updated;
 }
@@ -680,6 +685,20 @@ export function scheduleMeeting(
   const meetings = getMeetings();
   meetings.push(meeting);
   saveMeetings(meetings);
+
+  emit(
+    "ReuniaoMarcada",
+    {
+      meetingId: meeting.id,
+      leadId,
+      company: lead.company,
+      date: meeting.date,
+      time: meeting.time,
+      source: meeting.source,
+      title: meeting.title,
+    },
+    `mtg:new:${meeting.id}`
+  );
 
   if (options?.skipAutoMove) {
     return { meeting };
