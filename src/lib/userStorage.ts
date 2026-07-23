@@ -36,7 +36,10 @@ const SCOPED_KEYS = [
   "p21_history",
   "p21_bottleneck_history",
   "p21_central_filters",
+  "p21_lab_filters",
+  "p21_lab_experiments",
 ];
+
 
 // Big / write-heavy keys — moved to IndexedDB to avoid the ~5MB localStorage
 // quota. Everything else stays in localStorage (small, low-churn).

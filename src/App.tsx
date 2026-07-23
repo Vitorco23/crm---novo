@@ -20,6 +20,8 @@ import Integracoes from "./pages/Integracoes";
 import Lembretes from "./pages/Lembretes";
 import InteligenciaComercial from "./pages/InteligenciaComercial";
 import CentralDecisao from "./pages/CentralDecisao";
+import { lazy, Suspense } from "react";
+const Laboratorio = lazy(() => import("./pages/Laboratorio"));
 
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -56,6 +58,12 @@ const App = () => (
                         <Route path="/lembretes" element={<Lembretes />} />
                         <Route path="/inteligencia" element={<InteligenciaComercial />} />
                         <Route path="/central" element={<CentralDecisao />} />
+                        <Route path="/laboratorio" element={
+                          <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Laboratório…</div>}>
+                            <Laboratorio />
+                          </Suspense>
+                        } />
+
 
                         <Route path="*" element={<NotFound />} />
                       </Routes>
