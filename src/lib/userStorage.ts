@@ -369,6 +369,7 @@ export async function syncInboundLeads(): Promise<number> {
   }
 
   window.dispatchEvent(new Event("p21:storage-synced"));
+  window.dispatchEvent(new CustomEvent("p21:leads-changed", { detail: { source: "inbound", count: newLeads.length } }));
   return newLeads.length;
 }
 
