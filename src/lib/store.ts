@@ -124,6 +124,16 @@ export interface MovementEvent {
 
 // ===== Storage helpers (user-scoped) =====
 import { uload as loadFromStorage, usave as saveToStorage } from "./userStorage";
+import { emit } from "./eventBus";
+
+function classifyStage(stage: string): "call" | "message" | "meeting" | "sale" | "onboarding" | "other" {
+  const s = stage.toLowerCase();
+  if (s === "ganho") return "sale";
+  if (MEETING_STAGE_HINTS.some((h) => s.includes(h))) return "meeting";
+  if (MESSAGE_STAGE_HINTS.some((h) => s.includes(h))) return "message";
+  if (CALL_STAGE_HINTS.some((h) => s.includes(h))) return "call";
+  return "other";
+}
 
 // ===== Custom stages persistence =====
 const STAGES_KEYS: Record<PipelineName, string> = {
