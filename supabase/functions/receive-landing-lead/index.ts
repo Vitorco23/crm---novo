@@ -193,9 +193,10 @@ Deno.serve(async (req) => {
     ok: true,
     leadId,
     stage: FIRST_OPP_STAGE,
-    totalLeads: updatedLeads.length,
+    queued: true,
     meeting: meeting ?? null,
     meetLink: meeting && meeting.ok ? meeting.meetLink : null,
     eventLink: meeting && meeting.ok ? meeting.htmlLink : null,
   });
+
 });
