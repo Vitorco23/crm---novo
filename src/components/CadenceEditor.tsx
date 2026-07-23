@@ -11,6 +11,8 @@ import {
   type CadenceStep, type CadenceChannel,
   getCadenceForNiche, saveCadenceForNiche, resetCadenceForNiche,
 } from "@/lib/cadence";
+import { pullKeysFromCloud } from "@/lib/userStorage";
+
 
 const CHANNELS: CadenceChannel[] = ["Ligação", "WhatsApp", "Instagram", "E-mail"];
 
