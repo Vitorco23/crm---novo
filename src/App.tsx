@@ -19,6 +19,7 @@ import Financeiro from "./pages/Financeiro";
 import Integracoes from "./pages/Integracoes";
 import Lembretes from "./pages/Lembretes";
 import InteligenciaComercial from "./pages/InteligenciaComercial";
+import CentralDecisao from "./pages/CentralDecisao";
 
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -54,6 +55,7 @@ const App = () => (
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/lembretes" element={<Lembretes />} />
                         <Route path="/inteligencia" element={<InteligenciaComercial />} />
+                        <Route path="/central" element={<CentralDecisao />} />
 
                         <Route path="*" element={<NotFound />} />
                       </Routes>
