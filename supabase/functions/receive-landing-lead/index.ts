@@ -150,7 +150,18 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Enfileira na caixa de entrada. O CRM lê e drena via syncInboundLeads().
+  // Cria o evento no Google Calendar ANTES de enfileirar, para que o
+  // registro na fila já carregue o meetLink/eventId e o CRM saiba o horário.
+  let meeting: Awaited<ReturnType<typeof createCalendarEvent>> | null = null;
+  if (payload.meetingISO) {
+    try {
+      meeting = await createCalendarEvent(payload, contact || company, company);
+    } catch (e) {
+      console.error("calendar error", e);
+      meeting = { ok: false, error: "calendar_exception" } as any;
+    }
+  }
+
   const nowISO = new Date().toISOString();
   const dados = {
     contact,
@@ -163,6 +174,20 @@ Deno.serve(async (req) => {
     notes: (payload.observacoes || payload.notes || "").toString(),
     source: payload.source || "landing_page",
     receivedAt: nowISO,
+    // Meeting info (persistida para o CRM criar o Meeting ao drenar a fila)
+    meeting: meeting && meeting.ok
+      ? {
+          startISO: meeting.startISO,
+          endISO: meeting.endISO,
+          timeZone: payload.timeZone || "America/Sao_Paulo",
+          meetLink: meeting.meetLink,
+          eventId: meeting.eventId,
+          htmlLink: meeting.htmlLink,
+          channel: "Google Meet",
+        }
+      : payload.meetingISO
+        ? { startISO: payload.meetingISO, timeZone: payload.timeZone || "America/Sao_Paulo" }
+        : null,
     raw: payload,
   };
 
@@ -177,18 +202,6 @@ Deno.serve(async (req) => {
   }
   const leadId = inserted.id as string;
 
-
-  // 5. Google Calendar (opcional)
-  let meeting: Awaited<ReturnType<typeof createCalendarEvent>> | null = null;
-  if (payload.meetingISO) {
-    try {
-      meeting = await createCalendarEvent(payload, contact || company, company);
-    } catch (e) {
-      console.error("calendar error", e);
-      meeting = { ok: false, error: "calendar_exception" } as any;
-    }
-  }
-
   return json(200, {
     ok: true,
     leadId,
@@ -200,3 +213,4 @@ Deno.serve(async (req) => {
   });
 
 });
+
