@@ -405,16 +405,31 @@ export function moveLeadsToStageBatch(
   saveLeads(next);
   saveMovementEvents(events);
 
+  // Emissão em lote: um evento por lead movido, com dedupeKey para evitar duplicatas.
+  const affected = leads.filter((l) => idSet.has(l.id));
+  const now2 = now;
+  for (const l of affected) {
+    emit(
+      "LeadMovido",
+      { leadId: l.id, company: l.company, fromStage: l.stage, toStage: effectiveStage },
+      `move:${l.id}:${effectiveStage}:${now2}`
+    );
+    const kind = classifyStage(effectiveStage);
+    if (kind === "call") emit("LigacaoRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage });
+    if (kind === "message") emit("MensagemRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage });
+  }
+
   if (onboardingTriggers.length > 0) {
     import("./finance").then(({ upsertOnboardingRevenue }) => {
-      onboardingTriggers.forEach((l) =>
+      onboardingTriggers.forEach((l) => {
         upsertOnboardingRevenue({
           clientId: l.id,
           clientName: l.company,
           amount: l.contractValue!,
           serviceType: l.serviceType,
-        })
-      );
+        });
+        emit("OnboardingIniciado", { leadId: l.id, company: l.company }, `onb:${l.id}`);
+      });
     });
   }
 
@@ -458,6 +473,7 @@ export function addCallNote(leadId: string, text: string, scriptUsed?: string) {
       },
     ];
     saveLeads(leads);
+    emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: lead.stage, scriptUsed });
   }
 }
 
@@ -508,7 +524,8 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
   const lead = leads.find((l) => l.id === leadId);
   if (!lead) return {};
 
-  const fromPipeline = getPipelineForStage(lead.stage);
+  const fromStage = lead.stage;
+  const fromPipeline = getPipelineForStage(fromStage);
 
   // Auto-promote: when moved to "Ganho", forward to first Onboarding stage
   let effectiveStage = toStage;
@@ -523,6 +540,19 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
   lead.stageChangedAt = new Date().toISOString();
   saveLeads(leads);
 
+  // Emissões: evento genérico + específicos por classe de etapa
+  emit(
+    "LeadMovido",
+    { leadId: lead.id, company: lead.company, fromStage, toStage: effectiveStage },
+    `move:${lead.id}:${effectiveStage}:${lead.stageChangedAt}`
+  );
+  const kind = classifyStage(effectiveStage);
+  if (kind === "call") emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage });
+  if (kind === "message") emit("MensagemRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage });
+  if (effectiveStage.toLowerCase().includes("realizada") && effectiveStage.toLowerCase().includes("reuni")) {
+    emit("ReuniaoRealizada", { leadId: lead.id, company: lead.company });
+  }
+
   let missingContractValue = false;
 
   // Auto-create finance revenue when WINNING an Oportunidade (moved to "Ganho" from Oportunidades)
@@ -536,9 +566,14 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
           serviceType: lead.serviceType,
         });
       });
+      emit("VendaRealizada", { leadId: lead.id, company: lead.company, amount: lead.contractValue }, `venda:${lead.id}`);
+      emit("OnboardingIniciado", { leadId: lead.id, company: lead.company }, `onb:${lead.id}`);
     } else {
       missingContractValue = true;
+      emit("VendaRealizada", { leadId: lead.id, company: lead.company, amount: 0 }, `venda:${lead.id}`);
     }
+  } else if (fromPipeline !== "onboarding" && toPipeline === "onboarding") {
+    emit("OnboardingIniciado", { leadId: lead.id, company: lead.company }, `onb:${lead.id}`);
   }
 
   // Reminders: fire user-configured templates for the destination stage.
