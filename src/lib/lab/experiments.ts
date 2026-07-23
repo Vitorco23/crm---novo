@@ -3,7 +3,6 @@
 // Constituição §5 (eventos), §13 (estado centralizado).
 
 import { uload, usave } from "@/lib/userStorage";
-import { emit } from "@/lib/eventBus";
 import type { Experiment, ExperimentStatus } from "./types";
 
 const KEY = "p21_lab_experiments";
@@ -13,8 +12,8 @@ export function getExperiments(): Experiment[] {
 }
 export function saveExperiments(items: Experiment[]) {
   usave(KEY, items);
-  emit({ type: "LabExperimentChanged" as never, payload: { count: items.length } } as never);
 }
+
 export function addExperiment(input: Omit<Experiment, "id" | "createdAt" | "updatedAt">): Experiment {
   const now = new Date().toISOString();
   const exp: Experiment = { ...input, id: crypto.randomUUID(), createdAt: now, updatedAt: now };
