@@ -85,14 +85,29 @@ export default function Oportunidades() {
         showAddLead={false}
         showImport={false}
         extraActions={
-          <Button
-            size="sm"
-            className="bg-accent text-accent-foreground hover:bg-accent/90"
-            onClick={() => setQuickOpen(true)}
-          >
-            <CalendarPlus className="h-4 w-4 mr-1" /> Nova Oportunidade
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handlePullInbound}
+              disabled={pulling}
+              title="Buscar leads da Landing Page"
+            >
+              {pulling
+                ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                : <Inbox className="h-4 w-4 mr-1" />}
+              Caixa de entrada
+            </Button>
+            <Button
+              size="sm"
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={() => setQuickOpen(true)}
+            >
+              <CalendarPlus className="h-4 w-4 mr-1" /> Nova Oportunidade
+            </Button>
+          </div>
         }
+
       />
 
       <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
