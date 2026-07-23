@@ -33,6 +33,7 @@ import { getScripts, getSelectedScript, setSelectedScript, logCall, type ScriptO
 import { toast } from "sonner";
 import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 import ConcluirTentativaDialog from "@/components/ConcluirTentativaDialog";
+import CadenceEditor from "@/components/CadenceEditor";
 import { getStepForLead, executionMoment, getCadenceForNiche } from "@/lib/cadence";
 import { CheckCircle2, Clock, Target } from "lucide-react";
 
