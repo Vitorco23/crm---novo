@@ -237,11 +237,16 @@ function TemplatesConfig() {
       if (!e.key || e.key.endsWith("p21_reminder_templates")) refresh();
     };
     const onSynced = () => refresh();
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
     window.addEventListener("storage", onStorage);
     window.addEventListener("p21:storage-synced", onSynced as EventListener);
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("p21:storage-synced", onSynced as EventListener);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 

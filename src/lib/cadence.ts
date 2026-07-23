@@ -111,16 +111,34 @@ const NICHE_OVERRIDES: Record<string, CadenceStep[]> = {
 
 const OVERRIDES_KEY = "p21_cadence_overrides";
 
-function readOverrides(): Record<string, CadenceStep[]> {
+import { uload, usave } from "./userStorage";
+
+let legacyMigrated = false;
+function migrateLegacyOnce() {
+  if (legacyMigrated) return;
+  legacyMigrated = true;
   try {
-    if (typeof localStorage === "undefined") return {};
+    if (typeof localStorage === "undefined") return;
     const raw = localStorage.getItem(OVERRIDES_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Object.keys(parsed).length === 0) return;
+    const current = uload<Record<string, CadenceStep[]>>(OVERRIDES_KEY, {});
+    if (Object.keys(current).length === 0) {
+      usave<Record<string, CadenceStep[]>>(OVERRIDES_KEY, parsed);
+    }
+    // Remove legacy unscoped copy so it doesn't leak between accounts on this device.
+    localStorage.removeItem(OVERRIDES_KEY);
+  } catch { /* ignore */ }
+}
+
+function readOverrides(): Record<string, CadenceStep[]> {
+  migrateLegacyOnce();
+  return uload<Record<string, CadenceStep[]>>(OVERRIDES_KEY, {});
 }
 
 function writeOverrides(map: Record<string, CadenceStep[]>) {
-  try { localStorage.setItem(OVERRIDES_KEY, JSON.stringify(map)); } catch {}
+  usave<Record<string, CadenceStep[]>>(OVERRIDES_KEY, map);
   try { window.dispatchEvent(new CustomEvent("p21:cadence-changed")); } catch {}
 }
 
