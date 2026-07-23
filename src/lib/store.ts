@@ -150,28 +150,53 @@ export function getStagesForPipeline(pipeline: PipelineName): PipelineStage[] {
       ? [...DEFAULT_OPORTUNIDADES_STAGES]
       : [...DEFAULT_ONBOARDING_STAGES];
   const stored = loadFromStorage<string[] | null>(STAGES_KEYS[pipeline], null);
-  return stored && stored.length ? stored : fallback;
+  const source = stored && stored.length ? stored : fallback;
+  // Defesa: remove duplicados (case-insensitive) preservando a ordem para reparar
+  // pipelines já corrompidos por renomeações anteriores.
+  const seen = new Set<string>();
+  return source.filter((s) => {
+    const k = s.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 export function saveStagesForPipeline(pipeline: PipelineName, stages: PipelineStage[]) {
   saveToStorage(STAGES_KEYS[pipeline], stages);
 }
 
-export function renameStage(pipeline: PipelineName, oldName: string, newName: string) {
-  if (!newName.trim() || oldName === newName) return;
-  const stages = getStagesForPipeline(pipeline).map((s) => (s === oldName ? newName : s));
-  saveStagesForPipeline(pipeline, stages);
-  // update leads that referenced old name
-  const leads = getLeads().map((l) => (l.stage === oldName ? { ...l, stage: newName } : l));
+export function renameStage(
+  pipeline: PipelineName,
+  oldName: string,
+  newName: string,
+): { ok: boolean; error?: string } {
+  const trimmed = (newName || "").trim();
+  if (!trimmed) return { ok: false, error: "Nome inválido" };
+  if (trimmed === oldName) return { ok: true };
+  const stages = getStagesForPipeline(pipeline);
+  if (!stages.includes(oldName)) return { ok: false, error: "Etapa não encontrada" };
+  if (stages.some((s) => s !== oldName && s.toLowerCase() === trimmed.toLowerCase())) {
+    return { ok: false, error: "Já existe uma etapa com esse nome" };
+  }
+  const next = stages.map((s) => (s === oldName ? trimmed : s));
+  saveStagesForPipeline(pipeline, next);
+  const leads = getLeads().map((l) => (l.stage === oldName ? { ...l, stage: trimmed } : l));
   saveLeads(leads);
+  return { ok: true };
 }
 
-export function addStage(pipeline: PipelineName, name: string) {
-  if (!name.trim()) return;
+export function addStage(pipeline: PipelineName, name: string): { ok: boolean; error?: string } {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return { ok: false, error: "Nome inválido" };
   const stages = getStagesForPipeline(pipeline);
-  if (stages.includes(name)) return;
-  saveStagesForPipeline(pipeline, [...stages, name]);
+  if (stages.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
+    return { ok: false, error: "Já existe uma etapa com esse nome" };
+  }
+  saveStagesForPipeline(pipeline, [...stages, trimmed]);
+  return { ok: true };
 }
+
 
 export function removeStage(pipeline: PipelineName, name: string) {
   const stages = getStagesForPipeline(pipeline);
