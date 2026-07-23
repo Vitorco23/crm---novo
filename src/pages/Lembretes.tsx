@@ -235,22 +235,32 @@ function TemplatesConfig() {
   const refresh = () => setTemplates(getReminderTemplates());
   useEffect(() => {
     refresh();
+    // Force pull from backend so edits done on other devices show up.
+    pullKeysFromCloud(["p21_reminder_templates"]).then(() => refresh());
     const onStorage = (e: StorageEvent) => {
       if (!e.key || e.key.endsWith("p21_reminder_templates")) refresh();
     };
     const onSynced = () => refresh();
-    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        pullKeysFromCloud(["p21_reminder_templates"]).then(() => refresh());
+      }
+    };
+    const onFocus = () => {
+      pullKeysFromCloud(["p21_reminder_templates"]).then(() => refresh());
+    };
     window.addEventListener("storage", onStorage);
     window.addEventListener("p21:storage-synced", onSynced as EventListener);
-    window.addEventListener("focus", onVisible);
+    window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("p21:storage-synced", onSynced as EventListener);
-      window.removeEventListener("focus", onVisible);
+      window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
+
 
   const forStage = useMemo(
     () => templates.filter((t) => t.stage.toLowerCase() === stage.toLowerCase()),
