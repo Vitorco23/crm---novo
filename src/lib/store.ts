@@ -79,6 +79,7 @@ export interface Lead {
   callNotes?: CallNote[];
   contractValue?: number;
   serviceType?: string;
+  phoneInvalid?: boolean;
 }
 
 export type MeetingSource = "Ligação" | "Disparo" | "Instagram" | "Email";
