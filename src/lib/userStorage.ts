@@ -35,6 +35,7 @@ const SCOPED_KEYS = [
   "p21_insights_last_run",
   "p21_history",
   "p21_bottleneck_history",
+  "p21_central_filters",
 ];
 
 // Big / write-heavy keys — moved to IndexedDB to avoid the ~5MB localStorage
