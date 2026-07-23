@@ -117,6 +117,7 @@ export default function Dashboard() {
           </div>
         </div>
         <OperationalPanel filter={filter} custom={custom} />
+        <BottleneckCard />
         <PriorityCard />
       </section>
 
