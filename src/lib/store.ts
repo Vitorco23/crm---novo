@@ -155,15 +155,42 @@ export function getStagesForPipeline(pipeline: PipelineName): PipelineStage[] {
       : [...DEFAULT_ONBOARDING_STAGES];
   const stored = loadFromStorage<string[] | null>(STAGES_KEYS[pipeline], null);
   const source = stored && stored.length ? stored : fallback;
-  // Defesa: remove duplicados (case-insensitive) preservando a ordem para reparar
-  // pipelines já corrompidos por renomeações anteriores.
+  // Defesa: remove duplicados (case-insensitive) preservando a ordem.
   const seen = new Set<string>();
-  return source.filter((s) => {
+  const deduped = source.filter((s) => {
     const k = s.toLowerCase();
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
   });
+
+  // Cold Call é canônico: se a lista diferir do default (ex: "Mensagem WhatsApp"
+  // legado, sem Tentativa 9/10, sem "Não Quer"/"Sem contato"), migra automaticamente
+  // e reatribui leads em etapas removidas para "Novo Lead".
+  if (pipeline === "cold_call") {
+    const canonical = [...DEFAULT_COLD_CALL_STAGES];
+    const same =
+      deduped.length === canonical.length &&
+      deduped.every((s, i) => s === canonical[i]);
+    if (!same) {
+      saveStagesForPipeline("cold_call", canonical);
+      const valid = new Set<string>(canonical);
+      // reatribui leads apenas se estavam em etapa cold_call antiga
+      const oldSet = new Set(deduped);
+      const leads = loadFromStorage<Lead[]>("p21_leads", []);
+      let changed = false;
+      const next = leads.map((l) => {
+        if (oldSet.has(l.stage) && !valid.has(l.stage)) {
+          changed = true;
+          return { ...l, stage: "Novo Lead", stageChangedAt: new Date().toISOString() };
+        }
+        return l;
+      });
+      if (changed) saveToStorage("p21_leads", next);
+      return canonical;
+    }
+  }
+  return deduped;
 }
 
 export function saveStagesForPipeline(pipeline: PipelineName, stages: PipelineStage[]) {
