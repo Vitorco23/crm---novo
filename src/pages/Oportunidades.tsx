@@ -8,18 +8,41 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, Inbox, Loader2 } from "lucide-react";
 import { addLead, getLeads, type Lead, type ICPStars } from "@/lib/store";
+import { pullInboundLeads } from "@/lib/userStorage";
 import { toast } from "sonner";
+
 
 export default function Oportunidades() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [createdLead, setCreatedLead] = useState<Lead | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pulling, setPulling] = useState(false);
   const [form, setForm] = useState({
     company: "", contact: "", phone: "", email: "", niche: "", city: "", notes: "",
   });
+
+  const handlePullInbound = async () => {
+    if (pulling) return;
+    setPulling(true);
+    try {
+      const n = await pullInboundLeads();
+      if (n > 0) {
+        toast.success(`${n} lead${n > 1 ? "s" : ""} importado${n > 1 ? "s" : ""} da Landing Page`);
+        setRefreshKey((k) => k + 1);
+      } else {
+        toast("Nenhum lead novo na caixa de entrada");
+      }
+    } catch (e: any) {
+      console.error("[pullInboundLeads]", e);
+      toast.error("Falha ao buscar leads da Landing Page");
+    } finally {
+      setPulling(false);
+    }
+  };
+
 
   const reset = () => setForm({ company: "", contact: "", phone: "", email: "", niche: "", city: "", notes: "" });
 
@@ -62,14 +85,29 @@ export default function Oportunidades() {
         showAddLead={false}
         showImport={false}
         extraActions={
-          <Button
-            size="sm"
-            className="bg-accent text-accent-foreground hover:bg-accent/90"
-            onClick={() => setQuickOpen(true)}
-          >
-            <CalendarPlus className="h-4 w-4 mr-1" /> Nova Oportunidade
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handlePullInbound}
+              disabled={pulling}
+              title="Buscar leads da Landing Page"
+            >
+              {pulling
+                ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                : <Inbox className="h-4 w-4 mr-1" />}
+              Caixa de entrada
+            </Button>
+            <Button
+              size="sm"
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={() => setQuickOpen(true)}
+            >
+              <CalendarPlus className="h-4 w-4 mr-1" /> Nova Oportunidade
+            </Button>
+          </div>
         }
+
       />
 
       <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
