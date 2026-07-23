@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
+// Same-origin relative path only. Prevents open-redirects when returning to
+// the OAuth consent route after sign-in/sign-up.
+function safeNext(raw: string | null): string {
+  if (!raw) return "/";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  return raw;
+}
+
 export default function Auth() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = safeNext(params.get("next"));
   const { user, loading } = useAuth();
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -22,8 +32,8 @@ export default function Auth() {
   const [forgotBusy, setForgotBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate("/", { replace: true });
-  }, [user, loading, navigate]);
+    if (!loading && user) navigate(next, { replace: true });
+  }, [user, loading, navigate, next]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +45,7 @@ export default function Auth() {
       return;
     }
     toast.success("Bem-vindo!");
-    navigate("/", { replace: true });
+    navigate(next, { replace: true });
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -44,7 +54,7 @@ export default function Auth() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/` },
+      options: { emailRedirectTo: `${window.location.origin}${next}` },
     });
     setBusy(false);
     if (error) {
@@ -54,6 +64,7 @@ export default function Auth() {
     toast.success("Conta criada! Faça login.");
     setTab("login");
   };
+
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();

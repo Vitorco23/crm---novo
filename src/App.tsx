@@ -24,6 +24,7 @@ import { lazy, Suspense } from "react";
 const Laboratorio = lazy(() => import("./pages/Laboratorio"));
 
 import Auth from "./pages/Auth";
+import OAuthConsent from "./pages/OAuthConsent";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +41,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route
                 path="/*"
                 element={
