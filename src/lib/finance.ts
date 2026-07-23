@@ -20,6 +20,7 @@ export interface FinanceTransaction {
 }
 
 import { uload as load, usave as save } from "./userStorage";
+import { emit } from "./eventBus";
 
 const TX_KEY = "p21_finance_tx";
 
@@ -61,6 +62,7 @@ export function upsertOnboardingRevenue(params: {
   serviceType?: string;
 }): FinanceTransaction {
   const existing = findTransactionByClient(params.clientId);
+  let tx: FinanceTransaction;
   if (existing) {
     updateTransaction(existing.id, {
       amount: params.amount,
@@ -68,18 +70,25 @@ export function upsertOnboardingRevenue(params: {
       serviceType: params.serviceType,
       description: `Contrato fechado — ${params.clientName}`,
     });
-    return { ...existing, amount: params.amount, clientName: params.clientName, serviceType: params.serviceType };
+    tx = { ...existing, amount: params.amount, clientName: params.clientName, serviceType: params.serviceType };
+  } else {
+    tx = addTransaction({
+      kind: "revenue",
+      amount: params.amount,
+      description: `Contrato fechado — ${params.clientName}`,
+      date: new Date().toISOString().slice(0, 10),
+      clientId: params.clientId,
+      clientName: params.clientName,
+      serviceType: params.serviceType,
+      source: "auto_onboarding",
+    });
   }
-  return addTransaction({
-    kind: "revenue",
-    amount: params.amount,
-    description: `Contrato fechado — ${params.clientName}`,
-    date: new Date().toISOString().slice(0, 10),
-    clientId: params.clientId,
-    clientName: params.clientName,
-    serviceType: params.serviceType,
-    source: "auto_onboarding",
-  });
+  emit(
+    "FinanceiroAtualizado",
+    { clientId: params.clientId, clientName: params.clientName, amount: params.amount },
+    `onboarding:${params.clientId}:${params.amount}`
+  );
+  return tx;
 }
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
