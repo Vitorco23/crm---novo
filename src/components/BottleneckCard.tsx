@@ -224,14 +224,15 @@ export default function BottleneckCard() {
                     <div key={s.key} className="flex items-center gap-2 text-[11px]">
                       <span className="w-40 truncate text-muted-foreground">{s.from} → {s.to}</span>
                       <div className="flex-1 h-1.5 bg-muted rounded-sm overflow-hidden">
-                        <div className="h-full rounded-sm"
-                          style={{ width: `${Math.min(100, s.actualPct ?? 0)}%` }}
+                        <div
                           className={
                             s.severity === "critico" ? "h-full rounded-sm bg-red-500" :
                             s.severity === "alto"    ? "h-full rounded-sm bg-orange-500" :
                             s.severity === "medio"   ? "h-full rounded-sm bg-yellow-500" :
                                                        "h-full rounded-sm bg-emerald-500"
-                          } />
+                          }
+                          style={{ width: `${Math.min(100, s.actualPct ?? 0)}%` }}
+                        />
                       </div>
                       <span className="w-14 text-right tabular-nums text-foreground">
                         {s.actualPct != null ? `${s.actualPct.toFixed(1).replace(".", ",")}%` : "—"}
