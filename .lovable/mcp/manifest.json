@@ -1,0 +1,241 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://mvfglrfcnzfrfgxsaagj.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "performance21-mcp",
+      "version": "0.1.0",
+      "title": "Performance21 CRM"
+    },
+    "tools": [
+      {
+        "name": "list_leads",
+        "title": "Listar leads",
+        "description": "Lista os leads do usuário. Suporta filtros por etapa (stage), cidade, nicho, texto livre em empresa/contato e limite. Use para responder perguntas do tipo 'quantos leads na etapa X' ou 'leads da cidade Y'.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "stage": {
+              "description": "Nome exato da etapa (ex.: 'Reunião Marcada', 'Ganho').",
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "niche": {
+              "type": "string"
+            },
+            "search": {
+              "description": "Texto livre buscando em empresa, contato ou telefone.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Máximo de leads a retornar (default 50).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_lead",
+        "title": "Detalhes do lead",
+        "description": "Retorna todos os dados de um lead pelo ID, incluindo notas e anexos.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "description": "ID do lead."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_lead",
+        "title": "Criar lead",
+        "description": "Cria um novo lead. Se 'stage' não for informado, entra na primeira etapa do pipeline escolhido (default: cold_call).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "company": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Nome da empresa."
+            },
+            "contact": {
+              "description": "Nome do contato/decisor.",
+              "type": "string"
+            },
+            "phone": {
+              "type": "string"
+            },
+            "niche": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "pipeline": {
+              "type": "string",
+              "enum": [
+                "cold_call",
+                "oportunidades",
+                "onboarding"
+              ]
+            },
+            "stage": {
+              "description": "Nome da etapa (sobrescreve o default do pipeline).",
+              "type": "string"
+            },
+            "icpStars": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            "contractValue": {
+              "type": "number"
+            },
+            "serviceType": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "company"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_upcoming_meetings",
+        "title": "Próximas reuniões",
+        "description": "Lista reuniões agendadas nos próximos N dias (default 7), ordenadas cronologicamente.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "days": {
+              "description": "Janela em dias (default 7).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "pipeline_summary",
+        "title": "Resumo do pipeline",
+        "description": "Retorna, por etapa do pipeline escolhido, a contagem de leads e a soma de valores de contrato. Útil para 'quanto tenho em negociação' ou 'quantos leads em cada etapa'.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "pipeline": {
+              "type": "string",
+              "enum": [
+                "cold_call",
+                "oportunidades",
+                "onboarding"
+              ],
+              "description": "Qual pipeline resumir."
+            }
+          },
+          "required": [
+            "pipeline"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "log_call_note",
+        "title": "Registrar nota de ligação",
+        "description": "Adiciona uma nota de ligação ao histórico do lead. Use para logar retornos rápidos ('deixei recado', 'reagendou', 'sem interesse').",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "leadId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Conteúdo da nota."
+            },
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "conectou",
+                "sem_resposta",
+                "recado",
+                "reagendou",
+                "sem_interesse",
+                "reuniao_marcada",
+                "outro"
+              ]
+            }
+          },
+          "required": [
+            "leadId",
+            "text"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
