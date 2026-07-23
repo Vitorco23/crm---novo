@@ -130,12 +130,15 @@ Deno.serve(async (req) => {
     return json(500, { error: "server_misconfigured" });
   }
 
-  let payload: LandingPayload;
+  let rawPayload: any;
   try {
-    payload = (await req.json()) as LandingPayload;
+    rawPayload = await req.json();
   } catch {
     return json(400, { error: "invalid_json" });
   }
+  console.log("[receive-landing-lead] payload", JSON.stringify(rawPayload));
+
+  const payload = rawPayload as LandingPayload & Record<string, any>;
 
   const contact = (payload.nome || payload.name || "").toString().trim();
   const company = (payload.empresa || payload.company || "").toString().trim();
@@ -146,6 +149,72 @@ Deno.serve(async (req) => {
     return json(400, { error: "missing_fields", message: "Informe ao menos nome, empresa, telefone ou email." });
   }
 
+  // === Resolver horário da reunião a partir de múltiplos aliases ===
+  const timeZone = payload.timeZone || payload.timezone || "America/Sao_Paulo";
+  let meetingSource: "meetingISO" | "date+time" | "none" = "none";
+  let resolvedISO: string | null = null;
+
+  const isoAliases = [
+    payload.meetingISO,
+    (payload as any).startISO,
+    (payload as any).datetime,
+    (payload as any).dateTime,
+    (payload as any).meetingDateTime,
+    (payload as any).slot,
+    (payload as any).scheduledAt,
+  ].filter((v) => typeof v === "string" && v.trim().length > 0) as string[];
+
+  for (const candidate of isoAliases) {
+    const d = new Date(candidate);
+    if (!isNaN(d.getTime())) {
+      resolvedISO = d.toISOString();
+      meetingSource = "meetingISO";
+      break;
+    }
+  }
+
+  if (!resolvedISO) {
+    const dateStr = (payload as any).date || (payload as any).meetingDate;
+    const timeStr = (payload as any).time || (payload as any).meetingTime;
+    if (typeof dateStr === "string" && typeof timeStr === "string" && dateStr && timeStr) {
+      // date=YYYY-MM-DD, time=HH:mm — interpretar no timeZone informado
+      // Truque: construir string ISO com offset calculado a partir do TZ.
+      try {
+        // Cria a data como se fosse UTC, depois ajusta pelo offset do TZ.
+        const naive = new Date(`${dateStr}T${timeStr}:00Z`);
+        // Descobre o offset (em minutos) do timeZone para essa data.
+        const fmt = new Intl.DateTimeFormat("en-US", {
+          timeZone,
+          hour12: false,
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+        });
+        const parts = fmt.formatToParts(naive).reduce<Record<string, string>>((acc, p) => {
+          if (p.type !== "literal") acc[p.type] = p.value;
+          return acc;
+        }, {});
+        const asTZ = Date.UTC(
+          Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+          Number(parts.hour), Number(parts.minute), Number(parts.second)
+        );
+        const offsetMs = asTZ - naive.getTime();
+        const real = new Date(naive.getTime() - offsetMs);
+        if (!isNaN(real.getTime())) {
+          resolvedISO = real.toISOString();
+          meetingSource = "date+time";
+        }
+      } catch (e) {
+        console.warn("[receive-landing-lead] date+time parse failed", e);
+      }
+    }
+  }
+
+  // Injeta o ISO resolvido no payload pra createCalendarEvent usar
+  if (resolvedISO) {
+    (payload as any).meetingISO = resolvedISO;
+    (payload as any).timeZone = timeZone;
+  }
+
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -153,7 +222,7 @@ Deno.serve(async (req) => {
   // Cria o evento no Google Calendar ANTES de enfileirar, para que o
   // registro na fila já carregue o meetLink/eventId e o CRM saiba o horário.
   let meeting: Awaited<ReturnType<typeof createCalendarEvent>> | null = null;
-  if (payload.meetingISO) {
+  if (resolvedISO) {
     try {
       meeting = await createCalendarEvent(payload, contact || company, company);
     } catch (e) {
@@ -179,16 +248,16 @@ Deno.serve(async (req) => {
       ? {
           startISO: meeting.startISO,
           endISO: meeting.endISO,
-          timeZone: payload.timeZone || "America/Sao_Paulo",
+          timeZone,
           meetLink: meeting.meetLink,
           eventId: meeting.eventId,
           htmlLink: meeting.htmlLink,
           channel: "Google Meet",
         }
-      : payload.meetingISO
-        ? { startISO: payload.meetingISO, timeZone: payload.timeZone || "America/Sao_Paulo" }
+      : resolvedISO
+        ? { startISO: resolvedISO, timeZone }
         : null,
-    raw: payload,
+    raw: rawPayload,
   };
 
   const { data: inserted, error: insErr } = await admin
@@ -207,10 +276,12 @@ Deno.serve(async (req) => {
     leadId,
     stage: FIRST_OPP_STAGE,
     queued: true,
+    meetingParsed: { source: meetingSource, startISO: resolvedISO },
     meeting: meeting ?? null,
     meetLink: meeting && meeting.ok ? meeting.meetLink : null,
     eventLink: meeting && meeting.ok ? meeting.htmlLink : null,
   });
 
 });
+
 
