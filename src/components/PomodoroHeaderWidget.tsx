@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Play, Pause, Square, Timer, Phone, Users, UserCheck, MessageSquare, CalendarCheck, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SCRIPT_OPTIONS, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/lib/scripts";
+import { getScripts, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/lib/scripts";
 
 function fmt(sec: number) {
   const m = Math.floor(sec / 60);
@@ -14,9 +14,19 @@ function fmt(sec: number) {
 
 export function PomodoroHeaderWidget() {
   const { state, remaining, start, pause, resume, stop, incrementTally } = usePomodoro();
-  const [script, setScript] = useState<ScriptOption>(SCRIPT_OPTIONS[0]);
+  const [scripts, setScripts] = useState<string[]>(() => getScripts());
+  const [script, setScript] = useState<ScriptOption>(() => getSelectedScript());
 
-  useEffect(() => { setScript(getSelectedScript()); }, []);
+  useEffect(() => {
+    const refresh = () => {
+      const list = getScripts();
+      setScripts(list);
+      setScript((prev) => (list.includes(prev) ? prev : list[0]));
+    };
+    refresh();
+    window.addEventListener("p21:scripts-changed", refresh);
+    return () => window.removeEventListener("p21:scripts-changed", refresh);
+  }, []);
 
   const handleScriptChange = (v: string) => {
     const s = v as ScriptOption;
