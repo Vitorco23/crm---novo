@@ -372,3 +372,9 @@ export async function syncInboundLeads(): Promise<number> {
   return newLeads.length;
 }
 
+// Alias público — mesma rotina, nome dedicado para chamadas manuais (botão UI).
+export async function pullInboundLeads(): Promise<number> {
+  return syncInboundLeads();
+}
+
+
