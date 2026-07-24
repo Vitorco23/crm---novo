@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
         "X-Title": "CRM Performance21 - Auditoria IA",
       },
       body: JSON.stringify({
-        model: model || "meta-llama/llama-3-8b-instruct:free",
+        model: model || "meta-llama/llama-3.3-70b-instruct:free",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: transcript },
