@@ -176,6 +176,8 @@ export default function LeadDetailDrawer({
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
   const [tasksVer, setTasksVer] = useState(0);
+  const [analyzingNoteId, setAnalyzingNoteId] = useState<string | null>(null);
+
 
   useEffect(() => {
     setDraft(lead);
