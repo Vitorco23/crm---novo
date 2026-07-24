@@ -227,6 +227,35 @@ export default function LeadDetailDrawer({
     e.target.value = "";
   };
 
+  const handleReadAttachmentWithAI = async (att: { id: string; name: string; type: string; dataUrl: string }) => {
+    if (att.type.startsWith("audio/")) {
+      toast.info("Áudios não são analisados pela IA (use os resumos da Matteline).");
+      return;
+    }
+    setAiReadingId(att.id);
+    try {
+      const leadContext = [
+        `Nome: ${lead.name}`,
+        lead.company && `Empresa: ${lead.company}`,
+        lead.niche && `Nicho: ${lead.niche}`,
+        lead.city && `Cidade: ${lead.city}`,
+        lead.stage && `Etapa: ${lead.stage}`,
+      ].filter(Boolean).join("\n");
+      const { data, error } = await supabase.functions.invoke("analyze-attachment", {
+        body: { attachment: { name: att.name, type: att.type, dataUrl: att.dataUrl }, leadContext },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setAiReadResults((prev) => ({ ...prev, [att.id]: String(data?.content ?? "") }));
+      toast.success("Anexo analisado pela IA");
+    } catch (e) {
+      console.error(e);
+      toast.error("Falha ao analisar anexo", { description: (e as Error)?.message });
+    } finally {
+      setAiReadingId(null);
+    }
+  };
+
   const persist = (patch: Partial<Lead>) => {
     const next = { ...draft, ...patch };
     setDraft(next); updateLead(lead.id, patch);
