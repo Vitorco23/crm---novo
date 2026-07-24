@@ -18,6 +18,7 @@ import {
   type PriorityLeadPick, type PriorityLeadsCache,
 } from "@/lib/priorityLeads";
 import { getLeads, getPipelineForStage, type Lead, type CallAuditData } from "@/lib/store";
+import NextBestActionCard from "@/components/NextBestActionCard";
 
 function latestAudit(l: Lead): CallAuditData | null {
   const notes = l.callNotes || [];
