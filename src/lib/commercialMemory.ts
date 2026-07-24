@@ -32,7 +32,7 @@ export const MEMORY_KIND_LABELS: Record<MemoryKind, string> = {
 };
 
 export async function listMemories(filters?: { kind?: MemoryKind; search?: string }): Promise<CommercialMemory[]> {
-  let q = supabase.from("commercial_memory" as never).select("*").order("created_at", { ascending: false }).limit(500);
+  let q = supabase.from("commercial_memory").select("*").order("created_at", { ascending: false }).limit(500);
   if (filters?.kind) q = q.eq("kind", filters.kind);
   if (filters?.search) q = q.ilike("title", `%${filters.search}%`);
   const { data, error } = await q;
@@ -41,12 +41,12 @@ export async function listMemories(filters?: { kind?: MemoryKind; search?: strin
 }
 
 export async function updateMemory(id: string, patch: Partial<Pick<CommercialMemory, "title" | "content" | "approved">>) {
-  const { error } = await (supabase.from("commercial_memory" as never) as never).update(patch as never).eq("id", id);
+  const { error } = await supabase.from("commercial_memory").update(patch).eq("id", id);
   if (error) throw error;
 }
 
 export async function deleteMemory(id: string) {
-  const { error } = await (supabase.from("commercial_memory" as never) as never).delete().eq("id", id);
+  const { error } = await supabase.from("commercial_memory").delete().eq("id", id);
   if (error) throw error;
 }
 
