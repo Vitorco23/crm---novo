@@ -1,7 +1,9 @@
 // Memory retrieval helper — usado pelas edge functions de análise (RAG).
 // Gera embedding do texto de consulta e busca memórias comerciais similares.
+// Também expõe helpers para injetar padrões estatísticos consolidados.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { computePatterns, formatPatternsForPrompt } from "./memory-patterns.ts";
 
 const EMBEDDING_MODEL = "google/gemini-embedding-2";
 
@@ -98,4 +100,42 @@ export function formatMemoriesForPrompt(memories: MemoryHit[]): string {
     ...lines,
     "========================================================",
   ].join("\n");
+}
+
+/**
+ * Bloco combinado: memórias similares (RAG semântico) + padrões estatísticos
+ * agregados (motor de padrões). Ideal para injetar em QUALQUER análise da IA.
+ * Aplica automaticamente a regra de confiança: padrões < 10 casos são omitidos.
+ */
+export async function buildMemoryContextBlock(opts: {
+  queryText: string;
+  niche?: string | null;
+  matchCount?: number;
+  minSimilarity?: number;
+  includePatterns?: boolean;
+}): Promise<{ block: string; memoryCount: number; patternCount: number }> {
+  const memories = await retrieveMemories({
+    queryText: opts.queryText,
+    niche: opts.niche ?? null,
+    matchCount: opts.matchCount ?? 5,
+    minSimilarity: opts.minSimilarity ?? 0.55,
+  });
+  const parts: string[] = [];
+  const memBlock = formatMemoriesForPrompt(memories);
+  if (memBlock) parts.push(memBlock);
+
+  let patternCount = 0;
+  if (opts.includePatterns !== false) {
+    try {
+      const report = await computePatterns();
+      const patternsBlock = formatPatternsForPrompt(report, { niche: opts.niche ?? null, limit: 5 });
+      if (patternsBlock) {
+        patternCount = report.niches.filter((n) => n.confidence !== "insuficiente").length;
+        parts.push(patternsBlock);
+      }
+    } catch (e) {
+      console.warn("[memory] patterns failed", (e as Error).message);
+    }
+  }
+  return { block: parts.join("\n\n"), memoryCount: memories.length, patternCount };
 }
