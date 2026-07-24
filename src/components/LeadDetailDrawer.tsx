@@ -595,166 +595,98 @@ export default function LeadDetailDrawer({
             </section>
           </TabsContent>
 
-          {/* HISTÓRICO */}
-          <TabsContent value="historico" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-5">
-            {meetings.length > 0 && (
-              <section>
-                <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
-                  <CalendarCheck className="h-3 w-3" /> Reuniões agendadas ({meetings.length})
-                </Label>
-                <div className="space-y-2">
-                  {meetings.map((m) => (
-                    <div key={m.id} className="bg-muted/40 rounded-md p-3 border border-border/40 text-sm">
-                      <MeetingRow meeting={m} onChanged={onRefresh} />
-                      <div className="flex items-center gap-2 mt-2">
-                        <Label className="text-[10px] text-muted-foreground shrink-0">Canal de origem:</Label>
-                        <Select value={m.source || "Ligação"}
-                          onValueChange={(v) => { updateMeetingSource(m.id, v as MeetingSource); toast.success("Canal atualizado"); onRefresh(); }}>
-                          <SelectTrigger className="h-7 text-xs w-36"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Ligação">Ligação</SelectItem>
-                            <SelectItem value="Disparo">Disparo</SelectItem>
-                            <SelectItem value="Instagram">Instagram</SelectItem>
-                            <SelectItem value="Email">Email</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {m.meetLink && (
-                          <a href={m.meetLink} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-accent/15 text-accent hover:bg-accent/25 transition-colors">
-                            <Video className="h-2.5 w-2.5" /> Abrir Meet
-                          </a>
-                        )}
-                        {m.googleEventUrl && (
-                          <a href={m.googleEventUrl} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                            <ExternalLink className="h-2.5 w-2.5" /> Google Agenda
-                          </a>
-                        )}
-                        {m.attendeeEmail && (<span className="text-[10px] text-muted-foreground">→ {m.attendeeEmail}</span>)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+          {/* INTERAÇÕES COMERCIAIS */}
+          <TabsContent value="interacoes" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
+            <InteracoesTimeline lead={lead} onRefresh={onRefresh} />
+          </TabsContent>
 
-            <section>
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <MessageSquarePlus className="h-3 w-3" /> Histórico das Ligações ({callNotes.length})
-                </Label>
-              </div>
-              <div className="space-y-2 rounded-md border border-border/60 p-3 bg-muted/20">
-                <Textarea placeholder="Como foi a ligação? Tentativa, resultado, o que o lead disse, próximos passos..."
-                  value={newCallNote} onChange={(e) => setNewCallNote(e.target.value)} rows={3} className="text-sm" />
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <Label className="text-[10px] text-muted-foreground">Script utilizado</Label>
-                    <Select value={callScript} onValueChange={(v) => { const s = v as ScriptOption; setCallScript(s); setSelectedScript(s); }}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {scripts.map((s) => (<SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
+          {/* OBSERVAÇÕES (informações permanentes sobre o Lead) */}
+          <TabsContent value="observacoes" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-3">
+            <div>
+              <Label className="text-sm font-medium">Observações permanentes sobre o Lead</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                Use este campo apenas para informações que <strong>não pertencem a uma interação específica</strong>.
+                Ex: prefere contato após as 16h · decisão depende do sócio · não atende chamadas pela manhã · empresa fecha aos sábados.
+              </p>
+              <Textarea
+                value={draft.notes}
+                onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+                onBlur={() => commitOnBlur({ notes: draft.notes })}
+                rows={14}
+                placeholder="Escreva aqui informações permanentes sobre o lead..."
+              />
+            </div>
+
+            {/* Tarefas do lead — acessíveis dentro de Observações porque descrevem próximas ações permanentes */}
+            {(() => {
+              void tasksVer;
+              const tasks = getTasksByLead(lead.id);
+              const pending = tasks.filter((t) => t.status === "pendente");
+              const done = tasks.filter((t) => t.status === "concluida");
+              return (
+                <div className="mt-6 pt-4 border-t border-border/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <ListTodo className="h-3 w-3" /> Tarefas — {pending.length} pendente(s) · {done.length} concluída(s)
+                    </p>
+                    <Button size="sm" variant="outline"
+                      onClick={() => { setEditingTask(null); setTaskFormOpen(true); }}>
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
+                    </Button>
                   </div>
-                  <Button size="sm" onClick={handleAddCallNote} disabled={!newCallNote.trim()}
-                    className="bg-accent/90 text-accent-foreground hover:bg-accent h-8 text-xs">
-                    <MessageSquarePlus className="h-3 w-3 mr-1" /> Registrar
-                  </Button>
-                </div>
-              </div>
-              {callNotes.length > 0 ? (
-                <div className="space-y-1.5 mt-3">
-                  {callNotes.map((n) => {
-                    const d = new Date(n.createdAt);
-                    const isAnalyzing = analyzingNoteId === n.id;
-                    const analysis = n.analysis;
-                    const runAnalyze = async (mode: "quick" | "full") => {
-                      setAnalyzingNoteId(n.id);
-                      try {
-                        await analyzeCallNote(lead, n, mode);
-                        onRefresh();
-                        toast.success(mode === "quick" ? "Análise rápida gerada" : "Diagnóstico completo gerado");
-                      } catch (e) {
-                        toast.error("Falha ao analisar", { description: String((e as Error)?.message || e).slice(0, 260) });
-                      } finally {
-                        setAnalyzingNoteId(null);
-                      }
-                    };
-                    const tempClass = analysis?.temperature === "Quente"
-                      ? "bg-orange-500/15 text-orange-500 border-orange-500/30"
-                      : analysis?.temperature === "Frio"
-                      ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
-                      : "bg-amber-500/15 text-amber-500 border-amber-500/30";
+                  {tasks.length === 0 && (
+                    <p className="text-xs text-muted-foreground/60 text-center py-4">
+                      Nenhuma tarefa criada.
+                    </p>
+                  )}
+                  {tasks.map((t) => {
+                    const isDone = t.status === "concluida";
+                    const due = new Date(t.dueAt);
+                    const overdue = !isDone && due.getTime() < Date.now();
                     return (
-                      <div key={n.id} className="group bg-muted/40 rounded-md p-3 border border-border/40">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                            <span className="font-medium text-foreground">{format(d, "dd/MM", { locale: ptBR })}</span>
-                            <span>·</span>
-                            <span>{format(d, "HH:mm", { locale: ptBR })}</span>
-                            {n.scriptUsed && (<Badge variant="outline" className="text-[9px] px-1 py-0 h-4">{n.scriptUsed}</Badge>)}
+                      <div key={t.id} className={`rounded-md border p-2 flex items-start gap-2 ${overdue ? "border-destructive/40 bg-destructive/5" : "border-border/40 bg-muted/20"}`}>
+                        <Checkbox checked={isDone}
+                          onCheckedChange={(v) => { if (v) completeTask(t.id); else reopenTask(t.id); setTasksVer((x) => x + 1); }}
+                          className="mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={`text-sm font-medium ${isDone ? "line-through text-muted-foreground" : ""}`}>{t.title}</p>
+                            <Badge variant="outline" className={`text-[10px] shrink-0 ${PRIORITY_CLASSES[t.priority]}`}>
+                              {PRIORITY_LABEL[t.priority]}
+                            </Badge>
                           </div>
-                          <button onClick={() => { removeCallNote(lead.id, n.id); onRefresh(); }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{n.text}</p>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
-                            onClick={() => runAnalyze("quick")} disabled={isAnalyzing}
-                            title="Análise rápida do último resumo — baixo consumo de tokens">
-                            {isAnalyzing
-                              ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando...</>)
-                              : (<><Sparkles className="h-3 w-3" /> 🤖 Analisar Última Ligação</>)}
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 border-primary/40 text-primary hover:bg-primary/10"
-                            onClick={() => runAnalyze("full")} disabled={isAnalyzing}
-                            title="Diagnóstico 360º usando todo o histórico do lead — maior consumo de tokens">
-                            {isAnalyzing
-                              ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando...</>)
-                              : (<>🧠 Diagnóstico Completo do Lead</>)}
-                          </Button>
-                          {analysis && (
-                            <Badge variant="outline" className={`text-[10px] ${tempClass}`}>
-                              {analysis.temperature}
-                            </Badge>
-                          )}
-                          {analysis && (
-                            <Badge variant="outline" className="text-[10px]">
-                              {analysis.mode === "full" ? "🧠 Completo" : "🤖 Rápido"}
-                            </Badge>
-                          )}
-                          {analysis && (
-                            <span className="text-[10px] text-muted-foreground">
-                              {format(new Date(analysis.generatedAt), "dd/MM HH:mm", { locale: ptBR })} · {analysis.model}
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground flex-wrap">
+                            <span className={overdue ? "text-destructive font-medium" : ""}>
+                              <Clock className="h-3 w-3 inline mr-0.5" />
+                              {format(due, "dd/MM 'às' HH:mm", { locale: ptBR })}
                             </span>
-                          )}
-                        </div>
-                        {analysis && (
-                          <div className="mt-2 rounded-md border border-border/40 bg-background/60 p-3">
-                            {analysis.data ? (
-                              <CallAuditView data={analysis.data} />
-                            ) : analysis.markdown ? (
-                              <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1">
-                                <ReactMarkdown>{analysis.markdown}</ReactMarkdown>
-                              </div>
-                            ) : null}
+                            <button className="text-muted-foreground hover:text-foreground" onClick={() => { setEditingTask(t); setTaskFormOpen(true); }}>
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button className="text-muted-foreground hover:text-destructive" onClick={async () => {
+                              if (t.googleEventId) { try { await supabase.functions.invoke("delete-task-event", { body: { eventId: t.googleEventId } }); } catch {} }
+                              deleteTask(t.id); setTasksVer((x) => x + 1);
+                            }}>
+                              <Trash2 className="h-3 w-3" />
+                            </button>
                           </div>
-                        )}
+                        </div>
                       </div>
                     );
-
                   })}
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground/60 text-center py-6">Nenhuma ligação registrada</p>
-              )}
-            </section>
+              );
+            })()}
+
+            {/* Cadência (Cold Call) */}
+            {isColdCall && (
+              <div className="mt-6 pt-4 border-t border-border/40">
+                <p className="text-xs text-muted-foreground mb-2">📜 Cadência do nicho</p>
+                <CadenceEditor niche={lead.niche} currentAttempt={step?.attempt} onChanged={onRefresh} />
+              </div>
+            )}
           </TabsContent>
+
 
           {/* ANEXOS */}
           <TabsContent value="anexos" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
