@@ -2,6 +2,7 @@
 // Nunca cita modelo diretamente. Fallback automático se GPT-mini indisponível.
 
 import { callAI } from "../_shared/ai-router.ts";
+import { retrieveMemories, formatMemoriesForPrompt } from "../_shared/memory-retrieval.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,8 +44,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    const memories = await retrieveMemories({
+      queryText: `Diretor comercial diário. Snapshot: ${JSON.stringify(snapshot).slice(0, 1500)}`,
+      matchCount: 5,
+      minSimilarity: 0.4,
+    });
+    const memoryBlock = formatMemoriesForPrompt(memories);
+
     const userPrompt =
       `Data de referência: ${snapshot.today ?? new Date().toISOString().slice(0, 10)}\n\n` +
+      (memoryBlock ? memoryBlock + "\n\n" : "") +
       `Snapshot da operação (JSON):\n` +
       JSON.stringify(snapshot) +
       `\n\nGere o painel executivo no formato JSON descrito.`;
@@ -102,7 +111,11 @@ Deno.serve(async (req) => {
     };
 
     return new Response(
-      JSON.stringify({ painel, model: result.modelUsed }),
+      JSON.stringify({
+        painel,
+        model: result.modelUsed,
+        memoryRefs: memories.map((m) => ({ id: m.id, kind: m.kind, title: m.title, similarity: m.similarity })),
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

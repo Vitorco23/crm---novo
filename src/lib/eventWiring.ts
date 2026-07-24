@@ -9,6 +9,8 @@
 
 import { onAny, on } from "./eventBus";
 import { appendHistory } from "./history";
+import { extractMemoryFromLead } from "./commercialMemory";
+import { getLeads } from "./store";
 
 let installed = false;
 
@@ -125,5 +127,28 @@ export function installEventWiring() {
       label: "Receita registrada",
       detail: [clientName, amount ? `R$ ${amount.toLocaleString("pt-BR")}` : null].filter(Boolean).join(" · "),
     });
+  });
+
+  // ===== Memória Comercial =====
+  // Ganho => padrão de vitória
+  on("VendaRealizada", (ev: any) => {
+    try {
+      const leadId = ev.payload?.leadId;
+      if (!leadId) return;
+      const lead = getLeads().find((l) => l.id === leadId);
+      if (lead) extractMemoryFromLead("won_pattern", lead, `Contrato fechado. Valor: R$ ${ev.payload?.amount ?? "N/D"}.`);
+    } catch (e) { console.warn("[memory won]", (e as Error).message); }
+  });
+
+  // Perdido => padrão de perda (detectado por LeadMovido para etapas de perda)
+  on("LeadMovido", (ev: any) => {
+    try {
+      const to: string = ev.payload?.toStage || "";
+      if (!/não quer|perdido|sem contato/i.test(to)) return;
+      const leadId = ev.payload?.leadId;
+      if (!leadId) return;
+      const lead = getLeads().find((l) => l.id === leadId);
+      if (lead) extractMemoryFromLead("lost_pattern", lead, `Lead movido para "${to}".`);
+    } catch (e) { console.warn("[memory lost]", (e as Error).message); }
   });
 }

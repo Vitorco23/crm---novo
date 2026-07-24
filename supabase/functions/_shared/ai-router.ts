@@ -8,7 +8,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment";
+export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment" | "extract_memory";
 
 export interface AIRouterOptions {
   task: AITask;
@@ -94,6 +94,17 @@ const REGISTRY: Record<AITask, { tiers: ModelSpec[][]; fallback: ModelSpec[] }> 
     ],
     fallback: [
       { id: "openai/gpt-5.5", supportsJsonSchema: true },
+    ],
+  },
+  // Extração de memória comercial (padrões, objeções, insights). Barato + estruturado.
+  extract_memory: {
+    tiers: [
+      [{ id: "google/gemini-3.1-flash-lite", supportsJsonSchema: false }],
+      [{ id: "google/gemini-3.6-flash", supportsJsonSchema: false }],
+      [{ id: "google/gemini-3.6-flash", supportsJsonSchema: false }],
+    ],
+    fallback: [
+      { id: "openai/gpt-5.4-nano", supportsJsonSchema: true },
     ],
   },
 };
