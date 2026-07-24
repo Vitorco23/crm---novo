@@ -308,8 +308,10 @@ export default function LeadDetailDrawer({
             <TabsTrigger value="historico">📞 Histórico</TabsTrigger>
             <TabsTrigger value="tarefas">✅ Tarefas</TabsTrigger>
             <TabsTrigger value="anexos">📎 Anexos</TabsTrigger>
+            <TabsTrigger value="auditoria">🤖 Auditoria IA</TabsTrigger>
             {isColdCall && <TabsTrigger value="cadencia">📜 Cadência</TabsTrigger>}
           </TabsList>
+
 
           {/* GERAL */}
           <TabsContent value="geral" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-5">
