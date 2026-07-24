@@ -34,8 +34,11 @@ import { toast } from "sonner";
 import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 import ConcluirTentativaDialog from "@/components/ConcluirTentativaDialog";
 import CadenceEditor from "@/components/CadenceEditor";
+import TaskFormDialog from "@/components/TaskFormDialog";
 import { getStepForLead, executionMoment, getCadenceForNiche } from "@/lib/cadence";
-import { CheckCircle2, Clock, Target } from "lucide-react";
+import { CheckCircle2, Clock, Target, ListTodo, Plus } from "lucide-react";
+import { getTasksByLead, deleteTask, completeTask, reopenTask, PRIORITY_LABEL, PRIORITY_CLASSES, type LeadTask } from "@/lib/leadTasks";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function StarRating({
   value, onChange,
