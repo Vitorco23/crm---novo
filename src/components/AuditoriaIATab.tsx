@@ -15,7 +15,14 @@ const SYSTEM_PROMPT =
 
 const KEY_STORAGE = "p21_openrouter_key";
 const MODEL_STORAGE = "p21_openrouter_model";
-const DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+const DEFAULT_MODEL = "deepseek/deepseek-chat-v3.1:free";
+const MODEL_PRESETS: { label: string; value: string }[] = [
+  { label: "DeepSeek V3.1 (free)", value: "deepseek/deepseek-chat-v3.1:free" },
+  { label: "GLM 4.5 Air (free)", value: "z-ai/glm-4.5-air:free" },
+  { label: "Llama 3.3 70B (free)", value: "meta-llama/llama-3.3-70b-instruct:free" },
+  { label: "GPT-4o mini (pago)", value: "openai/gpt-4o-mini" },
+  { label: "Gemini 2.5 Flash (pago)", value: "google/gemini-2.5-flash" },
+];
 
 export default function AuditoriaIATab({ leadCompany }: Props) {
   const [transcript, setTranscript] = useState("");
@@ -70,8 +77,17 @@ export default function AuditoriaIATab({ leadCompany }: Props) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error?.message || `Erro ${res.status}`);
+      const providerErr = data?.error;
+      if (!res.ok || providerErr) {
+        const raw =
+          providerErr?.metadata?.raw ||
+          providerErr?.metadata?.provider_name ||
+          "";
+        const msg =
+          providerErr?.message ||
+          data?.message ||
+          `Erro ${res.status}`;
+        throw new Error(raw ? `${msg} — ${raw}` : msg);
       }
       const content = data?.choices?.[0]?.message?.content ?? "Sem resposta da IA.";
       setResult(content);
@@ -131,6 +147,19 @@ export default function AuditoriaIATab({ leadCompany }: Props) {
               placeholder={DEFAULT_MODEL}
               className="text-xs font-mono"
             />
+            <div className="flex flex-wrap gap-1">
+              {MODEL_PRESETS.map((p) => (
+                <Button
+                  key={p.value}
+                  size="sm"
+                  variant={model === p.value ? "default" : "outline"}
+                  className="h-6 text-[10px] px-2"
+                  onClick={() => setModel(p.value)}
+                >
+                  {p.label}
+                </Button>
+              ))}
+            </div>
             <Button size="sm" onClick={saveKey} className="w-full">
               Salvar
             </Button>
