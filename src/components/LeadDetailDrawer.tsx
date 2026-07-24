@@ -304,6 +304,7 @@ export default function LeadDetailDrawer({
           <TabsList className="mx-6 mt-3 self-start">
             <TabsTrigger value="geral">📋 Geral</TabsTrigger>
             <TabsTrigger value="historico">📞 Histórico</TabsTrigger>
+            <TabsTrigger value="tarefas">✅ Tarefas</TabsTrigger>
             <TabsTrigger value="anexos">📎 Anexos</TabsTrigger>
             {isColdCall && <TabsTrigger value="cadencia">📜 Cadência</TabsTrigger>}
           </TabsList>
