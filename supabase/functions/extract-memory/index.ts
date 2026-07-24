@@ -75,7 +75,10 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    let parsed: { title?: string; content?: string; confidence?: number; skip?: boolean };
+    let parsed: {
+      title?: string; content?: string; confidence?: number; skip?: boolean;
+      motivo?: string; objecoes?: string[]; argumentos?: string[];
+    };
     try {
       parsed = JSON.parse(ai.content);
     } catch {
@@ -86,6 +89,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ inserted: false, reason: "no_signal" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    // Enriquecer metadata com sinais qualitativos extraídos pela IA (motor de padrões consome).
+    const md: Record<string, unknown> = { ...(metadata || {}) };
+    if (parsed.motivo) md.motivo = String(parsed.motivo).slice(0, 240);
+    if (Array.isArray(parsed.objecoes) && parsed.objecoes.length) {
+      const existing = Array.isArray(md.objecoes) ? md.objecoes as string[] : [];
+      md.objecoes = Array.from(new Set([...existing, ...parsed.objecoes.map((s) => String(s).slice(0, 120))])).slice(0, 8);
+    }
+    if (Array.isArray(parsed.argumentos) && parsed.argumentos.length) {
+      const existing = Array.isArray(md.argumentos) ? md.argumentos as string[] : [];
+      md.argumentos = Array.from(new Set([...existing, ...parsed.argumentos.map((s) => String(s).slice(0, 120))])).slice(0, 8);
+    }
+
 
     // 2) Embed the memory content
     const embedInput = `${parsed.title}\n${parsed.content}`;
@@ -122,7 +138,7 @@ Deno.serve(async (req) => {
         kind,
         title: parsed.title.slice(0, 200),
         content: parsed.content.slice(0, 2000),
-        metadata: metadata || {},
+        metadata: md,
         embedding: embedding as unknown as string,
         source_lead_id: leadId || null,
         confidence: Math.max(0, Math.min(1, Number(parsed.confidence) || 0.7)),
