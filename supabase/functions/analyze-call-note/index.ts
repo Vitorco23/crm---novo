@@ -6,6 +6,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { callAI } from '../_shared/ai-router.ts';
 import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
+import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from '../_shared/nba-types.ts';
 
 const SYSTEM_QUICK = `Você é o AUDITOR COMERCIAL da Performance21 em modo ANÁLISE RÁPIDA.
 
@@ -195,7 +196,7 @@ Deno.serve(async (req) => {
     try {
       result = await callAI({
         task: 'auditor_ligacao',
-        system: mode === "quick" ? SYSTEM_QUICK : SYSTEM_FULL,
+        system: (mode === "quick" ? SYSTEM_QUICK : SYSTEM_FULL) + "\n\n" + NBA_PROMPT_BLOCK,
         user: userPrompt,
         inputChars,
         // Modo quick usa tier menor; modo full força tier mais capaz.
@@ -253,10 +254,21 @@ Deno.serve(async (req) => {
       ? data.temperatura as 'Quente' | 'Frio'
       : 'Morno';
 
+    // ---- Próxima Melhor Ação (NBA) — extração + guard-rails
+    const rawNBA = extractNBA(data);
+    const nba = sanitizeNBA(rawNBA, {
+      stage: body.stage,
+      hasDiagnosis: mode === "full",
+      interactionsCount: (body.interacoesComerciais || "").length > 20 ? 1 : 0,
+      callNotesCount: (body.allCallNotes || callSummary).length > 20 ? 1 : 0,
+    }, body.leadId);
+    (data as Record<string, unknown>).nextBestAction = nba;
+
     return new Response(JSON.stringify({
       data,
       temperature,
       mode,
+      nextBestAction: nba,
       generatedAt: new Date().toISOString(),
       model: result.modelUsed,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
