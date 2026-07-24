@@ -53,12 +53,21 @@ export interface LeadAttachment {
   createdAt: string;
 }
 
+export interface CallNoteAnalysis {
+  markdown: string;
+  temperature: "Quente" | "Morno" | "Frio";
+  generatedAt: string;
+  model: string;
+}
+
 export interface CallNote {
   id: string;
   text: string;
   createdAt: string;
   scriptUsed?: string;
+  analysis?: CallNoteAnalysis;
 }
+
 
 export interface Lead {
   id: string;
