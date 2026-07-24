@@ -147,6 +147,19 @@ export default function AuditoriaIATab({ leadCompany }: Props) {
               placeholder={DEFAULT_MODEL}
               className="text-xs font-mono"
             />
+            <div className="flex flex-wrap gap-1">
+              {MODEL_PRESETS.map((p) => (
+                <Button
+                  key={p.value}
+                  size="sm"
+                  variant={model === p.value ? "default" : "outline"}
+                  className="h-6 text-[10px] px-2"
+                  onClick={() => setModel(p.value)}
+                >
+                  {p.label}
+                </Button>
+              ))}
+            </div>
             <Button size="sm" onClick={saveKey} className="w-full">
               Salvar
             </Button>
