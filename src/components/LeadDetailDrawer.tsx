@@ -235,7 +235,7 @@ export default function LeadDetailDrawer({
     setAiReadingId(att.id);
     try {
       const leadContext = [
-        `Nome: ${lead.name}`,
+        lead.contact && `Contato: ${lead.contact}`,
         lead.company && `Empresa: ${lead.company}`,
         lead.niche && `Nicho: ${lead.niche}`,
         lead.city && `Cidade: ${lead.city}`,
