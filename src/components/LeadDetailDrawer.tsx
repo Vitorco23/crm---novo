@@ -168,6 +168,9 @@ export default function LeadDetailDrawer({
   const [scripts, setScripts] = useState<string[]>(() => getScripts());
   const [callScript, setCallScript] = useState<ScriptOption>(() => getSelectedScript());
   const [tab, setTab] = useState("geral");
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
+  const [tasksVer, setTasksVer] = useState(0);
 
   useEffect(() => {
     setDraft(lead);
