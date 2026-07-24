@@ -843,6 +843,15 @@ export default function LeadDetailDrawer({
         onDone={onRefresh}
         onRequestSchedule={() => setMeetingOpen(true)}
       />
+
+      <TaskFormDialog
+        open={taskFormOpen}
+        onOpenChange={(o) => { setTaskFormOpen(o); if (!o) setEditingTask(null); }}
+        leadId={lead.id}
+        leadName={lead.company}
+        editing={editingTask}
+        onSaved={() => setTasksVer((x) => x + 1)}
+      />
     </Dialog>
   );
 }
