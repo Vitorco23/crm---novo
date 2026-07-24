@@ -53,6 +53,51 @@ export type Database = {
         }
         Relationships: []
       }
+      commercial_memory: {
+        Row: {
+          approved: boolean
+          confidence: number
+          content: string
+          created_at: string
+          embedding: string
+          id: string
+          kind: string
+          metadata: Json
+          source_lead_id: string | null
+          title: string
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          approved?: boolean
+          confidence?: number
+          content: string
+          created_at?: string
+          embedding: string
+          id?: string
+          kind: string
+          metadata?: Json
+          source_lead_id?: string | null
+          title: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          approved?: boolean
+          confidence?: number
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          kind?: string
+          metadata?: Json
+          source_lead_id?: string | null
+          title?: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Relationships: []
+      }
       leads_inbound: {
         Row: {
           created_at: string
@@ -97,7 +142,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_commercial_memory: {
+        Args: {
+          filter_kind?: string
+          filter_niche?: string
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          id: string
+          kind: string
+          metadata: Json
+          similarity: number
+          title: string
+          usage_count: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
