@@ -29,6 +29,8 @@ import {
 import ReactMarkdown from "react-markdown";
 import { analyzeCallNote } from "@/lib/callAnalysis";
 import { CallAuditView } from "@/components/CallAuditView";
+import InteracoesTimeline from "@/components/InteracoesTimeline";
+
 
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
