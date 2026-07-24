@@ -107,6 +107,19 @@ const REGISTRY: Record<AITask, { tiers: ModelSpec[][]; fallback: ModelSpec[] }> 
       { id: "openai/gpt-5.4-nano", supportsJsonSchema: true },
     ],
   },
+  // Seleção de leads prioritários do dia. Precisa de raciocínio consistente
+  // sobre listas médias — usa mini com fallback nano/gemini.
+  priority_leads: {
+    tiers: [
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
+    ],
+    fallback: [
+      { id: "openai/gpt-5.4-nano", supportsJsonSchema: true },
+      { id: "google/gemini-2.5-flash", supportsJsonSchema: false },
+    ],
+  },
 };
 
 function pickTierIndex(inputChars: number, forceComplex?: boolean): 0 | 1 | 2 {
