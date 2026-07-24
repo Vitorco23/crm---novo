@@ -173,7 +173,7 @@ export async function callAI(opts: AIRouterOptions): Promise<AIRouterResult> {
         model: model.id,
         messages: [
           { role: "system", content: opts.system },
-          { role: "user", content: opts.user },
+          { role: "user", content: opts.userContent ?? opts.user },
         ],
         temperature: opts.temperature ?? 0.3,
         max_tokens: opts.maxTokens ?? 4096,
