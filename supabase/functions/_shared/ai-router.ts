@@ -8,12 +8,14 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript";
+export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment";
 
 export interface AIRouterOptions {
   task: AITask;
   system: string;
   user: string;
+  /** Conteúdo multimodal (blocos type/text/image_url/file). Se presente, substitui `user`. */
+  userContent?: unknown[];
   /** Total de caracteres do input relevante (usado para escolher tier de modelo). */
   inputChars?: number;
   /** Força tier complexo mesmo com input pequeno. */
