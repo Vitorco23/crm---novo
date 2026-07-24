@@ -89,11 +89,13 @@ interface Payload {
   callSummary?: string;
   leadInfo?: string;
   allCallNotes?: string;
+  interacoesComerciais?: string;
   tarefasConcluidas?: string;
   tarefasPendentes?: string;
   movimentacoes?: string;
   historicoEventos?: string;
   mode?: "quick" | "full";
+
 }
 
 Deno.serve(async (req) => {
