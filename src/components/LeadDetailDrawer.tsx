@@ -586,14 +586,8 @@ export default function LeadDetailDrawer({
                 </div>
               </div>
             </section>
-
-            {/* Observações */}
-            <section>
-              <Label className="text-xs text-muted-foreground mb-1 block">Observações permanentes sobre a empresa</Label>
-              <Textarea value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} onBlur={() => commitOnBlur({ notes: draft.notes })} rows={4}
-                placeholder="Ex: Possui duas unidades. Atua em alto padrão. Expansão prevista para setembro." />
-            </section>
           </TabsContent>
+
 
           {/* INTERAÇÕES COMERCIAIS */}
           <TabsContent value="interacoes" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
