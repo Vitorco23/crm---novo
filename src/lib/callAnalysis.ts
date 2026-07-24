@@ -3,60 +3,27 @@ import { setCallNoteAnalysis, getMovementEvents, type CallNoteAnalysis, type Lea
 import { getTasksByLead } from "@/lib/leadTasks";
 import { getHistoryForLead } from "@/lib/history";
 
+export type AnalysisMode = "quick" | "full";
+
 function fmt(dt: string) {
   try { return new Date(dt).toLocaleString("pt-BR"); } catch { return dt; }
 }
 
-export async function analyzeCallNote(lead: Lead, note: CallNote): Promise<CallNoteAnalysis> {
-  const notes = [...(lead.callNotes || [])].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
-  const idx = notes.findIndex((n) => n.id === note.id);
-  const attempt = idx >= 0 ? idx + 1 : notes.length;
-
-  // Histórico COMPLETO de ligações (não apenas anteriores)
-  const allCallNotes = notes
-    .map((n, i) => {
-      const marker = n.id === note.id ? "  <-- LIGAÇÃO EM ANÁLISE" : "";
-      return `#${i + 1} [${fmt(n.createdAt)}] ${n.scriptUsed ? `(script: ${n.scriptUsed}) ` : ""}${n.text}${marker}`;
-    })
-    .join("\n")
-    .slice(0, 8000);
-
-  // Tarefas do lead
-  const tasks = getTasksByLead(lead.id);
-  const tarefasConcluidas = tasks
-    .filter((t) => t.status === "concluida")
-    .map((t) => `- [${fmt(t.completedAt || t.dueAt)}] ${t.title}${t.description ? ` — ${t.description}` : ""}`)
-    .join("\n")
-    .slice(0, 2000) || "(nenhuma)";
-  const tarefasPendentes = tasks
-    .filter((t) => t.status === "pendente")
-    .map((t) => `- [prazo ${fmt(t.dueAt)}] (${t.priority}) ${t.title}${t.description ? ` — ${t.description}` : ""}`)
-    .join("\n")
-    .slice(0, 2000) || "(nenhuma)";
-
-  // Movimentações de pipeline
-  const movs = getMovementEvents()
-    .filter((m) => m.leadId === lead.id)
-    .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
-    .map((m) => `- [${fmt(m.timestamp)}] → ${m.toStage} (${m.type})`)
-    .join("\n")
-    .slice(0, 2000) || "(sem movimentações registradas)";
-
-  // Histórico geral (eventos)
-  const history = getHistoryForLead(lead.id)
-    .slice(0, 30)
-    .map((h) => `- [${fmt(h.at)}] ${h.label}${h.detail ? ` — ${h.detail}` : ""}`)
-    .join("\n")
-    .slice(0, 2000) || "(sem eventos)";
-
-  const leadInfo = [
+function basicLeadInfo(lead: Lead, attempt: number, totalNotes: number) {
+  return [
     `Empresa: ${lead.company || "N/D"}`,
     `Contato: ${lead.contact || "N/D"}`,
     `Nicho: ${lead.niche || "N/D"}`,
     `Cidade: ${lead.city || "N/D"}`,
     `Etapa atual: ${lead.stage || "N/D"}`,
+    `Total de ligações: ${totalNotes}`,
+    `Tentativa em análise: ${attempt}`,
+  ].join("\n");
+}
+
+function fullLeadInfo(lead: Lead, attempt: number, totalNotes: number) {
+  return [
+    basicLeadInfo(lead, attempt, totalNotes),
     `ICP (estrelas): ${lead.icpStars ?? "N/D"}`,
     `Faz anúncios: ${lead.runsAds ? "Sim" : "Não"}`,
     `Temperatura atual: ${lead.temperature || "N/D"}`,
@@ -64,28 +31,82 @@ export async function analyzeCallNote(lead: Lead, note: CallNote): Promise<CallN
     `Valor de contrato: ${lead.contractValue ? `R$ ${lead.contractValue}` : "N/D"}`,
     `Criado em: ${fmt(lead.createdAt)}`,
     `Última mudança de etapa: ${fmt(lead.stageChangedAt)}`,
-    `Total de ligações registradas: ${notes.length}`,
-    `Tentativa atual (índice da ligação em análise): ${attempt}`,
     `Observações cadastrais:\n${(lead.notes || "(vazio)").slice(0, 1500)}`,
   ].join("\n");
+}
 
-  const { data, error } = await supabase.functions.invoke("analyze-call-note", {
-    body: {
-      leadId: lead.id,
-      noteId: note.id,
-      company: lead.company,
-      niche: lead.niche,
-      stage: lead.stage,
-      attempt,
-      callSummary: note.text,
-      leadInfo,
+export async function analyzeCallNote(
+  lead: Lead,
+  note: CallNote,
+  mode: AnalysisMode = "quick",
+): Promise<CallNoteAnalysis> {
+  const notes = [...(lead.callNotes || [])].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  const idx = notes.findIndex((n) => n.id === note.id);
+  const attempt = idx >= 0 ? idx + 1 : notes.length;
+
+  const bodyBase = {
+    leadId: lead.id,
+    noteId: note.id,
+    company: lead.company,
+    niche: lead.niche,
+    stage: lead.stage,
+    attempt,
+    callSummary: note.text,
+    mode,
+  };
+
+  let body: Record<string, unknown> = { ...bodyBase };
+
+  if (mode === "quick") {
+    body.leadInfo = basicLeadInfo(lead, attempt, notes.length);
+  } else {
+    const allCallNotes = notes
+      .map((n, i) => {
+        const marker = n.id === note.id ? "  <-- LIGAÇÃO EM ANÁLISE" : "";
+        return `#${i + 1} [${fmt(n.createdAt)}] ${n.scriptUsed ? `(script: ${n.scriptUsed}) ` : ""}${n.text}${marker}`;
+      })
+      .join("\n")
+      .slice(0, 8000);
+
+    const tasks = getTasksByLead(lead.id);
+    const tarefasConcluidas = tasks
+      .filter((t) => t.status === "concluida")
+      .map((t) => `- [${fmt(t.completedAt || t.dueAt)}] ${t.title}${t.description ? ` — ${t.description}` : ""}`)
+      .join("\n")
+      .slice(0, 2000) || "(nenhuma)";
+    const tarefasPendentes = tasks
+      .filter((t) => t.status === "pendente")
+      .map((t) => `- [prazo ${fmt(t.dueAt)}] (${t.priority}) ${t.title}${t.description ? ` — ${t.description}` : ""}`)
+      .join("\n")
+      .slice(0, 2000) || "(nenhuma)";
+
+    const movs = getMovementEvents()
+      .filter((m) => m.leadId === lead.id)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+      .map((m) => `- [${fmt(m.timestamp)}] → ${m.toStage} (${m.type})`)
+      .join("\n")
+      .slice(0, 2000) || "(sem movimentações registradas)";
+
+    const history = getHistoryForLead(lead.id)
+      .slice(0, 30)
+      .map((h) => `- [${fmt(h.at)}] ${h.label}${h.detail ? ` — ${h.detail}` : ""}`)
+      .join("\n")
+      .slice(0, 2000) || "(sem eventos)";
+
+    body = {
+      ...body,
+      leadInfo: fullLeadInfo(lead, attempt, notes.length),
       allCallNotes,
       tarefasConcluidas,
       tarefasPendentes,
       movimentacoes: movs,
       historicoEventos: history,
-    },
-  });
+    };
+  }
+
+  const { data, error } = await supabase.functions.invoke("analyze-call-note", { body });
 
   if (error) {
     const details = "context" in error && error.context ? await (error.context as Response).text().catch(() => "") : "";
