@@ -15,22 +15,24 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI } from "../_shared/ai-router.ts";
 import { embedText } from "../_shared/memory-retrieval.ts";
 
+const JSON_TAIL = `\nExtras opcionais: pode incluir "motivo" (string curta), "objecoes" (array), "argumentos" (array). Use somente informações reais do contexto.`;
+
 const SYSTEM_PROMPTS: Record<string, string> = {
   won_pattern: `Você é o Curador de Memória Comercial da Performance21.
 A partir do contexto de um Lead que fechou contrato, extraia o padrão de vitória em JSON.
-CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases descrevendo o padrão (nicho, ticket, nº tentativas, objeções vencidas, tempo de ciclo, o que funcionou), "confidence": 0-1 }
-Sem markdown, sem preâmbulo. JSON puro.`,
+CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases descrevendo o padrão (nicho, ticket, nº tentativas, objeções vencidas, tempo de ciclo, o que funcionou), "confidence": 0-1, "motivo"?: string, "objecoes"?: string[], "argumentos"?: string[] }
+Sem markdown, sem preâmbulo. JSON puro.${JSON_TAIL}`,
   lost_pattern: `Você é o Curador de Memória Comercial da Performance21.
 Extraia o padrão de perda deste Lead em JSON.
-CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases (motivo, sinais precoces, etapa em que travou, o que evitar), "confidence": 0-1 }
-Sem markdown. JSON puro.`,
+CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases (motivo, sinais precoces, etapa em que travou, o que evitar), "confidence": 0-1, "motivo"?: string, "objecoes"?: string[], "argumentos"?: string[] }
+Sem markdown. JSON puro.${JSON_TAIL}`,
   objection_handled: `Você é o Curador de Memória Comercial da Performance21.
 Extraia UMA objeção real do cliente e o argumento que funcionou em JSON.
-CAMPOS: { "title": string curto (<80 chars, formato "Objeção X → Argumento Y"), "content": 2-3 frases descrevendo objeção + argumento + resultado, "confidence": 0-1 }
+CAMPOS: { "title": string curto (<80 chars, formato "Objeção X → Argumento Y"), "content": 2-3 frases descrevendo objeção + argumento + resultado, "confidence": 0-1, "objecoes"?: string[], "argumentos"?: string[] }
 Se não houver objeção clara, retorne { "skip": true }. JSON puro.`,
   niche_insight: `Você é o Curador de Memória Comercial da Performance21.
 Extraia um insight consolidado sobre este nicho em JSON.
-CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases (conversão típica, cadência ideal, argumentos vencedores, sazonalidade), "confidence": 0-1 }
+CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases (conversão típica, cadência ideal, argumentos vencedores, sazonalidade), "confidence": 0-1, "objecoes"?: string[], "argumentos"?: string[] }
 JSON puro.`,
   sequence_insight: `Você é o Curador de Memória Comercial da Performance21.
 Extraia um insight sobre sequência/cadência em JSON.

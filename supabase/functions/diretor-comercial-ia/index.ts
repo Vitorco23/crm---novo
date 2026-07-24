@@ -2,7 +2,7 @@
 // Nunca cita modelo diretamente. Fallback automático se GPT-mini indisponível.
 
 import { callAI } from "../_shared/ai-router.ts";
-import { retrieveMemories, formatMemoriesForPrompt } from "../_shared/memory-retrieval.ts";
+import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,12 +44,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    const memories = await retrieveMemories({
+    const { block: memoryBlock } = await buildMemoryContextBlock({
       queryText: `Diretor comercial diário. Snapshot: ${JSON.stringify(snapshot).slice(0, 1500)}`,
       matchCount: 5,
       minSimilarity: 0.4,
+      includePatterns: true,
     });
-    const memoryBlock = formatMemoriesForPrompt(memories);
 
     const userPrompt =
       `Data de referência: ${snapshot.today ?? new Date().toISOString().slice(0, 10)}\n\n` +
