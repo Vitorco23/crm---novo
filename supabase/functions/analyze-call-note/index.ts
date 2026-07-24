@@ -170,6 +170,10 @@ Deno.serve(async (req) => {
           '========== TODAS AS LIGAÇÕES DO LEAD (ordem cronológica) ==========',
           body.allCallNotes || '(apenas a ligação em análise)',
           '',
+          '========== INTERAÇÕES COMERCIAIS (timeline completa: reuniões, follow-ups, WhatsApp, e-mail, propostas, visitas etc.) ==========',
+          body.interacoesComerciais || '(nenhuma interação registrada)',
+          '',
+
           '========== MOVIMENTAÇÕES NO PIPELINE ==========',
           body.movimentacoes || '(sem movimentações)',
           '',
