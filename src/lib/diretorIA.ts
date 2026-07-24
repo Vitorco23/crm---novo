@@ -348,7 +348,7 @@ export function collectSnapshot(): DiretorSnapshot {
       gapPct: b.hasEnoughData ? b.main.gapPct : 0,
       explicacao: b.explanation,
       recomendacoes: b.recommendations.slice(0, 5),
-      variacaoVsPeriodoAnterior: cmp?.summary,
+      variacaoVsPeriodoAnterior: cmp ?? undefined,
     },
     insights: insightsAtivos,
     topScripts: topByRate(scriptBucket),
