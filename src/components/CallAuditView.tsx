@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import type { CallAuditData } from "@/lib/store";
+import type { CallAuditData, Lead } from "@/lib/store";
+import NextBestActionCard from "@/components/NextBestActionCard";
 import {
   Target, MessageSquare, AlertTriangle, CheckCircle2, TrendingUp,
   UserCheck, CalendarClock, Lightbulb, TrendingDown, ArrowRight, History,
@@ -8,6 +9,8 @@ import {
 
 interface Props {
   data: CallAuditData;
+  lead?: Lead;
+  onRunDiagnosis?: () => void;
 }
 
 const trendStyle = (t?: string) =>
