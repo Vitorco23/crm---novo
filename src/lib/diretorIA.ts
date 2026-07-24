@@ -28,12 +28,28 @@ export const LAST_RUN_KEY = "p21_diretor_ia_last_run";
 export const HISTORY_KEY = "p21_diretor_ia_history";
 const HISTORY_LIMIT = 60;
 
+export interface PainelExecutivo {
+  resumoOntem: string[];
+  atencao: string[];
+  oportunidades: string[];
+  prioridades: string[];
+  dica: string;
+}
+
+export interface MetaHojeProgresso {
+  ligacoes: { atual: number; meta: number };
+  reunioes: { atual: number; meta: number };
+  vendas: { atual: number; meta: number };
+}
+
 export interface Parecer {
   id: string;
-  date: string;       // YYYY-MM-DD (America/Sao_Paulo)
+  date: string;        // YYYY-MM-DD (America/Sao_Paulo)
   generatedAt: string; // ISO
   model: string;
-  content: string;    // markdown
+  content?: string;    // markdown (formato legado)
+  painel?: PainelExecutivo;   // novo formato executivo
+  metaHoje?: MetaHojeProgresso;
 }
 
 // ---- Datas em America/Sao_Paulo ----
