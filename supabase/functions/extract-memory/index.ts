@@ -1,0 +1,142 @@
+// extract-memory — recebe um evento comercial e persiste uma memória estruturada.
+// Chamado a partir do client (fire-and-forget) após Ganho / Perdido / análise com objeção.
+//
+// Body: {
+//   kind: 'won_pattern'|'lost_pattern'|'objection_handled'|'niche_insight'|'sequence_insight',
+//   context: string,           // texto livre com todo o contexto (lead + histórico + resumos)
+//   leadId?: string,
+//   metadata?: Record<string, unknown>  // niche, city, serviceType, stage, contractValue, outcome
+// }
+//
+// Retorna: { inserted: boolean, memoryId?: string, reason?: string }
+
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { callAI } from "../_shared/ai-router.ts";
+import { embedText } from "../_shared/memory-retrieval.ts";
+
+const SYSTEM_PROMPTS: Record<string, string> = {
+  won_pattern: `Você é o Curador de Memória Comercial da Performance21.
+A partir do contexto de um Lead que fechou contrato, extraia o padrão de vitória em JSON.
+CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases descrevendo o padrão (nicho, ticket, nº tentativas, objeções vencidas, tempo de ciclo, o que funcionou), "confidence": 0-1 }
+Sem markdown, sem preâmbulo. JSON puro.`,
+  lost_pattern: `Você é o Curador de Memória Comercial da Performance21.
+Extraia o padrão de perda deste Lead em JSON.
+CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases (motivo, sinais precoces, etapa em que travou, o que evitar), "confidence": 0-1 }
+Sem markdown. JSON puro.`,
+  objection_handled: `Você é o Curador de Memória Comercial da Performance21.
+Extraia UMA objeção real do cliente e o argumento que funcionou em JSON.
+CAMPOS: { "title": string curto (<80 chars, formato "Objeção X → Argumento Y"), "content": 2-3 frases descrevendo objeção + argumento + resultado, "confidence": 0-1 }
+Se não houver objeção clara, retorne { "skip": true }. JSON puro.`,
+  niche_insight: `Você é o Curador de Memória Comercial da Performance21.
+Extraia um insight consolidado sobre este nicho em JSON.
+CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases (conversão típica, cadência ideal, argumentos vencedores, sazonalidade), "confidence": 0-1 }
+JSON puro.`,
+  sequence_insight: `Você é o Curador de Memória Comercial da Performance21.
+Extraia um insight sobre sequência/cadência em JSON.
+CAMPOS: { "title": string curto (<80 chars), "content": 2-4 frases sobre o padrão de sequência que funcionou, "confidence": 0-1 }
+JSON puro.`,
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try {
+    const { kind, context, leadId, metadata } = await req.json();
+    if (!kind || !context || typeof context !== "string") {
+      return new Response(JSON.stringify({ error: "kind and context are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const system = SYSTEM_PROMPTS[kind as string];
+    if (!system) {
+      return new Response(JSON.stringify({ error: `unknown kind: ${kind}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !key) throw new Error("supabase env missing");
+    const db = createClient(url, key, { auth: { persistSession: false } });
+
+    // 1) Extract structured memory
+    let ai;
+    try {
+      ai = await callAI({
+        task: "extract_memory",
+        system,
+        user: `Contexto:\n${context.slice(0, 6000)}\n\nMetadata: ${JSON.stringify(metadata || {})}\n\nRetorne o JSON solicitado.`,
+        json: true,
+        temperature: 0.2,
+        maxTokens: 512,
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ inserted: false, reason: "ai_failed", error: (e as Error).message }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    let parsed: { title?: string; content?: string; confidence?: number; skip?: boolean };
+    try {
+      parsed = JSON.parse(ai.content);
+    } catch {
+      const m = ai.content.match(/\{[\s\S]*\}/);
+      parsed = m ? JSON.parse(m[0]) : {};
+    }
+    if (parsed?.skip || !parsed?.title || !parsed?.content) {
+      return new Response(JSON.stringify({ inserted: false, reason: "no_signal" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 2) Embed the memory content
+    const embedInput = `${parsed.title}\n${parsed.content}`;
+    const embedding = await embedText(embedInput);
+    if (!embedding) {
+      return new Response(JSON.stringify({ inserted: false, reason: "embed_failed" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // 3) Dedup: buscar memória mais parecida do mesmo kind; se sim > 0.92, ignora.
+    try {
+      const { data: sim } = await db.rpc("match_commercial_memory", {
+        query_embedding: embedding as unknown as string,
+        match_count: 1,
+        filter_kind: kind,
+        filter_niche: (metadata && (metadata as Record<string, unknown>).niche as string) || null,
+        min_similarity: 0.92,
+      });
+      if (Array.isArray(sim) && sim.length > 0) {
+        // increment usage of the duplicate instead
+        await db.from("commercial_memory")
+          .update({ usage_count: (sim[0] as { usage_count: number }).usage_count + 1 })
+          .eq("id", (sim[0] as { id: string }).id);
+        return new Response(JSON.stringify({ inserted: false, reason: "duplicate", matchedId: (sim[0] as { id: string }).id }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    } catch (e) {
+      console.warn("dedup check failed", (e as Error).message);
+    }
+
+    // 4) Insert
+    const { data: inserted, error: insertErr } = await db.from("commercial_memory")
+      .insert({
+        kind,
+        title: parsed.title.slice(0, 200),
+        content: parsed.content.slice(0, 2000),
+        metadata: metadata || {},
+        embedding: embedding as unknown as string,
+        source_lead_id: leadId || null,
+        confidence: Math.max(0, Math.min(1, Number(parsed.confidence) || 0.7)),
+      })
+      .select("id")
+      .single();
+    if (insertErr) {
+      return new Response(JSON.stringify({ inserted: false, reason: "insert_failed", error: insertErr.message }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    return new Response(JSON.stringify({ inserted: true, memoryId: inserted.id, model: ai.modelUsed }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (e) {
+    console.error("extract-memory error", e);
+    return new Response(JSON.stringify({ error: (e as Error).message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+});
