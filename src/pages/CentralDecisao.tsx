@@ -55,6 +55,7 @@ import { uload, usave } from "@/lib/userStorage";
 
 import PriorityCard from "@/components/PriorityCard";
 import BottleneckCard from "@/components/BottleneckCard";
+import DiretorComercialIACard from "@/components/DiretorComercialIACard";
 
 // ============================================================
 // TIPOS E FILTROS LOCAIS DA CENTRAL
@@ -276,6 +277,9 @@ export default function CentralDecisao() {
           campaigns={data.campaigns}
         />
       </div>
+
+      {/* 0. DIRETOR COMERCIAL IA — parecer diário */}
+      <DiretorComercialIACard />
 
       {/* 1. O QUE FAZER AGORA */}
       <Section title="O que fazer agora" icon={<Zap className="h-4 w-4" />} accent>
