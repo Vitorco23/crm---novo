@@ -21,6 +21,7 @@ import Lembretes from "./pages/Lembretes";
 import InteligenciaComercial from "./pages/InteligenciaComercial";
 import CentralDecisao from "./pages/CentralDecisao";
 import Agenda from "./pages/Agenda";
+import MemoriaComercial from "./pages/MemoriaComercial";
 import { lazy, Suspense } from "react";
 const Laboratorio = lazy(() => import("./pages/Laboratorio"));
 
@@ -62,6 +63,7 @@ const App = () => (
                         <Route path="/inteligencia" element={<InteligenciaComercial />} />
                         <Route path="/central" element={<CentralDecisao />} />
                         <Route path="/agenda" element={<Agenda />} />
+                        <Route path="/memoria" element={<MemoriaComercial />} />
                         <Route path="/laboratorio" element={
                           <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Laboratório…</div>}>
                             <Laboratorio />
