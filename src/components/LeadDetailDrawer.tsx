@@ -39,6 +39,8 @@ import { getStepForLead, executionMoment, getCadenceForNiche } from "@/lib/caden
 import { CheckCircle2, Clock, Target, ListTodo, Plus } from "lucide-react";
 import { getTasksByLead, deleteTask, completeTask, reopenTask, PRIORITY_LABEL, PRIORITY_CLASSES, type LeadTask } from "@/lib/leadTasks";
 import { Checkbox } from "@/components/ui/checkbox";
+import AuditoriaIATab from "@/components/AuditoriaIATab";
+
 
 function StarRating({
   value, onChange,
@@ -306,8 +308,10 @@ export default function LeadDetailDrawer({
             <TabsTrigger value="historico">📞 Histórico</TabsTrigger>
             <TabsTrigger value="tarefas">✅ Tarefas</TabsTrigger>
             <TabsTrigger value="anexos">📎 Anexos</TabsTrigger>
+            <TabsTrigger value="auditoria">🤖 Auditoria IA</TabsTrigger>
             {isColdCall && <TabsTrigger value="cadencia">📜 Cadência</TabsTrigger>}
           </TabsList>
+
 
           {/* GERAL */}
           <TabsContent value="geral" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-5">
@@ -797,6 +801,11 @@ export default function LeadDetailDrawer({
             )}
           </TabsContent>
 
+          {/* AUDITORIA IA */}
+          <TabsContent value="auditoria" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
+            <AuditoriaIATab leadCompany={lead.company} />
+          </TabsContent>
+
           {/* CADÊNCIA */}
           {isColdCall && (
             <TabsContent value="cadencia" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-3">
@@ -804,6 +813,7 @@ export default function LeadDetailDrawer({
             </TabsContent>
           )}
         </Tabs>
+
       </DialogContent>
 
       {/* Script viewer secundário */}
