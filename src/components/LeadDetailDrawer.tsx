@@ -638,6 +638,25 @@ export default function LeadDetailDrawer({
                 <div className="space-y-1.5 mt-3">
                   {callNotes.map((n) => {
                     const d = new Date(n.createdAt);
+                    const isAnalyzing = analyzingNoteId === n.id;
+                    const analysis = n.analysis;
+                    const runAnalyze = async () => {
+                      setAnalyzingNoteId(n.id);
+                      try {
+                        await analyzeCallNote(lead, n);
+                        onRefresh();
+                        toast.success("Parecer gerado pela IA");
+                      } catch (e) {
+                        toast.error("Falha ao analisar", { description: String((e as Error)?.message || e).slice(0, 260) });
+                      } finally {
+                        setAnalyzingNoteId(null);
+                      }
+                    };
+                    const tempClass = analysis?.temperature === "Quente"
+                      ? "bg-orange-500/15 text-orange-500 border-orange-500/30"
+                      : analysis?.temperature === "Frio"
+                      ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                      : "bg-amber-500/15 text-amber-500 border-amber-500/30";
                     return (
                       <div key={n.id} className="group bg-muted/40 rounded-md p-3 border border-border/40">
                         <div className="flex items-center justify-between gap-2 mb-1">
@@ -653,8 +672,32 @@ export default function LeadDetailDrawer({
                           </button>
                         </div>
                         <p className="text-sm text-foreground whitespace-pre-wrap">{n.text}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
+                            onClick={runAnalyze} disabled={isAnalyzing}>
+                            {isAnalyzing
+                              ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando...</>)
+                              : (<><Sparkles className="h-3 w-3" /> {analysis ? "Reanalisar" : "🤖 Analisar com IA"}</>)}
+                          </Button>
+                          {analysis && (
+                            <Badge variant="outline" className={`text-[10px] ${tempClass}`}>
+                              {analysis.temperature}
+                            </Badge>
+                          )}
+                          {analysis && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {format(new Date(analysis.generatedAt), "dd/MM HH:mm", { locale: ptBR })} · {analysis.model}
+                            </span>
+                          )}
+                        </div>
+                        {analysis && (
+                          <div className="mt-2 rounded-md border border-border/40 bg-background/60 p-3 prose prose-sm dark:prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1">
+                            <ReactMarkdown>{analysis.markdown}</ReactMarkdown>
+                          </div>
+                        )}
                       </div>
                     );
+
                   })}
                 </div>
               ) : (
