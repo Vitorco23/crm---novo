@@ -131,25 +131,23 @@ export function installEventWiring() {
 
   // ===== Memória Comercial =====
   // Ganho => padrão de vitória
-  on("VendaRealizada", async (ev: any) => {
+  on("VendaRealizada", (ev: any) => {
     try {
       const leadId = ev.payload?.leadId;
       if (!leadId) return;
-      const leads = await getLeads();
-      const lead = leads.find((l) => l.id === leadId);
+      const lead = getLeads().find((l) => l.id === leadId);
       if (lead) extractMemoryFromLead("won_pattern", lead, `Contrato fechado. Valor: R$ ${ev.payload?.amount ?? "N/D"}.`);
     } catch (e) { console.warn("[memory won]", (e as Error).message); }
   });
 
   // Perdido => padrão de perda (detectado por LeadMovido para etapas de perda)
-  on("LeadMovido", async (ev: any) => {
+  on("LeadMovido", (ev: any) => {
     try {
       const to: string = ev.payload?.toStage || "";
       if (!/não quer|perdido|sem contato/i.test(to)) return;
       const leadId = ev.payload?.leadId;
       if (!leadId) return;
-      const leads = await getLeads();
-      const lead = leads.find((l) => l.id === leadId);
+      const lead = getLeads().find((l) => l.id === leadId);
       if (lead) extractMemoryFromLead("lost_pattern", lead, `Lead movido para "${to}".`);
     } catch (e) { console.warn("[memory lost]", (e as Error).message); }
   });
