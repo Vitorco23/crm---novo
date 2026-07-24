@@ -883,14 +883,40 @@ export default function LeadDetailDrawer({
                       </div>
                       {isAudio && <audio src={att.dataUrl} controls className="h-8 w-full" />}
                       {isImg && <img src={att.dataUrl} alt={att.name} className="max-h-40 rounded object-cover w-full" />}
-                      <div className="flex gap-1.5 mt-2">
-                        <Button size="sm" variant="outline" asChild className="h-7 text-xs flex-1">
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        <Button size="sm" variant="outline" asChild className="h-7 text-xs flex-1 min-w-[80px]">
                           <a href={att.dataUrl} target="_blank" rel="noopener noreferrer">Visualizar</a>
                         </Button>
-                        <Button size="sm" variant="outline" asChild className="h-7 text-xs flex-1">
+                        <Button size="sm" variant="outline" asChild className="h-7 text-xs flex-1 min-w-[80px]">
                           <a href={att.dataUrl} download={att.name}>Baixar</a>
                         </Button>
+                        {!isAudio && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-xs flex-1 min-w-[110px] gap-1"
+                            disabled={aiReadingId === att.id}
+                            onClick={() => handleReadAttachmentWithAI(att)}
+                            title="Enviar este anexo para análise da IA (consome tokens)"
+                          >
+                            {aiReadingId === att.id ? (
+                              <><Loader2 className="h-3 w-3 animate-spin" /> Lendo…</>
+                            ) : (
+                              <>👁 Ler com IA</>
+                            )}
+                          </Button>
+                        )}
                       </div>
+                      {isAudio && (
+                        <p className="text-[10px] text-muted-foreground/70 mt-1.5 italic">
+                          Áudios não são enviados para IA. A análise comercial usa os resumos da Matteline.
+                        </p>
+                      )}
+                      {aiReadResults[att.id] && (
+                        <div className="mt-2 rounded border border-border/40 bg-background/60 p-2 text-xs prose prose-invert prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-headings:my-1">
+                          <ReactMarkdown>{aiReadResults[att.id]}</ReactMarkdown>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
