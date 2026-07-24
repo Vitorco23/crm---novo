@@ -77,8 +77,17 @@ export default function AuditoriaIATab({ leadCompany }: Props) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error?.message || `Erro ${res.status}`);
+      const providerErr = data?.error;
+      if (!res.ok || providerErr) {
+        const raw =
+          providerErr?.metadata?.raw ||
+          providerErr?.metadata?.provider_name ||
+          "";
+        const msg =
+          providerErr?.message ||
+          data?.message ||
+          `Erro ${res.status}`;
+        throw new Error(raw ? `${msg} — ${raw}` : msg);
       }
       const content = data?.choices?.[0]?.message?.content ?? "Sem resposta da IA.";
       setResult(content);
