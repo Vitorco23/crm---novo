@@ -40,6 +40,8 @@ const SCOPED_KEYS = [
   "p21_lab_experiments",
   "p21_cadence_overrides",
   "p21_lead_tasks",
+  "p21_diretor_ia_last_run",
+  "p21_diretor_ia_history",
 ];
 
 
@@ -134,6 +136,8 @@ export function uload<T>(key: string, fallback: T): T {
 const PROTECTED_CONFIG_KEYS = new Set([
   "p21_cadence_overrides",
   "p21_reminder_templates",
+  "p21_diretor_ia_history",
+  "p21_diretor_ia_last_run",
 ]);
 
 function isEmptyValue(v: unknown): boolean {

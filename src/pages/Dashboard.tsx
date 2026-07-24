@@ -17,6 +17,7 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import PriorityCard from "@/components/PriorityCard";
+import DiretorComercialIACard from "@/components/DiretorComercialIACard";
 import BottleneckCard from "@/components/BottleneckCard";
 import ExportExcelDialog from "@/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/lib/exportBuilders";
@@ -106,6 +107,8 @@ export default function Dashboard() {
         </div>
       </div>
 
+
+      <DiretorComercialIACard />
 
       {/* ============ PAINEL 1: OPERACIONAL (período) ============ */}
       <section className="space-y-4">
