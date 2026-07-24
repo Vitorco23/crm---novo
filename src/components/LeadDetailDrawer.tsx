@@ -178,6 +178,8 @@ export default function LeadDetailDrawer({
   const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
   const [tasksVer, setTasksVer] = useState(0);
   const [analyzingNoteId, setAnalyzingNoteId] = useState<string | null>(null);
+  const [aiReadingId, setAiReadingId] = useState<string | null>(null);
+  const [aiReadResults, setAiReadResults] = useState<Record<string, string>>({});
 
 
   useEffect(() => {
