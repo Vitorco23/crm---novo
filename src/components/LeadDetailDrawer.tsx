@@ -801,6 +801,11 @@ export default function LeadDetailDrawer({
             )}
           </TabsContent>
 
+          {/* AUDITORIA IA */}
+          <TabsContent value="auditoria" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
+            <AuditoriaIATab leadCompany={lead.company} />
+          </TabsContent>
+
           {/* CADÊNCIA */}
           {isColdCall && (
             <TabsContent value="cadencia" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-3">
@@ -808,6 +813,7 @@ export default function LeadDetailDrawer({
             </TabsContent>
           )}
         </Tabs>
+
       </DialogContent>
 
       {/* Script viewer secundário */}
