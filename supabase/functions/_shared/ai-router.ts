@@ -85,6 +85,17 @@ const REGISTRY: Record<AITask, { tiers: ModelSpec[][]; fallback: ModelSpec[] }> 
       { id: "openai/gpt-5.4-mini", supportsJsonSchema: true },
     ],
   },
+  // Leitura de anexos (imagens, prints, PDFs, documentos). Multimodal obrigatório.
+  analyze_attachment: {
+    tiers: [
+      [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
+      [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
+      [{ id: "openai/gpt-5.5", supportsJsonSchema: true }],
+    ],
+    fallback: [
+      { id: "openai/gpt-5.5", supportsJsonSchema: true },
+    ],
+  },
 };
 
 function pickTierIndex(inputChars: number, forceComplex?: boolean): 0 | 1 | 2 {
