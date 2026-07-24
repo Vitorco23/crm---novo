@@ -15,7 +15,14 @@ const SYSTEM_PROMPT =
 
 const KEY_STORAGE = "p21_openrouter_key";
 const MODEL_STORAGE = "p21_openrouter_model";
-const DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+const DEFAULT_MODEL = "deepseek/deepseek-chat-v3.1:free";
+const MODEL_PRESETS: { label: string; value: string }[] = [
+  { label: "DeepSeek V3.1 (free)", value: "deepseek/deepseek-chat-v3.1:free" },
+  { label: "GLM 4.5 Air (free)", value: "z-ai/glm-4.5-air:free" },
+  { label: "Llama 3.3 70B (free)", value: "meta-llama/llama-3.3-70b-instruct:free" },
+  { label: "GPT-4o mini (pago)", value: "openai/gpt-4o-mini" },
+  { label: "Gemini 2.5 Flash (pago)", value: "google/gemini-2.5-flash" },
+];
 
 export default function AuditoriaIATab({ leadCompany }: Props) {
   const [transcript, setTranscript] = useState("");
