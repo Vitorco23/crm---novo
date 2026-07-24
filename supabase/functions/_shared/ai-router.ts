@@ -8,12 +8,14 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript";
+export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment";
 
 export interface AIRouterOptions {
   task: AITask;
   system: string;
   user: string;
+  /** Conteúdo multimodal (blocos type/text/image_url/file). Se presente, substitui `user`. */
+  userContent?: unknown[];
   /** Total de caracteres do input relevante (usado para escolher tier de modelo). */
   inputChars?: number;
   /** Força tier complexo mesmo com input pequeno. */
@@ -81,6 +83,17 @@ const REGISTRY: Record<AITask, { tiers: ModelSpec[][]; fallback: ModelSpec[] }> 
     ],
     fallback: [
       { id: "openai/gpt-5.4-mini", supportsJsonSchema: true },
+    ],
+  },
+  // Leitura de anexos (imagens, prints, PDFs, documentos). Multimodal obrigatório.
+  analyze_attachment: {
+    tiers: [
+      [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
+      [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
+      [{ id: "openai/gpt-5.5", supportsJsonSchema: true }],
+    ],
+    fallback: [
+      { id: "openai/gpt-5.5", supportsJsonSchema: true },
     ],
   },
 };
@@ -160,7 +173,7 @@ export async function callAI(opts: AIRouterOptions): Promise<AIRouterResult> {
         model: model.id,
         messages: [
           { role: "system", content: opts.system },
-          { role: "user", content: opts.user },
+          { role: "user", content: opts.userContent ?? opts.user },
         ],
         temperature: opts.temperature ?? 0.3,
         max_tokens: opts.maxTokens ?? 4096,
