@@ -96,6 +96,17 @@ const REGISTRY: Record<AITask, { tiers: ModelSpec[][]; fallback: ModelSpec[] }> 
       { id: "openai/gpt-5.5", supportsJsonSchema: true },
     ],
   },
+  // Extração de memória comercial (padrões, objeções, insights). Barato + estruturado.
+  extract_memory: {
+    tiers: [
+      [{ id: "google/gemini-3.1-flash-lite", supportsJsonSchema: false }],
+      [{ id: "google/gemini-3.6-flash", supportsJsonSchema: false }],
+      [{ id: "google/gemini-3.6-flash", supportsJsonSchema: false }],
+    ],
+    fallback: [
+      { id: "openai/gpt-5.4-nano", supportsJsonSchema: true },
+    ],
+  },
 };
 
 function pickTierIndex(inputChars: number, forceComplex?: boolean): 0 | 1 | 2 {
