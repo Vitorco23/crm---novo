@@ -79,9 +79,13 @@ function Bullets({ items, tone = "default" }: { items: string[]; tone?: "positiv
   );
 }
 
-export function CallAuditView({ data }: Props) {
+export function CallAuditView({ data, lead, onRunDiagnosis }: Props) {
   return (
     <div className="space-y-3">
+      {/* Próxima Melhor Ação — topo do parecer */}
+      {data.nextBestAction && (
+        <NextBestActionCard nba={data.nextBestAction} lead={lead} onRunDiagnosis={onRunDiagnosis} />
+      )}
       {/* Veredito */}
       <div className="rounded-lg border border-border/50 bg-gradient-to-br from-background/80 to-muted/30 p-3">
         <div className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
