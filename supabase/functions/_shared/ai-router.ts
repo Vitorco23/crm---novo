@@ -8,7 +8,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment";
+export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment" | "extract_memory";
 
 export interface AIRouterOptions {
   task: AITask;
