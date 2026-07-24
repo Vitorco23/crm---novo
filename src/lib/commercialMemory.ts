@@ -41,26 +41,26 @@ export async function listMemories(filters?: { kind?: MemoryKind; search?: strin
 }
 
 export async function updateMemory(id: string, patch: Partial<Pick<CommercialMemory, "title" | "content" | "approved">>) {
-  const { error } = await supabase.from("commercial_memory" as never).update(patch).eq("id", id);
+  const { error } = await (supabase.from("commercial_memory" as never) as never).update(patch as never).eq("id", id);
   if (error) throw error;
 }
 
 export async function deleteMemory(id: string) {
-  const { error } = await supabase.from("commercial_memory" as never).delete().eq("id", id);
+  const { error } = await (supabase.from("commercial_memory" as never) as never).delete().eq("id", id);
   if (error) throw error;
 }
 
 function leadContextText(lead: Lead): string {
   const notes = (lead.callNotes || [])
     .slice(-6)
-    .map((n, i) => `[${i + 1}] ${(n.summary || n.transcript || "").slice(0, 500)}`)
+    .map((n, i) => `[${i + 1}] ${(n.text || "").slice(0, 500)}`)
     .join("\n");
   return [
     `Empresa: ${lead.company || "N/D"}`,
     `Nicho: ${lead.niche || "N/D"}`,
     `Cidade: ${lead.city || "N/D"}`,
     `Etapa: ${lead.stage || "N/D"}`,
-    `Tentativas: ${lead.callAttempts ?? (lead.callNotes?.length ?? 0)}`,
+    `Tentativas: ${lead.callNotes?.length ?? 0}`,
     `Tipo de serviço: ${lead.serviceType || "N/D"}`,
     `Valor de contrato: ${lead.contractValue ? `R$ ${lead.contractValue}` : "N/D"}`,
     `ICP: ${lead.icpStars ?? "N/D"} estrelas`,
