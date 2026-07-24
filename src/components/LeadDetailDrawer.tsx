@@ -34,8 +34,11 @@ import { toast } from "sonner";
 import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 import ConcluirTentativaDialog from "@/components/ConcluirTentativaDialog";
 import CadenceEditor from "@/components/CadenceEditor";
+import TaskFormDialog from "@/components/TaskFormDialog";
 import { getStepForLead, executionMoment, getCadenceForNiche } from "@/lib/cadence";
-import { CheckCircle2, Clock, Target } from "lucide-react";
+import { CheckCircle2, Clock, Target, ListTodo, Plus } from "lucide-react";
+import { getTasksByLead, deleteTask, completeTask, reopenTask, PRIORITY_LABEL, PRIORITY_CLASSES, type LeadTask } from "@/lib/leadTasks";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function StarRating({
   value, onChange,
@@ -165,6 +168,9 @@ export default function LeadDetailDrawer({
   const [scripts, setScripts] = useState<string[]>(() => getScripts());
   const [callScript, setCallScript] = useState<ScriptOption>(() => getSelectedScript());
   const [tab, setTab] = useState("geral");
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<LeadTask | null>(null);
+  const [tasksVer, setTasksVer] = useState(0);
 
   useEffect(() => {
     setDraft(lead);
@@ -298,6 +304,7 @@ export default function LeadDetailDrawer({
           <TabsList className="mx-6 mt-3 self-start">
             <TabsTrigger value="geral">📋 Geral</TabsTrigger>
             <TabsTrigger value="historico">📞 Histórico</TabsTrigger>
+            <TabsTrigger value="tarefas">✅ Tarefas</TabsTrigger>
             <TabsTrigger value="anexos">📎 Anexos</TabsTrigger>
             {isColdCall && <TabsTrigger value="cadencia">📜 Cadência</TabsTrigger>}
           </TabsList>
@@ -647,6 +654,99 @@ export default function LeadDetailDrawer({
             </section>
           </TabsContent>
 
+          {/* TAREFAS */}
+          <TabsContent value="tarefas" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-3">
+            {(() => {
+              void tasksVer;
+              const tasks = getTasksByLead(lead.id);
+              const pending = tasks.filter((t) => t.status === "pendente");
+              const done = tasks.filter((t) => t.status === "concluida");
+              const renderTask = (t: LeadTask) => {
+                const isDone = t.status === "concluida";
+                const due = new Date(t.dueAt);
+                const overdue = !isDone && due.getTime() < Date.now();
+                return (
+                  <div key={t.id} className={`rounded-md border p-3 flex items-start gap-3 ${overdue ? "border-destructive/40 bg-destructive/5" : "border-border/40 bg-muted/20"}`}>
+                    <Checkbox
+                      checked={isDone}
+                      onCheckedChange={(v) => {
+                        if (v) completeTask(t.id); else reopenTask(t.id);
+                        setTasksVer((x) => x + 1);
+                        toast.success(v ? "Tarefa concluída" : "Tarefa reaberta");
+                      }}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={`text-sm font-medium ${isDone ? "line-through text-muted-foreground" : ""}`}>{t.title}</p>
+                        <Badge variant="outline" className={`text-[10px] shrink-0 ${PRIORITY_CLASSES[t.priority]}`}>
+                          {PRIORITY_LABEL[t.priority]}
+                        </Badge>
+                      </div>
+                      {t.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{t.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground flex-wrap">
+                        <span className={overdue ? "text-destructive font-medium" : ""}>
+                          <Clock className="h-3 w-3 inline mr-0.5" />
+                          {format(due, "dd/MM 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                        <span>· {t.durationMin}min</span>
+                        {t.googleEventLink && (
+                          <a href={t.googleEventLink} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline inline-flex items-center gap-0.5">
+                            <ExternalLink className="h-2.5 w-2.5" /> Google Agenda
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex gap-1.5 mt-2">
+                        <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                          onClick={() => { setEditingTask(t); setTaskFormOpen(true); }}>
+                          <Pencil className="h-3 w-3 mr-1" /> Editar
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-destructive hover:text-destructive"
+                          onClick={async () => {
+                            if (t.googleEventId) {
+                              try { await supabase.functions.invoke("delete-task-event", { body: { eventId: t.googleEventId } }); } catch {}
+                            }
+                            deleteTask(t.id);
+                            setTasksVer((x) => x + 1);
+                            toast.success("Tarefa excluída");
+                          }}>
+                          <Trash2 className="h-3 w-3 mr-1" /> Excluir
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              };
+              return (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <ListTodo className="h-3 w-3" /> {pending.length} pendente(s) · {done.length} concluída(s)
+                    </p>
+                    <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90"
+                      onClick={() => { setEditingTask(null); setTaskFormOpen(true); }}>
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
+                    </Button>
+                  </div>
+                  {tasks.length === 0 && (
+                    <p className="text-xs text-muted-foreground/60 text-center py-10">
+                      Nenhuma tarefa criada. Adicione a próxima ação, prazo e prioridade — se quiser, sincronize com o Google Agenda.
+                    </p>
+                  )}
+                  {pending.length > 0 && <div className="space-y-2">{pending.map(renderTask)}</div>}
+                  {done.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Concluídas</p>
+                      {done.map(renderTask)}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </TabsContent>
+
           {/* ANEXOS */}
           <TabsContent value="anexos" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
             <div className="flex items-center justify-between mb-3">
@@ -742,6 +842,15 @@ export default function LeadDetailDrawer({
         onOpenChange={setConcluirOpen}
         onDone={onRefresh}
         onRequestSchedule={() => setMeetingOpen(true)}
+      />
+
+      <TaskFormDialog
+        open={taskFormOpen}
+        onOpenChange={(o) => { setTaskFormOpen(o); if (!o) setEditingTask(null); }}
+        leadId={lead.id}
+        leadName={lead.company}
+        editing={editingTask}
+        onSaved={() => setTasksVer((x) => x + 1)}
       />
     </Dialog>
   );

@@ -1,4 +1,4 @@
-import { PhoneCall, Handshake, Timer, BarChart3, Zap, Target, Plug, Rocket, ListChecks, DollarSign, Bell, Brain, Compass, FlaskConical } from "lucide-react";
+import { PhoneCall, Handshake, Timer, BarChart3, Zap, Target, Plug, Rocket, ListChecks, DollarSign, Bell, Brain, Compass, FlaskConical, Calendar as CalendarIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -16,6 +16,7 @@ const pipelineItems = [
 ];
 
 const toolItems = [
+  { title: "Agenda", url: "/agenda", icon: CalendarIcon },
   { title: "Tarefas / Scrum", url: "/scrum", icon: ListChecks },
   { title: "Pomodoro", url: "/pomodoro", icon: Timer },
   { title: "Lembretes", url: "/lembretes", icon: Bell },

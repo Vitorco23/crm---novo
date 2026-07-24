@@ -39,6 +39,7 @@ const SCOPED_KEYS = [
   "p21_lab_filters",
   "p21_lab_experiments",
   "p21_cadence_overrides",
+  "p21_lead_tasks",
 ];
 
 

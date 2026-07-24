@@ -17,7 +17,10 @@ export type P21EventType =
   | "PomodoroFinalizado"
   | "FollowUpCriado"
   | "MetaAtualizada"
-  | "FinanceiroAtualizado";
+  | "FinanceiroAtualizado"
+  | "TarefaCriada"
+  | "TarefaAtualizada"
+  | "TarefaConcluida";
 
 export interface P21Event<T = any> {
   type: P21EventType;
