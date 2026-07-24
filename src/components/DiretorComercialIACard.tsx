@@ -3,8 +3,12 @@ import ReactMarkdown from "react-markdown";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, RefreshCw, Sparkles, Calendar, BrainCircuit } from "lucide-react";
+import {
+  Loader2, RefreshCw, Sparkles, Calendar, BrainCircuit,
+  TrendingUp, AlertTriangle, Target, CheckSquare, Lightbulb, Phone,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   generateParecer, getHistory, getTodayParecer, shouldRunToday,
