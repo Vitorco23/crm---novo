@@ -24,8 +24,11 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import {
   Phone, Instagram, ExternalLink, Star, Paperclip, X, FileAudio,
-  CalendarCheck, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase, ArrowRightLeft,
+  CalendarCheck, MessageSquarePlus, Trash2, Video, DollarSign, Briefcase, ArrowRightLeft, Sparkles,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { analyzeCallNote } from "@/lib/callAnalysis";
+
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useMemo, useRef, useState } from "react";
