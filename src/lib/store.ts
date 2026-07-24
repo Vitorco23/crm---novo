@@ -623,7 +623,63 @@ export function removeCallNote(leadId: string, noteId: string) {
   }
 }
 
+// ===== Interações Comerciais =====
+export function getInteractions(lead: Lead): Interaction[] {
+  return [...(lead.interactions || [])].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
+export function addInteraction(
+  leadId: string,
+  data: Omit<Interaction, "id" | "createdAt"> & { createdAt?: string }
+) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) return;
+  const interaction: Interaction = {
+    id: crypto.randomUUID(),
+    createdAt: data.createdAt ?? new Date().toISOString(),
+    type: data.type,
+    date: data.date,
+    title: data.title.trim(),
+    summary: data.summary.trim(),
+    sellerNotes: data.sellerNotes?.trim() || undefined,
+  };
+  lead.interactions = [...(lead.interactions || []), interaction];
+  saveLeads(leads);
+  emit("LigacaoRegistrada", {
+    leadId: lead.id, company: lead.company, stage: lead.stage,
+    interactionType: interaction.type,
+  });
+}
+
+export function updateInteraction(leadId: string, interactionId: string, patch: Partial<Omit<Interaction, "id" | "createdAt">>) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) return;
+  lead.interactions = (lead.interactions || []).map((i) =>
+    i.id === interactionId ? {
+      ...i,
+      ...patch,
+      title: patch.title !== undefined ? patch.title.trim() : i.title,
+      summary: patch.summary !== undefined ? patch.summary.trim() : i.summary,
+      sellerNotes: patch.sellerNotes !== undefined ? (patch.sellerNotes?.trim() || undefined) : i.sellerNotes,
+    } : i
+  );
+  saveLeads(leads);
+}
+
+export function removeInteraction(leadId: string, interactionId: string) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) return;
+  lead.interactions = (lead.interactions || []).filter((i) => i.id !== interactionId);
+  saveLeads(leads);
+}
+
 // ===== Movement Events =====
+
 export function getMovementEvents(): MovementEvent[] {
   return loadFromStorage<MovementEvent[]>("p21_movements", []);
 }
