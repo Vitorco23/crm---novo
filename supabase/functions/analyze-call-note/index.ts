@@ -5,7 +5,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { callAI } from '../_shared/ai-router.ts';
-import { retrieveMemories, formatMemoriesForPrompt } from '../_shared/memory-retrieval.ts';
+import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
 
 const SYSTEM_QUICK = `Você é o AUDITOR COMERCIAL da Performance21 em modo ANÁLISE RÁPIDA.
 
@@ -132,13 +132,13 @@ Deno.serve(async (req) => {
     const mode: "quick" | "full" = body.mode === "full" ? "full" : "quick";
     const today = new Date().toISOString().slice(0, 10);
 
-    const memories = await retrieveMemories({
+    const { block: memoryBlock } = await buildMemoryContextBlock({
       queryText: `${body.company || ""} ${body.niche || ""} ${body.stage || ""}\n${callSummary}`.slice(0, 3000),
       niche: body.niche || null,
       matchCount: 5,
       minSimilarity: 0.5,
+      includePatterns: true,
     });
-    const memoryBlock = formatMemoriesForPrompt(memories);
 
     const userPrompt = mode === "quick"
       ? [

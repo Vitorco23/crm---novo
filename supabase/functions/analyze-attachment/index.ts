@@ -3,6 +3,7 @@
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { callAI } from '../_shared/ai-router.ts';
+import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
 
 const SYSTEM = `Você é o LEITOR DE ANEXOS da Performance21.
 Analise o arquivo enviado (imagem, print de tela, PDF ou documento) no contexto do Lead.
@@ -40,9 +41,16 @@ Deno.serve(async (req) => {
     const isImage = attachment.type.startsWith('image/');
     const isPdf = attachment.type === 'application/pdf' || /\.pdf$/i.test(attachment.name);
 
+    const { block: memoryBlock } = await buildMemoryContextBlock({
+      queryText: `Leitura de anexo. ${leadContext ?? ""}`.slice(0, 2000),
+      matchCount: 3,
+      minSimilarity: 0.5,
+      includePatterns: true,
+    });
+
     const textBlock = {
       type: 'text',
-      text: `Contexto do Lead:\n${leadContext ?? '(sem contexto extra)'}\n\nArquivo: ${attachment.name} (${attachment.type})\n\nLeia o conteúdo abaixo e responda no formato pedido.`,
+      text: `${memoryBlock ? memoryBlock + "\n\n" : ""}Contexto do Lead:\n${leadContext ?? '(sem contexto extra)'}\n\nArquivo: ${attachment.name} (${attachment.type})\n\nLeia o conteúdo abaixo e responda no formato pedido.`,
     };
 
     let fileBlock: Record<string, unknown>;

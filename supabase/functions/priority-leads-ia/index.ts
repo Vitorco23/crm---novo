@@ -3,6 +3,7 @@
 // e devolve uma seleção com motivo da prioridade e próxima melhor ação.
 
 import { callAI } from "../_shared/ai-router.ts";
+import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,9 +49,21 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Injeta memória comercial + padrões estatísticos como contexto extra.
+    const niches = Array.from(new Set(
+      (candidates as Array<{ niche?: string }>).map((c) => c?.niche).filter(Boolean),
+    )).slice(0, 3).join(", ");
+    const { block: memoryBlock } = await buildMemoryContextBlock({
+      queryText: `Priorização diária. Nichos dos candidatos: ${niches || "diversos"}.`,
+      matchCount: 4,
+      minSimilarity: 0.45,
+      includePatterns: true,
+    });
+
     const userPrompt =
       `Data/hora atual: ${new Date().toISOString()}\n` +
       `Total de candidatos: ${candidates.length}\n\n` +
+      (memoryBlock ? memoryBlock + "\n\n" : "") +
       `Candidatos (JSON):\n${JSON.stringify(candidates)}\n\n` +
       `Selecione até 5 leads prioritários no formato JSON descrito.`;
 
