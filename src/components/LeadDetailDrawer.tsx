@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { analyzeCallNote } from "@/lib/callAnalysis";
+import { CallAuditView } from "@/components/CallAuditView";
 
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
