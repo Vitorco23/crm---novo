@@ -74,14 +74,13 @@ export async function retrieveMemories(opts: {
   }
   const hits = (data ?? []) as MemoryHit[];
   if (hits.length) {
-    // best-effort: increment usage_count
-    const ids = hits.map((h) => h.id);
-    db.from("commercial_memory")
-      .update({ usage_count: (undefined as unknown) })
-      .in("id", ids)
-      .then(() => {}, () => {});
-    // usage_count precisa ser incremento atômico — chamada SQL direta:
-    db.rpc("increment_memory_usage" as never, { ids } as never).then(() => {}, () => {});
+    // best-effort usage_count bump
+    for (const h of hits) {
+      db.from("commercial_memory")
+        .update({ usage_count: (h.usage_count ?? 0) + 1 })
+        .eq("id", h.id)
+        .then(() => {}, () => {});
+    }
   }
   return hits;
 }
