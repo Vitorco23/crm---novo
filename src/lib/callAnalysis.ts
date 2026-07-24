@@ -95,16 +95,31 @@ export async function analyzeCallNote(
       .join("\n")
       .slice(0, 2000) || "(sem eventos)";
 
+    const interacoes = [...(lead.interactions || [])]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map((i, idx) => {
+        const parts = [
+          `#${idx + 1} [${fmt(i.date)}] ${i.type} — ${i.title}`,
+          `Resumo: ${i.summary}`,
+          i.sellerNotes ? `Anotações do vendedor: ${i.sellerNotes}` : null,
+        ].filter(Boolean);
+        return parts.join("\n");
+      })
+      .join("\n\n")
+      .slice(0, 6000) || "(nenhuma interação registrada)";
+
     body = {
       ...body,
       leadInfo: fullLeadInfo(lead, attempt, notes.length),
       allCallNotes,
+      interacoesComerciais: interacoes,
       tarefasConcluidas,
       tarefasPendentes,
       movimentacoes: movs,
       historicoEventos: history,
     };
   }
+
 
   const { data, error } = await supabase.functions.invoke("analyze-call-note", { body });
 
