@@ -341,13 +341,12 @@ export default function LeadDetailDrawer({
         {/* Tabs */}
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="mx-6 mt-3 self-start">
-            <TabsTrigger value="geral">📋 Geral</TabsTrigger>
-            <TabsTrigger value="historico">📞 Histórico</TabsTrigger>
-            <TabsTrigger value="tarefas">✅ Tarefas</TabsTrigger>
+            <TabsTrigger value="geral">📋 Informações</TabsTrigger>
+            <TabsTrigger value="interacoes">💬 Interações Comerciais</TabsTrigger>
+            <TabsTrigger value="observacoes">📝 Observações</TabsTrigger>
             <TabsTrigger value="anexos">📎 Anexos</TabsTrigger>
-            
-            {isColdCall && <TabsTrigger value="cadencia">📜 Cadência</TabsTrigger>}
           </TabsList>
+
 
 
           {/* GERAL */}
