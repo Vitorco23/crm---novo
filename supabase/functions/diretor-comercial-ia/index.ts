@@ -1,6 +1,7 @@
-// Diretor Comercial IA — parecer estratégico diário em formato de painel executivo.
-// Retorna JSON estruturado (não Markdown), para renderização em cartões.
-// Modelo: Lovable AI Gateway → openai/gpt-5.4-nano (mais barato disponível; equivalente ao GPT-4/4.1 Mini).
+// Diretor Comercial IA — usa AI Router (task: diretor_comercial).
+// Nunca cita modelo diretamente. Fallback automático se GPT-mini indisponível.
+
+import { callAI } from "../_shared/ai-router.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,26 +29,11 @@ RESPONDA EXCLUSIVAMENTE COM UM OBJETO JSON VÁLIDO, sem markdown, sem crases, se
 
 Não inclua nenhuma outra chave. Não inclua explicações fora do JSON.`;
 
-const CHEAP_MODELS = new Set([
-  "openai/gpt-5.4-nano",
-  "openai/gpt-5-nano",
-  "openai/gpt-5.4-mini",
-  "openai/gpt-5-mini",
-  "openai/gpt-5.6-luna",
-]);
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
   try {
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
     const body = await req.json().catch(() => ({}));
     const snapshot = body?.snapshot;
     if (!snapshot || typeof snapshot !== "object") {
@@ -57,58 +43,42 @@ Deno.serve(async (req) => {
       );
     }
 
-    const requested = typeof body?.model === "string" ? body.model : "";
-    const model = CHEAP_MODELS.has(requested) ? requested : "openai/gpt-5.4-nano";
-
     const userPrompt =
       `Data de referência: ${snapshot.today ?? new Date().toISOString().slice(0, 10)}\n\n` +
       `Snapshot da operação (JSON):\n` +
       JSON.stringify(snapshot) +
       `\n\nGere o painel executivo no formato JSON descrito.`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      const msg = data?.error?.message || data?.message || "Falha no Lovable AI Gateway";
-      if (res.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em instantes." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      if (res.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos nas configurações do workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
+    let result;
+    try {
+      result = await callAI({
+        task: "diretor_comercial",
+        system: SYSTEM_PROMPT,
+        user: userPrompt,
+        json: true,
+        temperature: 0.3,
+        maxTokens: 2000,
+      });
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      const status = err.status ?? 502;
+      const friendly =
+        status === 429
+          ? "Limite de requisições atingido. Tente novamente em instantes."
+          : status === 402
+          ? "Créditos de IA esgotados. Adicione créditos nas configurações do workspace."
+          : "Não foi possível gerar o parecer neste momento. Tente novamente em instantes.";
       return new Response(
-        JSON.stringify({ error: msg, details: data }),
-        { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: friendly }),
+        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const raw = data?.choices?.[0]?.message?.content ?? "";
+    const raw = result.content;
     let parsed: any = null;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      // fallback: tenta extrair primeiro bloco {...}
       const m = String(raw).match(/\{[\s\S]*\}/);
       if (m) { try { parsed = JSON.parse(m[0]); } catch { /* noop */ } }
     }
@@ -132,7 +102,7 @@ Deno.serve(async (req) => {
     };
 
     return new Response(
-      JSON.stringify({ painel, model }),
+      JSON.stringify({ painel, model: result.modelUsed }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

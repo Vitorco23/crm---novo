@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_router_logs: {
+        Row: {
+          attempt_index: number
+          created_at: string
+          error_type: string | null
+          fallback_reason: string | null
+          id: string
+          input_chars: number
+          latency_ms: number
+          model: string
+          success: boolean
+          task: string
+        }
+        Insert: {
+          attempt_index?: number
+          created_at?: string
+          error_type?: string | null
+          fallback_reason?: string | null
+          id?: string
+          input_chars?: number
+          latency_ms?: number
+          model: string
+          success: boolean
+          task: string
+        }
+        Update: {
+          attempt_index?: number
+          created_at?: string
+          error_type?: string | null
+          fallback_reason?: string | null
+          id?: string
+          input_chars?: number
+          latency_ms?: number
+          model?: string
+          success?: boolean
+          task?: string
+        }
+        Relationships: []
+      }
       leads_inbound: {
         Row: {
           created_at: string

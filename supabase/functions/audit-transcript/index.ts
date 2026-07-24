@@ -1,5 +1,7 @@
-// Proxy para Lovable AI Gateway (auditoria comercial de transcrições).
-// Mantém a chave server-side. OpenRouter free tier foi descontinuado nessa conta.
+// Audit Transcript — usa AI Router (task: audit_transcript).
+// Nenhuma referência a modelo específico. Fallback automático.
+
+import { callAI } from "../_shared/ai-router.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,14 +18,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
   try {
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-    const { transcript, model } = await req.json();
+    const { transcript } = await req.json();
     if (!transcript || typeof transcript !== "string" || !transcript.trim()) {
       return new Response(
         JSON.stringify({ error: "Transcrição vazia" }),
@@ -31,47 +26,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: model || "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: transcript },
-        ],
-      }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      const msg = data?.error?.message || data?.message || "Falha no Lovable AI Gateway";
-      if (res.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em instantes." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      if (res.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos nas configurações do workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
+    let result;
+    try {
+      result = await callAI({
+        task: "audit_transcript",
+        system: SYSTEM_PROMPT,
+        user: transcript,
+        inputChars: transcript.length,
+        temperature: 0.3,
+        maxTokens: 2048,
+      });
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      const status = err.status ?? 502;
+      const friendly =
+        status === 429
+          ? "Limite de requisições atingido. Tente novamente em instantes."
+          : status === 402
+          ? "Créditos de IA esgotados. Adicione créditos nas configurações do workspace."
+          : "Não foi possível gerar a auditoria neste momento. Tente novamente em instantes.";
       return new Response(
-        JSON.stringify({ error: msg, details: data }),
-        { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: friendly }),
+        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const content =
-      data?.choices?.[0]?.message?.content ??
-      "Sem resposta da IA.";
     return new Response(
-      JSON.stringify({ content }),
+      JSON.stringify({ content: result.content || "Sem resposta da IA.", model: result.modelUsed }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
