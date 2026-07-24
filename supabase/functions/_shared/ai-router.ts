@@ -193,6 +193,7 @@ export async function callAI(opts: AIRouterOptions): Promise<AIRouterResult> {
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      const tokenParam = /^openai\/gpt-(5|4\.1|4o|o\d)/i.test(model.id) ? "max_completion_tokens" : "max_tokens";
       const body: Record<string, unknown> = {
         model: model.id,
         messages: [
@@ -200,7 +201,7 @@ export async function callAI(opts: AIRouterOptions): Promise<AIRouterResult> {
           { role: "user", content: opts.userContent ?? opts.user },
         ],
         temperature: opts.temperature ?? 0.3,
-        max_tokens: opts.maxTokens ?? 4096,
+        [tokenParam]: opts.maxTokens ?? 4096,
       };
       if (opts.schema && model.supportsJsonSchema) {
         body.response_format = {
