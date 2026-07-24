@@ -1,5 +1,5 @@
-// Proxy to OpenRouter for AI audit of meeting transcripts.
-// Keeps OPENROUTER_API_KEY server-side.
+// Proxy para Lovable AI Gateway (auditoria comercial de transcrições).
+// Mantém a chave server-side. OpenRouter free tier foi descontinuado nessa conta.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,10 +16,10 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
   try {
-    const apiKey = Deno.env.get("OPENROUTER_API_KEY");
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "OPENROUTER_API_KEY não configurada" }),
+        JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -31,16 +31,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://crm.performance21.com.br",
-        "X-Title": "CRM Performance21 - Auditoria IA",
       },
       body: JSON.stringify({
-        model: model || "meta-llama/llama-3-8b-instruct:free",
+        model: model || "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: transcript },
@@ -50,8 +48,21 @@ Deno.serve(async (req) => {
 
     const data = await res.json();
     if (!res.ok) {
+      const msg = data?.error?.message || data?.message || "Falha no Lovable AI Gateway";
+      if (res.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em instantes." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (res.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos nas configurações do workspace." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
       return new Response(
-        JSON.stringify({ error: data?.error?.message || "Falha no OpenRouter", details: data }),
+        JSON.stringify({ error: msg, details: data }),
         { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -60,7 +71,7 @@ Deno.serve(async (req) => {
       data?.choices?.[0]?.message?.content ??
       "Sem resposta da IA.";
     return new Response(
-      JSON.stringify({ content, raw: data }),
+      JSON.stringify({ content }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
