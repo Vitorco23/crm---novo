@@ -546,6 +546,17 @@ export function addCallNote(leadId: string, text: string, scriptUsed?: string) {
   }
 }
 
+export function setCallNoteAnalysis(leadId: string, noteId: string, analysis: CallNoteAnalysis) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) return;
+  lead.callNotes = (lead.callNotes || []).map((n) =>
+    n.id === noteId ? { ...n, analysis } : n
+  );
+  saveLeads(leads);
+}
+
+
 export function removeCallNote(leadId: string, noteId: string) {
   const leads = getLeads();
   const lead = leads.find((l) => l.id === leadId);
