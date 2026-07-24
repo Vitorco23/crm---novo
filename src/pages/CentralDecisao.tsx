@@ -283,10 +283,14 @@ export default function CentralDecisao() {
       <DiretorComercialIACard />
 
       {/* 1. O QUE FAZER AGORA */}
+      {/* 1. O QUE FAZER AGORA */}
       <Section title="O que fazer agora" icon={<Zap className="h-4 w-4" />} accent>
         <PriorityCard />
         <NextActionsList data={data} />
       </Section>
+
+      {/* 1.b LEADS PRIORITÁRIOS DO DIA (IA) */}
+      <PriorityLeadsBlock />
 
       {/* 2. PRIORIDADES DA OPERAÇÃO + 3. ALERTAS lado a lado */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
