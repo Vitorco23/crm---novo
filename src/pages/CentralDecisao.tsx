@@ -56,6 +56,7 @@ import { uload, usave } from "@/lib/userStorage";
 import PriorityCard from "@/components/PriorityCard";
 import BottleneckCard from "@/components/BottleneckCard";
 import DiretorComercialIACard from "@/components/DiretorComercialIACard";
+import PriorityLeadsBlock from "@/components/PriorityLeadsBlock";
 
 // ============================================================
 // TIPOS E FILTROS LOCAIS DA CENTRAL
