@@ -387,7 +387,6 @@ export async function generateParecer(): Promise<Parecer> {
   });
 
   if (error) {
-    // Extrair mensagem detalhada quando possível
     let details = error.message;
     try {
       // @ts-ignore
@@ -396,17 +395,27 @@ export async function generateParecer(): Promise<Parecer> {
     throw new Error(details || "Falha ao gerar parecer");
   }
 
-  const content = (data as any)?.content;
-  if (!content || typeof content !== "string") {
+  const painel = (data as any)?.painel as PainelExecutivo | undefined;
+  const model = (data as any)?.model || "openai/gpt-5.4-nano";
+  if (!painel || typeof painel !== "object") {
     throw new Error("Resposta inválida da IA");
   }
+
+  const dg = snapshot.metas.dailyGoals as any;
+  const hoje = snapshot.hojeAteAgora as any;
+  const metaHoje: MetaHojeProgresso = {
+    ligacoes: { atual: Number(hoje?.calls ?? 0), meta: Number(dg?.calls ?? 0) },
+    reunioes: { atual: Number(hoje?.meetings ?? 0), meta: Number(dg?.meetings ?? 0) },
+    vendas:   { atual: Number(hoje?.wins ?? hoje?.sales ?? 0), meta: Number(dg?.wins ?? dg?.sales ?? 1) },
+  };
 
   const parecer: Parecer = {
     id: crypto.randomUUID(),
     date: snapshot.today,
     generatedAt: new Date().toISOString(),
-    model: "openai/gpt-5.4-mini",
-    content,
+    model,
+    painel,
+    metaHoje,
   };
   saveParecer(parecer);
   try { window.dispatchEvent(new Event("p21:diretor-ia-updated")); } catch { /* noop */ }
