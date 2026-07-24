@@ -3,8 +3,12 @@ import ReactMarkdown from "react-markdown";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, RefreshCw, Sparkles, Calendar, BrainCircuit } from "lucide-react";
+import {
+  Loader2, RefreshCw, Sparkles, Calendar, BrainCircuit,
+  TrendingUp, AlertTriangle, Target, CheckSquare, Lightbulb, Phone,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   generateParecer, getHistory, getTodayParecer, shouldRunToday,
@@ -192,19 +196,154 @@ export default function DiretorComercialIACard() {
   );
 }
 
-function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boolean }) {
+function MetaBar({ label, atual, meta, icon }: { label: string; atual: number; meta: number; icon: React.ReactNode }) {
+  const pct = meta > 0 ? Math.min(100, Math.round((atual / meta) * 100)) : 0;
+  const done = meta > 0 && atual >= meta;
   return (
-    <div className={`rounded-lg border bg-background p-4 ${compact ? "" : ""}`}>
-      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+    <div className="rounded-md border bg-muted/20 p-2.5">
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+          {icon}{label}
+        </div>
+        <div className={`text-sm font-mono font-semibold tabular-nums ${done ? "text-accent" : ""}`}>
+          {atual}<span className="text-muted-foreground"> / {meta || "—"}</span>
+        </div>
+      </div>
+      <Progress value={pct} className="h-1.5" />
+    </div>
+  );
+}
+
+function SectionCard({
+  icon, title, tone = "default", children,
+}: {
+  icon: React.ReactNode; title: string;
+  tone?: "default" | "danger" | "success" | "accent";
+  children: React.ReactNode;
+}) {
+  const toneClass =
+    tone === "danger" ? "border-l-destructive" :
+    tone === "success" ? "border-l-accent" :
+    tone === "accent" ? "border-l-primary" :
+    "border-l-border";
+  return (
+    <div className={`rounded-md border border-l-4 ${toneClass} bg-background p-3`}>
+      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground/80 mb-2">
+        {icon}{title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function BulletList({ items, emptyText = "Sem dados." }: { items: string[]; emptyText?: string }) {
+  if (!items || items.length === 0) {
+    return <div className="text-xs text-muted-foreground italic">{emptyText}</div>;
+  }
+  return (
+    <ul className="space-y-1">
+      {items.map((it, i) => (
+        <li key={i} className="text-[13px] leading-snug flex gap-2">
+          <span className="text-muted-foreground shrink-0">•</span>
+          <span>{it}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Checklist({ items }: { items: string[] }) {
+  if (!items || items.length === 0) {
+    return <div className="text-xs text-muted-foreground italic">Sem prioridades definidas.</div>;
+  }
+  return (
+    <ul className="space-y-1.5">
+      {items.map((it, i) => (
+        <li key={i} className="text-[13px] leading-snug flex gap-2 items-start">
+          <span className="mt-[3px] h-3.5 w-3.5 rounded border border-muted-foreground/50 shrink-0" />
+          <span>{it}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boolean }) {
+  const painel = parecer.painel;
+  const meta = parecer.metaHoje;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-xs text-muted-foreground">
           {formatDatePt(parecer.date)} · gerado às{" "}
           {new Date(parecer.generatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </div>
         <Badge variant="outline" className="text-[10px] font-mono">{parecer.model}</Badge>
       </div>
-      <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-4 prose-headings:mb-2 prose-h2:text-base prose-h2:font-semibold prose-p:my-1 prose-ul:my-1 prose-li:my-0">
-        <ReactMarkdown>{parecer.content}</ReactMarkdown>
-      </div>
+
+      {/* Formato legado (markdown) — fallback */}
+      {!painel && parecer.content && (
+        <div className="rounded-lg border bg-background p-4">
+          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-4 prose-headings:mb-2 prose-h2:text-base prose-h2:font-semibold prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+            <ReactMarkdown>{parecer.content}</ReactMarkdown>
+          </div>
+        </div>
+      )}
+
+      {painel && (
+        <div className="grid gap-3 md:grid-cols-2">
+          {/* Resumo de Ontem */}
+          <SectionCard icon={<TrendingUp className="h-3.5 w-3.5" />} title="📈 Resumo de Ontem">
+            <BulletList items={painel.resumoOntem} emptyText="Sem atividade registrada ontem." />
+          </SectionCard>
+
+          {/* Meta de Hoje */}
+          <SectionCard icon={<Target className="h-3.5 w-3.5" />} title="🎯 Meta de Hoje" tone="accent">
+            {meta ? (
+              <div className="space-y-2">
+                <MetaBar label="Ligações" atual={meta.ligacoes.atual} meta={meta.ligacoes.meta}
+                  icon={<Phone className="h-3 w-3" />} />
+                <MetaBar label="Reuniões" atual={meta.reunioes.atual} meta={meta.reunioes.meta}
+                  icon={<Calendar className="h-3 w-3" />} />
+                <MetaBar label="Vendas" atual={meta.vendas.atual} meta={meta.vendas.meta}
+                  icon={<Sparkles className="h-3 w-3" />} />
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground italic">Sem metas configuradas.</div>
+            )}
+          </SectionCard>
+
+          {/* Atenção */}
+          <SectionCard icon={<AlertTriangle className="h-3.5 w-3.5" />} title="🚨 O que merece atenção" tone="danger">
+            <BulletList items={painel.atencao} emptyText="Nada crítico no momento." />
+          </SectionCard>
+
+          {/* Oportunidades */}
+          <SectionCard icon={<TrendingUp className="h-3.5 w-3.5" />} title="📈 Oportunidades" tone="success">
+            <BulletList items={painel.oportunidades} emptyText="Sem oportunidades destacadas." />
+          </SectionCard>
+
+          {/* Prioridades - full width */}
+          <div className="md:col-span-2">
+            <SectionCard icon={<CheckSquare className="h-3.5 w-3.5" />} title="✅ Prioridades para Hoje" tone="accent">
+              <Checklist items={painel.prioridades} />
+            </SectionCard>
+          </div>
+
+          {/* Dica - full width */}
+          {painel.dica && (
+            <div className="md:col-span-2">
+              <div className="rounded-md border-l-4 border-l-primary bg-primary/5 p-3">
+                <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary mb-1">
+                  <Lightbulb className="h-3.5 w-3.5" />💡 Dica do Diretor Comercial
+                </div>
+                <div className="text-[13px] leading-snug italic">"{painel.dica}"</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

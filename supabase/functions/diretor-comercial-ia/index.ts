@@ -1,7 +1,6 @@
-// Diretor Comercial IA — parecer estratégico diário.
-// Recebe um snapshot agregado da operação (sem dados de leads individuais)
-// e devolve um parecer em markdown com estrutura fixa.
-// Modelo: Lovable AI Gateway → openai/gpt-5.4-mini.
+// Diretor Comercial IA — parecer estratégico diário em formato de painel executivo.
+// Retorna JSON estruturado (não Markdown), para renderização em cartões.
+// Modelo: Lovable AI Gateway → openai/gpt-5.4-nano (mais barato disponível; equivalente ao GPT-4/4.1 Mini).
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,31 +9,32 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_PROMPT = `Você é o Diretor Comercial da agência Performance21, um executivo sênior que acompanha a operação diariamente.
-
-Sua função é ler o snapshot agregado da operação comercial (Central de Decisão, Dashboard, Inteligência Comercial, Laboratório Comercial, Metas, Motor de Gargalos e Financeiro) e devolver um parecer estratégico consultivo, direto e acionável.
+const SYSTEM_PROMPT = `Você é o Diretor Comercial da Performance21. Interpreta o snapshot agregado da operação e devolve um PAINEL EXECUTIVO enxuto, escaneável em 30 segundos.
 
 Regras absolutas:
-- Nunca invente números. Use somente os valores do snapshot.
-- Toda recomendação deve ser justificada com um indicador do snapshot (cite o número).
-- Tom consultivo, objetivo e estratégico. Sem linguagem genérica de assistente de IA. Sem frases como "como IA" ou "posso ajudar".
-- Escreva em português do Brasil.
-- Interprete os dados: aponte causa provável, não só descreva o número.
-- Se um indicador estiver zerado ou faltando, diga "sem dados suficientes" — não chute.
+- NUNCA invente números. Use somente valores presentes no snapshot; se faltar, escreva "sem dados suficientes".
+- Escreva em português do Brasil, tom consultivo, direto, sem preâmbulos.
+- Frases MUITO curtas. Sem parágrafos. Sem redação. Sem "como IA".
+- Cada bullet deve caber em UMA linha (≤ 90 caracteres).
 
-Estrutura de resposta OBRIGATÓRIA em markdown, exatamente nesta ordem, sem variações e sem seções extras:
+RESPONDA EXCLUSIVAMENTE COM UM OBJETO JSON VÁLIDO, sem markdown, sem crases, sem comentários, com exatamente estas chaves:
+{
+  "resumoOntem": string[],       // 3 a 5 bullets factuais sobre ontem (ligações, conexões, reuniões, vendas, principal problema)
+  "atencao": string[],           // exatamente os 3 maiores problemas atuais
+  "oportunidades": string[],     // 2 a 3 pontos positivos ou alavancas (nicho vencedor, melhor horário, script vencedor)
+  "prioridades": string[],       // 3 a 5 ações executáveis HOJE, verbo no infinitivo, mensurável
+  "dica": string                 // 1 recomendação, no máximo 2 linhas, direta
+}
 
-## Resumo de Ontem
-## Principais Indicadores
-## Gargalos
-## Oportunidades
-## Plano de Ação para Hoje
-## Alertas
-## Conclusão
+Não inclua nenhuma outra chave. Não inclua explicações fora do JSON.`;
 
-Cada seção deve ter 2-6 bullets curtos, exceto Resumo de Ontem e Conclusão, que são parágrafos de 2-4 linhas.
-No Plano de Ação, priorize itens executáveis hoje (ex.: "Recuperar 12 leads sem contato há mais de 5 dias no nicho X").
-Nos Alertas, destaque riscos concretos (meta em risco, queda de conversão, baixo volume, leads parados).`;
+const CHEAP_MODELS = new Set([
+  "openai/gpt-5.4-nano",
+  "openai/gpt-5-nano",
+  "openai/gpt-5.4-mini",
+  "openai/gpt-5-mini",
+  "openai/gpt-5.6-luna",
+]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -57,11 +57,14 @@ Deno.serve(async (req) => {
       );
     }
 
+    const requested = typeof body?.model === "string" ? body.model : "";
+    const model = CHEAP_MODELS.has(requested) ? requested : "openai/gpt-5.4-nano";
+
     const userPrompt =
       `Data de referência: ${snapshot.today ?? new Date().toISOString().slice(0, 10)}\n\n` +
-      `Snapshot completo da operação (JSON):\n\n` +
-      "```json\n" + JSON.stringify(snapshot, null, 2) + "\n```\n\n" +
-      `Elabore o parecer diário seguindo estritamente a estrutura definida.`;
+      `Snapshot da operação (JSON):\n` +
+      JSON.stringify(snapshot) +
+      `\n\nGere o painel executivo no formato JSON descrito.`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -70,11 +73,12 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: body?.model || "openai/gpt-5.4-mini",
+        model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userPrompt },
         ],
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -99,9 +103,36 @@ Deno.serve(async (req) => {
       );
     }
 
-    const content = data?.choices?.[0]?.message?.content ?? "Sem resposta da IA.";
+    const raw = data?.choices?.[0]?.message?.content ?? "";
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // fallback: tenta extrair primeiro bloco {...}
+      const m = String(raw).match(/\{[\s\S]*\}/);
+      if (m) { try { parsed = JSON.parse(m[0]); } catch { /* noop */ } }
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+      return new Response(
+        JSON.stringify({ error: "IA retornou formato inválido", raw }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const asArr = (v: any, max: number): string[] =>
+      Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean).slice(0, max) : [];
+
+    const painel = {
+      resumoOntem: asArr(parsed.resumoOntem, 6),
+      atencao: asArr(parsed.atencao, 3),
+      oportunidades: asArr(parsed.oportunidades, 4),
+      prioridades: asArr(parsed.prioridades, 6),
+      dica: typeof parsed.dica === "string" ? parsed.dica.slice(0, 320) : "",
+    };
+
     return new Response(
-      JSON.stringify({ content }),
+      JSON.stringify({ painel, model }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
