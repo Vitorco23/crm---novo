@@ -8,7 +8,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment" | "extract_memory";
+export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment" | "extract_memory" | "priority_leads";
 
 export interface AIRouterOptions {
   task: AITask;
@@ -105,6 +105,19 @@ const REGISTRY: Record<AITask, { tiers: ModelSpec[][]; fallback: ModelSpec[] }> 
     ],
     fallback: [
       { id: "openai/gpt-5.4-nano", supportsJsonSchema: true },
+    ],
+  },
+  // Seleção de leads prioritários do dia. Precisa de raciocínio consistente
+  // sobre listas médias — usa mini com fallback nano/gemini.
+  priority_leads: {
+    tiers: [
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
+    ],
+    fallback: [
+      { id: "openai/gpt-5.4-nano", supportsJsonSchema: true },
+      { id: "google/gemini-2.5-flash", supportsJsonSchema: false },
     ],
   },
 };
