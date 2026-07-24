@@ -1,7 +1,9 @@
+// Auditor Comercial — usa AI Router (task: auditor_ligacao).
+// Escolhe automaticamente entre tiers Gemini por tamanho do input; fallback GPT.
+
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const GEMINI_MODEL = "gemini-2.5-flash";
+import { callAI } from '../_shared/ai-router.ts';
 
 const SYSTEM_PROMPT = `Você é o AUDITOR COMERCIAL da Performance21, analisando o resumo de UMA ligação comercial produzido pela Matteline.
 
@@ -37,46 +39,6 @@ CAMPOS:
 - dataProximoContato: data ISO (YYYY-MM-DD) coerente com diasAteProximoFollowup a partir da data atual
 - assuntosDeInteresse: até 5 tags curtas`;
 
-const RESPONSE_SCHEMA = {
-  type: "object",
-  properties: {
-    temperatura: { type: "string", enum: ["Quente", "Morno", "Frio"] },
-    scoreComercial: { type: "integer", minimum: 0, maximum: 100 },
-    probabilidadeAvanco: { type: "string", enum: ["Baixa", "Media", "Alta"] },
-    prioridade: { type: "string", enum: ["Baixa", "Media", "Alta"] },
-    resumoExecutivo: { type: "string" },
-    objecoes: { type: "array", items: { type: "string" } },
-    pontosPositivos: { type: "array", items: { type: "string" } },
-    pontosAtencao: { type: "array", items: { type: "string" } },
-    oportunidadeComercial: { type: "array", items: { type: "string" } },
-    feedbackVendedor: { type: "string" },
-    planoFollowup: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          quando: { type: "string" },
-          acao: { type: "string" },
-        },
-        required: ["quando", "acao"],
-      },
-    },
-    recomendacaoEstrategica: { type: "string" },
-    principalObjecao: { type: "string" },
-    proximaAcao: { type: "string" },
-    diasAteProximoFollowup: { type: "integer", minimum: 0, maximum: 30 },
-    dataProximoContato: { type: "string" },
-    assuntosDeInteresse: { type: "array", items: { type: "string" } },
-  },
-  required: [
-    "temperatura", "scoreComercial", "probabilidadeAvanco", "prioridade",
-    "resumoExecutivo", "objecoes", "pontosPositivos", "pontosAtencao",
-    "oportunidadeComercial", "feedbackVendedor", "planoFollowup",
-    "recomendacaoEstrategica", "principalObjecao", "proximaAcao",
-    "diasAteProximoFollowup", "dataProximoContato", "assuntosDeInteresse",
-  ],
-};
-
 interface Payload {
   leadId?: string;
   noteId?: string;
@@ -111,13 +73,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get('GOOGLE_API_KEY');
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'GOOGLE_API_KEY not configured' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const body = (await req.json()) as Payload;
     const callSummary = (body.callSummary || '').trim();
     if (!callSummary) {
@@ -142,36 +97,38 @@ Deno.serve(async (req) => {
         : '--- HISTÓRICO RESUMIDO DO LEAD ---\n(sem interações anteriores registradas)',
     ].join('\n');
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+    // AI Router escolhe automaticamente o modelo pelo tamanho do input.
+    const inputChars = callSummary.length + (body.leadHistory?.length ?? 0);
 
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { role: 'system', parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 8192,
-          responseMimeType: 'application/json',
-          responseSchema: RESPONSE_SCHEMA,
-        },
-      }),
-    });
-
-    if (!resp.ok) {
-      const errBody = await resp.text();
-      console.error(`Gemini failed [${resp.status}]:`, errBody);
+    let result;
+    try {
+      result = await callAI({
+        task: 'auditor_ligacao',
+        system: SYSTEM_PROMPT,
+        user: userPrompt,
+        inputChars,
+        json: true,
+        temperature: 0.3,
+        maxTokens: 8192,
+      });
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      const status = err.status ?? 502;
+      const friendly =
+        status === 429
+          ? 'Limite de requisições atingido. Tente novamente em instantes.'
+          : status === 402
+          ? 'Créditos de IA esgotados. Adicione créditos nas configurações do workspace.'
+          : 'Não foi possível gerar a análise neste momento. Tente novamente em instantes.';
       return new Response(
-        JSON.stringify({ error: 'Gemini request failed', status: resp.status, details: errBody }),
-        { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: friendly }),
+        { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    const raw = await resp.json();
-    const jsonText = raw?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
-    if (!jsonText.trim()) {
-      return new Response(JSON.stringify({ error: 'Empty response from Gemini' }), {
+    const jsonText = (result.content || '').trim();
+    if (!jsonText) {
+      return new Response(JSON.stringify({ error: 'Resposta vazia da IA' }), {
         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -179,11 +136,22 @@ Deno.serve(async (req) => {
     let data: Record<string, unknown>;
     try {
       data = JSON.parse(jsonText);
-    } catch (e) {
-      console.error('JSON parse failed:', e, jsonText.slice(0, 500));
-      return new Response(JSON.stringify({ error: 'Invalid JSON from Gemini', raw: jsonText.slice(0, 1000) }), {
-        status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    } catch {
+      const m = jsonText.match(/\{[\s\S]*\}/);
+      if (m) {
+        try {
+          data = JSON.parse(m[0]);
+        } catch (e2) {
+          console.error('JSON parse failed:', e2, jsonText.slice(0, 500));
+          return new Response(JSON.stringify({ error: 'Formato inválido da IA', raw: jsonText.slice(0, 1000) }), {
+            status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else {
+        return new Response(JSON.stringify({ error: 'Formato inválido da IA', raw: jsonText.slice(0, 1000) }), {
+          status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const temperature = (data.temperatura as string) === 'Quente' || (data.temperatura as string) === 'Frio'
@@ -194,7 +162,7 @@ Deno.serve(async (req) => {
       data,
       temperature,
       generatedAt: new Date().toISOString(),
-      model: GEMINI_MODEL,
+      model: result.modelUsed,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     console.error('analyze-call-note error:', e);
