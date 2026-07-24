@@ -99,6 +99,31 @@ export interface CallNote {
 }
 
 
+// ===== Interações Comerciais (timeline unificada) =====
+// Tipo aberto (string) para permitir novos tipos sem alterar schema.
+export type InteractionType =
+  | "Ligação"
+  | "Reunião Comercial"
+  | "Reunião de Diagnóstico"
+  | "Reunião de Apresentação"
+  | "Follow-up"
+  | "WhatsApp"
+  | "E-mail"
+  | "Envio de Proposta"
+  | "Visita Presencial"
+  | "Outro"
+  | string;
+
+export interface Interaction {
+  id: string;
+  type: InteractionType;
+  date: string;          // ISO da data da interação
+  title: string;         // ex: "Primeira Ligação", "Reunião de Diagnóstico"
+  summary: string;       // resumo (Matteline / IA / manual) — principal fonte para IA
+  sellerNotes?: string;  // anotações extras do vendedor (contexto que não está no resumo)
+  createdAt: string;     // ISO de quando foi registrada
+}
+
 export interface Lead {
   id: string;
   company: string;
@@ -116,6 +141,7 @@ export interface Lead {
   notes: string;
   attachments: LeadAttachment[];
   callNotes?: CallNote[];
+  interactions?: Interaction[];
   contractValue?: number;
   serviceType?: string;
   phoneInvalid?: boolean;
@@ -123,6 +149,7 @@ export interface Lead {
   website?: string;
   whatsapp?: string;
 }
+
 
 export type MeetingSource = "Ligação" | "Disparo" | "Instagram" | "Email";
 
