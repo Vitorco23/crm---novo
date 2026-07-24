@@ -53,8 +53,34 @@ export interface LeadAttachment {
   createdAt: string;
 }
 
+export interface CallAuditFollowupStep {
+  quando: string;
+  acao: string;
+}
+
+export interface CallAuditData {
+  temperatura: "Quente" | "Morno" | "Frio";
+  scoreComercial: number;
+  probabilidadeAvanco: "Baixa" | "Media" | "Alta";
+  prioridade: "Baixa" | "Media" | "Alta";
+  resumoExecutivo: string;
+  objecoes: string[];
+  pontosPositivos: string[];
+  pontosAtencao: string[];
+  oportunidadeComercial: string[];
+  feedbackVendedor: string;
+  planoFollowup: CallAuditFollowupStep[];
+  recomendacaoEstrategica: string;
+  principalObjecao: string;
+  proximaAcao: string;
+  diasAteProximoFollowup: number;
+  dataProximoContato: string;
+  assuntosDeInteresse: string[];
+}
+
 export interface CallNoteAnalysis {
-  markdown: string;
+  markdown?: string;
+  data?: CallAuditData;
   temperature: "Quente" | "Morno" | "Frio";
   generatedAt: string;
   model: string;

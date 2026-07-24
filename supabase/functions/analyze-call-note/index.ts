@@ -3,39 +3,79 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 
-const SYSTEM_PROMPT = `Você é um especialista em vendas consultivas B2B analisando o resumo de UMA ligação comercial já resumido pela Matteline.
+const SYSTEM_PROMPT = `Você é o AUDITOR COMERCIAL da Performance21, analisando o resumo de UMA ligação comercial produzido pela Matteline.
 
 REGRAS ABSOLUTAS:
 - Nunca invente informação. Use SOMENTE o resumo recebido e o histórico do lead.
-- NÃO resuma a ligação novamente — o resumo já existe.
-- Sua função é INTERPRETAR comercialmente o resumo e produzir um parecer.
-- Justifique cada recomendação com trechos/fatos presentes no resumo.
-- Seja objetivo, consultivo e orientado à tomada de decisão.
-- Responda SEMPRE em português (Brasil) e SEMPRE nesta estrutura Markdown exata:
+- NÃO resuma novamente a ligação — interprete comercialmente o que aconteceu.
+- Toda recomendação deve ter justificativa baseada na conversa.
+- Português (Brasil). Frases curtas. Bullets objetivos. Sem parágrafos longos.
+- Não repita a mesma ideia em seções diferentes.
+- Cada bullet no máximo ~12 palavras.
 
-## Parecer Comercial
+OBJETIVO:
+Transformar a ligação em uma ferramenta operacional: veredito rápido, oportunidades claras, feedback prático e próximo passo definido. O vendedor deve entender tudo em menos de 30 segundos.
 
-**Temperatura do Lead:** Quente | Morno | Frio
+SAÍDA: responda SOMENTE em JSON válido no schema fornecido. Não escreva texto fora do JSON.
 
-### Interesse percebido
-(descreva o nível de interesse demonstrado pelo cliente)
+CAMPOS:
+- temperatura: "Quente" | "Morno" | "Frio"
+- scoreComercial: inteiro 0-100 (probabilidade de avanço)
+- probabilidadeAvanco: "Baixa" | "Media" | "Alta"
+- prioridade: "Baixa" | "Media" | "Alta"
+- resumoExecutivo: até 4 linhas curtas (o que aconteceu, interesse do cliente, próximo passo)
+- objecoes: até 3 bullets curtos
+- pontosPositivos: até 3 bullets (fatores que aumentam conversão)
+- pontosAtencao: até 3 bullets (riscos que impedem avanço)
+- oportunidadeComercial: até 3 bullets (argumentos que despertaram interesse)
+- feedbackVendedor: 2-4 linhas, prático, sem crítica genérica, com sugestão concreta
+- planoFollowup: 3-4 passos objetivos, cada um com {quando, acao} (ex: "Hoje" / "Em 2 dias")
+- recomendacaoEstrategica: até 3 linhas, uma recomendação prática
+- principalObjecao: string curta (ou "Nenhuma")
+- proximaAcao: string curta e acionável
+- diasAteProximoFollowup: inteiro 0-30
+- dataProximoContato: data ISO (YYYY-MM-DD) coerente com diasAteProximoFollowup a partir da data atual
+- assuntosDeInteresse: até 5 tags curtas`;
 
-### Principais objeções
-- (liste objetivamente as objeções identificadas; se não houver, escreva "Nenhuma objeção clara identificada")
-
-### Pontos positivos
-- (destaque aspectos positivos da conversa)
-
-### Pontos de atenção
-- (aponte riscos percebidos)
-
-### Próxima ação recomendada
-(sugira qual deve ser o próximo passo comercial)
-
-### Sugestão estratégica
-(orientação prática para aumentar chances de conversão na próxima abordagem)
-
-IMPORTANTE: A linha "Temperatura do Lead:" deve conter exatamente uma dessas três palavras: Quente, Morno ou Frio.`;
+const RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    temperatura: { type: "string", enum: ["Quente", "Morno", "Frio"] },
+    scoreComercial: { type: "integer", minimum: 0, maximum: 100 },
+    probabilidadeAvanco: { type: "string", enum: ["Baixa", "Media", "Alta"] },
+    prioridade: { type: "string", enum: ["Baixa", "Media", "Alta"] },
+    resumoExecutivo: { type: "string" },
+    objecoes: { type: "array", items: { type: "string" } },
+    pontosPositivos: { type: "array", items: { type: "string" } },
+    pontosAtencao: { type: "array", items: { type: "string" } },
+    oportunidadeComercial: { type: "array", items: { type: "string" } },
+    feedbackVendedor: { type: "string" },
+    planoFollowup: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          quando: { type: "string" },
+          acao: { type: "string" },
+        },
+        required: ["quando", "acao"],
+      },
+    },
+    recomendacaoEstrategica: { type: "string" },
+    principalObjecao: { type: "string" },
+    proximaAcao: { type: "string" },
+    diasAteProximoFollowup: { type: "integer", minimum: 0, maximum: 30 },
+    dataProximoContato: { type: "string" },
+    assuntosDeInteresse: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    "temperatura", "scoreComercial", "probabilidadeAvanco", "prioridade",
+    "resumoExecutivo", "objecoes", "pontosPositivos", "pontosAtencao",
+    "oportunidadeComercial", "feedbackVendedor", "planoFollowup",
+    "recomendacaoEstrategica", "principalObjecao", "proximaAcao",
+    "diasAteProximoFollowup", "dataProximoContato", "assuntosDeInteresse",
+  ],
+};
 
 interface Payload {
   leadId?: string;
@@ -46,15 +86,6 @@ interface Payload {
   attempt?: number;
   callSummary?: string;
   leadHistory?: string;
-}
-
-function extractTemperature(md: string): "Quente" | "Morno" | "Frio" {
-  const m = md.match(/Temperatura do Lead[^\n]*?(Quente|Morno|Frio)/i);
-  if (!m) return "Morno";
-  const v = m[1].toLowerCase();
-  if (v === "quente") return "Quente";
-  if (v === "frio") return "Frio";
-  return "Morno";
 }
 
 Deno.serve(async (req) => {
@@ -95,7 +126,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    const today = new Date().toISOString().slice(0, 10);
     const userPrompt = [
+      `Data de hoje: ${today}`,
       `Empresa: ${body.company || 'N/D'}`,
       `Nicho: ${body.niche || 'N/D'}`,
       `Etapa atual: ${body.stage || 'N/D'}`,
@@ -117,7 +150,12 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         systemInstruction: { role: 'system', parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 1500 },
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2000,
+          responseMimeType: 'application/json',
+          responseSchema: RESPONSE_SCHEMA,
+        },
       }),
     });
 
@@ -130,17 +168,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    const data = await resp.json();
-    const markdown = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
-    if (!markdown.trim()) {
+    const raw = await resp.json();
+    const jsonText = raw?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
+    if (!jsonText.trim()) {
       return new Response(JSON.stringify({ error: 'Empty response from Gemini' }), {
         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const temperature = extractTemperature(markdown);
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(jsonText);
+    } catch (e) {
+      console.error('JSON parse failed:', e, jsonText.slice(0, 500));
+      return new Response(JSON.stringify({ error: 'Invalid JSON from Gemini', raw: jsonText.slice(0, 1000) }), {
+        status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const temperature = (data.temperatura as string) === 'Quente' || (data.temperatura as string) === 'Frio'
+      ? data.temperatura as 'Quente' | 'Frio'
+      : 'Morno';
+
     return new Response(JSON.stringify({
-      markdown,
+      data,
       temperature,
       generatedAt: new Date().toISOString(),
       model: GEMINI_MODEL,

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { analyzeCallNote } from "@/lib/callAnalysis";
+import { CallAuditView } from "@/components/CallAuditView";
 
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -691,8 +692,14 @@ export default function LeadDetailDrawer({
                           )}
                         </div>
                         {analysis && (
-                          <div className="mt-2 rounded-md border border-border/40 bg-background/60 p-3 prose prose-sm dark:prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1">
-                            <ReactMarkdown>{analysis.markdown}</ReactMarkdown>
+                          <div className="mt-2 rounded-md border border-border/40 bg-background/60 p-3">
+                            {analysis.data ? (
+                              <CallAuditView data={analysis.data} />
+                            ) : analysis.markdown ? (
+                              <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1">
+                                <ReactMarkdown>{analysis.markdown}</ReactMarkdown>
+                              </div>
+                            ) : null}
                           </div>
                         )}
                       </div>
