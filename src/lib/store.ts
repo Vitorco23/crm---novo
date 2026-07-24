@@ -60,10 +60,13 @@ export interface CallAuditFollowupStep {
 
 export interface CallAuditData {
   temperatura: "Quente" | "Morno" | "Frio";
+  tendencia?: "Evoluindo" | "Esfriando" | "Estavel";
+  tendenciaJustificativa?: string;
   scoreComercial: number;
   probabilidadeAvanco: "Baixa" | "Media" | "Alta";
   prioridade: "Baixa" | "Media" | "Alta";
   resumoExecutivo: string;
+  evolucaoLead?: string;
   objecoes: string[];
   pontosPositivos: string[];
   pontosAtencao: string[];

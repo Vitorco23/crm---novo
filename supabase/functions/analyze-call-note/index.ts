@@ -1,43 +1,56 @@
-// Auditor Comercial — usa AI Router (task: auditor_ligacao).
-// Escolhe automaticamente entre tiers Gemini por tamanho do input; fallback GPT.
+// Auditor Comercial 360º — analisa o CONTEXTO COMPLETO do lead, não apenas uma ligação.
+// Considera: todas as ligações, tarefas concluídas/pendentes, movimentações,
+// dados cadastrais, nicho, cidade, etapa, tentativas e histórico de eventos.
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { callAI } from '../_shared/ai-router.ts';
 
-const SYSTEM_PROMPT = `Você é o AUDITOR COMERCIAL da Performance21, analisando o resumo de UMA ligação comercial produzido pela Matteline.
+const SYSTEM_PROMPT = `Você é o AUDITOR COMERCIAL 360º da Performance21.
+
+Você NÃO analisa apenas uma ligação isolada.
+Você analisa o CONTEXTO COMPLETO do Lead: todas as ligações já realizadas, tarefas concluídas e pendentes, movimentações no pipeline, dados cadastrais (nicho, cidade, etapa, tentativas, ICP) e todo o histórico de eventos daquele Lead.
+
+Sua missão é entender a EVOLUÇÃO do Lead ao longo do tempo — não apenas o que aconteceu na última ligação.
 
 REGRAS ABSOLUTAS:
-- Nunca invente informação. Use SOMENTE o resumo recebido e o histórico do lead.
-- NÃO resuma novamente a ligação — interprete comercialmente o que aconteceu.
-- Toda recomendação deve ter justificativa baseada na conversa.
+- Nunca invente informação. Use SOMENTE o contexto do Lead recebido.
+- Nunca use informação de outros Leads (o payload contém apenas este Lead).
+- Compare a ligação em análise com as ligações anteriores para avaliar tendência.
+- Toda conclusão precisa apoiar-se em fato presente no histórico.
 - Português (Brasil). Frases curtas. Bullets objetivos. Sem parágrafos longos.
-- Não repita a mesma ideia em seções diferentes.
-- Cada bullet no máximo ~12 palavras.
+- Cada bullet no máximo ~14 palavras.
 
-OBJETIVO:
-Transformar a ligação em uma ferramenta operacional: veredito rápido, oportunidades claras, feedback prático e próximo passo definido. O vendedor deve entender tudo em menos de 30 segundos.
+PERGUNTAS QUE VOCÊ DEVE RESPONDER:
+- O interesse do Lead aumentou ou diminuiu ao longo dos contatos?
+- O Lead evoluiu desde o primeiro contato?
+- Existe tendência clara de fechamento ou de perda?
+- O vendedor está conduzindo corretamente o processo?
+- Qual é o próximo passo mais eficaz agora?
 
-SAÍDA: responda SOMENTE em JSON válido no schema fornecido. Não escreva texto fora do JSON.
+SAÍDA: responda SOMENTE em JSON válido. Não escreva texto fora do JSON.
 
 CAMPOS:
-- temperatura: "Quente" | "Morno" | "Frio"
-- scoreComercial: inteiro 0-100 (probabilidade de avanço)
-- probabilidadeAvanco: "Baixa" | "Media" | "Alta"
-- prioridade: "Baixa" | "Media" | "Alta"
-- resumoExecutivo: até 4 linhas curtas (o que aconteceu, interesse do cliente, próximo passo)
-- objecoes: até 3 bullets curtos
-- pontosPositivos: até 3 bullets (fatores que aumentam conversão)
-- pontosAtencao: até 3 bullets (riscos que impedem avanço)
-- oportunidadeComercial: até 3 bullets (argumentos que despertaram interesse)
-- feedbackVendedor: 2-4 linhas, prático, sem crítica genérica, com sugestão concreta
-- planoFollowup: 3-4 passos objetivos, cada um com {quando, acao} (ex: "Hoje" / "Em 2 dias")
-- recomendacaoEstrategica: até 3 linhas, uma recomendação prática
-- principalObjecao: string curta (ou "Nenhuma")
-- proximaAcao: string curta e acionável
-- diasAteProximoFollowup: inteiro 0-30
-- dataProximoContato: data ISO (YYYY-MM-DD) coerente com diasAteProximoFollowup a partir da data atual
-- assuntosDeInteresse: até 5 tags curtas`;
+- temperatura: "Quente" | "Morno" | "Frio" — estado atual considerando TODO o histórico.
+- tendencia: "Evoluindo" | "Esfriando" | "Estavel" — direção do Lead comparando contatos anteriores com o atual.
+- tendenciaJustificativa: 1-2 linhas explicando a tendência com base em fatos do histórico (ex: "Na 1ª ligação apenas ouviu; na 2ª pediu proposta").
+- scoreComercial: inteiro 0-100 (probabilidade global de fechamento).
+- probabilidadeAvanco: "Baixa" | "Media" | "Alta".
+- prioridade: "Baixa" | "Media" | "Alta".
+- resumoExecutivo: até 4 linhas — situação atual do Lead considerando toda a jornada.
+- evolucaoLead: 2-4 linhas descrevendo como o Lead evoluiu do primeiro contato até agora.
+- objecoes: até 3 bullets — objeções recorrentes ao longo dos contatos.
+- pontosPositivos: até 3 bullets — sinais positivos acumulados na jornada.
+- pontosAtencao: até 3 bullets — riscos observados no conjunto das interações.
+- oportunidadeComercial: até 3 bullets — argumentos com maior tração no histórico.
+- feedbackVendedor: 2-4 linhas — avaliação de como o vendedor está conduzindo o Lead, com sugestão concreta.
+- planoFollowup: 3-4 passos {quando, acao} coerentes com a tendência atual.
+- recomendacaoEstrategica: até 3 linhas — jogada estratégica para este Lead específico.
+- principalObjecao: string curta (ou "Nenhuma").
+- proximaAcao: string curta e acionável.
+- diasAteProximoFollowup: inteiro 0-30.
+- dataProximoContato: data ISO (YYYY-MM-DD) coerente com diasAteProximoFollowup a partir de hoje.
+- assuntosDeInteresse: até 5 tags curtas (temas que despertaram interesse ao longo dos contatos).`;
 
 interface Payload {
   leadId?: string;
@@ -47,7 +60,12 @@ interface Payload {
   stage?: string;
   attempt?: number;
   callSummary?: string;
-  leadHistory?: string;
+  leadInfo?: string;
+  allCallNotes?: string;
+  tarefasConcluidas?: string;
+  tarefasPendentes?: string;
+  movimentacoes?: string;
+  historicoEventos?: string;
 }
 
 Deno.serve(async (req) => {
@@ -84,21 +102,33 @@ Deno.serve(async (req) => {
     const today = new Date().toISOString().slice(0, 10);
     const userPrompt = [
       `Data de hoje: ${today}`,
-      `Empresa: ${body.company || 'N/D'}`,
-      `Nicho: ${body.niche || 'N/D'}`,
-      `Etapa atual: ${body.stage || 'N/D'}`,
-      `Tentativa atual: ${body.attempt ?? 'N/D'}`,
       '',
-      '--- RESUMO DA LIGAÇÃO (produzido pela Matteline) ---',
+      '========== DADOS CADASTRAIS DO LEAD ==========',
+      body.leadInfo || `Empresa: ${body.company || 'N/D'}\nNicho: ${body.niche || 'N/D'}\nEtapa: ${body.stage || 'N/D'}`,
+      '',
+      '========== LIGAÇÃO EM ANÁLISE (última ação registrada) ==========',
+      `Tentativa: ${body.attempt ?? 'N/D'}`,
       callSummary,
       '',
-      body.leadHistory
-        ? `--- HISTÓRICO RESUMIDO DO LEAD ---\n${body.leadHistory}`
-        : '--- HISTÓRICO RESUMIDO DO LEAD ---\n(sem interações anteriores registradas)',
+      '========== TODAS AS LIGAÇÕES DO LEAD (ordem cronológica) ==========',
+      body.allCallNotes || '(apenas a ligação em análise)',
+      '',
+      '========== MOVIMENTAÇÕES NO PIPELINE ==========',
+      body.movimentacoes || '(sem movimentações)',
+      '',
+      '========== TAREFAS CONCLUÍDAS ==========',
+      body.tarefasConcluidas || '(nenhuma)',
+      '',
+      '========== TAREFAS PENDENTES ==========',
+      body.tarefasPendentes || '(nenhuma)',
+      '',
+      '========== HISTÓRICO DE EVENTOS ==========',
+      body.historicoEventos || '(vazio)',
+      '',
+      'Analise o CONTEXTO COMPLETO acima e devolva o JSON conforme o schema.',
     ].join('\n');
 
-    // AI Router escolhe automaticamente o modelo pelo tamanho do input.
-    const inputChars = callSummary.length + (body.leadHistory?.length ?? 0);
+    const inputChars = userPrompt.length;
 
     let result;
     try {

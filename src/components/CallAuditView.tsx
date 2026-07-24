@@ -3,12 +3,27 @@ import { Progress } from "@/components/ui/progress";
 import type { CallAuditData } from "@/lib/store";
 import {
   Target, MessageSquare, AlertTriangle, CheckCircle2, TrendingUp,
-  UserCheck, CalendarClock, Lightbulb,
+  UserCheck, CalendarClock, Lightbulb, TrendingDown, ArrowRight, History,
 } from "lucide-react";
 
 interface Props {
   data: CallAuditData;
 }
+
+const trendStyle = (t?: string) =>
+  t === "Evoluindo"
+    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/40"
+    : t === "Esfriando"
+    ? "bg-red-500/15 text-red-400 border-red-500/40"
+    : "bg-muted text-muted-foreground border-border/50";
+
+const TrendIcon = ({ t }: { t?: string }) =>
+  t === "Evoluindo" ? <TrendingUp className="h-3.5 w-3.5" />
+  : t === "Esfriando" ? <TrendingDown className="h-3.5 w-3.5" />
+  : <ArrowRight className="h-3.5 w-3.5" />;
+
+const trendLabel = (t?: string) =>
+  t === "Evoluindo" ? "📈 Evoluindo" : t === "Esfriando" ? "📉 Esfriando" : "➡ Estável";
 
 const tempStyle = (t: string) =>
   t === "Quente"
