@@ -113,10 +113,32 @@ export function CallAuditView({ data }: Props) {
         </div>
       </div>
 
+      {/* Tendência do Lead */}
+      <div className="rounded-lg border border-border/50 bg-background/60 p-3">
+        <div className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <History className="h-3.5 w-3.5" /> Tendência do Lead
+        </div>
+        <div className="flex items-start gap-2">
+          <Badge variant="outline" className={`text-xs shrink-0 ${trendStyle(data.tendencia)}`}>
+            <TrendIcon t={data.tendencia} />
+            <span className="ml-1">{trendLabel(data.tendencia)}</span>
+          </Badge>
+          {data.tendenciaJustificativa && (
+            <p className="text-sm text-foreground leading-snug">{data.tendenciaJustificativa}</p>
+          )}
+        </div>
+      </div>
+
       {/* Resumo Executivo */}
       <Section icon={<MessageSquare className="h-3.5 w-3.5" />} title="💬 Resumo Executivo">
         <p className="whitespace-pre-wrap leading-snug">{data.resumoExecutivo}</p>
       </Section>
+
+      {data.evolucaoLead && (
+        <Section icon={<TrendingUp className="h-3.5 w-3.5 text-primary" />} title="📊 Evolução do Lead">
+          <p className="whitespace-pre-wrap leading-snug">{data.evolucaoLead}</p>
+        </Section>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-3">
         <Section icon={<AlertTriangle className="h-3.5 w-3.5 text-red-400" />} title="🚧 Objeções">
