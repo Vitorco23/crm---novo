@@ -299,7 +299,7 @@ export default function InteracoesTimeline({
                     </div>
                     {analysis && (
                       <div className="mt-2 rounded-md border border-border/40 bg-background/60 p-3">
-                        {analysis.data ? (<CallAuditView data={analysis.data} />)
+                        {analysis.data ? (<CallAuditView data={analysis.data} lead={lead} onRunDiagnosis={() => analyzeNote(n, "full")} />)
                           : analysis.markdown ? (
                             <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1">
                               <ReactMarkdown>{analysis.markdown}</ReactMarkdown>

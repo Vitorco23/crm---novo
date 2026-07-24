@@ -14,6 +14,7 @@ import {
   generateParecer, getHistory, getTodayParecer, shouldRunToday,
   todayKey, type Parecer,
 } from "@/lib/diretorIA";
+import NextBestActionCard from "@/components/NextBestActionCard";
 
 function formatDatePt(dateStr: string): string {
   try {
@@ -282,6 +283,11 @@ function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boole
         <Badge variant="outline" className="text-[10px] font-mono">{parecer.model}</Badge>
       </div>
 
+      {/* Próxima Melhor Ação — topo do parecer */}
+      {parecer.nextBestAction && (
+        <NextBestActionCard nba={parecer.nextBestAction} compact={compact} />
+      )}
+
       {/* Formato legado (markdown) — fallback */}
       {!painel && parecer.content && (
         <div className="rounded-lg border bg-background p-4">
@@ -290,6 +296,7 @@ function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boole
           </div>
         </div>
       )}
+
 
       {painel && (
         <div className="grid gap-3 md:grid-cols-2">

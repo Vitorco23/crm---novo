@@ -18,6 +18,7 @@ import {
   type PriorityLeadPick, type PriorityLeadsCache,
 } from "@/lib/priorityLeads";
 import { getLeads, getPipelineForStage, type Lead, type CallAuditData } from "@/lib/store";
+import NextBestActionCard from "@/components/NextBestActionCard";
 
 function latestAudit(l: Lead): CallAuditData | null {
   const notes = l.callNotes || [];
@@ -204,32 +205,38 @@ export default function PriorityLeadsBlock() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                <Link to={href}>
-                  <Button size="sm" variant="outline" className="h-7 text-[11px]">
-                    Abrir Lead <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </Link>
-                {wa && (
-                  <a href={wa} target="_blank" rel="noopener noreferrer">
+              {pick.nextBestAction ? (
+                <div className="pt-1">
+                  <NextBestActionCard nba={pick.nextBestAction} lead={lead} compact />
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <Link to={href}>
                     <Button size="sm" variant="outline" className="h-7 text-[11px]">
-                      <MessageCircle className="h-3 w-3 mr-1" /> WhatsApp
+                      Abrir Lead <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
-                  </a>
-                )}
-                <Link to={href}>
-                  <Button size="sm" variant="outline" className="h-7 text-[11px]">
-                    <Flame className="h-3 w-3 mr-1" /> Registrar interação
-                  </Button>
-                </Link>
-                {lead.gmnLink && (
-                  <a href={lead.gmnLink} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" variant="ghost" className="h-7 text-[11px]">
-                      <ExternalLink className="h-3 w-3 mr-1" /> Google
+                  </Link>
+                  {wa && (
+                    <a href={wa} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" variant="outline" className="h-7 text-[11px]">
+                        <MessageCircle className="h-3 w-3 mr-1" /> WhatsApp
+                      </Button>
+                    </a>
+                  )}
+                  <Link to={href}>
+                    <Button size="sm" variant="outline" className="h-7 text-[11px]">
+                      <Flame className="h-3 w-3 mr-1" /> Registrar interação
                     </Button>
-                  </a>
-                )}
-              </div>
+                  </Link>
+                  {lead.gmnLink && (
+                    <a href={lead.gmnLink} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" variant="ghost" className="h-7 text-[11px]">
+                        <ExternalLink className="h-3 w-3 mr-1" /> Google
+                      </Button>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

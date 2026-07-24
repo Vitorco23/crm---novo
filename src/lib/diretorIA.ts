@@ -50,6 +50,7 @@ export interface Parecer {
   content?: string;    // markdown (formato legado)
   painel?: PainelExecutivo;   // novo formato executivo
   metaHoje?: MetaHojeProgresso;
+  nextBestAction?: import("./nextBestAction").NextBestAction; // NBA do dia (global)
 }
 
 // ---- Datas em America/Sao_Paulo ----
@@ -416,6 +417,7 @@ export async function generateParecer(): Promise<Parecer> {
     model,
     painel,
     metaHoje,
+    nextBestAction: (data as any)?.nextBestAction ?? undefined,
   };
   saveParecer(parecer);
   try { window.dispatchEvent(new Event("p21:diretor-ia-updated")); } catch { /* noop */ }

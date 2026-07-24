@@ -79,6 +79,8 @@ export interface CallAuditData {
   diasAteProximoFollowup: number;
   dataProximoContato: string;
   assuntosDeInteresse: string[];
+  /** Próxima Melhor Ação (NBA) — anexada pela IA + guard-rails determinísticos. */
+  nextBestAction?: import("./nextBestAction").NextBestAction;
 }
 
 export interface CallNoteAnalysis {

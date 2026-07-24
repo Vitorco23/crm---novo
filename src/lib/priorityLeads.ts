@@ -16,6 +16,7 @@ export interface PriorityLeadPick {
   motivo: string;
   proximaAcao: string;
   impacto: "critico" | "alto" | "medio";
+  nextBestAction?: import("./nextBestAction").NextBestAction;
 }
 
 export interface PriorityLeadsCache {

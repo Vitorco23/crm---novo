@@ -4,6 +4,7 @@
 
 import { callAI } from "../_shared/ai-router.ts";
 import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
+import { NBA_PROMPT_BLOCK, sanitizeNBA } from "../_shared/nba-types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,6 +24,8 @@ Regras absolutas:
 - Motivo deve ser 1 frase concreta (≤ 140 caracteres), citando o fato que torna esse lead urgente.
 - Próxima ação deve ser 1 verbo no infinitivo + o quê + prazo (≤ 120 caracteres). Ex: "Ligar até 16h para confirmar interesse na proposta".
 
+Para CADA lead escolhido, inclua obrigatoriamente um bloco \`next_best_action\` com a Próxima Melhor Ação (uma única ação, a de maior impacto), no formato descrito abaixo.
+
 RESPONDA EXCLUSIVAMENTE COM JSON VÁLIDO no formato:
 {
   "leads": [
@@ -30,7 +33,8 @@ RESPONDA EXCLUSIVAMENTE COM JSON VÁLIDO no formato:
       "leadId": string,
       "motivo": string,
       "proximaAcao": string,
-      "impacto": "critico" | "alto" | "medio"
+      "impacto": "critico" | "alto" | "medio",
+      "next_best_action": { "action": string, "title": string, "reason": string, "urgency": string, "confidence": string }
     }
   ]
 }
@@ -71,11 +75,11 @@ Deno.serve(async (req) => {
     try {
       result = await callAI({
         task: "priority_leads",
-        system: SYSTEM_PROMPT,
+        system: SYSTEM_PROMPT + "\n\n" + NBA_PROMPT_BLOCK,
         user: userPrompt,
         json: true,
         temperature: 0.2,
-        maxTokens: 1200,
+        maxTokens: 1600,
       });
     } catch (e) {
       const err = e as Error & { status?: number };
@@ -97,17 +101,28 @@ Deno.serve(async (req) => {
       if (m) { try { parsed = JSON.parse(m[0]); } catch { /* noop */ } }
     }
 
-    const validIds = new Set(candidates.map((c: any) => String(c.id)));
+    const candMap = new Map<string, any>();
+    for (const c of candidates) candMap.set(String((c as any).id), c);
     const raw = Array.isArray(parsed?.leads) ? parsed.leads : [];
     const leads = raw
-      .filter((x: any) => x && validIds.has(String(x.leadId)))
+      .filter((x: any) => x && candMap.has(String(x.leadId)))
       .slice(0, 5)
-      .map((x: any) => ({
-        leadId: String(x.leadId),
-        motivo: String(x.motivo || "").slice(0, 220),
-        proximaAcao: String(x.proximaAcao || "").slice(0, 200),
-        impacto: ["critico", "alto", "medio"].includes(x.impacto) ? x.impacto : "medio",
-      }));
+      .map((x: any) => {
+        const cand = candMap.get(String(x.leadId)) || {};
+        const nba = sanitizeNBA(x.next_best_action ?? x.nextBestAction ?? null, {
+          stage: cand.etapa,
+          interactionsCount: cand.interacoes ?? 0,
+          callNotesCount: cand.reunioesMarcadas ?? 0,
+          hasPendingPromise: (cand.followupsVencidos ?? 0) > 0 || (cand.tarefasVencidas ?? 0) > 0,
+        }, String(x.leadId));
+        return {
+          leadId: String(x.leadId),
+          motivo: String(x.motivo || "").slice(0, 220),
+          proximaAcao: String(x.proximaAcao || nba.title || "").slice(0, 200),
+          impacto: ["critico", "alto", "medio"].includes(x.impacto) ? x.impacto : "medio",
+          nextBestAction: nba,
+        };
+      });
 
     return new Response(
       JSON.stringify({ leads, model: result.modelUsed, generatedAt: new Date().toISOString() }),

@@ -3,6 +3,7 @@
 
 import { callAI } from "../_shared/ai-router.ts";
 import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
+import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,7 +63,7 @@ Deno.serve(async (req) => {
     try {
       result = await callAI({
         task: "diretor_comercial",
-        system: SYSTEM_PROMPT,
+        system: SYSTEM_PROMPT + "\n\n" + NBA_PROMPT_BLOCK,
         user: userPrompt,
         json: true,
         temperature: 0.3,
@@ -110,11 +111,17 @@ Deno.serve(async (req) => {
       dica: typeof parsed.dica === "string" ? parsed.dica.slice(0, 320) : "",
     };
 
+    // Próxima Melhor Ação global (Diretor) — sem leadId
+    const nba = sanitizeNBA(extractNBA(parsed), {
+      interactionsCount: 1,
+      callNotesCount: 1,
+    });
+
     return new Response(
       JSON.stringify({
         painel,
+        nextBestAction: nba,
         model: result.modelUsed,
-        memoryRefs: memories.map((m) => ({ id: m.id, kind: m.kind, title: m.title, similarity: m.similarity })),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
