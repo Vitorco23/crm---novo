@@ -1,56 +1,82 @@
-// Auditor Comercial 360º — analisa o CONTEXTO COMPLETO do lead, não apenas uma ligação.
-// Considera: todas as ligações, tarefas concluídas/pendentes, movimentações,
-// dados cadastrais, nicho, cidade, etapa, tentativas e histórico de eventos.
+// Auditor Comercial — dois modos:
+// - "quick": análise leve apenas do último resumo (baixo custo em tokens).
+// - "full": diagnóstico 360º usando todo o contexto do Lead.
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { callAI } from '../_shared/ai-router.ts';
 
-const SYSTEM_PROMPT = `Você é o AUDITOR COMERCIAL 360º da Performance21.
+const SYSTEM_QUICK = `Você é o AUDITOR COMERCIAL da Performance21 em modo ANÁLISE RÁPIDA.
 
-Você NÃO analisa apenas uma ligação isolada.
+Você recebe APENAS o resumo da última ligação (feito pela Matteline) e dados básicos do Lead.
+Não invente informação que não esteja no resumo. Não suponha histórico anterior.
+
+Objetivo: leitura rápida da última conversa, em segundos. Português (Brasil), frases curtas.
+
+SAÍDA: JSON válido apenas, no schema abaixo.
+
+CAMPOS:
+- temperatura: "Quente" | "Morno" | "Frio" (baseado só na última conversa).
+- tendencia: "Estavel" (sempre "Estavel" neste modo — não há histórico suficiente para inferir tendência).
+- tendenciaJustificativa: "Análise rápida — sem comparação histórica."
+- scoreComercial: inteiro 0-100.
+- probabilidadeAvanco: "Baixa" | "Media" | "Alta".
+- prioridade: "Baixa" | "Media" | "Alta".
+- resumoExecutivo: até 3 linhas curtas.
+- evolucaoLead: "" (vazio neste modo).
+- objecoes: até 2 bullets.
+- pontosPositivos: até 2 bullets.
+- pontosAtencao: até 2 bullets.
+- oportunidadeComercial: até 2 bullets.
+- feedbackVendedor: 1-2 linhas objetivas.
+- planoFollowup: 2 passos {quando, acao}.
+- recomendacaoEstrategica: 1-2 linhas.
+- principalObjecao: string curta ou "Nenhuma".
+- proximaAcao: string curta e acionável.
+- diasAteProximoFollowup: inteiro 0-30.
+- dataProximoContato: data ISO (YYYY-MM-DD) coerente.
+- assuntosDeInteresse: até 3 tags curtas.`;
+
+const SYSTEM_FULL = `Você é o AUDITOR COMERCIAL 360º da Performance21 em modo DIAGNÓSTICO COMPLETO.
+
 Você analisa o CONTEXTO COMPLETO do Lead: todas as ligações já realizadas, tarefas concluídas e pendentes, movimentações no pipeline, dados cadastrais (nicho, cidade, etapa, tentativas, ICP) e todo o histórico de eventos daquele Lead.
 
-Sua missão é entender a EVOLUÇÃO do Lead ao longo do tempo — não apenas o que aconteceu na última ligação.
+Sua missão é entender a EVOLUÇÃO do Lead ao longo do tempo.
 
 REGRAS ABSOLUTAS:
 - Nunca invente informação. Use SOMENTE o contexto do Lead recebido.
-- Nunca use informação de outros Leads (o payload contém apenas este Lead).
+- Nunca use informação de outros Leads.
 - Compare a ligação em análise com as ligações anteriores para avaliar tendência.
 - Toda conclusão precisa apoiar-se em fato presente no histórico.
-- Português (Brasil). Frases curtas. Bullets objetivos. Sem parágrafos longos.
-- Cada bullet no máximo ~14 palavras.
+- Português (Brasil). Frases curtas. Cada bullet no máximo ~14 palavras.
 
-PERGUNTAS QUE VOCÊ DEVE RESPONDER:
-- O interesse do Lead aumentou ou diminuiu ao longo dos contatos?
-- O Lead evoluiu desde o primeiro contato?
-- Existe tendência clara de fechamento ou de perda?
-- O vendedor está conduzindo corretamente o processo?
-- Qual é o próximo passo mais eficaz agora?
+RESPONDA:
+- O interesse aumentou ou diminuiu? O Lead evoluiu? Há tendência de fechamento ou de perda?
+- O vendedor está conduzindo corretamente? Qual o próximo passo mais eficaz?
 
-SAÍDA: responda SOMENTE em JSON válido. Não escreva texto fora do JSON.
+SAÍDA: JSON válido apenas.
 
 CAMPOS:
-- temperatura: "Quente" | "Morno" | "Frio" — estado atual considerando TODO o histórico.
-- tendencia: "Evoluindo" | "Esfriando" | "Estavel" — direção do Lead comparando contatos anteriores com o atual.
-- tendenciaJustificativa: 1-2 linhas explicando a tendência com base em fatos do histórico (ex: "Na 1ª ligação apenas ouviu; na 2ª pediu proposta").
-- scoreComercial: inteiro 0-100 (probabilidade global de fechamento).
+- temperatura: "Quente" | "Morno" | "Frio".
+- tendencia: "Evoluindo" | "Esfriando" | "Estavel".
+- tendenciaJustificativa: 1-2 linhas com fatos do histórico.
+- scoreComercial: 0-100.
 - probabilidadeAvanco: "Baixa" | "Media" | "Alta".
 - prioridade: "Baixa" | "Media" | "Alta".
-- resumoExecutivo: até 4 linhas — situação atual do Lead considerando toda a jornada.
-- evolucaoLead: 2-4 linhas descrevendo como o Lead evoluiu do primeiro contato até agora.
-- objecoes: até 3 bullets — objeções recorrentes ao longo dos contatos.
-- pontosPositivos: até 3 bullets — sinais positivos acumulados na jornada.
-- pontosAtencao: até 3 bullets — riscos observados no conjunto das interações.
-- oportunidadeComercial: até 3 bullets — argumentos com maior tração no histórico.
-- feedbackVendedor: 2-4 linhas — avaliação de como o vendedor está conduzindo o Lead, com sugestão concreta.
-- planoFollowup: 3-4 passos {quando, acao} coerentes com a tendência atual.
-- recomendacaoEstrategica: até 3 linhas — jogada estratégica para este Lead específico.
-- principalObjecao: string curta (ou "Nenhuma").
-- proximaAcao: string curta e acionável.
-- diasAteProximoFollowup: inteiro 0-30.
-- dataProximoContato: data ISO (YYYY-MM-DD) coerente com diasAteProximoFollowup a partir de hoje.
-- assuntosDeInteresse: até 5 tags curtas (temas que despertaram interesse ao longo dos contatos).`;
+- resumoExecutivo: até 4 linhas.
+- evolucaoLead: 2-4 linhas descrevendo a jornada.
+- objecoes: até 3 bullets.
+- pontosPositivos: até 3 bullets.
+- pontosAtencao: até 3 bullets.
+- oportunidadeComercial: até 3 bullets.
+- feedbackVendedor: 2-4 linhas com sugestão concreta.
+- planoFollowup: 3-4 passos {quando, acao}.
+- recomendacaoEstrategica: até 3 linhas.
+- principalObjecao: string curta ou "Nenhuma".
+- proximaAcao: string curta.
+- diasAteProximoFollowup: 0-30.
+- dataProximoContato: YYYY-MM-DD.
+- assuntosDeInteresse: até 5 tags.`;
 
 interface Payload {
   leadId?: string;
@@ -66,6 +92,7 @@ interface Payload {
   tarefasPendentes?: string;
   movimentacoes?: string;
   historicoEventos?: string;
+  mode?: "quick" | "full";
 }
 
 Deno.serve(async (req) => {
@@ -99,34 +126,49 @@ Deno.serve(async (req) => {
       });
     }
 
+    const mode: "quick" | "full" = body.mode === "full" ? "full" : "quick";
     const today = new Date().toISOString().slice(0, 10);
-    const userPrompt = [
-      `Data de hoje: ${today}`,
-      '',
-      '========== DADOS CADASTRAIS DO LEAD ==========',
-      body.leadInfo || `Empresa: ${body.company || 'N/D'}\nNicho: ${body.niche || 'N/D'}\nEtapa: ${body.stage || 'N/D'}`,
-      '',
-      '========== LIGAÇÃO EM ANÁLISE (última ação registrada) ==========',
-      `Tentativa: ${body.attempt ?? 'N/D'}`,
-      callSummary,
-      '',
-      '========== TODAS AS LIGAÇÕES DO LEAD (ordem cronológica) ==========',
-      body.allCallNotes || '(apenas a ligação em análise)',
-      '',
-      '========== MOVIMENTAÇÕES NO PIPELINE ==========',
-      body.movimentacoes || '(sem movimentações)',
-      '',
-      '========== TAREFAS CONCLUÍDAS ==========',
-      body.tarefasConcluidas || '(nenhuma)',
-      '',
-      '========== TAREFAS PENDENTES ==========',
-      body.tarefasPendentes || '(nenhuma)',
-      '',
-      '========== HISTÓRICO DE EVENTOS ==========',
-      body.historicoEventos || '(vazio)',
-      '',
-      'Analise o CONTEXTO COMPLETO acima e devolva o JSON conforme o schema.',
-    ].join('\n');
+
+    const userPrompt = mode === "quick"
+      ? [
+          `Data de hoje: ${today}`,
+          '',
+          '========== DADOS BÁSICOS DO LEAD ==========',
+          body.leadInfo || `Empresa: ${body.company || 'N/D'}\nNicho: ${body.niche || 'N/D'}\nEtapa: ${body.stage || 'N/D'}`,
+          '',
+          '========== ÚLTIMO RESUMO DE LIGAÇÃO (Matteline) ==========',
+          `Tentativa: ${body.attempt ?? 'N/D'}`,
+          callSummary,
+          '',
+          'Faça a análise RÁPIDA e devolva o JSON.',
+        ].join('\n')
+      : [
+          `Data de hoje: ${today}`,
+          '',
+          '========== DADOS CADASTRAIS DO LEAD ==========',
+          body.leadInfo || `Empresa: ${body.company || 'N/D'}\nNicho: ${body.niche || 'N/D'}\nEtapa: ${body.stage || 'N/D'}`,
+          '',
+          '========== LIGAÇÃO EM ANÁLISE ==========',
+          `Tentativa: ${body.attempt ?? 'N/D'}`,
+          callSummary,
+          '',
+          '========== TODAS AS LIGAÇÕES DO LEAD (ordem cronológica) ==========',
+          body.allCallNotes || '(apenas a ligação em análise)',
+          '',
+          '========== MOVIMENTAÇÕES NO PIPELINE ==========',
+          body.movimentacoes || '(sem movimentações)',
+          '',
+          '========== TAREFAS CONCLUÍDAS ==========',
+          body.tarefasConcluidas || '(nenhuma)',
+          '',
+          '========== TAREFAS PENDENTES ==========',
+          body.tarefasPendentes || '(nenhuma)',
+          '',
+          '========== HISTÓRICO DE EVENTOS ==========',
+          body.historicoEventos || '(vazio)',
+          '',
+          'Analise o CONTEXTO COMPLETO acima e devolva o JSON.',
+        ].join('\n');
 
     const inputChars = userPrompt.length;
 
@@ -134,12 +176,14 @@ Deno.serve(async (req) => {
     try {
       result = await callAI({
         task: 'auditor_ligacao',
-        system: SYSTEM_PROMPT,
+        system: mode === "quick" ? SYSTEM_QUICK : SYSTEM_FULL,
         user: userPrompt,
         inputChars,
+        // Modo quick usa tier menor; modo full força tier mais capaz.
+        forceComplex: mode === "full",
         json: true,
         temperature: 0.3,
-        maxTokens: 8192,
+        maxTokens: mode === "quick" ? 2048 : 8192,
       });
     } catch (e) {
       const err = e as Error & { status?: number };
@@ -184,6 +228,8 @@ Deno.serve(async (req) => {
       }
     }
 
+    (data as Record<string, unknown>).mode = mode;
+
     const temperature = (data.temperatura as string) === 'Quente' || (data.temperatura as string) === 'Frio'
       ? data.temperatura as 'Quente' | 'Frio'
       : 'Morno';
@@ -191,6 +237,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       data,
       temperature,
+      mode,
       generatedAt: new Date().toISOString(),
       model: result.modelUsed,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
