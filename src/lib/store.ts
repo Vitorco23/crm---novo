@@ -53,12 +53,21 @@ export interface LeadAttachment {
   createdAt: string;
 }
 
+export interface CallNoteAnalysis {
+  markdown: string;
+  temperature: "Quente" | "Morno" | "Frio";
+  generatedAt: string;
+  model: string;
+}
+
 export interface CallNote {
   id: string;
   text: string;
   createdAt: string;
   scriptUsed?: string;
+  analysis?: CallNoteAnalysis;
 }
+
 
 export interface Lead {
   id: string;
@@ -536,6 +545,17 @@ export function addCallNote(leadId: string, text: string, scriptUsed?: string) {
     emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: lead.stage, scriptUsed });
   }
 }
+
+export function setCallNoteAnalysis(leadId: string, noteId: string, analysis: CallNoteAnalysis) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) return;
+  lead.callNotes = (lead.callNotes || []).map((n) =>
+    n.id === noteId ? { ...n, analysis } : n
+  );
+  saveLeads(leads);
+}
+
 
 export function removeCallNote(leadId: string, noteId: string) {
   const leads = getLeads();
