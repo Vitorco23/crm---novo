@@ -925,13 +925,6 @@ export default function LeadDetailDrawer({
             )}
           </TabsContent>
 
-
-          {/* CADÊNCIA */}
-          {isColdCall && (
-            <TabsContent value="cadencia" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-3">
-              <CadenceEditor niche={lead.niche} currentAttempt={step?.attempt} onChanged={onRefresh} />
-            </TabsContent>
-          )}
         </Tabs>
 
       </DialogContent>
