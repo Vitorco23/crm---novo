@@ -87,6 +87,7 @@ export interface CallNoteAnalysis {
   temperature: "Quente" | "Morno" | "Frio";
   generatedAt: string;
   model: string;
+  mode?: "quick" | "full";
 }
 
 export interface CallNote {

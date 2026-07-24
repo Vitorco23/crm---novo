@@ -641,12 +641,12 @@ export default function LeadDetailDrawer({
                     const d = new Date(n.createdAt);
                     const isAnalyzing = analyzingNoteId === n.id;
                     const analysis = n.analysis;
-                    const runAnalyze = async () => {
+                    const runAnalyze = async (mode: "quick" | "full") => {
                       setAnalyzingNoteId(n.id);
                       try {
-                        await analyzeCallNote(lead, n);
+                        await analyzeCallNote(lead, n, mode);
                         onRefresh();
-                        toast.success("Parecer gerado pela IA");
+                        toast.success(mode === "quick" ? "Análise rápida gerada" : "Diagnóstico completo gerado");
                       } catch (e) {
                         toast.error("Falha ao analisar", { description: String((e as Error)?.message || e).slice(0, 260) });
                       } finally {
@@ -673,16 +673,29 @@ export default function LeadDetailDrawer({
                           </button>
                         </div>
                         <p className="text-sm text-foreground whitespace-pre-wrap">{n.text}</p>
-                        <div className="mt-2 flex items-center gap-2">
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
                           <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
-                            onClick={runAnalyze} disabled={isAnalyzing}>
+                            onClick={() => runAnalyze("quick")} disabled={isAnalyzing}
+                            title="Análise rápida do último resumo — baixo consumo de tokens">
                             {isAnalyzing
                               ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando...</>)
-                              : (<><Sparkles className="h-3 w-3" /> {analysis ? "Reanalisar" : "🤖 Analisar com IA"}</>)}
+                              : (<><Sparkles className="h-3 w-3" /> 🤖 Analisar Última Ligação</>)}
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                            onClick={() => runAnalyze("full")} disabled={isAnalyzing}
+                            title="Diagnóstico 360º usando todo o histórico do lead — maior consumo de tokens">
+                            {isAnalyzing
+                              ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando...</>)
+                              : (<>🧠 Diagnóstico Completo do Lead</>)}
                           </Button>
                           {analysis && (
                             <Badge variant="outline" className={`text-[10px] ${tempClass}`}>
                               {analysis.temperature}
+                            </Badge>
+                          )}
+                          {analysis && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {analysis.mode === "full" ? "🧠 Completo" : "🤖 Rápido"}
                             </Badge>
                           )}
                           {analysis && (
