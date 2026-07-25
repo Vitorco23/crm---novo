@@ -347,6 +347,33 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     setStages(getStagesForPipeline(pipeline));
   }, [pipeline]);
 
+  // ── Abrir Lead a partir de contextos externos (Próxima Melhor Ação, etc.)
+  useEffect(() => {
+    const tryOpen = (p: PendingOpenLead | null) => {
+      if (!p) return;
+      const l = getLeads().find((x) => x.id === p.leadId);
+      if (!l) return;
+      // Só abre se o lead pertence a este pipeline; caso contrário, mantém
+      // pendente para outro board consumir.
+      if (!getStagesForPipeline(pipeline).includes(l.stage)) {
+        try { sessionStorage.setItem("p21_pending_open_lead", JSON.stringify(p)); } catch { /* ignore */ }
+        return;
+      }
+      setSelectedLead(l);
+      setDrawerTab(p.tab);
+      setDrawerAction(p.action);
+      setDrawerOpen(true);
+    };
+    tryOpen(consumePendingOpenLead());
+    const onEvt = (e: Event) => {
+      const detail = (e as CustomEvent<PendingOpenLead>).detail;
+      tryOpen(detail || consumePendingOpenLead());
+    };
+    window.addEventListener(OPEN_LEAD_EVENT, onEvt as EventListener);
+    return () => window.removeEventListener(OPEN_LEAD_EVENT, onEvt as EventListener);
+  }, [pipeline]);
+
+
   const stageSet = useMemo(() => new Set(stages), [stages]);
   const allPipelineLeads = useMemo(
     () => leads.filter((l) => stageSet.has(l.stage)),
