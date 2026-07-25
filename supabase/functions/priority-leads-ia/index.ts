@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
     const userPrompt =
       `Data/hora atual: ${new Date().toISOString()}\n` +
       `Total de candidatos: ${candidates.length}\n\n` +
+      buildBusinessCalendarBlock() + "\n\n" +
       (memoryBlock ? memoryBlock + "\n\n" : "") +
       `Candidatos (JSON):\n${JSON.stringify(candidates)}\n\n` +
       `Selecione até 5 leads prioritários no formato JSON descrito.`;
