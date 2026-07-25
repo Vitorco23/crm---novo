@@ -1069,7 +1069,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
 
       <LeadDetailDrawer
-        lead={selectedLead} open={drawerOpen} onOpenChange={setDrawerOpen}
+        lead={selectedLead}
+        open={drawerOpen}
+        onOpenChange={(o) => {
+          setDrawerOpen(o);
+          if (!o) { setDrawerTab(undefined); setDrawerAction(undefined); }
+        }}
+        initialTab={drawerTab}
+        initialAction={drawerAction}
         onRefresh={() => {
           refresh();
           if (selectedLead) {
@@ -1078,6 +1085,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           }
         }}
       />
+
 
       <ImportMappingDialog
         open={mappingOpen}
