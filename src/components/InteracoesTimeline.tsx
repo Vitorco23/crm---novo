@@ -206,7 +206,7 @@ export default function InteracoesTimeline({
   };
 
   // Ação inicial vinda da Próxima Melhor Ação
-  useMemo(() => {
+  useEffect(() => {
     if (autoOpenNewInteraction) {
       setEditing(null);
       setFormOpen(true);
@@ -215,7 +215,7 @@ export default function InteracoesTimeline({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenNewInteraction]);
 
-  useMemo(() => {
+  useEffect(() => {
     if (!autoRunDiagnosis) return;
     const latest = [...(lead.callNotes || [])]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
@@ -229,6 +229,7 @@ export default function InteracoesTimeline({
     onAutoRunDiagnosisConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRunDiagnosis]);
+
 
 
   return (
