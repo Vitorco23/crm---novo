@@ -1,16 +1,15 @@
-// Guarded service worker registration.
-// - Never registers in dev, Lovable preview, iframes, or when ?sw=off is set.
-// - Unregisters any matching stale registrations in refused contexts.
-// - Auto-migrates on new build: unregisters stale SW + clears Workbox caches
-//   so devices stuck on old versions self-heal on first load after deploy.
-// - Uses vite-plugin-pwa generated /sw.js (autoUpdate).
-
-declare const __APP_BUILD_ID__: string;
+// PWA registration is disabled: this project ships a kill-switch service worker
+// at /sw.js to evict a previously registered app-shell SW that was leaving
+// tablets stuck on old builds. We keep the manifest for installability, but
+// stop registering any app-shell SW ourselves.
+//
+// Behavior:
+// - In production, on load: ensure the kill-switch /sw.js takes over any
+//   old registration (browsers auto-check /sw.js byte-diff on navigation),
+//   then unregister everything and clear own caches.
+// - In dev / Lovable preview / iframes / ?sw=off: only unregister + clean.
 
 const SW_PATH = "/sw.js";
-const BUILD_ID_STORAGE_KEY = "p21_app_build_id";
-const CURRENT_BUILD_ID =
-  typeof __APP_BUILD_ID__ !== "undefined" ? __APP_BUILD_ID__ : "dev";
 
 function isRefusedContext(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -28,28 +27,19 @@ function isRefusedContext(): boolean {
   return false;
 }
 
-async function unregisterMatching() {
+async function unregisterAll() {
   if (!("serviceWorker" in navigator)) return;
   try {
     const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(
-      regs
-        .filter((r) => {
-          const url = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || "";
-          return url.endsWith(SW_PATH);
-        })
-        .map((r) => r.unregister()),
-    );
+    await Promise.all(regs.map((r) => r.unregister().catch(() => false)));
   } catch {
     /* ignore */
   }
 }
 
-// Only touch caches created by this app's Workbox config. Never wipe
-// Firebase Messaging, OneSignal, or other integrations' caches.
-function isOwnWorkboxCache(name: string): boolean {
+function isOwnAppCache(name: string): boolean {
   return (
-    name.startsWith("workbox-precache-v") ||
+    /^workbox-precache-v\d+/.test(name) ||
     name.startsWith("workbox-runtime") ||
     name === "html-navigations" ||
     name === "static-assets" ||
@@ -62,77 +52,44 @@ async function clearOwnCaches() {
   try {
     const names = await caches.keys();
     await Promise.allSettled(
-      names.filter(isOwnWorkboxCache).map((n) => caches.delete(n)),
+      names.filter(isOwnAppCache).map((n) => caches.delete(n)),
     );
   } catch {
     /* ignore */
   }
 }
 
-/** Force-clean SW + own caches, then hard reload. Exposed for manual button. */
+/** Manual "Forçar atualização": nuke SW + own caches, then hard reload. */
 export async function forceUpdatePWA() {
-  await unregisterMatching();
+  await unregisterAll();
   await clearOwnCaches();
-  try {
-    localStorage.removeItem(BUILD_ID_STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
+  // Bypass HTTP cache on reload.
   window.location.reload();
-}
-
-async function runBuildMigrationIfNeeded() {
-  let previous: string | null = null;
-  try {
-    previous = localStorage.getItem(BUILD_ID_STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
-  if (previous === CURRENT_BUILD_ID) return;
-  // New build detected on this device — evict stale SW + caches once.
-  await unregisterMatching();
-  await clearOwnCaches();
-  try {
-    localStorage.setItem(BUILD_ID_STORAGE_KEY, CURRENT_BUILD_ID);
-  } catch {
-    /* ignore */
-  }
 }
 
 export function registerPWA() {
   if (!("serviceWorker" in navigator)) return;
+
   if (isRefusedContext()) {
-    void unregisterMatching();
+    void unregisterAll().then(clearOwnCaches);
     return;
   }
 
-  // Reload once when a new SW takes control (autoUpdate + skipWaiting/clientsClaim).
-  let reloaded = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloaded) return;
-    reloaded = true;
-    window.location.reload();
-  });
-
   window.addEventListener("load", async () => {
-    await runBuildMigrationIfNeeded();
     try {
+      // Register the kill-switch. Browsers with an old app-shell SW
+      // already installed at /sw.js will fetch this new script, install it,
+      // and its activate step wipes app caches and unregisters itself.
+      // New visitors get the kill-switch, which also unregisters immediately.
       const reg = await navigator.serviceWorker.register(SW_PATH, {
         scope: "/",
         updateViaCache: "none",
       });
       reg.update().catch(() => {});
-      setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
     } catch {
-      /* ignore */
+      // If register fails, still clear anything stale we can reach.
+      await unregisterAll();
+      await clearOwnCaches();
     }
-  });
-
-  // Also check for updates whenever the app comes back to the foreground.
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
-    navigator.serviceWorker.getRegistration(SW_PATH).then((reg) => {
-      reg?.update().catch(() => {});
-    });
   });
 }
