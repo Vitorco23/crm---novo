@@ -1,11 +1,16 @@
 // Guarded service worker registration.
 // - Never registers in dev, Lovable preview, iframes, or when ?sw=off is set.
 // - Unregisters any matching stale registrations in refused contexts.
+// - Auto-migrates on new build: unregisters stale SW + clears Workbox caches
+//   so devices stuck on old versions self-heal on first load after deploy.
 // - Uses vite-plugin-pwa generated /sw.js (autoUpdate).
-// - Forces update checks on every load and auto-reloads when a new SW takes control,
-//   so installed PWAs pick up new versions without a manual reinstall.
+
+declare const __APP_BUILD_ID__: string;
 
 const SW_PATH = "/sw.js";
+const BUILD_ID_STORAGE_KEY = "p21_app_build_id";
+const CURRENT_BUILD_ID =
+  typeof __APP_BUILD_ID__ !== "undefined" ? __APP_BUILD_ID__ : "dev";
 
 function isRefusedContext(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -40,6 +45,60 @@ async function unregisterMatching() {
   }
 }
 
+// Only touch caches created by this app's Workbox config. Never wipe
+// Firebase Messaging, OneSignal, or other integrations' caches.
+function isOwnWorkboxCache(name: string): boolean {
+  return (
+    name.startsWith("workbox-precache-v") ||
+    name.startsWith("workbox-runtime") ||
+    name === "html-navigations" ||
+    name === "static-assets" ||
+    name === "image-assets"
+  );
+}
+
+async function clearOwnCaches() {
+  if (typeof caches === "undefined") return;
+  try {
+    const names = await caches.keys();
+    await Promise.allSettled(
+      names.filter(isOwnWorkboxCache).map((n) => caches.delete(n)),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Force-clean SW + own caches, then hard reload. Exposed for manual button. */
+export async function forceUpdatePWA() {
+  await unregisterMatching();
+  await clearOwnCaches();
+  try {
+    localStorage.removeItem(BUILD_ID_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  window.location.reload();
+}
+
+async function runBuildMigrationIfNeeded() {
+  let previous: string | null = null;
+  try {
+    previous = localStorage.getItem(BUILD_ID_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  if (previous === CURRENT_BUILD_ID) return;
+  // New build detected on this device — evict stale SW + caches once.
+  await unregisterMatching();
+  await clearOwnCaches();
+  try {
+    localStorage.setItem(BUILD_ID_STORAGE_KEY, CURRENT_BUILD_ID);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function registerPWA() {
   if (!("serviceWorker" in navigator)) return;
   if (isRefusedContext()) {
@@ -55,19 +114,18 @@ export function registerPWA() {
     window.location.reload();
   });
 
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      // updateViaCache: "none" bypasses the browser's 24h HTTP cache for the SW script,
-      // so installed PWAs re-check the SW file on every load.
-      .register(SW_PATH, { scope: "/", updateViaCache: "none" })
-      .then((reg) => {
-        // Kick off an immediate update check, then poll every 30 min while the app is open.
-        reg.update().catch(() => {});
-        setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
-      })
-      .catch(() => {
-        /* ignore */
+  window.addEventListener("load", async () => {
+    await runBuildMigrationIfNeeded();
+    try {
+      const reg = await navigator.serviceWorker.register(SW_PATH, {
+        scope: "/",
+        updateViaCache: "none",
       });
+      reg.update().catch(() => {});
+      setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
+    } catch {
+      /* ignore */
+    }
   });
 
   // Also check for updates whenever the app comes back to the foreground.
