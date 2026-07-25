@@ -159,12 +159,14 @@ function mapsUrlFor(lead: Lead) {
 }
 
 export default function LeadDetailDrawer({
-  lead, open, onOpenChange, onRefresh,
+  lead, open, onOpenChange, onRefresh, initialTab, initialAction,
 }: {
   lead: Lead | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRefresh: () => void;
+  initialTab?: "geral" | "interacoes" | "observacoes" | "anexos";
+  initialAction?: "new-interaction" | "generate-script" | "run-diagnosis" | "schedule-meeting" | "upload-attachment" | "new-task";
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
@@ -182,6 +184,8 @@ export default function LeadDetailDrawer({
   const [analyzingNoteId, setAnalyzingNoteId] = useState<string | null>(null);
   const [aiReadingId, setAiReadingId] = useState<string | null>(null);
   const [aiReadResults, setAiReadResults] = useState<Record<string, string>>({});
+  const [autoNewInteraction, setAutoNewInteraction] = useState(false);
+  const [autoRunDiagnosis, setAutoRunDiagnosis] = useState(false);
 
 
   useEffect(() => {
@@ -189,8 +193,32 @@ export default function LeadDetailDrawer({
     setNewCallNote("");
     setScripts(getScripts());
     setCallScript(getSelectedScript());
-    setTab("geral");
-  }, [lead?.id]);
+    setTab(initialTab || "geral");
+  }, [lead?.id, initialTab]);
+
+  // Executa ação inicial após montar/abrir (vindo da Próxima Melhor Ação).
+  useEffect(() => {
+    if (!open || !lead || !initialAction) return;
+    if (initialAction === "generate-script") {
+      setScriptOpen(true);
+    } else if (initialAction === "schedule-meeting") {
+      setMeetingOpen(true);
+    } else if (initialAction === "upload-attachment") {
+      setTab("anexos");
+      setTimeout(() => fileRef.current?.click(), 60);
+    } else if (initialAction === "new-task") {
+      setEditingTask(null);
+      setTaskFormOpen(true);
+    } else if (initialAction === "new-interaction") {
+      setTab("interacoes");
+      setAutoNewInteraction(true);
+    } else if (initialAction === "run-diagnosis") {
+      setTab("interacoes");
+      setAutoRunDiagnosis(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, lead?.id, initialAction]);
+
 
   useEffect(() => {
     const h = () => { setScripts(getScripts()); setCallScript(getSelectedScript()); };
