@@ -1,15 +1,16 @@
 // NextBestActionCard — bloco único de Próxima Melhor Ação.
 // Renderiza cabeçalho + motivo + Pacote de Execução adaptativo.
-// Usado por: DiretorComercialIACard, CallAuditView, PriorityLeadsBlock etc.
+// Botões só aparecem quando têm funcionalidade real (lead disponível
+// ou callback específico); nunca ficam visíveis sem ação.
 
-import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Sparkles, AlertTriangle, Phone, MessageCircle, Calendar, FileText,
-  Repeat, Clock, Paperclip, XCircle, Trophy, Brain, ArrowRight, ExternalLink,
+  AlertTriangle, Phone, MessageCircle, Calendar, FileText,
+  Clock, Paperclip, XCircle, Trophy, Brain, ArrowRight, ExternalLink,
 } from "lucide-react";
 import {
   ACTION_META, URGENCY_META, CONFIDENCE_META, ACTION_PACKAGES,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/nextBestAction";
 import type { Lead } from "@/lib/store";
 import { getPipelineForStage } from "@/lib/store";
+import { openLead as openLeadEverywhere } from "@/lib/openLead";
 import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 
 interface Props {
@@ -25,9 +27,9 @@ interface Props {
   compact?: boolean;
   /** Handler opcional para "Registrar Ligação" quando lead está em contexto. */
   onLogCall?: () => void;
-  /** Handler opcional para abrir o diagnóstico completo. */
+  /** Handler opcional para abrir o diagnóstico completo (usado no Auditor). */
   onRunDiagnosis?: () => void;
-  /** Handler opcional para abrir o modal do lead. */
+  /** Handler opcional para abrir o modal do lead (usado no Auditor/Timeline). */
   onOpenLead?: () => void;
 }
 
@@ -37,14 +39,6 @@ function waLink(l?: Lead | null): string | null {
   if (!raw) return null;
   const num = raw.startsWith("55") ? raw : `55${raw}`;
   return `https://wa.me/${num}`;
-}
-
-function pipelineHref(l?: Lead | null): string {
-  if (!l) return "/central";
-  const p = getPipelineForStage(l.stage);
-  if (p === "oportunidades") return "/oportunidades";
-  if (p === "onboarding") return "/onboarding";
-  return "/";
 }
 
 const BTN_ICON: Record<NBAPackageButton, JSX.Element> = {
@@ -88,16 +82,22 @@ export default function NextBestActionCard({
   const buttons = ACTION_PACKAGES[nba.action];
   const wa = waLink(lead);
   const tel = lead?.phone?.replace(/\D/g, "");
-  const href = pipelineHref(lead);
   const nav = useNavigate();
   const [meetingOpen, setMeetingOpen] = useState(false);
 
   const insufficient = nba.confidence === "insufficient_context";
+  const cls = "h-7 text-[11px] gap-1";
 
-  const renderBtn = (b: NBAPackageButton) => {
+  const openThisLead = (opts?: Parameters<typeof openLeadEverywhere>[1]) => {
+    if (!lead) return;
+    if (onOpenLead && !opts) { onOpenLead(); return; }
+    openLeadEverywhere(lead.id, opts);
+  };
+
+  const renderBtn = (b: NBAPackageButton): JSX.Element | null => {
     const label = BTN_LABEL[b];
     const icon = BTN_ICON[b];
-    const cls = "h-7 text-[11px] gap-1";
+
     switch (b) {
       case "call_dialer":
         if (!tel) return null;
@@ -106,6 +106,7 @@ export default function NextBestActionCard({
             <Button size="sm" variant="outline" className={cls}>{icon} {label}</Button>
           </a>
         );
+
       case "whatsapp":
         if (!wa) return null;
         return (
@@ -113,22 +114,65 @@ export default function NextBestActionCard({
             <Button size="sm" variant="outline" className={cls}>{icon} {label}</Button>
           </a>
         );
+
       case "log_call":
-      case "upload_docs":
-      case "generate_message":
-      case "generate_script":
-      case "generate_invite":
-      case "send_proposal_link":
-      case "register_loss":
-      case "start_onboarding":
+        if (!lead && !onLogCall) return null;
         return (
           <Button
             key={b} size="sm" variant="outline" className={cls}
-            onClick={onOpenLead ?? (() => nav(href))}
+            onClick={onLogCall ?? (() => openThisLead({ tab: "interacoes", action: "new-interaction" }))}
           >
             {icon} {label}
           </Button>
         );
+
+      case "generate_message":
+      case "generate_invite":
+      case "send_proposal_link":
+        if (!lead) return null;
+        return (
+          <Button
+            key={b} size="sm" variant="outline" className={cls}
+            onClick={() => openThisLead({ tab: "interacoes", action: "new-interaction" })}
+          >
+            {icon} {label}
+          </Button>
+        );
+
+      case "generate_script":
+        if (!lead) return null;
+        return (
+          <Button
+            key={b} size="sm" variant="outline" className={cls}
+            onClick={() => openThisLead({ action: "generate-script" })}
+          >
+            {icon} {label}
+          </Button>
+        );
+
+      case "upload_docs":
+        if (!lead) return null;
+        return (
+          <Button
+            key={b} size="sm" variant="outline" className={cls}
+            onClick={() => openThisLead({ tab: "anexos", action: "upload-attachment" })}
+          >
+            {icon} {label}
+          </Button>
+        );
+
+      case "register_loss":
+      case "start_onboarding":
+        if (!lead) return null;
+        return (
+          <Button
+            key={b} size="sm" variant="outline" className={cls}
+            onClick={() => openThisLead()}
+          >
+            {icon} {label}
+          </Button>
+        );
+
       case "schedule_meeting":
         if (!lead) return null;
         return (
@@ -136,28 +180,34 @@ export default function NextBestActionCard({
             {icon} {label}
           </Button>
         );
+
       case "run_full_diagnosis":
+        if (!lead && !onRunDiagnosis) return null;
         return (
           <Button
             key={b} size="sm" variant="outline"
             className={`${cls} border-primary/40 text-primary hover:bg-primary/10`}
-            onClick={onRunDiagnosis ?? (onOpenLead ?? (() => nav(href)))}
+            onClick={onRunDiagnosis ?? (() => openThisLead({ tab: "interacoes", action: "run-diagnosis" }))}
           >
             {icon} {label}
           </Button>
         );
+
       case "open_lead":
       default:
+        if (!lead && !onOpenLead) return null;
         return (
           <Button
             key={b} size="sm" variant="outline" className={cls}
-            onClick={onOpenLead ?? (() => nav(href))}
+            onClick={() => openThisLead()}
           >
             {icon} {label} <ArrowRight className="h-3 w-3" />
           </Button>
         );
     }
   };
+
+  const rendered = buttons.map(renderBtn).filter(Boolean);
 
   return (
     <>
@@ -197,12 +247,12 @@ export default function NextBestActionCard({
           </div>
         </div>
 
-        {!compact && (
+        {!compact && rendered.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-0.5 border-t border-border/40 mt-2 pl-9">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground w-full font-semibold">
               Executar agora
             </span>
-            {buttons.map(renderBtn)}
+            {rendered}
           </div>
         )}
       </Card>
