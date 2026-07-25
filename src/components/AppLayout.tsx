@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { PomodoroHeaderWidget } from "@/components/PomodoroHeaderWidget";
 import { HeaderStatsWidget } from "@/components/HeaderStatsWidget";
+import { ForceUpdateButton } from "@/components/ForceUpdateButton";
 import { Button } from "@/components/ui/button";
 import { LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +27,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   {isAdmin && <Shield className="h-3 w-3 text-primary" />}
                   {user?.email}
                 </span>
+                <ForceUpdateButton />
                 <Button size="icon" variant="ghost" onClick={signOut} title="Sair">
                   <LogOut className="h-4 w-4" />
                 </Button>
