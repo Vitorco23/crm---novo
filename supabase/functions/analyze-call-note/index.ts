@@ -142,9 +142,12 @@ Deno.serve(async (req) => {
       includePatterns: true,
     });
 
+    const calendarBlock = buildBusinessCalendarBlock();
     const userPrompt = mode === "quick"
       ? [
           `Data de hoje: ${today}`,
+          '',
+          calendarBlock,
           '',
           memoryBlock,
           '',
@@ -159,6 +162,8 @@ Deno.serve(async (req) => {
         ].filter(Boolean).join('\n')
       : [
           `Data de hoje: ${today}`,
+          '',
+          calendarBlock,
           '',
           memoryBlock,
           '',
