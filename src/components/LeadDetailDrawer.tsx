@@ -621,8 +621,16 @@ export default function LeadDetailDrawer({
 
           {/* INTERAÇÕES COMERCIAIS */}
           <TabsContent value="interacoes" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
-            <InteracoesTimeline lead={lead} onRefresh={onRefresh} />
+            <InteracoesTimeline
+              lead={lead}
+              onRefresh={onRefresh}
+              autoOpenNewInteraction={autoNewInteraction}
+              onAutoNewInteractionConsumed={() => setAutoNewInteraction(false)}
+              autoRunDiagnosis={autoRunDiagnosis}
+              onAutoRunDiagnosisConsumed={() => setAutoRunDiagnosis(false)}
+            />
           </TabsContent>
+
 
           {/* OBSERVAÇÕES (informações permanentes sobre o Lead) */}
           <TabsContent value="observacoes" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-3">
