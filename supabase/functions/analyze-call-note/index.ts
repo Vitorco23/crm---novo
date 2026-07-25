@@ -7,6 +7,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { callAI } from '../_shared/ai-router.ts';
 import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from '../_shared/nba-types.ts';
+import { buildBusinessCalendarBlock } from '../_shared/business-calendar.ts';
 
 const SYSTEM_QUICK = `Você é o AUDITOR COMERCIAL da Performance21 em modo ANÁLISE RÁPIDA.
 
