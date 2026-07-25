@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
 
     const userPrompt =
       `Data de referência: ${snapshot.today ?? new Date().toISOString().slice(0, 10)}\n\n` +
+      buildBusinessCalendarBlock() + "\n\n" +
       (memoryBlock ? memoryBlock + "\n\n" : "") +
       `Snapshot da operação (JSON):\n` +
       JSON.stringify(snapshot) +
