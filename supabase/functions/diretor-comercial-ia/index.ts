@@ -4,6 +4,7 @@
 import { callAI } from "../_shared/ai-router.ts";
 import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
+import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,6 +55,7 @@ Deno.serve(async (req) => {
 
     const userPrompt =
       `Data de referência: ${snapshot.today ?? new Date().toISOString().slice(0, 10)}\n\n` +
+      buildBusinessCalendarBlock() + "\n\n" +
       (memoryBlock ? memoryBlock + "\n\n" : "") +
       `Snapshot da operação (JSON):\n` +
       JSON.stringify(snapshot) +

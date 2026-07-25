@@ -5,6 +5,7 @@
 import { callAI } from "../_shared/ai-router.ts";
 import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
 import { NBA_PROMPT_BLOCK, sanitizeNBA } from "../_shared/nba-types.ts";
+import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,6 +68,7 @@ Deno.serve(async (req) => {
     const userPrompt =
       `Data/hora atual: ${new Date().toISOString()}\n` +
       `Total de candidatos: ${candidates.length}\n\n` +
+      buildBusinessCalendarBlock() + "\n\n" +
       (memoryBlock ? memoryBlock + "\n\n" : "") +
       `Candidatos (JSON):\n${JSON.stringify(candidates)}\n\n` +
       `Selecione até 5 leads prioritários no formato JSON descrito.`;
