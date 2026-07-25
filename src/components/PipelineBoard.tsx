@@ -44,6 +44,7 @@ import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import LeadDetailDrawer from "@/components/LeadDetailDrawer";
+import { consumePendingOpenLead, OPEN_LEAD_EVENT, type LeadTabHint, type LeadActionHint, type PendingOpenLead } from "@/lib/openLead";
 import ScheduleMeetingDialog from "@/components/ScheduleMeetingDialog";
 import PipelineListView from "@/components/PipelineListView";
 import BulkActionsBar from "@/components/BulkActionsBar";
@@ -288,6 +289,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<LeadTabHint | undefined>(undefined);
+  const [drawerAction, setDrawerAction] = useState<LeadActionHint | undefined>(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [alignmentLead, setAlignmentLead] = useState<Lead | null>(null);
@@ -343,6 +346,33 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     setLeads(getLeads());
     setStages(getStagesForPipeline(pipeline));
   }, [pipeline]);
+
+  // ── Abrir Lead a partir de contextos externos (Próxima Melhor Ação, etc.)
+  useEffect(() => {
+    const tryOpen = (p: PendingOpenLead | null) => {
+      if (!p) return;
+      const l = getLeads().find((x) => x.id === p.leadId);
+      if (!l) return;
+      // Só abre se o lead pertence a este pipeline; caso contrário, mantém
+      // pendente para outro board consumir.
+      if (!getStagesForPipeline(pipeline).includes(l.stage)) {
+        try { sessionStorage.setItem("p21_pending_open_lead", JSON.stringify(p)); } catch { /* ignore */ }
+        return;
+      }
+      setSelectedLead(l);
+      setDrawerTab(p.tab);
+      setDrawerAction(p.action);
+      setDrawerOpen(true);
+    };
+    tryOpen(consumePendingOpenLead());
+    const onEvt = (e: Event) => {
+      const detail = (e as CustomEvent<PendingOpenLead>).detail;
+      tryOpen(detail || consumePendingOpenLead());
+    };
+    window.addEventListener(OPEN_LEAD_EVENT, onEvt as EventListener);
+    return () => window.removeEventListener(OPEN_LEAD_EVENT, onEvt as EventListener);
+  }, [pipeline]);
+
 
   const stageSet = useMemo(() => new Set(stages), [stages]);
   const allPipelineLeads = useMemo(
@@ -1039,7 +1069,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
 
       <LeadDetailDrawer
-        lead={selectedLead} open={drawerOpen} onOpenChange={setDrawerOpen}
+        lead={selectedLead}
+        open={drawerOpen}
+        onOpenChange={(o) => {
+          setDrawerOpen(o);
+          if (!o) { setDrawerTab(undefined); setDrawerAction(undefined); }
+        }}
+        initialTab={drawerTab}
+        initialAction={drawerAction}
         onRefresh={() => {
           refresh();
           if (selectedLead) {
@@ -1048,6 +1085,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           }
         }}
       />
+
 
       <ImportMappingDialog
         open={mappingOpen}

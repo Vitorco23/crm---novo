@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -170,7 +170,16 @@ function InteractionForm({
 
 export default function InteracoesTimeline({
   lead, onRefresh,
-}: { lead: Lead; onRefresh: () => void }) {
+  autoOpenNewInteraction, onAutoNewInteractionConsumed,
+  autoRunDiagnosis, onAutoRunDiagnosisConsumed,
+}: {
+  lead: Lead;
+  onRefresh: () => void;
+  autoOpenNewInteraction?: boolean;
+  onAutoNewInteractionConsumed?: () => void;
+  autoRunDiagnosis?: boolean;
+  onAutoRunDiagnosisConsumed?: () => void;
+}) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Interaction | null>(null);
   const [analyzingNoteId, setAnalyzingNoteId] = useState<string | null>(null);
@@ -195,6 +204,33 @@ export default function InteracoesTimeline({
       toast.error("Falha ao analisar", { description: String((e as Error)?.message || e).slice(0, 260) });
     } finally { setAnalyzingNoteId(null); }
   };
+
+  // Ação inicial vinda da Próxima Melhor Ação
+  useEffect(() => {
+    if (autoOpenNewInteraction) {
+      setEditing(null);
+      setFormOpen(true);
+      onAutoNewInteractionConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenNewInteraction]);
+
+  useEffect(() => {
+    if (!autoRunDiagnosis) return;
+    const latest = [...(lead.callNotes || [])]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    if (latest) {
+      analyzeNote(latest, "full");
+    } else {
+      toast.info("Registre a primeira ligação para executar o diagnóstico completo.");
+      setEditing(null);
+      setFormOpen(true);
+    }
+    onAutoRunDiagnosisConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRunDiagnosis]);
+
+
 
   return (
     <div className="space-y-4">
