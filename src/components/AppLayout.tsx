@@ -1,14 +1,35 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { FloatingPomodoroWidget } from "@/components/FloatingPomodoroWidget";
+import { PomodoroHeaderWidget } from "@/components/PomodoroHeaderWidget";
 import { HeaderStatsWidget } from "@/components/HeaderStatsWidget";
 import { ForceUpdateButton } from "@/components/ForceUpdateButton";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut, Shield, PictureInPicture2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReminderNotifications } from "@/hooks/useReminderNotifications";
+import { PomodoroModeProvider, usePomodoroMode } from "@/contexts/PomodoroModeContext";
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+function DockedPomodoroSlot() {
+  const { mode, setMode } = usePomodoroMode();
+  if (mode !== "docked") return null;
+  return (
+    <div className="flex items-center gap-1">
+      <PomodoroHeaderWidget />
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-7 w-7"
+        onClick={() => setMode("floating")}
+        title="Soltar como janela flutuante"
+      >
+        <PictureInPicture2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+function LayoutInner({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, signOut } = useAuth();
   useReminderNotifications();
 
@@ -20,6 +41,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <header className="h-12 flex items-center justify-between border-b px-2 shrink-0 gap-2">
             <SidebarTrigger />
             <div className="flex items-center gap-3">
+              <DockedPomodoroSlot />
               <HeaderStatsWidget />
               <div className="flex items-center gap-2 pl-2 border-l border-border">
                 <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
@@ -38,5 +60,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <FloatingPomodoroWidget />
       </div>
     </SidebarProvider>
+  );
+}
+
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <PomodoroModeProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </PomodoroModeProvider>
   );
 }
