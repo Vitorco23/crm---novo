@@ -142,13 +142,36 @@ export default function Pomodoro() {
             ) : (
               <div className="space-y-2 max-h-[420px] overflow-y-auto scrollbar-thin">
                 {[...sessions].reverse().map((s) => (
-                  <div key={s.id} className="rounded-md border p-2.5 text-sm animate-slide-in">
+                  <div key={s.id} className="rounded-md border p-2.5 text-sm animate-slide-in group">
                     <div className="flex justify-between text-xs text-muted-foreground mb-1">
                       <span>
                         {format(new Date(s.startTime), "dd/MM HH:mm", { locale: ptBR })} → {format(new Date(s.endTime), "HH:mm", { locale: ptBR })}
                         {s.niche && <span className="ml-2 text-accent">· {s.niche}</span>}
+                        {s.scriptUsed && <span className="ml-2 text-muted-foreground">· {s.scriptUsed}</span>}
                       </span>
-                      <span>{s.durationMinutes}min</span>
+                      <div className="flex items-center gap-2">
+                        <span>{s.durationMinutes}min</span>
+                        <button
+                          className="opacity-60 hover:opacity-100 hover:text-accent transition"
+                          onClick={() => setEditing(s)}
+                          title="Editar sessão"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          className="opacity-60 hover:opacity-100 hover:text-destructive transition"
+                          onClick={() => {
+                            if (confirm("Excluir esta sessão? As métricas serão atualizadas em todo o sistema.")) {
+                              deleteSession(s.id);
+                              refresh();
+                              toast({ title: "Sessão excluída" });
+                            }
+                          }}
+                          title="Excluir sessão"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-3 text-xs">
                       <span className="flex items-center gap-1"><Phone className="h-3 w-3 text-accent" />{s.calls}</span>
