@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { usePomodoro } from "@/contexts/PomodoroContext";
-import { getSessions, type PomodoroSession } from "@/lib/store";
+import { getSessions, updateSession, deleteSession, type PomodoroSession } from "@/lib/store";
+import { getScripts } from "@/lib/scripts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Play, Pause, Square, Clock, Phone, Users, UserCheck, CalendarCheck, Tag } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Play, Pause, Square, Clock, Phone, Users, UserCheck, CalendarCheck, Tag, Pencil, Trash2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
