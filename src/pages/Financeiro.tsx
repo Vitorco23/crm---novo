@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   type FinanceTransaction, type ExpenseCategory,
-  getTransactions, addTransaction, deleteTransaction,
+  getTransactions, addTransaction, deleteTransaction, updateTransaction,
   EXPENSE_CATEGORY_LABELS, formatBRL, monthKey,
 } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
-  TrendingUp, TrendingDown, DollarSign, Plus, Trash2, Briefcase, Repeat, Wallet, ChevronLeft, ChevronRight,
+  TrendingUp, TrendingDown, Plus, Trash2, Repeat, Wallet, ChevronLeft, ChevronRight, Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 
