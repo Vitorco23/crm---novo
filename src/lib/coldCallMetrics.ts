@@ -73,9 +73,8 @@ export function computeDailyTotals(): DailyTotals {
     { calls: 0, connections: 0, decisionMakers: 0, meetings: 0, productiveMinutes: 0 }
   );
 
-  // Meetings scheduled today (fallback / cross-check with meetings table)
-  const meetingsToday = getMeetings().filter((m) => isToday(m.createdAt)).length;
-  totals.meetings = Math.max(totals.meetings, meetingsToday);
+  // Fonte única da verdade: somente números registrados no Pomodoro.
+  // Não somamos meetings da tabela de reuniões para evitar duplicação.
 
   // Expected revenue = sum of contractValue of open opportunities
   const oppStages = new Set(getStagesForPipeline("oportunidades"));

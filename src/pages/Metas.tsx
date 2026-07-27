@@ -287,18 +287,15 @@ function FunnelLine({ label, pct }: { label: string; pct: number }) {
 function TodayProgress({
   callsGoal, decisionMakersGoal, meetingsGoal,
 }: { callsGoal: number; decisionMakersGoal: number; meetingsGoal: number }) {
+  // Fonte única da verdade: somente o que foi registrado no Pomodoro
+  // (contadores flutuantes + formulário final da sessão). Movimentações
+  // de card NÃO são contabilizadas para evitar duplicação.
   const today = useMemo(() => {
     const sessions = getSessions().filter((s) => isToday(new Date(s.startTime)));
-    const movements = getMovementEvents().filter((m) => isToday(new Date(m.timestamp)));
-    const sessionCalls = sessions.reduce((a, s) => a + (s.calls || 0), 0);
-    const sessionDM = sessions.reduce((a, s) => a + (s.decisionMakers || 0), 0);
-    const sessionMeetings = sessions.reduce((a, s) => a + (s.meetings || 0), 0);
-    const movCalls = movements.filter((m) => m.type === "call").length;
-    const movMeetings = movements.filter((m) => m.type === "meeting").length;
     return {
-      calls: sessionCalls + movCalls,
-      decisionMakers: sessionDM,
-      meetings: sessionMeetings + movMeetings,
+      calls: sessions.reduce((a, s) => a + (s.calls || 0), 0),
+      decisionMakers: sessions.reduce((a, s) => a + (s.decisionMakers || 0), 0),
+      meetings: sessions.reduce((a, s) => a + (s.meetings || 0), 0),
     };
   }, []);
 
