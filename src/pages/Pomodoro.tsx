@@ -24,6 +24,7 @@ export default function Pomodoro() {
   const [focusMin, setFocusMin] = useState(Math.round(state.durationSec / 60));
   const [breakMin, setBreakMin] = useState(Math.round(state.breakSec / 60));
   const [sessions, setSessions] = useState<PomodoroSession[]>(getSessions);
+  const [editing, setEditing] = useState<PomodoroSession | null>(null);
 
   const refresh = () => setSessions(getSessions());
 
