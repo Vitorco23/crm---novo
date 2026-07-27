@@ -134,15 +134,17 @@ export default function Financeiro() {
           <TabsTrigger value="expense">Saídas</TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="mt-4">
-          <TxList items={monthTxs} onDelete={handleDelete} />
+          <TxList items={monthTxs} onDelete={handleDelete} onEdit={setEditingTx} />
         </TabsContent>
         <TabsContent value="revenue" className="mt-4">
-          <TxList items={monthTxs.filter((t) => t.kind === "revenue")} onDelete={handleDelete} />
+          <TxList items={monthTxs.filter((t) => t.kind === "revenue")} onDelete={handleDelete} onEdit={setEditingTx} />
         </TabsContent>
         <TabsContent value="expense" className="mt-4">
-          <TxList items={monthTxs.filter((t) => t.kind === "expense")} onDelete={handleDelete} />
+          <TxList items={monthTxs.filter((t) => t.kind === "expense")} onDelete={handleDelete} onEdit={setEditingTx} />
         </TabsContent>
       </Tabs>
+
+      <EditTxDialog tx={editingTx} onClose={() => setEditingTx(null)} onSaved={refresh} />
     </div>
   );
 }
