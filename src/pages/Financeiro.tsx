@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   type FinanceTransaction, type ExpenseCategory,
-  getTransactions, addTransaction, deleteTransaction,
+  getTransactions, addTransaction, deleteTransaction, updateTransaction,
   EXPENSE_CATEGORY_LABELS, formatBRL, monthKey,
 } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
-  TrendingUp, TrendingDown, DollarSign, Plus, Trash2, Briefcase, Repeat, Wallet, ChevronLeft, ChevronRight,
+  TrendingUp, TrendingDown, Plus, Trash2, Repeat, Wallet, ChevronLeft, ChevronRight, Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +42,7 @@ export default function Financeiro() {
   const [month, setMonth] = useState(currentMonthKey());
   const [revenueDialog, setRevenueDialog] = useState(false);
   const [expenseDialog, setExpenseDialog] = useState(false);
+  const [editingTx, setEditingTx] = useState<FinanceTransaction | null>(null);
 
   const refresh = () => setTxs(getTransactions());
 
@@ -133,20 +134,22 @@ export default function Financeiro() {
           <TabsTrigger value="expense">Saídas</TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="mt-4">
-          <TxList items={monthTxs} onDelete={handleDelete} />
+          <TxList items={monthTxs} onDelete={handleDelete} onEdit={setEditingTx} />
         </TabsContent>
         <TabsContent value="revenue" className="mt-4">
-          <TxList items={monthTxs.filter((t) => t.kind === "revenue")} onDelete={handleDelete} />
+          <TxList items={monthTxs.filter((t) => t.kind === "revenue")} onDelete={handleDelete} onEdit={setEditingTx} />
         </TabsContent>
         <TabsContent value="expense" className="mt-4">
-          <TxList items={monthTxs.filter((t) => t.kind === "expense")} onDelete={handleDelete} />
+          <TxList items={monthTxs.filter((t) => t.kind === "expense")} onDelete={handleDelete} onEdit={setEditingTx} />
         </TabsContent>
       </Tabs>
+
+      <EditTxDialog tx={editingTx} onClose={() => setEditingTx(null)} onSaved={refresh} />
     </div>
   );
 }
 
-function TxList({ items, onDelete }: { items: FinanceTransaction[]; onDelete: (id: string) => void }) {
+function TxList({ items, onDelete, onEdit }: { items: FinanceTransaction[]; onDelete: (id: string) => void; onEdit: (t: FinanceTransaction) => void }) {
   if (items.length === 0) {
     return (
       <Card>
@@ -194,16 +197,139 @@ function TxList({ items, onDelete }: { items: FinanceTransaction[]; onDelete: (i
           </p>
           <Button
             size="icon" variant="ghost"
-            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition"
+            className="h-7 w-7 opacity-60 group-hover:opacity-100 transition"
+            onClick={() => onEdit(t)}
+            title="Editar lançamento"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="icon" variant="ghost"
+            className="h-7 w-7 opacity-60 group-hover:opacity-100 transition hover:text-destructive"
             onClick={() => onDelete(t.id)}
-            disabled={t.source === "auto_onboarding"}
-            title={t.source === "auto_onboarding" ? "Edite o valor do contrato no lead" : "Remover"}
+            title="Remover"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       ))}
     </div>
+  );
+}
+
+function EditTxDialog({ tx, onClose, onSaved }: { tx: FinanceTransaction | null; onClose: () => void; onSaved: () => void }) {
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState("");
+  const [serviceType, setServiceType] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [category, setCategory] = useState<ExpenseCategory>("variavel");
+  const [recurring, setRecurring] = useState(false);
+
+  const open = !!tx;
+
+  // Sync when opening a different tx
+  useEffect(() => {
+    if (tx) {
+      setDescription(tx.description);
+      setAmount(String(tx.amount));
+      setDate(tx.date);
+      setServiceType(tx.serviceType || "");
+      setClientName(tx.clientName || "");
+      setCategory(tx.category || "variavel");
+      setRecurring(!!tx.recurring);
+    }
+  }, [tx]);
+
+  if (!tx) return null;
+
+  const handleSave = () => {
+    const n = Number(amount);
+    if (!description.trim() || !n || n <= 0) {
+      toast.error("Informe descrição e valor válido");
+      return;
+    }
+    updateTransaction(tx.id, {
+      description: description.trim(),
+      amount: n,
+      date,
+      serviceType: serviceType.trim() || undefined,
+      clientName: clientName.trim() || undefined,
+      ...(tx.kind === "expense" ? { category, recurring: category === "fixo" ? true : recurring } : {}),
+    });
+    onSaved();
+    onClose();
+    toast.success("Lançamento atualizado");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar {tx.kind === "revenue" ? "Entrada" : "Saída"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {tx.source === "auto_onboarding" && (
+            <p className="text-[11px] text-muted-foreground bg-muted/40 rounded px-2 py-1.5">
+              Este lançamento foi criado automaticamente ao mover o lead para "Ganho". Editar aqui não altera o lead original.
+            </p>
+          )}
+          <div>
+            <Label>Descrição</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label>Valor (R$)</Label>
+              <Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div>
+              <Label>Data</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+          </div>
+          {tx.kind === "revenue" && (
+            <>
+              <div>
+                <Label>Cliente</Label>
+                <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Nome do cliente" />
+              </div>
+              <div>
+                <Label>Tipo de serviço</Label>
+                <Input value={serviceType} onChange={(e) => setServiceType(e.target.value)} />
+              </div>
+            </>
+          )}
+          {tx.kind === "expense" && (
+            <>
+              <div>
+                <Label>Categoria</Label>
+                <Select value={category} onValueChange={(v) => setCategory(v as ExpenseCategory)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixo">Gasto Fixo (mensal)</SelectItem>
+                    <SelectItem value="investimento">Investimento</SelectItem>
+                    <SelectItem value="variavel">Variável</SelectItem>
+                    <SelectItem value="imposto">Imposto</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {category !== "fixo" && (
+                <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
+                  <Label className="text-sm">Recorrente mensal?</Label>
+                  <Switch checked={recurring} onCheckedChange={setRecurring} />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={handleSave}>Salvar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
