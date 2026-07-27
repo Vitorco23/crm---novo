@@ -1,6 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { PomodoroHeaderWidget } from "@/components/PomodoroHeaderWidget";
+import { FloatingPomodoroWidget } from "@/components/FloatingPomodoroWidget";
 import { HeaderStatsWidget } from "@/components/HeaderStatsWidget";
 import { ForceUpdateButton } from "@/components/ForceUpdateButton";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <header className="h-12 flex items-center justify-between border-b px-2 shrink-0 gap-2">
             <SidebarTrigger />
             <div className="flex items-center gap-3">
-              <PomodoroHeaderWidget />
               <HeaderStatsWidget />
               <div className="flex items-center gap-2 pl-2 border-l border-border">
                 <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
@@ -36,6 +35,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </header>
           <main className="flex-1 overflow-auto">{children}</main>
         </div>
+        <FloatingPomodoroWidget />
       </div>
     </SidebarProvider>
   );
