@@ -816,6 +816,40 @@ export function addSession(session: Omit<PomodoroSession, "id">): PomodoroSessio
   return newSession;
 }
 
+export function updateSession(id: string, patch: Partial<Omit<PomodoroSession, "id">>): PomodoroSession | null {
+  const sessions = getSessions();
+  const idx = sessions.findIndex((s) => s.id === id);
+  if (idx === -1) return null;
+  const updated: PomodoroSession = { ...sessions[idx], ...patch };
+  sessions[idx] = updated;
+  saveSessions(sessions);
+  emit(
+    "PomodoroFinalizado",
+    {
+      sessionId: updated.id,
+      durationMinutes: updated.durationMinutes,
+      calls: updated.calls,
+      connections: updated.connections,
+      decisionMakers: updated.decisionMakers,
+      meetings: updated.meetings,
+      niche: updated.niche,
+      scriptUsed: updated.scriptUsed,
+      edited: true,
+    },
+    `pomo:${updated.id}:edit:${Date.now()}`
+  );
+  return updated;
+}
+
+export function deleteSession(id: string): boolean {
+  const sessions = getSessions();
+  const next = sessions.filter((s) => s.id !== id);
+  if (next.length === sessions.length) return false;
+  saveSessions(next);
+  emit("PomodoroFinalizado", { sessionId: id, deleted: true }, `pomo:${id}:del:${Date.now()}`);
+  return true;
+}
+
 // ===== Meetings =====
 export function getMeetings(): Meeting[] {
   return loadFromStorage<Meeting[]>("p21_meetings", []);
