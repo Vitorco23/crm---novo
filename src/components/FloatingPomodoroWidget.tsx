@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { PomodoroHeaderWidget } from "@/components/PomodoroHeaderWidget";
-import { GripVertical, Minus, Plus } from "lucide-react";
+import { GripVertical, Minus, Plus, PinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePomodoroMode } from "@/contexts/PomodoroModeContext";
 
 const STORAGE_KEY = "p21:floating-pomodoro-pos";
 const COLLAPSED_KEY = "p21:floating-pomodoro-collapsed";
@@ -18,6 +19,7 @@ function loadPos(): Pos {
 }
 
 export function FloatingPomodoroWidget() {
+  const { mode, setMode } = usePomodoroMode();
   const [pos, setPos] = useState<Pos>(() => loadPos());
   const [collapsed, setCollapsed] = useState<boolean>(() => localStorage.getItem(COLLAPSED_KEY) === "1");
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
@@ -55,6 +57,8 @@ export function FloatingPomodoroWidget() {
     dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
   };
 
+  if (mode === "docked") return null;
+
   return (
     <div
       ref={elRef}
@@ -77,6 +81,15 @@ export function FloatingPomodoroWidget() {
         title={collapsed ? "Expandir" : "Recolher"}
       >
         {collapsed ? <Plus className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-6 w-6"
+        onClick={() => setMode("docked")}
+        title="Fixar no cabeçalho"
+      >
+        <PinOff className="h-3.5 w-3.5" />
       </Button>
     </div>
   );
