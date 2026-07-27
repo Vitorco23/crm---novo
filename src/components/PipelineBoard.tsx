@@ -984,22 +984,29 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                           <button
                             onClick={() => {
                               const rows = stageLeads
-                                .map((l) => (l.phone || "").replace(/\D+/g, ""))
-                                .filter((p) => p.length > 0)
-                                .map((p) => [p]);
+                                .filter((l) => (l.company || l.phone || l.city || l.niche))
+                                .map((l) => ({
+                                  Empresa: l.company || "",
+                                  Telefone: l.phone || "",
+                                  Cidade: l.city || "",
+                                  Nicho: l.niche || "",
+                                }));
                               if (rows.length === 0) {
-                                toast.error("Nenhum número para exportar nesta etapa");
+                                toast.error("Nenhum lead para exportar nesta etapa");
                                 return;
                               }
-                              const ws = XLSX.utils.aoa_to_sheet(rows);
+                              const ws = XLSX.utils.json_to_sheet(rows, {
+                                header: ["Empresa", "Telefone", "Cidade", "Nicho"],
+                              });
                               const wb = XLSX.utils.book_new();
-                              XLSX.utils.book_append_sheet(wb, ws, "Numeros");
+                              XLSX.utils.book_append_sheet(wb, ws, "Leads");
                               const safe = stage.replace(/[^\w\-]+/g, "_");
-                              XLSX.writeFile(wb, `numeros_${safe}.xlsx`);
-                              toast.success(`${rows.length} número(s) exportado(s)`);
+                              XLSX.writeFile(wb, `leads_${safe}.xlsx`);
+                              toast.success(`${rows.length} lead(s) exportado(s)`);
                             }}
                             className="text-muted-foreground/60 hover:text-accent"
-                            title="Exportar números (Excel)"
+                            title="Exportar leads (Excel)"
+
                           >
                             <Download className="h-3 w-3" />
                           </button>
