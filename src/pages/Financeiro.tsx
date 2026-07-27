@@ -229,7 +229,7 @@ function EditTxDialog({ tx, onClose, onSaved }: { tx: FinanceTransaction | null;
   const open = !!tx;
 
   // Sync when opening a different tx
-  useMemo(() => {
+  useEffect(() => {
     if (tx) {
       setDescription(tx.description);
       setAmount(String(tx.amount));
