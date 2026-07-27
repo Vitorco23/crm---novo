@@ -186,6 +186,110 @@ export default function Pomodoro() {
           </CardContent>
         </Card>
       </div>
+
+      <EditSessionDialog
+        session={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => { setEditing(null); refresh(); }}
+      />
     </div>
+  );
+}
+
+function EditSessionDialog({
+  session,
+  onClose,
+  onSaved,
+}: {
+  session: PomodoroSession | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState<PomodoroSession | null>(session);
+  const scripts = getScripts();
+
+  // Sync when session changes
+  if (session && (!form || form.id !== session.id)) {
+    setForm(session);
+  }
+  if (!session || !form) return null;
+
+  const save = () => {
+    updateSession(session.id, {
+      calls: Math.max(0, form.calls || 0),
+      connections: Math.max(0, form.connections || 0),
+      decisionMakers: Math.max(0, form.decisionMakers || 0),
+      meetings: Math.max(0, form.meetings || 0),
+      durationMinutes: Math.max(1, form.durationMinutes || 1),
+      niche: form.niche?.trim() || undefined,
+      scriptUsed: form.scriptUsed || undefined,
+    });
+    toast({ title: "Sessão atualizada", description: "As métricas foram recalculadas em todo o sistema." });
+    onSaved();
+  };
+
+  return (
+    <Dialog open={!!session} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar Sessão de Pomodoro</DialogTitle>
+          <DialogDescription className="text-xs">
+            {format(new Date(session.startTime), "dd/MM/yyyy HH:mm", { locale: ptBR })} · alterações refletem em Metas, Dashboard, Cold Call e IA.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Nicho</Label>
+            <Input value={form.niche || ""} onChange={(e) => setForm({ ...form, niche: e.target.value })} />
+          </div>
+
+          <div>
+            <Label className="text-xs">Script utilizado</Label>
+            <Select value={form.scriptUsed || ""} onValueChange={(v) => setForm({ ...form, scriptUsed: v })}>
+              <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+              <SelectContent>
+                {scripts.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" /> Ligações</Label>
+              <Input type="number" min={0} value={form.calls}
+                onChange={(e) => setForm({ ...form, calls: +e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs flex items-center gap-1"><Users className="h-3 w-3" /> Conexões</Label>
+              <Input type="number" min={0} value={form.connections}
+                onChange={(e) => setForm({ ...form, connections: +e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs flex items-center gap-1"><UserCheck className="h-3 w-3" /> Decisores</Label>
+              <Input type="number" min={0} value={form.decisionMakers}
+                onChange={(e) => setForm({ ...form, decisionMakers: +e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs flex items-center gap-1"><CalendarCheck className="h-3 w-3" /> Reuniões</Label>
+              <Input type="number" min={0} value={form.meetings}
+                onChange={(e) => setForm({ ...form, meetings: +e.target.value })} />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Duração (min)</Label>
+              <Input type="number" min={1} value={form.durationMinutes}
+                onChange={(e) => setForm({ ...form, durationMinutes: +e.target.value })} />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button onClick={save} className="bg-accent text-accent-foreground hover:bg-accent/90">Salvar alterações</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
