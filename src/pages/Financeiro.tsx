@@ -42,6 +42,7 @@ export default function Financeiro() {
   const [month, setMonth] = useState(currentMonthKey());
   const [revenueDialog, setRevenueDialog] = useState(false);
   const [expenseDialog, setExpenseDialog] = useState(false);
+  const [editingTx, setEditingTx] = useState<FinanceTransaction | null>(null);
 
   const refresh = () => setTxs(getTransactions());
 
