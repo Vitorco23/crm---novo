@@ -120,6 +120,18 @@ const REGISTRY: Record<AITask, { tiers: ModelSpec[][]; fallback: ModelSpec[] }> 
       { id: "google/gemini-2.5-flash", supportsJsonSchema: false },
     ],
   },
+  // Diagnóstico Automático (V1.1) — leitura leve pós-ligação Matteline.
+  // Objetivo: <700 tokens por execução, custo mínimo.
+  auto_diagnosis: {
+    tiers: [
+      [{ id: "google/gemini-3.1-flash-lite", supportsJsonSchema: false }],
+      [{ id: "google/gemini-3.1-flash-lite", supportsJsonSchema: false }],
+      [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
+    ],
+    fallback: [
+      { id: "google/gemini-2.5-flash", supportsJsonSchema: false },
+    ],
+  },
 };
 
 function pickTierIndex(inputChars: number, forceComplex?: boolean): 0 | 1 | 2 {
