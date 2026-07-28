@@ -100,6 +100,7 @@ export type Database = {
       }
       interactions_inbound: {
         Row: {
+          call_id: string | null
           created_at: string
           dados: Json
           id: string
@@ -108,6 +109,7 @@ export type Database = {
           processed_at: string | null
         }
         Insert: {
+          call_id?: string | null
           created_at?: string
           dados: Json
           id?: string
@@ -116,6 +118,7 @@ export type Database = {
           processed_at?: string | null
         }
         Update: {
+          call_id?: string | null
           created_at?: string
           dados?: Json
           id?: string
