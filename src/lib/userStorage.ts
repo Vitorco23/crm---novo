@@ -298,6 +298,13 @@ export async function syncFromCloud(): Promise<boolean> {
     console.warn("[userStorage] inbound sync failed", e);
   }
 
+  // Drena a caixa de entrada de interações comerciais (n8n/Matteline).
+  try {
+    await syncInboundInteractions();
+  } catch (e) {
+    console.warn("[userStorage] inbound interactions sync failed", e);
+  }
+
 
   let changed = false;
   try {
