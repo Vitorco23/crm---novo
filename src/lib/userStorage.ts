@@ -432,6 +432,7 @@ function inboundToLead(row: InboundRow): { lead: Lead; meeting: any | null } {
     company: company || contact || "Sem nome",
     contact,
     phone,
+    phoneNormalized: normalizePhoneBR(phone),
     email,
     niche: String(d.niche ?? d.nicho ?? ""),
     city: String(d.city ?? d.cidade ?? ""),
