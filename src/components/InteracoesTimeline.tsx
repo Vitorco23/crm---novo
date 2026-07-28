@@ -18,6 +18,10 @@ import {
 import { analyzeCallNote } from "@/lib/callAnalysis";
 import { CallAuditView } from "@/components/CallAuditView";
 import AutoDiagnosisCard from "@/components/AutoDiagnosisCard";
+import LeadExecutiveSummary from "@/components/LeadExecutiveSummary";
+import LeadTrail from "@/components/LeadTrail";
+import { commercialTrail } from "@/lib/leadInsights";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
