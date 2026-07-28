@@ -98,6 +98,33 @@ export type Database = {
         }
         Relationships: []
       }
+      interactions_inbound: {
+        Row: {
+          created_at: string
+          dados: Json
+          id: string
+          phone_normalized: string | null
+          processed: boolean
+          processed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          dados: Json
+          id?: string
+          phone_normalized?: string | null
+          processed?: boolean
+          processed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          dados?: Json
+          id?: string
+          phone_normalized?: string | null
+          processed?: boolean
+          processed_at?: string | null
+        }
+        Relationships: []
+      }
       leads_inbound: {
         Row: {
           created_at: string
