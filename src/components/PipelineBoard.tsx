@@ -330,8 +330,13 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
   useEffect(() => {
     const onSync = () => {
-      setLeads(getLeads());
+      const fresh = getLeads();
+      setLeads(fresh);
       setStages(getStagesForPipeline(pipeline));
+      // Se um Lead está aberto no drawer, atualiza sua referência para que
+      // interações recém-chegadas (ex.: pullInboundInteractions) apareçam
+      // instantaneamente sem precisar reabrir o card.
+      setSelectedLead((cur) => (cur ? fresh.find((l) => l.id === cur.id) ?? cur : cur));
     };
     window.addEventListener("p21:storage-synced", onSync);
     window.addEventListener("p21:leads-changed", onSync);
