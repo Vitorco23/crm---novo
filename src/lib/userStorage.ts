@@ -667,11 +667,15 @@ export async function syncInboundInteractions(): Promise<number> {
 
   for (const row of rows) {
     try {
-      const phone = row.phone_normalized || normalizePhoneForMatch(row.dados?.destinationRaw);
+      // SEMPRE renormaliza antes de consultar o índice — nunca confia no valor
+      // bruto vindo da fila (linhas antigas podem ter phone_normalized parcial).
+      const phoneRaw = row.phone_normalized || row.dados?.destinationRaw;
+      const phone = normalizePhoneBR(phoneRaw);
       // [DEBUG-TEMP] Passos 1-2 do lado do consumidor.
       console.log("[inbound-int][DEBUG] row=", row.id,
         "phone.row=", row.phone_normalized,
         "phone.rawDados=", row.dados?.destinationRaw,
+        "phone.normalized=", phone,
         "phone.used=", phone);
       if (!phone) {
         console.warn("[inbound-int][DEBUG] row=", row.id, "SKIP missing_phone");
