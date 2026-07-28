@@ -82,21 +82,30 @@ function InteractionForm({
   editing: Interaction | null;
   onSaved: () => void;
 }) {
+  const nowLocal = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  };
+  const toLocalInput = (iso: string) => {
+    const d = new Date(iso);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  };
   const [type, setType] = useState<InteractionType>(editing?.type ?? "Ligação");
   const [customType, setCustomType] = useState(
     editing && !INTERACTION_TYPES.includes(editing.type) ? editing.type : ""
   );
-  const [date, setDate] = useState(
-    editing ? editing.date.slice(0, 16) : new Date().toISOString().slice(0, 16)
-  );
+  const [date, setDate] = useState(editing ? toLocalInput(editing.date) : nowLocal());
   const [title, setTitle] = useState(editing?.title ?? "");
   const [summary, setSummary] = useState(editing?.summary ?? "");
   const [sellerNotes, setSellerNotes] = useState(editing?.sellerNotes ?? "");
 
   const reset = () => {
     setType("Ligação"); setCustomType(""); setTitle(""); setSummary(""); setSellerNotes("");
-    setDate(new Date().toISOString().slice(0, 16));
+    setDate(nowLocal());
   };
+
 
   const handleSave = () => {
     const finalType = type === "Outro" && customType.trim() ? customType.trim() : type;
