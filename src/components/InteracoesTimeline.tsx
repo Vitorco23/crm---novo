@@ -240,8 +240,16 @@ export default function InteracoesTimeline({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Interaction | null>(null);
   const [analyzingNoteId, setAnalyzingNoteId] = useState<string | null>(null);
+  // Cards compactos por padrão — o vendedor expande apenas o que precisar.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => setExpanded((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const meetings = getMeetingsForLead(lead.id);
+  const trail = useMemo(() => commercialTrail(lead, meetings), [lead, meetings]);
 
   const items = useMemo<TimelineItem[]>(() => {
     const rows: TimelineItem[] = [];
@@ -307,11 +315,22 @@ export default function InteracoesTimeline({
       {/* Diagnóstico Automático (IA Comercial V1.1) — sempre acima da timeline */}
       <AutoDiagnosisCard lead={lead} />
 
+      {/* Resumo Executivo — leitura consolidada, zero IA */}
+      <LeadExecutiveSummary lead={lead} />
+
+      {/* Linha do Tempo Comercial — panorama rápido em ícones */}
+      {trail.length > 0 && (
+        <div className="rounded-md border border-border/50 bg-card/40 p-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Linha do Tempo Comercial</p>
+          <LeadTrail items={trail} />
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">Timeline de Interações Comerciais</p>
           <p className="text-xs text-muted-foreground">
-            {items.length} evento(s) — ligações, reuniões e demais contatos comerciais em ordem cronológica.
+            {items.length} evento(s) — clique em cada item para expandir os detalhes.
           </p>
         </div>
         <Button
