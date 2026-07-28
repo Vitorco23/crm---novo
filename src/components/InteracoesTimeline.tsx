@@ -403,8 +403,8 @@ export default function InteracoesTimeline({
                   )}
                   {i.sellerNotes && (
                     <div className="mt-2 rounded bg-background/50 border border-border/40 p-2">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Anotações do vendedor</p>
-                      <p className="text-xs whitespace-pre-wrap">{i.sellerNotes}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Anotações do vendedor</p>
+                      <SellerNotesView notes={i.sellerNotes} />
                     </div>
                   )}
                 </div>
