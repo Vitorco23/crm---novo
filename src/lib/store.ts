@@ -334,24 +334,55 @@ export function getLeadsForPipeline(pipeline: PipelineName): Lead[] {
 }
 
 // ===== Leads =====
+/**
+ * Garante que todo Lead tenha `phoneNormalized` (55+DDD+número) derivado
+ * de `phone` (ou, na ausência, `whatsapp`). É idempotente: se `phone` mudou
+ * ou está vazio, recomputa; se já bate, mantém.
+ */
+function ensurePhoneNormalized(l: Lead): Lead {
+  const expected = normalizePhoneBR(l.phone || l.whatsapp);
+  if (l.phoneNormalized === expected) return l;
+  return { ...l, phoneNormalized: expected };
+}
+
 export function getLeads(): Lead[] {
   const leads = loadFromStorage<Lead[]>("p21_leads", []);
-  return leads.map((l) => ({
-    ...l,
-    icpStars: l.icpStars || ((l as any).icpProfile === "Não Fit" ? 1 : 3),
-    attachments: l.attachments || [],
-    callNotes: l.callNotes || [],
-    interactions: l.interactions || [],
-
-  }));
+  let migrationNeeded = false;
+  const mapped = leads.map((l) => {
+    const base: Lead = {
+      ...l,
+      icpStars: l.icpStars || ((l as any).icpProfile === "Não Fit" ? 1 : 3),
+      attachments: l.attachments || [],
+      callNotes: l.callNotes || [],
+      interactions: l.interactions || [],
+    };
+    const expected = normalizePhoneBR(base.phone || base.whatsapp);
+    if (base.phoneNormalized !== expected) {
+      migrationNeeded = true;
+      base.phoneNormalized = expected;
+    }
+    return base;
+  });
+  // Migração única e transparente: se algum Lead ainda não tinha o campo
+  // (ou o valor estava desatualizado após edição de `phone`), grava de volta.
+  if (migrationNeeded) {
+    try {
+      // Persistência assíncrona para não bloquear leitura.
+      queueMicrotask(() => saveToStorage("p21_leads", mapped));
+    } catch {
+      saveToStorage("p21_leads", mapped);
+    }
+  }
+  return mapped;
 }
 
 export function saveLeads(leads: Lead[]) {
-  saveToStorage("p21_leads", leads);
+  // Sempre normaliza no ponto de escrita — fonte oficial de verdade.
+  const normalized = leads.map(ensurePhoneNormalized);
+  saveToStorage("p21_leads", normalized);
 }
 
 // ===== Duplicate detection =====
-const normalizePhone = (s: string) => (s || "").replace(/\D+/g, "");
 const normalizeText = (s: string) => (s || "").trim().toLowerCase();
 const normalizeUrl = (s: string) => {
   const v = (s || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
@@ -364,9 +395,13 @@ export interface LeadDupKeys {
   gmn: string;
 }
 
-export function leadDupKeys(lead: Pick<Lead, "phone" | "company" | "gmnLink">): LeadDupKeys {
+export function leadDupKeys(
+  lead: Pick<Lead, "phone" | "company" | "gmnLink"> & { phoneNormalized?: string; whatsapp?: string }
+): LeadDupKeys {
   return {
-    phone: normalizePhone(lead.phone),
+    // Deduplicação SEMPRE via phoneNormalized (55+DDD+número). Se o objeto
+    // ainda não tem, calcula on-the-fly — nunca compara telefone formatado.
+    phone: lead.phoneNormalized || normalizePhoneBR(lead.phone || lead.whatsapp),
     company: normalizeText(lead.company),
     gmn: normalizeUrl(lead.gmnLink),
   };
