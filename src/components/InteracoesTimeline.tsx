@@ -394,45 +394,62 @@ export default function InteracoesTimeline({
               const n = it.data;
               const isAnalyzing = analyzingNoteId === n.id;
               const analysis = n.analysis;
+              const key = `c-${n.id}`;
+              const isOpen = expanded.has(key);
+              const oneLiner = (n.text || "").replace(/\s+/g, " ").trim().slice(0, 120);
               return (
-                <li key={`c-${n.id}`} className="ml-4 group">
+                <li key={key} className="ml-4 group">
                   <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-primary" />
-                  <div className={`rounded-md border p-3 ${colorFor("Ligação")}`}>
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-3.5 w-3.5" />
-                        <span className="text-xs font-semibold">Ligação</span>
-                        {n.scriptUsed && <Badge variant="outline" className="text-[10px]">{n.scriptUsed}</Badge>}
+                  <div className={`rounded-md border ${colorFor("Ligação")}`}>
+                    <button
+                      onClick={() => toggle(key)}
+                      className="w-full text-left p-3 flex items-start gap-2"
+                      aria-expanded={isOpen}
+                    >
+                      {isOpen ? <ChevronDown className="h-3.5 w-3.5 mt-0.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 mt-0.5 shrink-0" />}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Phone className="h-3.5 w-3.5 shrink-0" />
+                            <span className="text-xs font-semibold">Ligação</span>
+                            {n.scriptUsed && <Badge variant="outline" className="text-[10px]">{n.scriptUsed}</Badge>}
+                          </div>
+                          <span className="text-[11px] text-muted-foreground shrink-0">
+                            {format(new Date(n.createdAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                        {!isOpen && oneLiner && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{oneLiner}</p>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-muted-foreground">
-                          {format(new Date(n.createdAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                        </span>
-                        <button onClick={() => { removeCallNote(lead.id, n.id); onRefresh(); }}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap">{n.text}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
-                        onClick={() => analyzeNote(n, "quick")} disabled={isAnalyzing}>
-                        {isAnalyzing ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando…</>) : (<><Sparkles className="h-3 w-3" /> 🤖 Analisar Última</>)}
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 border-primary/40 text-primary hover:bg-primary/10"
-                        onClick={() => analyzeNote(n, "full")} disabled={isAnalyzing}>
-                        {isAnalyzing ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando…</>) : (<>🧠 Diagnóstico Completo</>)}
-                      </Button>
-                    </div>
-                    {analysis && (
-                      <div className="mt-2 rounded-md border border-border/40 bg-background/60 p-3">
-                        {analysis.data ? (<CallAuditView data={analysis.data} lead={lead} onRunDiagnosis={() => analyzeNote(n, "full")} />)
-                          : analysis.markdown ? (
-                            <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1">
-                              <ReactMarkdown>{analysis.markdown}</ReactMarkdown>
-                            </div>
-                          ) : null}
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 pb-3">
+                        <p className="text-sm whitespace-pre-wrap">{n.text}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
+                            onClick={() => analyzeNote(n, "quick")} disabled={isAnalyzing}>
+                            {isAnalyzing ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando…</>) : (<><Sparkles className="h-3 w-3" /> 🤖 Analisar Última</>)}
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                            onClick={() => analyzeNote(n, "full")} disabled={isAnalyzing}>
+                            {isAnalyzing ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando…</>) : (<>🧠 Diagnóstico Completo</>)}
+                          </Button>
+                          <button onClick={() => { removeCallNote(lead.id, n.id); onRefresh(); }}
+                            className="ml-auto text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                        {analysis && (
+                          <div className="mt-2 rounded-md border border-border/40 bg-background/60 p-3">
+                            {analysis.data ? (<CallAuditView data={analysis.data} lead={lead} onRunDiagnosis={() => analyzeNote(n, "full")} />)
+                              : analysis.markdown ? (
+                                <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1">
+                                  <ReactMarkdown>{analysis.markdown}</ReactMarkdown>
+                                </div>
+                              ) : null}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -442,38 +459,57 @@ export default function InteracoesTimeline({
 
             const i = it.data;
             const Icon = iconFor(i.type);
+            const key = `i-${i.id}`;
+            const isOpen = expanded.has(key);
+            const oneLiner = (i.summary || i.title || "").replace(/\s+/g, " ").trim().slice(0, 140);
             return (
-              <li key={`i-${i.id}`} className="ml-4 group">
+              <li key={key} className="ml-4 group">
                 <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-foreground/70" />
-                <div className={`rounded-md border p-3 ${colorFor(i.type)}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Icon className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-xs font-semibold truncate">{i.type}</span>
+                <div className={`rounded-md border ${colorFor(i.type)}`}>
+                  <button
+                    onClick={() => toggle(key)}
+                    className="w-full text-left p-3 flex items-start gap-2"
+                    aria-expanded={isOpen}
+                  >
+                    {isOpen ? <ChevronDown className="h-3.5 w-3.5 mt-0.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 mt-0.5 shrink-0" />}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="text-xs font-semibold truncate">{i.type}</span>
+                        </div>
+                        <span className="text-[11px] text-muted-foreground shrink-0">
+                          <CalendarIcon className="h-3 w-3 inline mr-0.5" />
+                          {format(parseISO(i.date), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                      </div>
+                      {!isOpen && oneLiner && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{oneLiner}</p>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] text-muted-foreground">
-                        <CalendarIcon className="h-3 w-3 inline mr-0.5" />
-                        {format(parseISO(i.date), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                      </span>
-                      <button onClick={() => { setEditing(i); setFormOpen(true); }}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground">
-                        <Pencil className="h-3 w-3" />
-                      </button>
-                      <button onClick={() => { removeInteraction(lead.id, i.id); onRefresh(); toast.success("Interação removida"); }}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-sm font-medium mt-1">{i.title}</p>
-                  {i.summary && (
-                    <p className="text-sm whitespace-pre-wrap mt-1 text-foreground/90">{i.summary}</p>
-                  )}
-                  {i.sellerNotes && (
-                    <div className="mt-2 rounded bg-background/50 border border-border/40 p-2">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Anotações do vendedor</p>
-                      <SellerNotesView notes={i.sellerNotes} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-3 pb-3">
+                      <p className="text-sm font-medium">{i.title}</p>
+                      {i.summary && (
+                        <p className="text-sm whitespace-pre-wrap mt-1 text-foreground/90">{i.summary}</p>
+                      )}
+                      {i.sellerNotes && (
+                        <div className="mt-2 rounded bg-background/50 border border-border/40 p-2">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Anotações do vendedor</p>
+                          <SellerNotesView notes={i.sellerNotes} />
+                        </div>
+                      )}
+                      <div className="mt-2 flex items-center gap-2">
+                        <button onClick={() => { setEditing(i); setFormOpen(true); }}
+                          className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                          <Pencil className="h-3 w-3" /> Editar
+                        </button>
+                        <button onClick={() => { removeInteraction(lead.id, i.id); onRefresh(); toast.success("Interação removida"); }}
+                          className="text-[11px] text-muted-foreground hover:text-destructive inline-flex items-center gap-1">
+                          <Trash2 className="h-3 w-3" /> Remover
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
