@@ -659,22 +659,33 @@ export async function syncInboundInteractions(): Promise<number> {
   if (rows.length === 0) return 0;
 
   const leads = uload<Lead[]>("p21_leads", []);
+  // [DEBUG-TEMP] Passos 1-4: origem da coleção usada para montar o índice.
+  const withNorm = leads.filter((l: any) => !!l?.phoneNormalized).length;
+  const withOnlyPhone = leads.filter((l: any) => !l?.phoneNormalized && !!(l?.phone || l?.whatsapp)).length;
+  const withNoPhone = leads.filter((l: any) => !l?.phoneNormalized && !l?.phone && !l?.whatsapp).length;
+  console.log("[inbound-int][DEBUG] leads source=uload(p21_leads)",
+    "count=", leads.length,
+    "hasPhoneNormalized=", withNorm,
+    "hasOnlyPhone=", withOnlyPhone,
+    "noPhone=", withNoPhone);
+
   // Índice phoneNormalized → lead (primeira ocorrência ganha).
   // Sempre confia no campo `phoneNormalized` do Lead (fonte oficial). Se ele
   // não existir (Lead legado ainda não migrado nesta sessão), calcula on-the-fly.
   const phoneIndex = new Map<string, Lead[]>();
+  let indexed = 0;
   for (const l of leads) {
     const p = l.phoneNormalized || normalizePhoneBR(l.phone || l.whatsapp);
     if (!p) continue;
     const arr = phoneIndex.get(p) ?? [];
     arr.push(l);
     phoneIndex.set(p, arr);
+    indexed++;
   }
-  // [DEBUG-TEMP] Índice de telefones (chaves) para inspeção rápida.
+  // [DEBUG-TEMP] Passo 5: itens efetivamente indexados.
   console.log("[inbound-int][DEBUG] phoneIndex size=", phoneIndex.size,
+    "indexedLeads=", indexed,
     "sample keys=", Array.from(phoneIndex.keys()).slice(0, 5));
-
-  let appended = 0;
   const okIds: string[] = [];
   const failed: Array<{ id: string; error: string; dados: any }> = [];
 
