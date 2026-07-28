@@ -686,6 +686,7 @@ export async function syncInboundInteractions(): Promise<number> {
   console.log("[inbound-int][DEBUG] phoneIndex size=", phoneIndex.size,
     "indexedLeads=", indexed,
     "sample keys=", Array.from(phoneIndex.keys()).slice(0, 5));
+  let appended = 0;
   const okIds: string[] = [];
   const failed: Array<{ id: string; error: string; dados: any }> = [];
 
