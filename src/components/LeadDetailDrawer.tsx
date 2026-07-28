@@ -347,18 +347,6 @@ export default function LeadDetailDrawer({
               <DialogTitle className="sr-only">{lead.company}</DialogTitle>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                className="h-8 bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm"
-                onClick={() => {
-                  setTab("interacoes");
-                  setAutoRunDiagnosis(true);
-                }}
-                title="Analisar o lead por completo (informações, interações, observações e anexos)"
-              >
-                <Sparkles className="h-3.5 w-3.5 mr-1" />
-                🧠 Diagnóstico Completo
-              </Button>
               <Badge className={`border ${prio.cls}`}>{prio.label}</Badge>
               <Select value={temp} onValueChange={(v) => persist({ temperature: v as Lead["temperature"] })}>
                 <SelectTrigger className="h-7 w-[110px] text-xs">
@@ -377,6 +365,36 @@ export default function LeadDetailDrawer({
                 </Badge>
               )}
             </div>
+          </div>
+
+          {/* Ações rápidas — reduzem cliques durante a prospecção */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+            {draft.phone && (
+              <a href={`tel:${draft.phone}`}
+                className="inline-flex items-center gap-1 text-xs h-8 px-3 rounded-md border border-border bg-card hover:bg-accent/10 hover:text-accent transition-colors">
+                <Phone className="h-3.5 w-3.5" /> Ligar
+              </a>
+            )}
+            {whatsUrl && (
+              <a href={whatsUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs h-8 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors">
+                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+              </a>
+            )}
+            <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setMeetingOpen(true)}>
+              <CalendarCheck className="h-3.5 w-3.5" /> Agendar
+            </Button>
+            {isColdCall && step && (
+              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={copyScript}>
+                <Copy className="h-3.5 w-3.5" /> Copiar Script
+              </Button>
+            )}
+            <Button size="sm" className="h-8 gap-1 bg-accent text-accent-foreground hover:bg-accent/90 ml-auto"
+              onClick={() => { setTab("interacoes"); setAutoRunDiagnosis(true); }}
+              title="Analisar o lead por completo (informações, interações, observações e anexos)"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> 🧠 Diagnóstico Completo
+            </Button>
           </div>
         </DialogHeader>
 
