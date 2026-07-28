@@ -528,6 +528,38 @@ function formatDurationLabel(sec: number | null | undefined): string {
   return m > 0 ? `${m}m${r.toString().padStart(2, "0")}s` : `${r}s`;
 }
 
+/** Converte o objeto/valor de agendamento vindo da Matteline em texto legível.
+ *  Nunca retorna "[object Object]"; retorna "" quando não há dado válido. */
+function formatSchedulingValue(sch: any): string {
+  if (sch == null) return "";
+  if (typeof sch === "string") return sch.trim();
+  if (typeof sch === "number") return String(sch);
+  if (typeof sch !== "object") return "";
+  const rawDate = sch.data ?? sch.date ?? sch.dia ?? sch.day ?? "";
+  const rawTime = sch.hora ?? sch.time ?? sch.horario ?? sch.hour ?? "";
+  const obs = sch.observacoes ?? sch.observações ?? sch.observations ?? sch.notes ?? sch.note ?? "";
+  let dstr = "";
+  if (rawDate) {
+    const s = String(rawDate);
+    const iso = s.length <= 10 && /^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T00:00:00` : s;
+    const d = new Date(iso);
+    if (!isNaN(d.getTime())) {
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      dstr = `${dd}/${mm}/${d.getFullYear()}`;
+    } else {
+      dstr = s;
+    }
+  }
+  const tstr = rawTime ? String(rawTime).slice(0, 5) : "";
+  const parts: string[] = [];
+  if (dstr && tstr) parts.push(`${dstr} às ${tstr}`);
+  else if (dstr) parts.push(dstr);
+  else if (tstr) parts.push(tstr);
+  if (obs) parts.push(`(${String(obs).trim()})`);
+  return parts.join(" ").trim();
+}
+
 function buildInteractionFromInbound(row: InboundInteractionRow, lead: Lead): {
   type: string; date: string; title: string; summary: string; sellerNotes?: string; createdAt: string;
 } {
