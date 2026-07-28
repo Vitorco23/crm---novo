@@ -204,7 +204,7 @@ export interface MovementEvent {
 }
 
 // ===== Storage helpers (user-scoped) =====
-import { uload as loadFromStorage, usave as saveToStorage } from "./userStorage";
+import { uload as loadFromStorage, usave as saveToStorage, normalizePhoneBR } from "./userStorage";
 import { emit } from "./eventBus";
 
 function classifyStage(stage: string): "call" | "message" | "meeting" | "sale" | "onboarding" | "other" {
