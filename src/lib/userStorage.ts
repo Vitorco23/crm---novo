@@ -636,9 +636,11 @@ export async function syncInboundInteractions(): Promise<number> {
 
   const leads = uload<Lead[]>("p21_leads", []);
   // Índice phoneNormalized → lead (primeira ocorrência ganha).
+  // Sempre confia no campo `phoneNormalized` do Lead (fonte oficial). Se ele
+  // não existir (Lead legado ainda não migrado nesta sessão), calcula on-the-fly.
   const phoneIndex = new Map<string, Lead>();
   for (const l of leads) {
-    const p = normalizePhoneForMatch(l.phone || l.whatsapp);
+    const p = l.phoneNormalized || normalizePhoneBR(l.phone || l.whatsapp);
     if (p && !phoneIndex.has(p)) phoneIndex.set(p, l);
   }
 
