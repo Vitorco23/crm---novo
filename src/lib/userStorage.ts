@@ -298,12 +298,10 @@ export async function syncFromCloud(): Promise<boolean> {
     console.warn("[userStorage] inbound sync failed", e);
   }
 
-  // Drena a caixa de entrada de interações comerciais (n8n/Matteline).
-  try {
-    await syncInboundInteractions();
-  } catch (e) {
-    console.warn("[userStorage] inbound interactions sync failed", e);
-  }
+  // NOTA: a drenagem de `interactions_inbound` foi movida para DEPOIS do pull
+  // do `user_storage` (ver final desta função). Antes ela rodava aqui, quando o
+  // cache local `p21_leads` ainda estava vazio na primeira sincronização — por
+  // isso `phoneIndex.size` chegava sempre como 0 e nenhum Lead era encontrado.
 
 
   let changed = false;
@@ -371,6 +369,21 @@ export async function syncFromCloud(): Promise<boolean> {
   } catch (e) {
     console.warn("[userStorage] sync failed", e);
   }
+
+  // Agora que o cache local `p21_leads` está populado a partir da nuvem, drena
+  // a fila de interações comerciais (n8n/Matteline). Rodar isso antes do pull
+  // fazia `phoneIndex` ficar vazio na primeira sincronização de cada sessão.
+  try {
+    const leadsLoaded = uload<Lead[]>("p21_leads", []);
+    // [DEBUG-TEMP] Passo 6/7: confirma que o carregamento terminou antes de drenar.
+    console.log("[inbound-int][DEBUG] pre-sync leads.count=", leadsLoaded.length,
+      "hasPhoneNormalized=", leadsLoaded.filter((l: any) => !!l?.phoneNormalized).length,
+      "hasOnlyPhone=", leadsLoaded.filter((l: any) => !l?.phoneNormalized && !!(l?.phone || l?.whatsapp)).length);
+    await syncInboundInteractions();
+  } catch (e) {
+    console.warn("[userStorage] inbound interactions sync failed", e);
+  }
+
   return changed;
 }
 
@@ -646,21 +659,33 @@ export async function syncInboundInteractions(): Promise<number> {
   if (rows.length === 0) return 0;
 
   const leads = uload<Lead[]>("p21_leads", []);
+  // [DEBUG-TEMP] Passos 1-4: origem da coleção usada para montar o índice.
+  const withNorm = leads.filter((l: any) => !!l?.phoneNormalized).length;
+  const withOnlyPhone = leads.filter((l: any) => !l?.phoneNormalized && !!(l?.phone || l?.whatsapp)).length;
+  const withNoPhone = leads.filter((l: any) => !l?.phoneNormalized && !l?.phone && !l?.whatsapp).length;
+  console.log("[inbound-int][DEBUG] leads source=uload(p21_leads)",
+    "count=", leads.length,
+    "hasPhoneNormalized=", withNorm,
+    "hasOnlyPhone=", withOnlyPhone,
+    "noPhone=", withNoPhone);
+
   // Índice phoneNormalized → lead (primeira ocorrência ganha).
   // Sempre confia no campo `phoneNormalized` do Lead (fonte oficial). Se ele
   // não existir (Lead legado ainda não migrado nesta sessão), calcula on-the-fly.
   const phoneIndex = new Map<string, Lead[]>();
+  let indexed = 0;
   for (const l of leads) {
     const p = l.phoneNormalized || normalizePhoneBR(l.phone || l.whatsapp);
     if (!p) continue;
     const arr = phoneIndex.get(p) ?? [];
     arr.push(l);
     phoneIndex.set(p, arr);
+    indexed++;
   }
-  // [DEBUG-TEMP] Índice de telefones (chaves) para inspeção rápida.
+  // [DEBUG-TEMP] Passo 5: itens efetivamente indexados.
   console.log("[inbound-int][DEBUG] phoneIndex size=", phoneIndex.size,
+    "indexedLeads=", indexed,
     "sample keys=", Array.from(phoneIndex.keys()).slice(0, 5));
-
   let appended = 0;
   const okIds: string[] = [];
   const failed: Array<{ id: string; error: string; dados: any }> = [];
