@@ -156,6 +156,21 @@ export interface Lead {
   temperature?: "Quente" | "Morno" | "Frio";
   website?: string;
   whatsapp?: string;
+  /** Diagnóstico Comercial Automático (V1.1) — gerado após ligações Matteline. */
+  autoDiagnosis?: AutoDiagnosis;
+}
+
+export interface AutoDiagnosis {
+  temperature: "quente" | "morno" | "frio";
+  probability: number;
+  summary: string;
+  next_action: string;
+  attention: string;
+  updated_memory: string;
+  generatedAt: string;
+  model?: string;
+  /** Fingerprint das interações consideradas — usado para detectar "desatualizado". */
+  inputHash: string;
 }
 
 
@@ -1018,4 +1033,28 @@ export function getGoalsSettings(): GoalsSettings {
 
 export function saveGoalsSettings(settings: GoalsSettings) {
   saveToStorage("p21_goals_settings", settings);
+}
+
+// ===== Diagnóstico Automático (V1.1) =====
+// Fingerprint das interações consideradas — muda quando chega uma nova ligação
+// ou uma interação é editada. Comparação simples: contagem + IDs + datas.
+export function computeDiagnosisInputHash(lead: Lead): string {
+  const parts = (lead.interactions || [])
+    .map((i) => `${i.id}:${i.date}`)
+    .sort();
+  const notesLen = (lead.notes || "").length;
+  return `n${parts.length}|${notesLen}|${parts.join(",")}`;
+}
+
+export function setLeadAutoDiagnosis(leadId: string, diagnosis: AutoDiagnosis) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) return;
+  lead.autoDiagnosis = diagnosis;
+  saveLeads(leads);
+}
+
+export function isAutoDiagnosisStale(lead: Lead): boolean {
+  if (!lead.autoDiagnosis) return false;
+  return lead.autoDiagnosis.inputHash !== computeDiagnosisInputHash(lead);
 }

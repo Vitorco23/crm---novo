@@ -17,6 +17,7 @@ import {
 } from "@/lib/store";
 import { analyzeCallNote } from "@/lib/callAnalysis";
 import { CallAuditView } from "@/components/CallAuditView";
+import AutoDiagnosisCard from "@/components/AutoDiagnosisCard";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -299,6 +300,9 @@ export default function InteracoesTimeline({
 
   return (
     <div className="space-y-4">
+      {/* Diagnóstico Automático (IA Comercial V1.1) — sempre acima da timeline */}
+      <AutoDiagnosisCard lead={lead} />
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">Timeline de Interações Comerciais</p>

@@ -666,6 +666,7 @@ export async function syncInboundInteractions(): Promise<number> {
 
   let appended = 0;
   const okIds: string[] = [];
+  const affectedLeadIds = new Set<string>();
   const failed: Array<{ id: string; error: string; dados: any }> = [];
 
   for (const row of rows) {
@@ -694,6 +695,7 @@ export async function syncInboundInteractions(): Promise<number> {
       lead.interactions = [...((lead.interactions as any[]) || []), withId];
       appended++;
       okIds.push(row.id);
+      affectedLeadIds.add(lead.id);
     } catch (e: any) {
       console.error("[inbound-int] row failed", { id: row.id, error: e?.message || String(e) });
       failed.push({ id: row.id, error: e?.message || String(e), dados: row.dados });
@@ -731,6 +733,15 @@ export async function syncInboundInteractions(): Promise<number> {
     window.dispatchEvent(
       new CustomEvent("p21:leads-changed", { detail: { source: "inbound-interactions", count: appended } })
     );
+
+    // Diagnóstico Automático V1.1 — dispara para cada Lead afetado.
+    // Fire-and-forget: nunca bloqueia a sincronização. Import dinâmico evita
+    // ciclo (autoDiagnosis.ts → store.ts → userStorage.ts).
+    if (affectedLeadIds.size > 0) {
+      import("./autoDiagnosis")
+        .then(({ runAutoDiagnosisForLeads }) => runAutoDiagnosisForLeads(Array.from(affectedLeadIds)))
+        .catch((e) => console.warn("[autoDiagnosis] trigger failed", e));
+    }
   }
   return appended;
 }
