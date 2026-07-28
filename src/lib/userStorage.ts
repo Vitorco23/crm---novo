@@ -512,13 +512,28 @@ type InboundInteractionRow = {
 };
 
 // Mesma normalização usada pela edge function receive-matteline-call.
-function normalizePhoneForMatch(raw: string | undefined | null): string {
+/**
+ * Formato oficial de telefone para integrações do CRM.
+ * Sempre retorna `55` + DDD + número (E.164 sem "+"), ou "" quando inválido.
+ * - Remove tudo que não for dígito (espaços, parênteses, hífens, "+").
+ * - Se já vier com 55 no início (12–13 dígitos), preserva.
+ * - Se vier só com DDD + número (10 ou 11 dígitos), adiciona "55".
+ * - Não adiciona 55 duas vezes.
+ */
+export function normalizePhoneBR(raw: string | undefined | null): string {
   if (!raw) return "";
-  const digits = String(raw).replace(/\D+/g, "");
+  let digits = String(raw).replace(/\D+/g, "");
   if (!digits) return "";
+  // Remove um 0 inicial de trunk local antes do DDD (ex.: 07932143013 → 7932143013).
+  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  if (digits.length === 12 && digits.startsWith("0")) digits = digits.slice(1);
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) return digits;
   if (digits.length === 10 || digits.length === 11) return `55${digits}`;
   return digits;
 }
+
+// Alias interno legado (mantido para não quebrar chamadas locais existentes).
+const normalizePhoneForMatch = normalizePhoneBR;
 
 function formatDurationLabel(sec: number | null | undefined): string {
   if (!sec || !Number.isFinite(sec) || sec <= 0) return "";
