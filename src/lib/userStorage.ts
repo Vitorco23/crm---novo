@@ -515,21 +515,29 @@ type InboundInteractionRow = {
 // Mesma normalização usada pela edge function receive-matteline-call.
 /**
  * Formato oficial de telefone para integrações do CRM.
- * Sempre retorna `55` + DDD + número (E.164 sem "+"), ou "" quando inválido.
- * - Remove tudo que não for dígito (espaços, parênteses, hífens, "+").
- * - Se já vier com 55 no início (12–13 dígitos), preserva.
- * - Se vier só com DDD + número (10 ou 11 dígitos), adiciona "55".
- * - Não adiciona 55 duas vezes.
+ * Regras (resilientes a qualquer formato recebido por integrações):
+ *  1. Remove qualquer caractere não numérico.
+ *  2. Se já começar com "55" e tiver ao menos 12 dígitos, preserva.
+ *  3. Se começar com "0" (trunk local), preserva o 0 e prefixa "55".
+ *     Ex.: "079998992121" → "55079998992121".
+ *  4. Se tiver apenas DDD + número (10 ou 11 dígitos), prefixa "550"
+ *     para produzir o mesmo canônico dos casos acima.
+ *     Ex.: "79998992121" → "55079998992121".
+ *  5. Qualquer outro caso: retorna os dígitos como estão.
+ *
+ * Todos os exemplos abaixo produzem o MESMO phoneNormalized:
+ *   "55079998992121", "079998992121", "79998992121", "(79) 99989-9212"
+ *   → "55079998992121"
+ *
+ * Comparações de telefone no CRM devem SEMPRE passar por esta função antes.
  */
 export function normalizePhoneBR(raw: string | undefined | null): string {
   if (!raw) return "";
-  let digits = String(raw).replace(/\D+/g, "");
+  const digits = String(raw).replace(/\D+/g, "");
   if (!digits) return "";
-  // Remove um 0 inicial de trunk local antes do DDD (ex.: 07932143013 → 7932143013).
-  if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
-  if (digits.length === 12 && digits.startsWith("0")) digits = digits.slice(1);
-  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) return digits;
-  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  if (digits.startsWith("55") && digits.length >= 12) return digits;
+  if (digits.startsWith("0")) return `55${digits}`;
+  if (digits.length === 10 || digits.length === 11) return `550${digits}`;
   return digits;
 }
 

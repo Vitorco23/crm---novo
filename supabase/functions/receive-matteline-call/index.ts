@@ -34,14 +34,20 @@ function json(status: number, body: unknown) {
   });
 }
 
-// Normalização de telefone: mantém apenas dígitos e força DDI 55 (BR)
-// quando o número tem 10 ou 11 dígitos (formato local). Isso permite
-// comparação estável no lado do CRM ao localizar o Lead.
+// Normalização de telefone resiliente a qualquer formato recebido:
+//  - Remove tudo que não for dígito.
+//  - Se já começar com "55" (≥12 dígitos), preserva.
+//  - Se começar com "0" (trunk local), preserva o 0 e prefixa "55".
+//  - Se tiver apenas DDD + número (10/11 dígitos), prefixa "550".
+// Todos os formatos do mesmo número geram o MESMO phoneNormalized,
+// permitindo comparação estável no lado do CRM.
 function normalizePhone(raw: string | undefined | null): string {
   if (!raw) return "";
   const digits = String(raw).replace(/\D+/g, "");
   if (!digits) return "";
-  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  if (digits.startsWith("55") && digits.length >= 12) return digits;
+  if (digits.startsWith("0")) return `55${digits}`;
+  if (digits.length === 10 || digits.length === 11) return `550${digits}`;
   return digits;
 }
 
