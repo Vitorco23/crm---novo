@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import {
   type Lead, type Interaction, type InteractionType, type CallNote,
   addInteraction, updateInteraction, removeInteraction, removeCallNote,
+  addCallNote, getLeads,
   getMeetingsForLead,
 } from "@/lib/store";
 import { analyzeCallNote } from "@/lib/callAnalysis";
