@@ -67,6 +67,48 @@ function colorFor(type: string) {
   return "text-muted-foreground bg-muted/40 border-border";
 }
 
+/** Renderiza sellerNotes como pares "Rótulo: Valor", com links clicáveis
+ *  em novas abas. Linhas cujo valor seja "[object Object]" (dados legados
+ *  de agendamentos malformatados) são ocultadas para não poluir a UI. */
+function SellerNotesView({ notes }: { notes: string }) {
+  const lines = notes.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const isUrl = (v: string) => /^https?:\/\//i.test(v);
+  const items = lines
+    .map((line) => {
+      const idx = line.indexOf(":");
+      if (idx === -1) return { key: "", value: line };
+      return { key: line.slice(0, idx).trim(), value: line.slice(idx + 1).trim() };
+    })
+    .filter((it) => it.value && it.value !== "[object Object]");
+  if (items.length === 0) return null;
+  return (
+    <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+      {items.map((it, idx) => (
+        <div key={idx} className="contents">
+          <dt className="text-[10px] uppercase tracking-wider text-muted-foreground/80 pt-0.5">
+            {it.key || "—"}
+          </dt>
+          <dd className="text-foreground/90 break-words">
+            {isUrl(it.value) ? (
+              <a
+                href={it.value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-primary hover:underline break-all"
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                <span>{it.value}</span>
+              </a>
+            ) : (
+              <span className="whitespace-pre-wrap">{it.value}</span>
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 // Item unificado da timeline (interação nova, callNote legado, ou reunião agendada).
 type TimelineItem =
   | { kind: "interaction"; at: string; data: Interaction }
@@ -403,8 +445,8 @@ export default function InteracoesTimeline({
                   )}
                   {i.sellerNotes && (
                     <div className="mt-2 rounded bg-background/50 border border-border/40 p-2">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Anotações do vendedor</p>
-                      <p className="text-xs whitespace-pre-wrap">{i.sellerNotes}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Anotações do vendedor</p>
+                      <SellerNotesView notes={i.sellerNotes} />
                     </div>
                   )}
                 </div>
