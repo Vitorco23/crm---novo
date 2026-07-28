@@ -131,6 +131,12 @@ export interface Lead {
   company: string;
   contact: string;
   phone: string;
+  /**
+   * Formato oficial para integrações/deduplicação: 55 + DDD + número (só dígitos).
+   * NUNCA é exibido para o usuário — sempre derivado de `phone` (ou `whatsapp`)
+   * automaticamente por `saveLeads()` / `getLeads()`.
+   */
+  phoneNormalized?: string;
   niche: string;
   city: string;
   gmnLink: string;
