@@ -298,6 +298,13 @@ export async function syncFromCloud(): Promise<boolean> {
     console.warn("[userStorage] inbound sync failed", e);
   }
 
+  // Drena a caixa de entrada de interações comerciais (n8n/Matteline).
+  try {
+    await syncInboundInteractions();
+  } catch (e) {
+    console.warn("[userStorage] inbound interactions sync failed", e);
+  }
+
 
   let changed = false;
   try {
@@ -486,6 +493,175 @@ export async function syncInboundLeads(): Promise<number> {
 // Alias público — mesma rotina, nome dedicado para chamadas manuais (botão UI).
 export async function pullInboundLeads(): Promise<number> {
   return syncInboundLeads();
+}
+
+
+// ===== Matteline / n8n inbound interactions queue =====
+// Drena `public.interactions_inbound`: localiza o Lead pelo telefone
+// normalizado, cria uma Interaction no MESMO formato do CRM
+// (src/lib/store.ts → addInteraction) e marca a linha como `processed`.
+// Em caso de erro, grava a mensagem em `dados.error` e mantém `processed=false`
+// para permitir nova tentativa.
+
+type InboundInteractionRow = {
+  id: string;
+  dados: any;
+  phone_normalized: string | null;
+  processed: boolean;
+  created_at: string;
+};
+
+// Mesma normalização usada pela edge function receive-matteline-call.
+function normalizePhoneForMatch(raw: string | undefined | null): string {
+  if (!raw) return "";
+  const digits = String(raw).replace(/\D+/g, "");
+  if (!digits) return "";
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  return digits;
+}
+
+function formatDurationLabel(sec: number | null | undefined): string {
+  if (!sec || !Number.isFinite(sec) || sec <= 0) return "";
+  const s = Math.round(sec);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return m > 0 ? `${m}m${r.toString().padStart(2, "0")}s` : `${r}s`;
+}
+
+function buildInteractionFromInbound(row: InboundInteractionRow, lead: Lead): {
+  type: string; date: string; title: string; summary: string; sellerNotes?: string; createdAt: string;
+} {
+  const d = row.dados ?? {};
+  const seller = d.seller ?? {};
+  const sellerName = String(seller.name || seller.email || "").trim();
+  const durationSec = typeof d.durationSec === "number" ? d.durationSec : null;
+  const durationLabel = formatDurationLabel(durationSec);
+  const score = typeof d.score === "number" ? d.score : null;
+  const scheduling = String(d.scheduling || "").trim();
+
+  // Summary = resumo enviado pela Matteline (fonte principal para IA/timeline).
+  const summary = String(d.summary || d.transcription || "").trim() || "Ligação registrada via Matteline.";
+
+  // sellerNotes concentra os metadados (áudio, link, vendedor, duração, score,
+  // agendamento) sem poluir o campo `summary`.
+  const metaLines: string[] = [];
+  if (sellerName) metaLines.push(`Vendedor: ${sellerName}`);
+  if (durationLabel) metaLines.push(`Duração: ${durationLabel}`);
+  if (score !== null) metaLines.push(`Score: ${Math.round(score)}%`);
+  if (d.callStatus) metaLines.push(`Status: ${d.callStatus}`);
+  if (d.callLink) metaLines.push(`Link da ligação: ${d.callLink}`);
+  if (d.audioUrl) metaLines.push(`Áudio: ${d.audioUrl}`);
+  if (scheduling) metaLines.push(`Agendamento: ${scheduling}`);
+  metaLines.push(`Origem: Matteline (n8n)`);
+
+  // `date` = quando a ligação aconteceu. Preferimos `receivedAt`, senão created_at.
+  const rawDate = String(d.receivedAt || row.created_at || new Date().toISOString());
+  const parsed = new Date(rawDate);
+  const date = isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+
+  // Título curto e informativo — inclui empresa e vendedor quando existir.
+  const title = `Ligação — ${lead.company || lead.contact || "Lead"}${sellerName ? ` (${sellerName})` : ""}`;
+
+  return {
+    type: "Ligação",
+    date,
+    title,
+    summary,
+    sellerNotes: metaLines.join("\n") || undefined,
+    createdAt: date,
+  };
+}
+
+export async function syncInboundInteractions(): Promise<number> {
+  const uid = getCurrentUserId();
+  if (!uid) return 0;
+
+  const { data, error } = await supabase
+    .from("interactions_inbound")
+    .select("id,dados,phone_normalized,processed,created_at")
+    .eq("processed", false)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  const rows = (data ?? []) as InboundInteractionRow[];
+  if (rows.length === 0) return 0;
+
+  const leads = uload<Lead[]>("p21_leads", []);
+  // Índice phoneNormalized → lead (primeira ocorrência ganha).
+  const phoneIndex = new Map<string, Lead>();
+  for (const l of leads) {
+    const p = normalizePhoneForMatch(l.phone || l.whatsapp);
+    if (p && !phoneIndex.has(p)) phoneIndex.set(p, l);
+  }
+
+  let appended = 0;
+  const okIds: string[] = [];
+  const failed: Array<{ id: string; error: string; dados: any }> = [];
+
+  for (const row of rows) {
+    try {
+      const phone = row.phone_normalized || normalizePhoneForMatch(row.dados?.destinationRaw);
+      if (!phone) {
+        failed.push({ id: row.id, error: "missing_phone", dados: row.dados });
+        continue;
+      }
+      const lead = phoneIndex.get(phone);
+      if (!lead) {
+        failed.push({ id: row.id, error: `lead_not_found:${phone}`, dados: row.dados });
+        continue;
+      }
+
+      const interaction = buildInteractionFromInbound(row, lead);
+      const withId = {
+        id: (globalThis.crypto?.randomUUID?.() as string | undefined) ??
+          `int_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        ...interaction,
+      };
+      lead.interactions = [...((lead.interactions as any[]) || []), withId];
+      appended++;
+      okIds.push(row.id);
+    } catch (e: any) {
+      failed.push({ id: row.id, error: e?.message || String(e), dados: row.dados });
+    }
+  }
+
+  if (appended > 0) {
+    usave<Lead[]>("p21_leads", leads);
+  }
+
+  if (okIds.length > 0) {
+    const { error: upErr } = await supabase
+      .from("interactions_inbound")
+      .update({ processed: true, processed_at: new Date().toISOString() })
+      .in("id", okIds);
+    if (upErr) {
+      console.warn("[userStorage] failed to mark interactions_inbound processed", upErr);
+    }
+  }
+
+  for (const f of failed) {
+    const dadosWithError = { ...(f.dados ?? {}), error: f.error, errorAt: new Date().toISOString() };
+    const { error: errUp } = await supabase
+      .from("interactions_inbound")
+      .update({ dados: dadosWithError })
+      .eq("id", f.id);
+    if (errUp) {
+      console.warn("[userStorage] failed to record inbound interaction error", errUp);
+    }
+  }
+
+  if (appended > 0) {
+    window.dispatchEvent(new Event("p21:storage-synced"));
+    window.dispatchEvent(
+      new CustomEvent("p21:leads-changed", { detail: { source: "inbound-interactions", count: appended } })
+    );
+  }
+  return appended;
+}
+
+// Alias público — para uso manual (ex.: botão de UI).
+export async function pullInboundInteractions(): Promise<number> {
+  return syncInboundInteractions();
 }
 
 
