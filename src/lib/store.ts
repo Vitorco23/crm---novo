@@ -156,6 +156,21 @@ export interface Lead {
   temperature?: "Quente" | "Morno" | "Frio";
   website?: string;
   whatsapp?: string;
+  /** Diagnóstico Comercial Automático (V1.1) — gerado após ligações Matteline. */
+  autoDiagnosis?: AutoDiagnosis;
+}
+
+export interface AutoDiagnosis {
+  temperature: "quente" | "morno" | "frio";
+  probability: number;
+  summary: string;
+  next_action: string;
+  attention: string;
+  updated_memory: string;
+  generatedAt: string;
+  model?: string;
+  /** Fingerprint das interações consideradas — usado para detectar "desatualizado". */
+  inputHash: string;
 }
 
 
