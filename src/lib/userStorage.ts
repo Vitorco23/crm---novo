@@ -298,12 +298,10 @@ export async function syncFromCloud(): Promise<boolean> {
     console.warn("[userStorage] inbound sync failed", e);
   }
 
-  // Drena a caixa de entrada de interações comerciais (n8n/Matteline).
-  try {
-    await syncInboundInteractions();
-  } catch (e) {
-    console.warn("[userStorage] inbound interactions sync failed", e);
-  }
+  // NOTA: a drenagem de `interactions_inbound` foi movida para DEPOIS do pull
+  // do `user_storage` (ver final desta função). Antes ela rodava aqui, quando o
+  // cache local `p21_leads` ainda estava vazio na primeira sincronização — por
+  // isso `phoneIndex.size` chegava sempre como 0 e nenhum Lead era encontrado.
 
 
   let changed = false;
