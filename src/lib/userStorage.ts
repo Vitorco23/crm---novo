@@ -369,6 +369,21 @@ export async function syncFromCloud(): Promise<boolean> {
   } catch (e) {
     console.warn("[userStorage] sync failed", e);
   }
+
+  // Agora que o cache local `p21_leads` está populado a partir da nuvem, drena
+  // a fila de interações comerciais (n8n/Matteline). Rodar isso antes do pull
+  // fazia `phoneIndex` ficar vazio na primeira sincronização de cada sessão.
+  try {
+    const leadsLoaded = uload<Lead[]>("p21_leads", []);
+    // [DEBUG-TEMP] Passo 6/7: confirma que o carregamento terminou antes de drenar.
+    console.log("[inbound-int][DEBUG] pre-sync leads.count=", leadsLoaded.length,
+      "hasPhoneNormalized=", leadsLoaded.filter((l: any) => !!l?.phoneNormalized).length,
+      "hasOnlyPhone=", leadsLoaded.filter((l: any) => !l?.phoneNormalized && !!(l?.phone || l?.whatsapp)).length);
+    await syncInboundInteractions();
+  } catch (e) {
+    console.warn("[userStorage] inbound interactions sync failed", e);
+  }
+
   return changed;
 }
 
