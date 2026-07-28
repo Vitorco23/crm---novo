@@ -81,6 +81,9 @@ Deno.serve(async (req) => {
 
   const destination = (raw.destination_number || "").toString().trim();
   const phoneNormalized = normalizePhone(destination);
+  // [DEBUG-TEMP] Passos 1-2: telefone recebido e normalizado.
+  console.log("[receive-matteline-call][DEBUG] phone.raw=", JSON.stringify(destination));
+  console.log("[receive-matteline-call][DEBUG] phone.normalized=", JSON.stringify(phoneNormalized));
   const durationSec = toNumber(raw.call_duration);
   const score = toNumber(raw.deal_closure_percentage);
 
@@ -127,6 +130,10 @@ Deno.serve(async (req) => {
     console.error("insert interactions_inbound failed", insErr);
     return json(500, { error: "inbound_write_failed", details: insErr.message });
   }
+
+  // [DEBUG-TEMP] Passo 6: confirmação de gravação na fila.
+  console.log("[receive-matteline-call][DEBUG] queued.row.id=", inserted.id,
+    "queued.phone_normalized=", phoneNormalized);
 
   return json(200, {
     ok: true,

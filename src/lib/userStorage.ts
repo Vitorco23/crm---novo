@@ -640,17 +640,26 @@ export async function syncInboundInteractions(): Promise<number> {
   if (error) throw error;
 
   const rows = (data ?? []) as InboundInteractionRow[];
+  // [DEBUG-TEMP] Passo 9: quantos itens não-processados voltaram do banco.
+  console.log("[inbound-int][DEBUG] fetched pending rows:", rows.length,
+    "ids=", rows.map((r) => r.id));
   if (rows.length === 0) return 0;
 
   const leads = uload<Lead[]>("p21_leads", []);
   // Índice phoneNormalized → lead (primeira ocorrência ganha).
   // Sempre confia no campo `phoneNormalized` do Lead (fonte oficial). Se ele
   // não existir (Lead legado ainda não migrado nesta sessão), calcula on-the-fly.
-  const phoneIndex = new Map<string, Lead>();
+  const phoneIndex = new Map<string, Lead[]>();
   for (const l of leads) {
     const p = l.phoneNormalized || normalizePhoneBR(l.phone || l.whatsapp);
-    if (p && !phoneIndex.has(p)) phoneIndex.set(p, l);
+    if (!p) continue;
+    const arr = phoneIndex.get(p) ?? [];
+    arr.push(l);
+    phoneIndex.set(p, arr);
   }
+  // [DEBUG-TEMP] Índice de telefones (chaves) para inspeção rápida.
+  console.log("[inbound-int][DEBUG] phoneIndex size=", phoneIndex.size,
+    "sample keys=", Array.from(phoneIndex.keys()).slice(0, 5));
 
   let appended = 0;
   const okIds: string[] = [];
@@ -659,12 +668,26 @@ export async function syncInboundInteractions(): Promise<number> {
   for (const row of rows) {
     try {
       const phone = row.phone_normalized || normalizePhoneForMatch(row.dados?.destinationRaw);
+      // [DEBUG-TEMP] Passos 1-2 do lado do consumidor.
+      console.log("[inbound-int][DEBUG] row=", row.id,
+        "phone.row=", row.phone_normalized,
+        "phone.rawDados=", row.dados?.destinationRaw,
+        "phone.used=", phone);
       if (!phone) {
+        console.warn("[inbound-int][DEBUG] row=", row.id, "SKIP missing_phone");
         failed.push({ id: row.id, error: "missing_phone", dados: row.dados });
         continue;
       }
-      const lead = phoneIndex.get(phone);
+      const matches = phoneIndex.get(phone) ?? [];
+      // [DEBUG-TEMP] Passos 3-5: leads encontrados, IDs e escolhido.
+      console.log("[inbound-int][DEBUG] row=", row.id,
+        "matches.count=", matches.length,
+        "matches.ids=", matches.map((l) => l.id),
+        "chosen.id=", matches[0]?.id ?? null,
+        "chosen.company=", matches[0]?.company ?? null);
+      const lead = matches[0];
       if (!lead) {
+        console.warn("[inbound-int][DEBUG] row=", row.id, "SKIP lead_not_found for phone=", phone);
         failed.push({ id: row.id, error: `lead_not_found:${phone}`, dados: row.dados });
         continue;
       }
@@ -676,12 +699,22 @@ export async function syncInboundInteractions(): Promise<number> {
         ...interaction,
       };
       lead.interactions = [...((lead.interactions as any[]) || []), withId];
+      // [DEBUG-TEMP] Passos 6-8: interação anexada em memória (persistência acontece no usave abaixo).
+      console.log("[inbound-int][DEBUG] row=", row.id,
+        "interaction.id=", withId.id,
+        "attached.leadId=", lead.id,
+        "lead.interactions.count=", (lead.interactions as any[]).length);
       appended++;
       okIds.push(row.id);
     } catch (e: any) {
+      console.error("[inbound-int][DEBUG] row=", row.id, "THROW", e?.message || e);
       failed.push({ id: row.id, error: e?.message || String(e), dados: row.dados });
     }
   }
+
+  // [DEBUG-TEMP] Passo 10: resumo final.
+  console.log("[inbound-int][DEBUG] summary appended=", appended,
+    "okIds=", okIds, "failed=", failed.map((f) => ({ id: f.id, error: f.error })));
 
   if (appended > 0) {
     usave<Lead[]>("p21_leads", leads);
