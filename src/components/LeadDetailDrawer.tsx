@@ -347,6 +347,18 @@ export default function LeadDetailDrawer({
               <DialogTitle className="sr-only">{lead.company}</DialogTitle>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                className="h-8 bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm"
+                onClick={() => {
+                  setTab("interacoes");
+                  setAutoRunDiagnosis(true);
+                }}
+                title="Analisar o lead por completo (informações, interações, observações e anexos)"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1" />
+                🧠 Diagnóstico Completo
+              </Button>
               <Badge className={`border ${prio.cls}`}>{prio.label}</Badge>
               <Select value={temp} onValueChange={(v) => persist({ temperature: v as Lead["temperature"] })}>
                 <SelectTrigger className="h-7 w-[110px] text-xs">
