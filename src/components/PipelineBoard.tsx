@@ -38,6 +38,8 @@ import {
 } from "lucide-react";
 import { computeLeadTemperature, lastInteractionLabel, nextActionLabel } from "@/lib/coldCallMetrics";
 import { getStepForLead, executionMoment } from "@/lib/cadence";
+import { displayTemperature, displayNextAction, lastInteractionSnippet, leadBadges } from "@/lib/leadInsights";
+import { Sparkles as SparklesIcon } from "lucide-react";
 
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -186,28 +188,58 @@ function LeadCard({
         </div>
       )}
 
+      {/* Smart snippet: temperatura, próxima ação, última interação, diagnóstico */}
+      {(() => {
+        const temp = displayTemperature(lead);
+        const next = displayNextAction(lead);
+        const last = lastInteractionSnippet(lead, 80);
+        const meetings = getMeetingsForLead(lead.id);
+        const badges = leadBadges(lead, meetings).slice(0, 2);
+        const diag = lead.autoDiagnosis;
+        const diagStale = diag && diag.inputHash !== `n${(lead.interactions || []).length}|${(lead.notes || "").length}|${(lead.interactions || []).map((i) => `${i.id}:${i.date}`).sort().join(",")}`;
+        return (
+          <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${temp.cls}`}>
+                <span>{temp.emoji}</span><span className="uppercase tracking-wide">{temp.label}</span>
+              </span>
+              {diag && (
+                <span title={diagStale ? "Diagnóstico desatualizado" : "Diagnóstico atualizado"}
+                  className={`inline-flex items-center gap-0.5 text-[9px] ${diagStale ? "text-yellow-500" : "text-accent"}`}>
+                  <SparklesIcon className="h-2.5 w-2.5" /> IA
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-foreground/90 truncate flex items-center gap-1">
+              <ArrowRight className="h-2.5 w-2.5 shrink-0 text-accent" />
+              <span className="truncate">{next}</span>
+            </p>
+            {last && last.text && (
+              <p className="text-[10px] text-muted-foreground truncate italic" title={last.text}>
+                "{last.text}"
+              </p>
+            )}
+            {badges.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {badges.map((b) => (
+                  <span key={b.key} className={`text-[9px] px-1 py-0 rounded border ${b.cls}`}>{b.label}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {pipeline === "cold_call" && (() => {
         const stageLower = lead.stage.toLowerCase();
         const finalCol = stageLower.includes("não quer") || stageLower.includes("nao quer") || stageLower.includes("sem contato");
         if (finalCol) return null;
-        const temp = computeLeadTemperature(lead);
         const step = getStepForLead(lead);
         const moment = executionMoment(lead);
-        const dotClass =
-          temp === "hot" ? "bg-green-500" :
-          temp === "warm" ? "bg-yellow-500" :
-          temp === "cold" ? "bg-destructive" :
-          "bg-muted-foreground/40";
         if (!step) return null;
         return (
           <div className="mt-2 flex flex-col gap-0.5 text-[10px] text-muted-foreground border-t border-border/50 pt-1.5">
-            <span className="flex items-center gap-1">
-              <span className={`inline-block h-2 w-2 rounded-full ${dotClass}`} />
-              <span className="truncate">D{step.day} · {step.channel} · {moment}</span>
-            </span>
-            <span className="inline-flex items-center gap-0.5 text-accent font-medium">
-              <ArrowRight className="h-2.5 w-2.5" />{step.nextAction}
-            </span>
+            <span className="truncate">D{step.day} · {step.channel} · {moment}</span>
           </div>
         );
       })()}
