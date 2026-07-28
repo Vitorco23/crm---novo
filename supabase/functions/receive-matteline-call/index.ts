@@ -81,6 +81,9 @@ Deno.serve(async (req) => {
 
   const destination = (raw.destination_number || "").toString().trim();
   const phoneNormalized = normalizePhone(destination);
+  // [DEBUG-TEMP] Passos 1-2: telefone recebido e normalizado.
+  console.log("[receive-matteline-call][DEBUG] phone.raw=", JSON.stringify(destination));
+  console.log("[receive-matteline-call][DEBUG] phone.normalized=", JSON.stringify(phoneNormalized));
   const durationSec = toNumber(raw.call_duration);
   const score = toNumber(raw.deal_closure_percentage);
 
