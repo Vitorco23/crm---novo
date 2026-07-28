@@ -537,7 +537,7 @@ function buildInteractionFromInbound(row: InboundInteractionRow, lead: Lead): {
   const durationSec = typeof d.durationSec === "number" ? d.durationSec : null;
   const durationLabel = formatDurationLabel(durationSec);
   const score = typeof d.score === "number" ? d.score : null;
-  const scheduling = String(d.scheduling || "").trim();
+  const scheduling = formatSchedulingValue(d.scheduling);
 
   // Summary = resumo enviado pela Matteline (fonte principal para IA/timeline).
   const summary = String(d.summary || d.transcription || "").trim() || "Ligação registrada via Matteline.";
@@ -547,9 +547,9 @@ function buildInteractionFromInbound(row: InboundInteractionRow, lead: Lead): {
   const metaLines: string[] = [];
   if (sellerName) metaLines.push(`Vendedor: ${sellerName}`);
   if (durationLabel) metaLines.push(`Duração: ${durationLabel}`);
-  if (score !== null) metaLines.push(`Score: ${Math.round(score)}%`);
+  if (score !== null) metaLines.push(`Score Comercial: ${Math.round(score)}%`);
   if (d.callStatus) metaLines.push(`Status: ${d.callStatus}`);
-  if (d.callLink) metaLines.push(`Link da ligação: ${d.callLink}`);
+  if (d.callLink) metaLines.push(`Ligação: ${d.callLink}`);
   if (d.audioUrl) metaLines.push(`Áudio: ${d.audioUrl}`);
   if (scheduling) metaLines.push(`Agendamento: ${scheduling}`);
   metaLines.push(`Origem: Matteline (n8n)`);
