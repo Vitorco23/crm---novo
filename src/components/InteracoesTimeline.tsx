@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import {
   type Lead, type Interaction, type InteractionType, type CallNote,
   addInteraction, updateInteraction, removeInteraction, removeCallNote,
+  addCallNote, getLeads,
   getMeetingsForLead,
 } from "@/lib/store";
 import { analyzeCallNote } from "@/lib/callAnalysis";
@@ -222,9 +223,22 @@ export default function InteracoesTimeline({
     if (latest) {
       analyzeNote(latest, "full");
     } else {
-      toast.info("Registre a primeira ligação para executar o diagnóstico completo.");
-      setEditing(null);
-      setFormOpen(true);
+      // Sem ligações registradas: cria uma nota sintética para viabilizar o
+      // diagnóstico completo do card (informações, interações, observações e anexos).
+      const interCount = (lead.interactions || []).length;
+      const meetCount = meetings.length;
+      const attCount = (lead.attachments || []).length;
+      const syntheticSummary = [
+        `Solicitação de diagnóstico geral do lead (sem ligação registrada até o momento).`,
+        `Contexto atual: etapa "${lead.stage}", ${interCount} interação(ões) comercial(is), ${meetCount} reunião(ões), ${attCount} anexo(s).`,
+        lead.notes ? `Observações do vendedor: ${lead.notes.slice(0, 800)}` : null,
+      ].filter(Boolean).join("\n");
+      addCallNote(lead.id, syntheticSummary, "Diagnóstico Geral");
+      const refreshed = getLeads().find((l) => l.id === lead.id);
+      const created = [...(refreshed?.callNotes || [])]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      onRefresh();
+      if (created) analyzeNote(created, "full");
     }
     onAutoRunDiagnosisConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
