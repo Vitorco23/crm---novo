@@ -374,11 +374,6 @@ export async function syncFromCloud(): Promise<boolean> {
   // a fila de interações comerciais (n8n/Matteline). Rodar isso antes do pull
   // fazia `phoneIndex` ficar vazio na primeira sincronização de cada sessão.
   try {
-    const leadsLoaded = uload<Lead[]>("p21_leads", []);
-    // [DEBUG-TEMP] Passo 6/7: confirma que o carregamento terminou antes de drenar.
-    console.log("[inbound-int][DEBUG] pre-sync leads.count=", leadsLoaded.length,
-      "hasPhoneNormalized=", leadsLoaded.filter((l: any) => !!l?.phoneNormalized).length,
-      "hasOnlyPhone=", leadsLoaded.filter((l: any) => !l?.phoneNormalized && !!(l?.phone || l?.whatsapp)).length);
     await syncInboundInteractions();
   } catch (e) {
     console.warn("[userStorage] inbound interactions sync failed", e);
@@ -653,39 +648,22 @@ export async function syncInboundInteractions(): Promise<number> {
   if (error) throw error;
 
   const rows = (data ?? []) as InboundInteractionRow[];
-  // [DEBUG-TEMP] Passo 9: quantos itens não-processados voltaram do banco.
-  console.log("[inbound-int][DEBUG] fetched pending rows:", rows.length,
-    "ids=", rows.map((r) => r.id));
   if (rows.length === 0) return 0;
 
   const leads = uload<Lead[]>("p21_leads", []);
-  // [DEBUG-TEMP] Passos 1-4: origem da coleção usada para montar o índice.
-  const withNorm = leads.filter((l: any) => !!l?.phoneNormalized).length;
-  const withOnlyPhone = leads.filter((l: any) => !l?.phoneNormalized && !!(l?.phone || l?.whatsapp)).length;
-  const withNoPhone = leads.filter((l: any) => !l?.phoneNormalized && !l?.phone && !l?.whatsapp).length;
-  console.log("[inbound-int][DEBUG] leads source=uload(p21_leads)",
-    "count=", leads.length,
-    "hasPhoneNormalized=", withNorm,
-    "hasOnlyPhone=", withOnlyPhone,
-    "noPhone=", withNoPhone);
 
   // Índice phoneNormalized → lead (primeira ocorrência ganha).
   // Sempre confia no campo `phoneNormalized` do Lead (fonte oficial). Se ele
   // não existir (Lead legado ainda não migrado nesta sessão), calcula on-the-fly.
   const phoneIndex = new Map<string, Lead[]>();
-  let indexed = 0;
   for (const l of leads) {
     const p = l.phoneNormalized || normalizePhoneBR(l.phone || l.whatsapp);
     if (!p) continue;
     const arr = phoneIndex.get(p) ?? [];
     arr.push(l);
     phoneIndex.set(p, arr);
-    indexed++;
   }
-  // [DEBUG-TEMP] Passo 5: itens efetivamente indexados.
-  console.log("[inbound-int][DEBUG] phoneIndex size=", phoneIndex.size,
-    "indexedLeads=", indexed,
-    "sample keys=", Array.from(phoneIndex.keys()).slice(0, 5));
+
   let appended = 0;
   const okIds: string[] = [];
   const failed: Array<{ id: string; error: string; dados: any }> = [];
@@ -696,27 +674,13 @@ export async function syncInboundInteractions(): Promise<number> {
       // bruto vindo da fila (linhas antigas podem ter phone_normalized parcial).
       const phoneRaw = row.phone_normalized || row.dados?.destinationRaw;
       const phone = normalizePhoneBR(phoneRaw);
-      // [DEBUG-TEMP] Passos 1-2 do lado do consumidor.
-      console.log("[inbound-int][DEBUG] row=", row.id,
-        "phone.row=", row.phone_normalized,
-        "phone.rawDados=", row.dados?.destinationRaw,
-        "phone.normalized=", phone,
-        "phone.used=", phone);
       if (!phone) {
-        console.warn("[inbound-int][DEBUG] row=", row.id, "SKIP missing_phone");
         failed.push({ id: row.id, error: "missing_phone", dados: row.dados });
         continue;
       }
       const matches = phoneIndex.get(phone) ?? [];
-      // [DEBUG-TEMP] Passos 3-5: leads encontrados, IDs e escolhido.
-      console.log("[inbound-int][DEBUG] row=", row.id,
-        "matches.count=", matches.length,
-        "matches.ids=", matches.map((l) => l.id),
-        "chosen.id=", matches[0]?.id ?? null,
-        "chosen.company=", matches[0]?.company ?? null);
       const lead = matches[0];
       if (!lead) {
-        console.warn("[inbound-int][DEBUG] row=", row.id, "SKIP lead_not_found for phone=", phone);
         failed.push({ id: row.id, error: `lead_not_found:${phone}`, dados: row.dados });
         continue;
       }
@@ -728,22 +692,14 @@ export async function syncInboundInteractions(): Promise<number> {
         ...interaction,
       };
       lead.interactions = [...((lead.interactions as any[]) || []), withId];
-      // [DEBUG-TEMP] Passos 6-8: interação anexada em memória (persistência acontece no usave abaixo).
-      console.log("[inbound-int][DEBUG] row=", row.id,
-        "interaction.id=", withId.id,
-        "attached.leadId=", lead.id,
-        "lead.interactions.count=", (lead.interactions as any[]).length);
       appended++;
       okIds.push(row.id);
     } catch (e: any) {
-      console.error("[inbound-int][DEBUG] row=", row.id, "THROW", e?.message || e);
+      console.error("[inbound-int] row failed", { id: row.id, error: e?.message || String(e) });
       failed.push({ id: row.id, error: e?.message || String(e), dados: row.dados });
     }
   }
 
-  // [DEBUG-TEMP] Passo 10: resumo final.
-  console.log("[inbound-int][DEBUG] summary appended=", appended,
-    "okIds=", okIds, "failed=", failed.map((f) => ({ id: f.id, error: f.error })));
 
   if (appended > 0) {
     usave<Lead[]>("p21_leads", leads);

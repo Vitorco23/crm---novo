@@ -1,19 +1,22 @@
 // Public webhook: recebe chamadas do n8n / Matteline e enfileira uma nova
 // Interaction para o Lead correspondente. NÃO executa IA — apenas persiste.
 //
-// Segue o mesmo padrão arquitetural de `receive-landing-lead`:
-//  - Endpoint POST público (sem verify_jwt).
-//  - Usa service role para gravar em uma tabela de fila (`interactions_inbound`).
-//  - O CRM drena a fila e anexa a Interaction ao Lead correto no `user_storage`.
+// V1.1 infra hardening:
+//   1. Shared-secret authentication via `MATTELINE_WEBHOOK_SECRET`.
+//   2. Idempotent enqueue via `call_id` (unique partial index).
+//   3. Production-only logs (no payload/transcript dumps).
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-matteline-signature",
 };
 
 interface MattelinePayload {
+  call_id?: string;
+  id?: string;
   summarization?: string;
   transcription?: string;
   call_link?: string;
@@ -24,7 +27,7 @@ interface MattelinePayload {
   destination_number?: string;
   call_status?: string;
   deal_closure_percentage?: number | string;
-  scheduling?: string; // ISO da reunião agendada, se houver
+  scheduling?: string;
 }
 
 function json(status: number, body: unknown) {
@@ -34,13 +37,23 @@ function json(status: number, body: unknown) {
   });
 }
 
-// Normalização de telefone resiliente a qualquer formato recebido:
-//  - Remove tudo que não for dígito.
-//  - Se já começar com "55" (≥12 dígitos), preserva.
-//  - Se começar com "0" (trunk local), preserva o 0 e prefixa "55".
-//  - Se tiver apenas DDD + número (10/11 dígitos), prefixa "550".
-// Todos os formatos do mesmo número geram o MESMO phoneNormalized,
-// permitindo comparação estável no lado do CRM.
+// Constant-time comparison to avoid timing side-channels on the shared secret.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
+function extractProvidedSecret(req: Request): string | null {
+  const sig = req.headers.get("x-matteline-signature");
+  if (sig && sig.trim()) return sig.trim();
+  const auth = req.headers.get("authorization");
+  if (auth && auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  return null;
+}
+
+// Same normalization as before — preserved verbatim to avoid regressions.
 function normalizePhone(raw: string | undefined | null): string {
   if (!raw) return "";
   const digits = String(raw).replace(/\D+/g, "");
@@ -57,6 +70,25 @@ function toNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Deterministic idempotency key. Prefer whatever the provider gives us;
+// otherwise derive a stable fingerprint so retries collapse into one row.
+async function computeCallId(raw: MattelinePayload, phoneNormalized: string): Promise<string> {
+  const explicit = (raw.call_id || raw.id || "").toString().trim();
+  if (explicit) return explicit;
+  if (raw.call_link) return `link:${raw.call_link}`;
+  if (raw.call_audio_url) return `audio:${raw.call_audio_url}`;
+  const seed = [
+    phoneNormalized,
+    String(raw.call_duration ?? ""),
+    (raw.call_status ?? "").toString(),
+    (raw.summarization ?? "").toString().slice(0, 240),
+  ].join("|");
+  const buf = new TextEncoder().encode(seed);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  const hex = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `fp:${hex}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -67,8 +99,18 @@ Deno.serve(async (req) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!SUPABASE_URL || !SERVICE_ROLE) {
+  const WEBHOOK_SECRET = Deno.env.get("MATTELINE_WEBHOOK_SECRET");
+  if (!SUPABASE_URL || !SERVICE_ROLE || !WEBHOOK_SECRET) {
+    console.error("[receive-matteline-call] server_misconfigured (missing env)");
     return json(500, { error: "server_misconfigured" });
+  }
+
+  // 1) Shared-secret auth. Reject BEFORE parsing the body so an unauthenticated
+  //    caller cannot force expensive JSON parsing or DB round trips.
+  const provided = extractProvidedSecret(req);
+  if (!provided || !safeEqual(provided, WEBHOOK_SECRET)) {
+    console.warn("[receive-matteline-call] unauthorized");
+    return json(401, { error: "unauthorized" });
   }
 
   let raw: MattelinePayload & Record<string, unknown>;
@@ -77,13 +119,9 @@ Deno.serve(async (req) => {
   } catch {
     return json(400, { error: "invalid_json" });
   }
-  console.log("[receive-matteline-call] payload", JSON.stringify(raw));
 
   const destination = (raw.destination_number || "").toString().trim();
   const phoneNormalized = normalizePhone(destination);
-  // [DEBUG-TEMP] Passos 1-2: telefone recebido e normalizado.
-  console.log("[receive-matteline-call][DEBUG] phone.raw=", JSON.stringify(destination));
-  console.log("[receive-matteline-call][DEBUG] phone.normalized=", JSON.stringify(phoneNormalized));
   const durationSec = toNumber(raw.call_duration);
   const score = toNumber(raw.deal_closure_percentage);
 
@@ -94,9 +132,10 @@ Deno.serve(async (req) => {
     });
   }
 
+  const callId = await computeCallId(raw, phoneNormalized);
+
   const nowISO = new Date().toISOString();
   const dados = {
-    // Campos normalizados (chave para o CRM anexar no Lead correto)
     phoneNormalized,
     destinationRaw: destination,
     summary: (raw.summarization || "").toString(),
@@ -109,10 +148,11 @@ Deno.serve(async (req) => {
       name: (raw.user_name || "").toString(),
     },
     callStatus: (raw.call_status || "").toString(),
-    score, // deal_closure_percentage 0..100
+    score,
     scheduling: (raw.scheduling || "").toString(),
     receivedAt: nowISO,
     source: "matteline",
+    callId,
     raw,
   };
 
@@ -120,25 +160,39 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
+  // 2) Idempotent enqueue. `call_id` has a UNIQUE partial index — on retry the
+  //    insert violates it and we return 200 with duplicate=true, without
+  //    creating a second row or (later) re-triggering diagnosis.
   const { data: inserted, error: insErr } = await admin
     .from("interactions_inbound")
-    .insert({ dados, phone_normalized: phoneNormalized || null })
+    .insert({ dados, phone_normalized: phoneNormalized || null, call_id: callId })
     .select("id")
     .single();
 
   if (insErr) {
-    console.error("insert interactions_inbound failed", insErr);
-    return json(500, { error: "inbound_write_failed", details: insErr.message });
+    // Postgres unique_violation → treat as duplicate, not an error.
+    const code = (insErr as { code?: string }).code;
+    if (code === "23505") {
+      console.log("[receive-matteline-call] duplicate call_id, skipped", {
+        callId, phoneNormalized: phoneNormalized || null,
+      });
+      return json(200, { ok: true, duplicate: true, callId });
+    }
+    console.error("[receive-matteline-call] insert_failed", {
+      code, message: insErr.message,
+    });
+    return json(500, { error: "inbound_write_failed" });
   }
 
-  // [DEBUG-TEMP] Passo 6: confirmação de gravação na fila.
-  console.log("[receive-matteline-call][DEBUG] queued.row.id=", inserted.id,
-    "queued.phone_normalized=", phoneNormalized);
+  console.log("[receive-matteline-call] queued", {
+    id: inserted.id, callId, phoneNormalized: phoneNormalized || null,
+  });
 
   return json(200, {
     ok: true,
     id: inserted.id,
     queued: true,
+    callId,
     phoneNormalized,
   });
 });
