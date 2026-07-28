@@ -131,6 +131,10 @@ Deno.serve(async (req) => {
     return json(500, { error: "inbound_write_failed", details: insErr.message });
   }
 
+  // [DEBUG-TEMP] Passo 6: confirmação de gravação na fila.
+  console.log("[receive-matteline-call][DEBUG] queued.row.id=", inserted.id,
+    "queued.phone_normalized=", phoneNormalized);
+
   return json(200, {
     ok: true,
     id: inserted.id,
