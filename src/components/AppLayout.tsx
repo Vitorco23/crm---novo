@@ -1,21 +1,27 @@
+import { useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { PictureInPicture2 } from "lucide-react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { FloatingPomodoroWidget } from "@/components/FloatingPomodoroWidget";
 import { PomodoroHeaderWidget } from "@/components/PomodoroHeaderWidget";
 import { HeaderStatsWidget } from "@/components/HeaderStatsWidget";
 import { ForceUpdateButton } from "@/components/ForceUpdateButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Button } from "@/components/ui/button";
-import { LogOut, Shield, PictureInPicture2 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import { useReminderNotifications } from "@/hooks/useReminderNotifications";
 import { PomodoroModeProvider, usePomodoroMode } from "@/contexts/PomodoroModeContext";
+import { Breadcrumbs } from "@/components/shell/Breadcrumbs";
+import { GlobalSearch } from "@/components/shell/GlobalSearch";
+import { NotificationsMenu } from "@/components/shell/NotificationsMenu";
+import { UserMenu } from "@/components/shell/UserMenu";
+import { findNavItem } from "@/lib/navigation";
 
 function DockedPomodoroSlot() {
   const { mode, setMode } = usePomodoroMode();
   if (mode !== "docked") return null;
   return (
-    <div className="flex items-center gap-1">
+    <div className="hidden md:flex items-center gap-1">
       <PomodoroHeaderWidget />
       <Button
         size="icon"
@@ -31,33 +37,53 @@ function DockedPomodoroSlot() {
 }
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, signOut } = useAuth();
   useReminderNotifications();
+  const { pathname } = useLocation();
+  const current = findNavItem(pathname);
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-12 flex items-center justify-between border-b px-2 shrink-0 gap-2">
-            <SidebarTrigger />
-            <div className="flex items-center gap-3">
-              <DockedPomodoroSlot />
-              <HeaderStatsWidget />
-              <div className="flex items-center gap-2 pl-2 border-l border-border">
-                <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
-                  {isAdmin && <Shield className="h-3 w-3 text-primary" />}
-                  {user?.email}
-                </span>
-                <ForceUpdateButton />
-                <ThemeToggle className="h-8 w-8" />
-                <Button size="icon" variant="ghost" onClick={signOut} title="Sair">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </div>
+          {/* Header global do Application Shell */}
+          <header className="sticky top-0 z-sticky h-14 flex items-center gap-3 border-b border-border bg-background/85 backdrop-blur-md px-3 md:px-4 shrink-0">
+            <SidebarTrigger className="shrink-0" />
+            <Separator orientation="vertical" className="h-6 hidden md:block" />
+
+            {/* Título + breadcrumb */}
+            <div className="flex flex-col min-w-0 flex-1">
+              <Breadcrumbs className="hidden md:flex" />
+              <h1 className="text-small md:text-subtitle font-semibold text-foreground truncate leading-tight">
+                {current?.title ?? "Performance21"}
+              </h1>
+            </div>
+
+            {/* Busca global — só desktop/tablet */}
+            <div className="hidden lg:block">
+              <GlobalSearch />
+            </div>
+
+            {/* KPI compacto (meta do mês) */}
+            <HeaderStatsWidget />
+
+            {/* Pomodoro docked */}
+            <DockedPomodoroSlot />
+
+            <Separator orientation="vertical" className="h-6 hidden sm:block" />
+
+            {/* Ações do usuário */}
+            <div className="flex items-center gap-1">
+              <NotificationsMenu />
+              <ForceUpdateButton />
+              <ThemeToggle className="h-8 w-8" />
+              <UserMenu />
             </div>
           </header>
-          <main className="flex-1 overflow-auto">{children}</main>
+
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
         </div>
         <FloatingPomodoroWidget />
       </div>
