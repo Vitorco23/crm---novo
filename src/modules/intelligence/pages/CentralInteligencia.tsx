@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { supabase } from "@/integrations/supabase/client";
+import { IntelligenceRepository } from "../services/IntelligenceRepository";
 import { PageContainer } from "@/shared/components/shell/PageContainer";
 import { PageHeader } from "@/shared/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -109,11 +109,13 @@ export default function CentralInteligencia() {
   const openLead = useOpenLeadContext();
 
   const refreshConversations = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("intel_conversations")
-      .select("id, title, updated_at")
-      .order("updated_at", { ascending: false });
-    if (error) { toast({ title: "Erro ao carregar conversas", description: error.message, variant: "destructive" }); return; }
+    let data: Awaited<ReturnType<typeof IntelligenceRepository.listConversations>>;
+    try {
+      data = await IntelligenceRepository.listConversations();
+    } catch (e) {
+      toast({ title: "Erro ao carregar conversas", description: (e as Error).message, variant: "destructive" });
+      return;
+    }
     setConversations(data ?? []);
     if (!activeId && data && data.length) setActiveId(data[0].id);
   }, [activeId]);
@@ -123,13 +125,10 @@ export default function CentralInteligencia() {
   useEffect(() => {
     if (!activeId) { setMessages([]); return; }
     setLoading(true);
-    supabase.from("intel_messages")
-      .select("id, role, content, specialist, citations, model_used, created_at")
-      .eq("conversation_id", activeId)
-      .order("created_at")
-      .then(({ data, error }) => {
-        if (error) toast({ title: "Erro ao carregar mensagens", description: error.message, variant: "destructive" });
-        else setMessages((data ?? []) as ChatMessage[]);
+    IntelligenceRepository.listMessages(activeId)
+      .then((data) => setMessages((data ?? []) as ChatMessage[]))
+      .catch((e: Error) => toast({ title: "Erro ao carregar mensagens", description: e.message, variant: "destructive" }))
+      .finally(() => {
         setLoading(false);
         requestAnimationFrame(() => inputRef.current?.focus());
       });
@@ -141,11 +140,13 @@ export default function CentralInteligencia() {
   }, [messages, sending]);
 
   const newConversation = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("intel_conversations")
-      .insert({ title: "Nova conversa" })
-      .select("id, title, updated_at").single();
-    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    let data: Conversation;
+    try {
+      data = (await IntelligenceRepository.createConversation("Nova conversa")) as Conversation;
+    } catch (e) {
+      toast({ title: "Erro", description: (e as Error).message, variant: "destructive" });
+      return;
+    }
     setConversations((prev) => [data as Conversation, ...prev]);
     setActiveId(data.id);
     setMessages([]);
@@ -157,17 +158,22 @@ export default function CentralInteligencia() {
     setEditingId(null);
     if (!clean) return;
     setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title: clean } : c)));
-    const { error } = await supabase.from("intel_conversations").update({ title: clean }).eq("id", id);
-    if (error) {
-      toast({ title: "Erro ao renomear", description: error.message, variant: "destructive" });
+    try {
+      await IntelligenceRepository.renameConversation(id, clean);
+    } catch (e) {
+      toast({ title: "Erro ao renomear", description: (e as Error).message, variant: "destructive" });
       refreshConversations();
     }
   }, [refreshConversations]);
 
   const deleteConversation = useCallback(async (id: string) => {
     if (!confirm("Excluir esta conversa?")) return;
-    const { error } = await supabase.from("intel_conversations").delete().eq("id", id);
-    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    try {
+      await IntelligenceRepository.deleteConversation(id);
+    } catch (e) {
+      toast({ title: "Erro", description: (e as Error).message, variant: "destructive" });
+      return;
+    }
     setConversations((prev) => prev.filter((c) => c.id !== id));
     if (activeId === id) { setActiveId(null); setMessages([]); }
   }, [activeId]);
@@ -178,11 +184,13 @@ export default function CentralInteligencia() {
     let convId = activeId;
     if (!convId) {
       const title = q.slice(0, 60);
-      const { data, error } = await supabase
-        .from("intel_conversations")
-        .insert({ title })
-        .select("id, title, updated_at").single();
-      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+      let data: Conversation;
+      try {
+        data = (await IntelligenceRepository.createConversation(title)) as Conversation;
+      } catch (e) {
+        toast({ title: "Erro", description: (e as Error).message, variant: "destructive" });
+        return;
+      }
       convId = data.id;
       setConversations((prev) => [data as Conversation, ...prev]);
       setActiveId(convId);
@@ -200,20 +208,17 @@ export default function CentralInteligencia() {
       const history = messages
         .slice(-10)
         .map((m) => ({ role: m.role, content: (m.content ?? "").slice(0, 2000) }));
-      const { data, error } = await supabase.functions.invoke("intel-router", {
-        body: {
-          question: q,
-          conversationId: convId,
-          specialistOverride: override === "auto" ? undefined : override,
-          history,
-          context: {
-            page: window.location.pathname,
-            leadContext: leadCtx,
-            dashboardSnapshot: dashSnap,
-          },
+      const data = await IntelligenceRepository.ask({
+        question: q,
+        conversationId: convId,
+        specialistOverride: override === "auto" ? undefined : override,
+        history,
+        context: {
+          page: window.location.pathname,
+          leadContext: leadCtx,
+          dashboardSnapshot: dashSnap,
         },
       });
-      if (error) throw error;
       const reply: ChatMessage = {
         id: `tmp-a-${Date.now()}`, role: "assistant",
         content: data?.content ?? "(sem resposta)",
