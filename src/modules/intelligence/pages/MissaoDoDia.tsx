@@ -98,6 +98,8 @@ export default function MissaoDoDia() {
         }
       />
 
+      <OperationalCapacityCard plan={plan} />
+
       <Card>
         <CardContent className="py-4 space-y-2">
           <div className="flex items-center justify-between gap-3 flex-wrap">
