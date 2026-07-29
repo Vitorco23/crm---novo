@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import {
-  MessageCircle, Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, ChevronRight,
+  MessageCircle, Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, ChevronRight, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLeads, getPipelineForStage, type Lead } from "@/lib/store";
