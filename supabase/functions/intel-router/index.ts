@@ -12,6 +12,7 @@ import {
   buildQuestionBlock,
   composeSystem,
   normalizeHistory,
+  createKnowledgeEngineForSpecialist,
   runKnowledgeSearch,
   summarizeContext,
   type ConversationTurn,
