@@ -38,8 +38,9 @@ export function openLead(
   leadId: string,
   opts: { tab?: LeadTabHint; action?: LeadActionHint } = {},
 ) {
+  if (!leadId) return;
+  // Busca apenas pelo ID; nunca depende de filtros/listas visíveis.
   const lead = getLeads().find((l) => l.id === leadId);
-  if (!lead) return;
 
   const payload: PendingOpenLead = {
     leadId,
@@ -51,7 +52,9 @@ export function openLead(
     sessionStorage.setItem(PENDING_OPEN_LEAD_KEY, JSON.stringify(payload));
   } catch { /* ignore */ }
 
-  const route = pipelineRoute(getPipelineForStage(lead.stage));
+  // Se a base ainda não estiver carregada, assume o pipeline padrão; o board
+  // reprocessa o pedido pendente assim que os leads chegarem.
+  const route = lead ? pipelineRoute(getPipelineForStage(lead.stage)) : "/";
   const current = typeof window !== "undefined" ? window.location.pathname : "";
   if (current !== route) {
     window.location.assign(route);
@@ -67,10 +70,11 @@ export function consumePendingOpenLead(): PendingOpenLead | null {
     sessionStorage.removeItem(PENDING_OPEN_LEAD_KEY);
     const p = JSON.parse(raw) as PendingOpenLead;
     if (!p?.leadId) return null;
-    // Descarta requests antigos (> 30s) para evitar reabrir em navegações futuras.
-    if (Date.now() - (p.ts || 0) > 30_000) return null;
+    // Descarta requests antigos (> 2min) para evitar reabrir em navegações futuras.
+    if (Date.now() - (p.ts || 0) > 120_000) return null;
     return p;
   } catch {
     return null;
   }
 }
+
