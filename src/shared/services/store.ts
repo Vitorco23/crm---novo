@@ -1074,6 +1074,47 @@ export function setLeadAutoDiagnosis(leadId: string, diagnosis: AutoDiagnosis) {
   saveLeads(leads);
 }
 
+const MAX_DIAGNOSIS_VERSIONS = 30;
+
+/** Registra uma nova versão da inteligência do lead (nunca sobrescreve as anteriores). */
+export function pushLeadDiagnosisVersion(
+  leadId: string,
+  diagnosis: AutoDiagnosis,
+  changes: string[],
+  origin = "Atualizar Inteligência",
+): DiagnosisVersion | null {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) return null;
+  const history = lead.diagnosisHistory || [];
+  const version = (history[0]?.version ?? 0) + 1;
+  const context = [
+    `${(lead.interactions || []).length} interação(ões)`,
+    `${(lead.callNotes || []).length} ligação(ões)`,
+    `${(lead.attachments || []).length} anexo(s)`,
+    `etapa "${lead.stage}"`,
+  ].join(" · ");
+  const entry: DiagnosisVersion = {
+    id: crypto.randomUUID(),
+    version,
+    at: diagnosis.generatedAt || new Date().toISOString(),
+    origin,
+    context,
+    diagnosis: { ...diagnosis, version, changes },
+    changes,
+  };
+  lead.diagnosisHistory = [entry, ...history].slice(0, MAX_DIAGNOSIS_VERSIONS);
+  lead.autoDiagnosis = entry.diagnosis;
+  saveLeads(leads);
+  return entry;
+}
+
+/** Histórico versionado da inteligência (mais recente primeiro). */
+export function getDiagnosisHistory(lead: Lead): DiagnosisVersion[] {
+  return lead.diagnosisHistory || [];
+}
+
+
 export function isAutoDiagnosisStale(lead: Lead): boolean {
   if (!lead.autoDiagnosis) return false;
   return lead.autoDiagnosis.inputHash !== computeDiagnosisInputHash(lead);
