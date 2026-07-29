@@ -87,7 +87,26 @@ export interface FollowupPick {
   priority: LeadPriority | null;
 }
 
+export interface FollowupEligibility {
+  urgentes: number;
+  quentes: number;
+  tentativa5: number;
+  tentativa4: number;
+  tentativa3: number;
+  tentativa2: number;
+}
+
+export interface FollowupSelection {
+  picks: FollowupPick[];
+  target: number;
+  eligible: FollowupEligibility;
+  eligibleTotal: number;
+  /** Preenchido apenas quando a meta diária não pôde ser atingida. */
+  shortfallReason?: string;
+}
+
 export interface ProspectFocus {
+
   niche?: string;
   city?: string;
   bestHour?: string;
