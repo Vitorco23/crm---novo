@@ -13,7 +13,7 @@ import { CalendarIcon, Loader2, ListTodo } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { AgendaRepository } from "@/modules/agenda/services/AgendaRepository";
 import { addTask, updateTask, type LeadTask, type TaskPriority } from "@/modules/leads/services/leadTasks";
 
 interface Props {
@@ -73,10 +73,9 @@ export default function TaskFormDialog({ open, onOpenChange, leadId, leadName, e
         if (editing?.googleEventId) {
           // update
           try {
-            const { data, error } = await supabase.functions.invoke("update-task-event", {
-              body: { eventId: editing.googleEventId, title, description, dueISO: dueAt, durationMin, timeZone: browserTZ(), priority },
+            const data = await AgendaRepository.updateTaskEvent({
+              eventId: editing.googleEventId, title, description, dueISO: dueAt, durationMin, timeZone: browserTZ(), priority,
             });
-            if (error) throw error;
             if (data?.error) throw new Error(data.details || data.error);
             googleEventLink = data.htmlLink || googleEventLink;
           } catch (e: any) {
@@ -85,10 +84,9 @@ export default function TaskFormDialog({ open, onOpenChange, leadId, leadName, e
           }
         } else {
           try {
-            const { data, error } = await supabase.functions.invoke("create-task-event", {
-              body: { title, description, dueISO: dueAt, durationMin, timeZone: browserTZ(), priority },
+            const data = await AgendaRepository.createTaskEvent({
+              title, description, dueISO: dueAt, durationMin, timeZone: browserTZ(), priority,
             });
-            if (error) throw error;
             if (data?.error) throw new Error(data.details || data.error);
             googleEventId = data.eventId;
             googleEventLink = data.htmlLink;
@@ -100,7 +98,7 @@ export default function TaskFormDialog({ open, onOpenChange, leadId, leadName, e
       } else if (editing?.googleEventId) {
         // desmarcou sync → deletar do google
         try {
-          await supabase.functions.invoke("delete-task-event", { body: { eventId: editing.googleEventId } });
+          await AgendaRepository.deleteTaskEvent(editing.googleEventId);
         } catch {}
         googleEventId = undefined;
         googleEventLink = undefined;

@@ -7,7 +7,8 @@ import {
 } from "@/shared/services/store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { supabase } from "@/integrations/supabase/client";
+import { AgendaRepository } from "@/modules/agenda/services/AgendaRepository";
+import { IntelligenceRepository } from "@/modules/intelligence/services/IntelligenceRepository";
 import { parseISO } from "date-fns";
 import { CalendarIcon, Loader2, Pencil, Copy, FileText, Building2, Flame, Thermometer, Snowflake, MapPin, Globe, MessageCircle, User as UserIcon } from "lucide-react";
 import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/modules/financeiro/services/finance";
@@ -84,10 +85,9 @@ function MeetingRow({ meeting, onChanged }: { meeting: ReturnType<typeof getMeet
       if (meeting.googleEventId) {
         const start = new Date(`${date}T${time}:00`);
         const end = new Date(start.getTime() + 30 * 60 * 1000);
-        const { data, error } = await supabase.functions.invoke("update-google-meeting", {
-          body: { eventId: meeting.googleEventId, startISO: start.toISOString(), endISO: end.toISOString(), timeZone: browserTZ() },
+        const data = await AgendaRepository.updateMeeting({
+          eventId: meeting.googleEventId, startISO: start.toISOString(), endISO: end.toISOString(), timeZone: browserTZ(),
         });
-        if (error) throw error;
         if (data?.error) toast.warning("Falha ao atualizar Google Agenda", { description: data.details || data.error });
         else toast.success("Google Agenda atualizado");
       }
@@ -271,11 +271,9 @@ export default function LeadDetailDrawer({
         lead.city && `Cidade: ${lead.city}`,
         lead.stage && `Etapa: ${lead.stage}`,
       ].filter(Boolean).join("\n");
-      const { data, error } = await supabase.functions.invoke("analyze-attachment", {
-        body: { attachment: { name: att.name, type: att.type, dataUrl: att.dataUrl }, leadContext },
+      const data = await IntelligenceRepository.analyzeAttachment({
+        attachment: { name: att.name, type: att.type, dataUrl: att.dataUrl }, leadContext,
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
       setAiReadResults((prev) => ({ ...prev, [att.id]: String(data?.content ?? "") }));
       toast.success("Anexo analisado pela IA");
     } catch (e) {
@@ -726,7 +724,7 @@ export default function LeadDetailDrawer({
                               <Pencil className="h-3 w-3" />
                             </button>
                             <button className="text-muted-foreground hover:text-destructive" onClick={async () => {
-                              if (t.googleEventId) { try { await supabase.functions.invoke("delete-task-event", { body: { eventId: t.googleEventId } }); } catch {} }
+                              if (t.googleEventId) { try { await AgendaRepository.deleteTaskEvent(t.googleEventId); } catch {} }
                               deleteTask(t.id); setTasksVer((x) => x + 1);
                             }}>
                               <Trash2 className="h-3 w-3" />
