@@ -4,7 +4,7 @@
 
 import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
-import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
+import { createMemoryEngine } from "../_shared/ai-core/index.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
 import { composeSystem } from "../_shared/ai-core/index.ts";
@@ -40,7 +40,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { block: memoryBlock } = await buildMemoryContextBlock({
+    const memory = createMemoryEngine();
+    const { block: memoryBlock } = await memory.get({
+      scope: "global",
       queryText: `Diretor comercial diário. Snapshot: ${JSON.stringify(snapshot).slice(0, 1500)}`,
       matchCount: 5,
       minSimilarity: 0.4,

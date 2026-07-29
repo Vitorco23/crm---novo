@@ -4,7 +4,7 @@
 
 import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
-import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
+import { createMemoryEngine } from "../_shared/ai-core/index.ts";
 import { NBA_PROMPT_BLOCK, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
 import {
@@ -67,7 +67,9 @@ Deno.serve(async (req) => {
     const niches = Array.from(new Set(
       (candidates as Array<{ niche?: string }>).map((c) => c?.niche).filter(Boolean),
     )).slice(0, 3).join(", ");
-    const { block: memoryBlock } = await buildMemoryContextBlock({
+    const memory = createMemoryEngine();
+    const { block: memoryBlock } = await memory.get({
+      scope: "global",
       queryText: `Priorização diária. Nichos dos candidatos: ${niches || "diversos"}.`,
       matchCount: 4,
       minSimilarity: 0.45,
