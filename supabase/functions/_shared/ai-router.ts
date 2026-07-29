@@ -8,7 +8,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment" | "extract_memory" | "priority_leads" | "auto_diagnosis";
+export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment" | "extract_memory" | "priority_leads" | "auto_diagnosis" | "intel_router" | "consultor_leads" | "mentor_p21";
 
 export interface AIRouterOptions {
   task: AITask;
@@ -127,6 +127,39 @@ const REGISTRY: Record<AITask, { tiers: ModelSpec[][]; fallback: ModelSpec[] }> 
       [{ id: "google/gemini-3.1-flash-lite", supportsJsonSchema: false }],
       [{ id: "google/gemini-3.1-flash-lite", supportsJsonSchema: false }],
       [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
+    ],
+    fallback: [
+      { id: "google/gemini-2.5-flash", supportsJsonSchema: false },
+    ],
+  },
+  // Intel Router — classificador ultra-leve (JSON) para escolher especialista.
+  intel_router: {
+    tiers: [
+      [{ id: "openai/gpt-5.4-nano", supportsJsonSchema: true }],
+      [{ id: "openai/gpt-5.4-nano", supportsJsonSchema: true }],
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
+    ],
+    fallback: [
+      { id: "google/gemini-3.1-flash-lite", supportsJsonSchema: false },
+    ],
+  },
+  // Consultor de Leads — responde sobre o lead aberto (contexto obrigatório).
+  consultor_leads: {
+    tiers: [
+      [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
+      [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
+      [{ id: "google/gemini-3.6-flash", supportsJsonSchema: false }],
+    ],
+    fallback: [
+      { id: "openai/gpt-5.4-mini", supportsJsonSchema: true },
+    ],
+  },
+  // Mentor P21 — RAG na Knowledge Base oficial (só responde com chunks).
+  mentor_p21: {
+    tiers: [
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
+      [{ id: "openai/gpt-5.4-mini", supportsJsonSchema: true }],
     ],
     fallback: [
       { id: "google/gemini-2.5-flash", supportsJsonSchema: false },

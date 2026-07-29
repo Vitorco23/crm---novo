@@ -25,6 +25,8 @@ import Agenda from "./pages/Agenda";
 import MemoriaComercial from "./pages/MemoriaComercial";
 import { lazy, Suspense } from "react";
 const Laboratorio = lazy(() => import("./pages/Laboratorio"));
+const CentralInteligencia = lazy(() => import("./pages/CentralInteligencia"));
+const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
 
 import Auth from "./pages/Auth";
 import OAuthConsent from "./pages/OAuthConsent";
@@ -63,6 +65,16 @@ const App = () => (
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/lembretes" element={<Lembretes />} />
                         <Route path="/inteligencia" element={<InteligenciaComercial />} />
+                        <Route path="/inteligencia/central" element={
+                          <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Central de Inteligência…</div>}>
+                            <CentralInteligencia />
+                          </Suspense>
+                        } />
+                        <Route path="/inteligencia/knowledge" element={
+                          <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Knowledge Base…</div>}>
+                            <KnowledgeBase />
+                          </Suspense>
+                        } />
                         <Route path="/central" element={<CentralDecisao />} />
                         <Route path="/agenda" element={<Agenda />} />
                         <Route path="/memoria" element={<MemoriaComercial />} />
