@@ -394,7 +394,11 @@ export default function LeadDetailDrawer({
               <Sparkles className="h-3.5 w-3.5" /> 🧠 Diagnóstico Completo
             </Button>
           </div>
+
+          {/* Prioridade operacional + próxima melhor ação (Priority Engine) */}
+          <LeadPriorityStrip lead={lead} />
         </DialogHeader>
+
 
         {/* Tabs */}
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
