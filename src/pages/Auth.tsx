@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -105,7 +106,7 @@ export default function Auth() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-pw">Senha</Label>
-                  <Input id="login-pw" type="password" required value={password}
+                  <PasswordInput id="login-pw" required value={password}
                     onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
                 </div>
                 <Button type="submit" className="w-full" disabled={busy}>
@@ -130,7 +131,7 @@ export default function Auth() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="su-pw">Senha (mín. 6)</Label>
-                  <Input id="su-pw" type="password" required minLength={6} value={password}
+                  <PasswordInput id="su-pw" required minLength={6} value={password}
                     onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
                 </div>
                 <Button type="submit" className="w-full" disabled={busy}>
