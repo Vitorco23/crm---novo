@@ -1,4 +1,4 @@
-import { LogOut, Shield, Settings, User as UserIcon } from "lucide-react";
+import { Activity, LogOut, Shield, Settings, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
