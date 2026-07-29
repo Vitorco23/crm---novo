@@ -1,4 +1,6 @@
 // Lista eventos do Google Calendar em uma janela de tempo.
+import { requireUser } from "../_shared/require-auth.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
