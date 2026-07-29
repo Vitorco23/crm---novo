@@ -121,6 +121,9 @@ export interface MissionPlan {
   callsDone: number;
   followups: FollowupPick[];
   followupsDone: number;
+  followupTarget: number;
+  followupCoverage: FollowupSelection;
+
   focus: ProspectFocus;
   items: MissionItem[];
 }
