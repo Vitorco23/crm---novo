@@ -191,6 +191,51 @@ export default function KnowledgeBase() {
     }
   };
 
+  const fileToBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result ?? ""));
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+
+  const runBulkImport = async () => {
+    if (!bulkFiles.length) { toast({ title: "Selecione ao menos 1 arquivo", variant: "destructive" }); return; }
+    const tags = bulkTags.split(",").map((t) => t.trim()).filter(Boolean);
+    setBulkProgress({ done: 0, total: bulkFiles.length, current: "" });
+    let ok = 0, fail = 0;
+    for (let i = 0; i < bulkFiles.length; i++) {
+      const file = bulkFiles[i];
+      setBulkProgress({ done: i, total: bulkFiles.length, current: file.name });
+      try {
+        const b64 = await fileToBase64(file);
+        const { data: imp, error: impErr } = await supabase.functions.invoke("knowledge-import", {
+          body: { filename: file.name, fileBase64: b64 },
+        });
+        if (impErr) throw impErr;
+        const titulo = (imp?.suggestedTitle ?? file.name).slice(0, 120);
+        const conteudo = (imp?.text ?? "").trim();
+        if (!conteudo) throw new Error("Arquivo sem conteúdo extraível");
+        const { data: ins, error: insErr } = await supabase.from("knowledge_documents").insert({
+          titulo, categoria: bulkCategoria, descricao: `Importado de ${file.name}`,
+          tags, conteudo_markdown: conteudo, ativo: true,
+        }).select("id").single();
+        if (insErr) throw insErr;
+        const { error: idxErr } = await supabase.functions.invoke("knowledge-index", { body: { documentId: ins.id } });
+        if (idxErr) throw idxErr;
+        ok++;
+      } catch (e) {
+        fail++;
+        console.error("bulk import failed", file.name, e);
+        toast({ title: `Falha em ${file.name}`, description: (e as Error).message, variant: "destructive" });
+      }
+    }
+    setBulkProgress(null);
+    setBulkFiles([]);
+    setBulkOpen(false);
+    toast({ title: `Importação concluída`, description: `${ok} sucesso, ${fail} falha(s)` });
+    refresh();
+  };
+
   return (
     <PageContainer>
       <PageHeader
@@ -213,10 +258,14 @@ export default function KnowledgeBase() {
                 </Button>
               </span>
             </label>
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" /> Importar em massa
+            </Button>
             <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-2" /> Novo documento</Button>
           </div>
         }
       />
+
 
       <div className="flex flex-wrap gap-2 mb-4">
         <Input
