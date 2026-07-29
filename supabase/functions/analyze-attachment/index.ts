@@ -4,6 +4,12 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { callAI } from '../_shared/ai-router.ts';
 import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
+import { requireUser } from '../_shared/require-auth.ts';
+
+// Limite máximo do payload total (bytes). ~15MB acomoda dataUrls base64 típicos
+// de imagens/PDFs de leitura, com margem sobre o limite de 10MB do arquivo bruto.
+const MAX_PAYLOAD_BYTES = 15 * 1024 * 1024;
+const MAX_DATAURL_CHARS = 14 * 1024 * 1024;
 
 const SYSTEM = `Você é o LEITOR DE ANEXOS da Performance21.
 Analise o arquivo enviado (imagem, print de tela, PDF ou documento) no contexto do Lead.
@@ -25,11 +31,27 @@ interface Body {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  const auth = await requireUser(req, corsHeaders);
+  if (!auth.ok) return auth.response;
+
+  // Rejeita payloads acima do limite antes de parsear JSON completo.
+  const contentLength = Number(req.headers.get('content-length') ?? '0');
+  if (contentLength && contentLength > MAX_PAYLOAD_BYTES) {
+    return new Response(JSON.stringify({ error: 'Anexo excede o tamanho máximo permitido (15MB).' }), {
+      status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const { attachment, leadContext } = (await req.json()) as Body;
     if (!attachment?.dataUrl || !attachment?.type) {
       return new Response(JSON.stringify({ error: 'attachment inválido' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (typeof attachment.dataUrl === 'string' && attachment.dataUrl.length > MAX_DATAURL_CHARS) {
+      return new Response(JSON.stringify({ error: 'Anexo excede o tamanho máximo permitido (15MB).' }), {
+        status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     if (attachment.type.startsWith('audio/')) {

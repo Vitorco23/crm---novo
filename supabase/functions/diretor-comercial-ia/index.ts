@@ -2,6 +2,7 @@
 // Nunca cita modelo diretamente. Fallback automático se GPT-mini indisponível.
 
 import { callAI } from "../_shared/ai-router.ts";
+import { requireUser } from "../_shared/require-auth.ts";
 import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
@@ -36,6 +37,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const auth = await requireUser(req, corsHeaders);
+  if (!auth.ok) return auth.response;
   try {
     const body = await req.json().catch(() => ({}));
     const snapshot = body?.snapshot;
