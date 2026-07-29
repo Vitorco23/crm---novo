@@ -21,6 +21,8 @@ import AutoDiagnosisCard from "@/modules/intelligence/components/AutoDiagnosisCa
 import LeadExecutiveSummary from "@/modules/leads/components/LeadExecutiveSummary";
 import LeadTrail from "@/modules/leads/components/LeadTrail";
 import { LeadIntelligenceRepository } from "@/modules/leads/services/LeadIntelligenceRepository";
+import { highlightsFor, isCriticalEvent } from "@/modules/intelligence/services/timelineHighlights";
+
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
