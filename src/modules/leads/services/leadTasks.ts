@@ -8,6 +8,9 @@ import { emit } from "@/shared/services/eventBus";
 export type TaskPriority = "baixa" | "media" | "alta" | "urgente";
 export type TaskStatus = "pendente" | "concluida";
 
+/** Origem da tarefa. `manual` (padrão) ou `mission_center` (Central de Decisão). */
+export type TaskOrigin = "manual" | "mission_center";
+
 export interface LeadTask {
   id: string;
   leadId: string | null;
@@ -22,6 +25,10 @@ export interface LeadTask {
   createdAt: string;
   completedAt?: string;
   updatedAt: string;
+  /** Identificador interno de origem — não altera o comportamento da tarefa. */
+  origin?: TaskOrigin;
+  /** Chave estável da prioridade que gerou a tarefa (dedupe por dia). */
+  originRef?: string;
 }
 
 const KEY = "p21_lead_tasks";
