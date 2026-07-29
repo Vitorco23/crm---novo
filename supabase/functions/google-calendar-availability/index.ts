@@ -81,6 +81,8 @@ function wallTimeToUTC(y: number, m: number, d: number, h: number, min: number, 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  const auth = await requireUser(req, corsHeaders);
+  if (!auth.ok) return auth.response;
 
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
