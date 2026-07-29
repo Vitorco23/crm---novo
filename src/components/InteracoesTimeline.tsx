@@ -326,11 +326,11 @@ export default function InteracoesTimeline({
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-2">
         <div>
-          <p className="text-sm font-medium">Timeline de Interações Comerciais</p>
+          <p className="text-sm font-semibold text-foreground">Timeline de Interações</p>
           <p className="text-xs text-muted-foreground">
-            {items.length} evento(s) — clique em cada item para expandir os detalhes.
+            {items.length} evento(s) — clique para expandir os detalhes.
           </p>
         </div>
         <Button
@@ -341,6 +341,7 @@ export default function InteracoesTimeline({
         </Button>
       </div>
 
+
       {items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border/60 p-10 text-center">
           <Sparkles className="h-6 w-6 mx-auto text-muted-foreground/60 mb-2" />
@@ -350,15 +351,17 @@ export default function InteracoesTimeline({
           </p>
         </div>
       ) : (
-        <ol className="relative border-l border-border/60 ml-3 space-y-4">
-          {items.map((it) => {
+        <ol className="relative border-l border-border/60 ml-3 space-y-5">
+          {items.map((it, idx) => {
+            const isLatest = idx === 0;
+
             if (it.kind === "meeting") {
               const m = it.data;
               const Icon = Users;
               return (
                 <li key={`m-${m.id}`} className="ml-4">
                   <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-accent" />
-                  <div className={`rounded-md border p-3 ${colorFor("Reunião")}`}>
+                  <div className={`rounded-md border p-3 ${colorFor("Reunião")} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""}`}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <Icon className="h-3.5 w-3.5" />
@@ -400,7 +403,7 @@ export default function InteracoesTimeline({
               return (
                 <li key={key} className="ml-4 group">
                   <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-primary" />
-                  <div className={`rounded-md border ${colorFor("Ligação")}`}>
+                  <div className={`rounded-md border ${colorFor("Ligação")} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""}`}>
                     <button
                       onClick={() => toggle(key)}
                       className="w-full text-left p-3 flex items-start gap-2"
@@ -465,7 +468,7 @@ export default function InteracoesTimeline({
             return (
               <li key={key} className="ml-4 group">
                 <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-foreground/70" />
-                <div className={`rounded-md border ${colorFor(i.type)}`}>
+                <div className={`rounded-md border ${colorFor(i.type)} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""}`}>
                   <button
                     onClick={() => toggle(key)}
                     className="w-full text-left p-3 flex items-start gap-2"
