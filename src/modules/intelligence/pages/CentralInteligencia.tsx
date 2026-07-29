@@ -222,8 +222,8 @@ export default function CentralInteligencia() {
       const reply: ChatMessage = {
         id: `tmp-a-${Date.now()}`, role: "assistant",
         content: data?.content ?? "(sem resposta)",
-        specialist: data?.specialist ?? null,
-        citations: data?.citations ?? null,
+        specialist: (data?.specialist ?? null) as ChatMessage["specialist"],
+        citations: (data?.citations ?? null) as ChatMessage["citations"],
         model_used: data?.model ?? null,
         created_at: new Date().toISOString(),
       };

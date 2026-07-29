@@ -89,7 +89,7 @@ export default function Agenda() {
         }
         setGEvents([]);
       } else {
-        setGEvents(data.events || []);
+        setGEvents((data.events || []) as unknown as GEvent[]);
       }
     } catch (e: any) {
       console.warn("[Agenda] fetch failed", e);
