@@ -71,20 +71,30 @@ Deno.serve(async (req) => {
     const db = createClient(url, key, { auth: { persistSession: false } });
 
     // 1) Extract structured memory
+    const contextSafe = sanitizeExternal(context, 6000);
+    const metadataSafe = sanitizeExternal(JSON.stringify(metadata || {}), 2000);
+    const userPrompt =
+      wrapUntrusted(contextSafe, { maxChars: 6000, label: "CONTEXTO DO LEAD" }) +
+      "\n\n" +
+      wrapUntrusted(metadataSafe, { maxChars: 2000, label: "METADATA" }) +
+      "\n\nRetorne o JSON solicitado.";
+
     let ai;
     try {
       ai = await callAI({
         task: "extract_memory",
-        system,
-        user: `Contexto:\n${context.slice(0, 6000)}\n\nMetadata: ${JSON.stringify(metadata || {})}\n\nRetorne o JSON solicitado.`,
+        system: system + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE,
+        user: userPrompt,
         json: true,
         temperature: 0.2,
         maxTokens: 512,
       });
     } catch (e) {
-      return new Response(JSON.stringify({ inserted: false, reason: "ai_failed", error: (e as Error).message }),
+      console.error(JSON.stringify({ evt: "extract_memory_ai_failed", msg: (e as Error).message }));
+      return new Response(JSON.stringify({ inserted: false, reason: "ai_failed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
     let parsed: {
       title?: string; content?: string; confidence?: number; skip?: boolean;
