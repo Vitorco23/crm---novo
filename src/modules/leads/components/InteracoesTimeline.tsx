@@ -13,7 +13,7 @@ import {
   type Lead, type Interaction, type InteractionType, type CallNote,
   addInteraction, updateInteraction, removeInteraction, removeCallNote,
   addCallNote, getLeads,
-  getMeetingsForLead,
+  getMeetingsForLead, getDiagnosisHistory, type DiagnosisVersion,
 } from "@/shared/services/store";
 import { analyzeCallNote } from "@/modules/laboratorio/services/callAnalysis";
 import { CallAuditView } from "@/modules/laboratorio/components/CallAuditView";
@@ -22,6 +22,9 @@ import LeadExecutiveSummary from "@/modules/leads/components/LeadExecutiveSummar
 import LeadTrail from "@/modules/leads/components/LeadTrail";
 import { LeadIntelligenceRepository } from "@/modules/leads/services/LeadIntelligenceRepository";
 import { highlightsFor, isCriticalEvent } from "@/modules/intelligence/services/timelineHighlights";
+import IntelligenceUpdateBlock from "@/modules/intelligence/components/IntelligenceUpdateBlock";
+import DiagnosisHistoryBlock from "@/modules/intelligence/components/DiagnosisHistoryBlock";
+import { refreshLeadIntelligence } from "@/modules/intelligence/services/intelligenceSync";
 
 import { ChevronDown, ChevronRight } from "lucide-react";
 
@@ -120,7 +123,8 @@ function SellerNotesView({ notes }: { notes: string }) {
 type TimelineItem =
   | { kind: "interaction"; at: string; data: Interaction }
   | { kind: "callNote"; at: string; data: CallNote }
-  | { kind: "meeting"; at: string; data: ReturnType<typeof getMeetingsForLead>[number] };
+  | { kind: "meeting"; at: string; data: ReturnType<typeof getMeetingsForLead>[number] }
+  | { kind: "ai"; at: string; data: DiagnosisVersion };
 
 function InteractionForm({
   open, onOpenChange, leadId, editing, onSaved,
@@ -242,6 +246,8 @@ export default function InteracoesTimeline({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Interaction | null>(null);
   const [analyzingNoteId, setAnalyzingNoteId] = useState<string | null>(null);
+  const [refreshingIntel, setRefreshingIntel] = useState(false);
+  const [intelNoChange, setIntelNoChange] = useState(false);
   // Cards compactos por padrão — o vendedor expande apenas o que precisar.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (id: string) => setExpanded((prev) => {
@@ -258,8 +264,9 @@ export default function InteracoesTimeline({
     for (const i of lead.interactions || []) rows.push({ kind: "interaction", at: i.date, data: i });
     for (const n of lead.callNotes || []) rows.push({ kind: "callNote", at: n.createdAt, data: n });
     for (const m of meetings) rows.push({ kind: "meeting", at: `${m.date}T${m.time}:00`, data: m });
+    for (const v of getDiagnosisHistory(lead)) rows.push({ kind: "ai", at: v.at, data: v });
     return rows.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-  }, [lead.interactions, lead.callNotes, meetings]);
+  }, [lead.interactions, lead.callNotes, lead.diagnosisHistory, meetings]);
 
   const analyzeNote = async (n: CallNote, mode: "quick" | "full") => {
     setAnalyzingNoteId(n.id);
@@ -282,30 +289,36 @@ export default function InteracoesTimeline({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenNewInteraction]);
 
+  // "Atualizar Inteligência" (Diagnóstico Completo): recalcula TODO o estado
+  // comercial do lead — briefing, temperatura, probabilidade, NBA, memória,
+  // timeline, versionamento e prioridade.
+  const runIntelligenceRefresh = async () => {
+    if (refreshingIntel) return;
+    setRefreshingIntel(true);
+    setIntelNoChange(false);
+    try {
+      const res = await refreshLeadIntelligence(lead.id);
+      if (!res.ok) {
+        toast.error("Falha ao atualizar a inteligência", { description: res.error });
+        return;
+      }
+      if (res.changed) {
+        toast.success(`Inteligência atualizada (v${res.version?.version ?? 1})`, {
+          description: res.changes[0] || "Estado comercial recalculado.",
+        });
+      } else {
+        setIntelNoChange(true);
+        toast.info("Nenhuma alteração relevante identificada desde a última análise.");
+      }
+      onRefresh();
+    } finally {
+      setRefreshingIntel(false);
+    }
+  };
+
   useEffect(() => {
     if (!autoRunDiagnosis) return;
-    const latest = [...(lead.callNotes || [])]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-    if (latest) {
-      analyzeNote(latest, "full");
-    } else {
-      // Sem ligações registradas: cria uma nota sintética para viabilizar o
-      // diagnóstico completo do card (informações, interações, observações e anexos).
-      const interCount = (lead.interactions || []).length;
-      const meetCount = meetings.length;
-      const attCount = (lead.attachments || []).length;
-      const syntheticSummary = [
-        `Solicitação de diagnóstico geral do lead (sem ligação registrada até o momento).`,
-        `Contexto atual: etapa "${lead.stage}", ${interCount} interação(ões) comercial(is), ${meetCount} reunião(ões), ${attCount} anexo(s).`,
-        lead.notes ? `Observações do vendedor: ${lead.notes.slice(0, 800)}` : null,
-      ].filter(Boolean).join("\n");
-      addCallNote(lead.id, syntheticSummary, "Diagnóstico Geral");
-      const refreshed = getLeads().find((l) => l.id === lead.id);
-      const created = [...(refreshed?.callNotes || [])]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-      onRefresh();
-      if (created) analyzeNote(created, "full");
-    }
+    runIntelligenceRefresh();
     onAutoRunDiagnosisConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRunDiagnosis]);
@@ -314,11 +327,17 @@ export default function InteracoesTimeline({
 
   return (
     <div className="space-y-4">
-      {/* Diagnóstico Automático (IA Comercial V1.1) — sempre acima da timeline */}
+      {/* O que mudou — fonte única da verdade da IA */}
+      <IntelligenceUpdateBlock lead={lead} running={refreshingIntel} noChange={intelNoChange} />
+
+      {/* Diagnóstico Atual (versão mais recente) */}
       <AutoDiagnosisCard lead={lead} />
 
-      {/* Resumo Executivo — leitura consolidada, zero IA */}
+      {/* Briefing Comercial — sempre derivado do diagnóstico mais recente */}
       <LeadExecutiveSummary lead={lead} />
+
+      {/* Histórico versionado da inteligência */}
+      <DiagnosisHistoryBlock lead={lead} />
 
       {/* Linha do Tempo Comercial — panorama rápido em ícones */}
       {trail.length > 0 && (
@@ -390,6 +409,36 @@ export default function InteracoesTimeline({
                         </a>
                       )}
                     </div>
+                  </div>
+                </li>
+              );
+            }
+
+            if (it.kind === "ai") {
+              const v = it.data;
+              return (
+                <li key={`ai-${v.id}`} className="ml-4">
+                  <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-accent" />
+                  <div className={`rounded-md border border-accent/30 bg-accent/5 p-3 ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 text-accent" />
+                        <span className="text-xs font-semibold">IA atualizou o lead</span>
+                        <Badge variant="outline" className="text-[10px]">v{v.version}</Badge>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">
+                        {format(new Date(v.at), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                      </span>
+                    </div>
+                    {v.changes.length > 0 ? (
+                      <ul className="mt-1.5 space-y-0.5">
+                        {v.changes.map((c, i) => (
+                          <li key={i} className="text-xs text-foreground/90">• {c}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">Primeira análise completa registrada.</p>
+                    )}
                   </div>
                 </li>
               );
