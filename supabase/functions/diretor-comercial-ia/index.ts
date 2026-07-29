@@ -22,24 +22,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_PROMPT = `Você é o Diretor Comercial da Performance21. Interpreta o snapshot agregado da operação e devolve um PAINEL EXECUTIVO enxuto, escaneável em 30 segundos.
-
-Regras absolutas:
-- NUNCA invente números. Use somente valores presentes no snapshot; se faltar, escreva "sem dados suficientes".
-- Escreva em português do Brasil, tom consultivo, direto, sem preâmbulos.
-- Frases MUITO curtas. Sem parágrafos. Sem redação. Sem "como IA".
-- Cada bullet deve caber em UMA linha (≤ 90 caracteres).
-
-RESPONDA EXCLUSIVAMENTE COM UM OBJETO JSON VÁLIDO, sem markdown, sem crases, sem comentários, com exatamente estas chaves:
-{
-  "resumoOntem": string[],       // 3 a 5 bullets factuais sobre ontem (ligações, conexões, reuniões, vendas, principal problema)
-  "atencao": string[],           // exatamente os 3 maiores problemas atuais
-  "oportunidades": string[],     // 2 a 3 pontos positivos ou alavancas (nicho vencedor, melhor horário, script vencedor)
-  "prioridades": string[],       // 3 a 5 ações executáveis HOJE, verbo no infinitivo, mensurável
-  "dica": string                 // 1 recomendação, no máximo 2 linhas, direta
-}
-
-Não inclua nenhuma outra chave. Não inclua explicações fora do JSON.`;
+// Prompt migrado para o Prompt Registry: "diretor.painel.executivo".
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
