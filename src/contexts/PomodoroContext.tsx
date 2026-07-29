@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from "react";
-import { addSession } from "@/lib/store";
+import { addSession } from "@/shared/services/store";
 
 interface TallyCounts {
   calls: number;

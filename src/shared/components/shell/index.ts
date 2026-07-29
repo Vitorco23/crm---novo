@@ -1,0 +1,10 @@
+export { PageContainer } from "@/shared/components/shell/PageContainer";
+export { PageHeader } from "@/shared/components/shell/PageHeader";
+export { Breadcrumbs } from "@/shared/components/shell/Breadcrumbs";
+export { GlobalSearch } from "@/shared/components/shell/GlobalSearch";
+export { NotificationsMenu } from "@/shared/components/shell/NotificationsMenu";
+export { UserMenu } from "@/shared/components/shell/UserMenu";
+export { EmptyState } from "@/shared/components/shell/states/EmptyState";
+export { LoadingState } from "@/shared/components/shell/states/LoadingState";
+export { ErrorState } from "@/shared/components/shell/states/ErrorState";
+export { SuccessState } from "@/shared/components/shell/states/SuccessState";
