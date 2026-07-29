@@ -1,5 +1,7 @@
 // Edge function: cria evento no Google Calendar via Connector Gateway
 // e retorna { eventId, htmlLink, meetLink }
+import { requireUser } from "../_shared/require-auth.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
