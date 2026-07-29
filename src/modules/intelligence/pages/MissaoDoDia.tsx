@@ -172,7 +172,12 @@ export default function MissaoDoDia() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Prioridades recomendadas hoje</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {plan.followups.length} de {plan.followupTarget} follow-ups
+              {plan.followupCoverage?.shortfallReason ? ` — ${plan.followupCoverage.shortfallReason}` : ""}
+            </p>
           </CardHeader>
+
           <CardContent className="space-y-1.5">
             {suggestions.map((item) => (
               <div key={item.id} className="flex items-center gap-2 rounded-md border border-border/50 px-2.5 py-2">
