@@ -77,6 +77,8 @@ const App = () => (
                           </Suspense>
                         } />
                         <Route path="/central" element={<CentralDecisao />} />
+                        <Route path="/missao" element={<MissaoDoDia />} />
+
                         <Route path="/agenda" element={<Agenda />} />
                         <Route path="/memoria" element={<MemoriaComercial />} />
                         <Route path="/saude-sistema" element={
