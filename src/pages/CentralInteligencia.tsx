@@ -104,6 +104,8 @@ export default function CentralInteligencia() {
   const [includeLead, setIncludeLead] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const openLead = useOpenLeadContext();
 
   const refreshConversations = useCallback(async () => {
