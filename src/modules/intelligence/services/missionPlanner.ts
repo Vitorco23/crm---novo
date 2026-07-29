@@ -123,6 +123,10 @@ export interface MissionPlan {
   followupsDone: number;
   followupTarget: number;
   followupCoverage: FollowupSelection;
+  /** Capacidade operacional do dia (80% da capacidade máxima da aba Metas). */
+  capacity: OperationalCapacity;
+  /** Distribuição dinâmica da capacidade operacional. */
+  distribution: { newLeads: number; followups: number; total: number };
 
   focus: ProspectFocus;
   items: MissionItem[];
@@ -181,6 +185,32 @@ export function getDailyGoals(): DailyGoals {
     meetings: perDay(meetingsScheduled),
     decisionMakers: perDay(decisionMakers),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Capacidade operacional — 80% da capacidade máxima calculada na aba Metas
+// ---------------------------------------------------------------------------
+
+/** Percentual da capacidade máxima realmente planejável no dia. */
+export const OPERATIONAL_CAPACITY_RATIO = 0.8;
+
+export interface OperationalCapacity {
+  /** Capacidade máxima teórica (horas/dia ÷ minutos por contato). */
+  max: number;
+  /** Capacidade planejada = máxima × 80%. */
+  planned: number;
+  /** Reserva estratégica (reuniões, deslocamentos, imprevistos). */
+  reserve: number;
+  ratio: number;
+}
+
+export function getOperationalCapacity(): OperationalCapacity {
+  const g = getGoalsSettings();
+  const minutes = g.minutesPerCall > 0 ? g.minutesPerCall : 4;
+  const theoretical = g.hoursPerDay > 0 ? (g.hoursPerDay * 60) / minutes : 0;
+  const max = Math.floor(theoretical) || getDailyGoals().calls;
+  const planned = Math.floor(max * OPERATIONAL_CAPACITY_RATIO);
+  return { max, planned, reserve: Math.max(0, max - planned), ratio: OPERATIONAL_CAPACITY_RATIO };
 }
 
 // ---------------------------------------------------------------------------
@@ -505,8 +535,31 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
   const leads = getLeads();
   const prios = priorities ?? computePriorities();
   const goals = getDailyGoals();
-  const coverage = buildFollowupSelection(DAILY_FOLLOWUP_TARGET, prios);
+
+  // Capacidade operacional = capacidade máxima da aba Metas × 80%.
+  const capacity = getOperationalCapacity();
+
+  // Distribuição dinâmica: os follow-ups prioritários consomem o que precisam
+  // (mínimo de 20, limitado pela capacidade) e o restante vira prospecção ativa.
+  const base = buildFollowupSelection(
+    Math.max(1, Math.min(DAILY_FOLLOWUP_TARGET, capacity.planned || DAILY_FOLLOWUP_TARGET)),
+    prios,
+  );
+  const priorityPool = base.eligible.urgentes + base.eligible.quentes;
+  const followupTarget = Math.max(
+    1,
+    Math.min(capacity.planned || DAILY_FOLLOWUP_TARGET, Math.max(DAILY_FOLLOWUP_TARGET, priorityPool)),
+  );
+  const coverage =
+    followupTarget === base.target ? base : buildFollowupSelection(followupTarget, prios);
   const followups = coverage.picks;
+
+  const newLeadsGoal = Math.max(0, (capacity.planned || goals.calls) - followups.length);
+  const distribution = {
+    newLeads: newLeadsGoal,
+    followups: followups.length,
+    total: newLeadsGoal + followups.length,
+  };
 
   const focus = buildProspectFocus();
   const done = callsDoneToday(leads);
@@ -514,19 +567,22 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
 
   const items: MissionItem[] = [];
 
-  if (goals.calls > 0) {
+  if (newLeadsGoal > 0) {
     const bullets: string[] = [];
     if (focus.niche) bullets.push(focus.niche);
     if (focus.city) bullets.push(focus.city);
     if (focus.bestHour) bullets.push(`Melhor horário: ${focus.bestHour}`);
+    bullets.push(
+      `${capacity.planned} atividades planejadas (80% de ${capacity.max}) − ${followups.length} follow-ups`,
+    );
     items.push({
       id: `${d}:calls`,
       kind: "calls",
-      title: `Fazer ${goals.calls} ligações hoje`,
+      title: `Prospectar ${newLeadsGoal} novos leads hoje`,
       bullets,
       reason: focus.reason,
       priority: "alta",
-      estimatedMinutes: Math.max(30, goals.calls * (getGoalsSettings().minutesPerCall || 4)),
+      estimatedMinutes: Math.max(30, newLeadsGoal * (getGoalsSettings().minutesPerCall || 4)),
       niche: focus.niche,
       city: focus.city,
       recommendedTime: focus.bestHour,
@@ -540,7 +596,7 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
     items.push({
       id: `${d}:followups`,
       kind: "followups",
-      title: `Resolver ${followups.length} de ${DAILY_FOLLOWUP_TARGET} follow-ups`,
+      title: `Resolver ${followups.length} de ${coverage.target} follow-ups`,
       bullets: [
         urgentes ? `${urgentes} urgente(s)` : "",
         quentes ? `${quentes} lead(s) quente(s)` : "",
@@ -617,13 +673,15 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
 
   return {
     generatedAt: new Date().toISOString(),
-    callsGoal: goals.calls,
+    callsGoal: newLeadsGoal,
     meetingsGoal: goals.meetings,
     callsDone: done,
     followups,
     followupsDone: workedTodaySet(leads).size,
-    followupTarget: DAILY_FOLLOWUP_TARGET,
+    followupTarget: coverage.target,
     followupCoverage: coverage,
+    capacity,
+    distribution,
 
     focus,
     items,
