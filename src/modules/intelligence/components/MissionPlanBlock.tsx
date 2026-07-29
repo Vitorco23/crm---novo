@@ -81,6 +81,31 @@ export default function MissionPlanBlock() {
 
   return (
     <div className="space-y-3">
+      {plan.capacity?.max > 0 && (
+        <div className="rounded-md border border-border/60 bg-background/40 p-3">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">
+            Capacidade Operacional de Hoje
+          </p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-base font-semibold tabular-nums text-foreground">{plan.capacity.max}</p>
+              <p className="text-[10px] text-muted-foreground">Capacidade máxima</p>
+            </div>
+            <div>
+              <p className="text-base font-semibold tabular-nums text-accent">{plan.capacity.planned}</p>
+              <p className="text-[10px] text-muted-foreground">Planejada (80%)</p>
+            </div>
+            <div>
+              <p className="text-base font-semibold tabular-nums text-foreground">{plan.capacity.reserve}</p>
+              <p className="text-[10px] text-muted-foreground">Reserva (20%)</p>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+            {plan.distribution?.newLeads ?? 0} novos leads · {plan.distribution?.followups ?? 0} follow-ups
+          </p>
+        </div>
+      )}
+
       {/* Prioridades para hoje */}
       {plan.items.length > 0 && (
         <div className="rounded-md border border-border/60 bg-background/40 p-3">
