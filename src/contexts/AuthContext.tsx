@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { setCurrentUser, syncFromCloud, hydrateLocal } from "@/lib/userStorage";
 
-const ADMIN_EMAIL = "admin@p21.local";
+const ADMIN_EMAIL = "vitorco23@gmail.com";
 
 interface AuthCtx {
   user: User | null;
