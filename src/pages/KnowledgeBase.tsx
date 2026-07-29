@@ -63,6 +63,11 @@ export default function KnowledgeBase() {
   const [editing, setEditing] = useState<Partial<KDoc> | null>(null);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkCategoria, setBulkCategoria] = useState<string>("Script");
+  const [bulkTags, setBulkTags] = useState<string>("");
+  const [bulkFiles, setBulkFiles] = useState<File[]>([]);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string } | null>(null);
   const chunkCounts = useChunkCounts(docs);
 
   const refresh = useCallback(async () => {
