@@ -156,6 +156,9 @@ export default function MissionOfTheDayCard() {
               </div>
             </div>
           )}
+
+          {/* Plano de execução — prioridades viram tarefas reais (Central de Tarefas) */}
+          <MissionPlanBlock />
         </CardContent>
       </Card>
 
