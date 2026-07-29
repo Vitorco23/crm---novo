@@ -158,6 +158,8 @@ export interface Lead {
   whatsapp?: string;
   /** Diagnóstico Comercial Automático (V1.1) — gerado após ligações Matteline. */
   autoDiagnosis?: AutoDiagnosis;
+  /** Histórico versionado da inteligência do lead (mais recente primeiro). */
+  diagnosisHistory?: DiagnosisVersion[];
 }
 
 export interface AutoDiagnosis {
@@ -171,7 +173,25 @@ export interface AutoDiagnosis {
   model?: string;
   /** Fingerprint das interações consideradas — usado para detectar "desatualizado". */
   inputHash: string;
+  /** Versão da inteligência (incrementa a cada atualização relevante). */
+  version?: number;
+  /** Mudanças detectadas em relação à versão anterior. */
+  changes?: string[];
 }
+
+/** Snapshot imutável de uma versão de inteligência do lead. */
+export interface DiagnosisVersion {
+  id: string;
+  version: number;
+  at: string;
+  /** De onde veio a atualização (ex.: "Atualizar Inteligência", "Matteline"). */
+  origin: string;
+  /** Contexto analisado (contagens de interações, ligações, anexos). */
+  context: string;
+  diagnosis: AutoDiagnosis;
+  changes: string[];
+}
+
 
 
 export type MeetingSource = "Ligação" | "Disparo" | "Instagram" | "Email";
