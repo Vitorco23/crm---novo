@@ -505,7 +505,9 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
   const leads = getLeads();
   const prios = priorities ?? computePriorities();
   const goals = getDailyGoals();
-  const followups = buildSmartFollowups(DAILY_FOLLOWUP_TARGET, prios);
+  const coverage = buildFollowupSelection(DAILY_FOLLOWUP_TARGET, prios);
+  const followups = coverage.picks;
+
   const focus = buildProspectFocus();
   const done = callsDoneToday(leads);
   const d = todayStr();
