@@ -6,7 +6,7 @@ import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
-import { composeSystem, createMemoryEngine } from "../_shared/ai-core/index.ts";
+import { composeSystem, createMemoryEngine, startAIExecution } from "../_shared/ai-core/index.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
   wrapUntrusted,
@@ -29,6 +29,15 @@ Deno.serve(async (req) => {
   }
   const auth = await requireUser(req, corsHeaders);
   if (!auth.ok) return auth.response;
+  const telemetry = startAIExecution({
+    task: "diretor_comercial",
+    userId: auth.userId,
+    authHeader: req.headers.get("Authorization") ?? req.headers.get("authorization"),
+    specialist: "diretor_comercial",
+    promptId: "diretor.painel.executivo",
+    sources: ["snapshot", "memory"],
+    toolsUsed: ["memory.retrieve"],
+  });
   try {
     const body = await req.json().catch(() => ({}));
     const snapshot = body?.snapshot;
@@ -70,6 +79,7 @@ Deno.serve(async (req) => {
     } catch (e) {
       const err = e as Error & { status?: number };
       const status = err.status ?? 502;
+      await telemetry.failure(err, { inputChars: userPrompt.length });
       const friendly =
         status === 429
           ? "Limite de requisições atingido. Tente novamente em instantes."
@@ -115,6 +125,12 @@ Deno.serve(async (req) => {
       callNotesCount: 1,
     });
 
+    await telemetry.success({
+      model: result.modelUsed ?? null,
+      inputChars: userPrompt.length,
+      outputChars: String(raw ?? "").length,
+    });
+
     return new Response(
       JSON.stringify({
         painel,
@@ -125,6 +141,7 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     console.error(JSON.stringify({ evt: "diretor_comercial_error", msg: (e as Error).message }));
+    await telemetry.failure(e);
     return new Response(
       JSON.stringify({ error: "internal_error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
