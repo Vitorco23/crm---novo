@@ -295,17 +295,19 @@ export default function CentralInteligencia() {
                       </span>
                       <button
                         onClick={(e) => { e.stopPropagation(); setEditingId(c.id); setEditingTitle(c.title || ""); }}
-                        className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-foreground"
+                        className="shrink-0 p-1 rounded transition text-muted-foreground hover:text-foreground hover:bg-background"
                         aria-label="Renomear conversa"
+                        title="Renomear conversa"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
-                        className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive"
+                        className="shrink-0 p-1 rounded transition text-muted-foreground hover:text-destructive hover:bg-background"
                         aria-label="Excluir conversa"
+                        title="Excluir conversa"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </>
                   )}
