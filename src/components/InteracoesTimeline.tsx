@@ -326,11 +326,11 @@ export default function InteracoesTimeline({
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-2">
         <div>
-          <p className="text-sm font-medium">Timeline de Interações Comerciais</p>
+          <p className="text-sm font-semibold text-foreground">Timeline de Interações</p>
           <p className="text-xs text-muted-foreground">
-            {items.length} evento(s) — clique em cada item para expandir os detalhes.
+            {items.length} evento(s) — clique para expandir os detalhes.
           </p>
         </div>
         <Button
@@ -340,6 +340,7 @@ export default function InteracoesTimeline({
           <Plus className="h-3.5 w-3.5 mr-1" /> Nova Interação
         </Button>
       </div>
+
 
       {items.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border/60 p-10 text-center">
