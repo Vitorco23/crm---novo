@@ -65,6 +65,48 @@ PERFIL ATIVO — 📚 Mentor P21: especialista em metodologia, playbooks, script
 - Quando os trechos não cobrirem a pergunta (ou não houver trechos), responda mesmo assim, usando o contexto do CRM e seu conhecimento geral de vendas. NÃO diga apenas que não encontrou.`;
 
 
+const ROUTER_SYSTEM = `Você é um roteador de perguntas de um CRM comercial. Sua ÚNICA tarefa é decidir qual especialista deve responder.
+
+Especialistas disponíveis:
+- "diretor_comercial": indicadores, receita, forecast, metas, funil, produtividade, pomodoros, priorização geral, operação do CRM, dashboard, estratégia, planejamento do mês, gargalos, "o que devo priorizar".
+- "consultor_leads": perguntas sobre UM lead específico aberto — diagnóstico, próxima ação, objeções, follow-up, histórico daquele lead.
+- "mentor_p21": metodologia, playbooks, SPIN, BANT, ICP, scripts oficiais, bypass, cadências, tratamento de objeções padrão, processos internos, treinamentos.
+
+Regras:
+- Se há um lead aberto E a pergunta menciona "esse lead", "esse cliente", "esse contato", "insistir", "responder", "objeção dele" → consultor_leads.
+- Se a pergunta pede explicitamente o padrão/documentação da Performance21 ("qual é o script oficial", "como funciona o bypass", "qual é o playbook") → mentor_p21.
+- Se a pergunta é sobre números, metas, produtividade, estratégia ou operação global → diretor_comercial.
+- Em caso de dúvida → diretor_comercial.
+
+Responda APENAS com JSON válido: {"specialist":"diretor_comercial|consultor_leads|mentor_p21","confidence":0..1}`;
+
+function buildHistoryBlock(history?: HistoryTurn[]): string {
+  if (!history?.length) return "";
+  const turns = history.slice(-10).map((h) => {
+    const who = h.role === "assistant" ? "IA" : "Usuário";
+    return `${who}: ${sanitizeExternal(String(h.content ?? ""), 1500)}`;
+  }).join("\n\n");
+  return wrapUntrusted(turns, { maxChars: 8000, label: "HISTÓRICO DA CONVERSA" }) + "\n\n";
+}
+
+function buildCrmBlock(ctx: IntelContext): string {
+  const parts: string[] = [];
+  if (ctx.dashboardSnapshot && Object.keys(ctx.dashboardSnapshot).length) {
+    parts.push(wrapUntrusted(
+      sanitizeExternal(JSON.stringify(ctx.dashboardSnapshot), 12000),
+      { maxChars: 12000, label: "SNAPSHOT OPERACIONAL DO CRM (JSON)" },
+    ));
+  }
+  if (ctx.leadContext && Object.keys(ctx.leadContext).length) {
+    parts.push(wrapUntrusted(
+      sanitizeExternal(JSON.stringify(ctx.leadContext), 12000),
+      { maxChars: 12000, label: "LEAD ABERTO NO CRM (JSON)" },
+    ));
+  }
+  if (!parts.length) return "(nenhum dado operacional do CRM foi enviado nesta pergunta)\n\n";
+  return parts.join("\n\n") + "\n\n";
+}
+
 async function classify(question: string, ctx: IntelContext): Promise<Specialist> {
   const ctxSummary = {
     page: ctx.page ?? null,
@@ -90,49 +132,55 @@ async function classify(question: string, ctx: IntelContext): Promise<Specialist
   return ctx.leadContext ? "consultor_leads" : "diretor_comercial";
 }
 
-async function runDiretor(question: string, snapshot: unknown): Promise<{ content: string; model: string }> {
-  const snapshotSafe = sanitizeExternal(JSON.stringify(snapshot ?? {}), 12000);
+async function runDiretor(question: string, ctx: IntelContext, history?: HistoryTurn[]): Promise<{ content: string; model: string }> {
+  const body = buildHistoryBlock(history) + buildCrmBlock(ctx);
   const r = await callAI({
     task: "diretor_comercial",
     system: DIRETOR_CHAT_SYSTEM + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE,
     user:
-      wrapUntrusted(snapshotSafe, { maxChars: 12000, label: "SNAPSHOT OPERACIONAL (JSON)" }) +
-      `\n\nPergunta:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA" })}\n\nResponda em Markdown.`,
+      body +
+      `Pergunta atual:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA" })}\n\nResponda em Markdown.`,
     json: false,
-    temperature: 0.3,
-    maxTokens: 1500,
+    temperature: 0.4,
+    maxTokens: 1800,
+    inputChars: body.length,
   });
   return { content: r.content, model: r.modelUsed };
 }
 
-async function runConsultor(question: string, leadContext: unknown): Promise<{ content: string; model: string }> {
-  const ctxSafe = sanitizeExternal(JSON.stringify(leadContext ?? {}), 12000);
+async function runConsultor(question: string, ctx: IntelContext, history?: HistoryTurn[]): Promise<{ content: string; model: string }> {
+  const body = buildHistoryBlock(history) + buildCrmBlock(ctx);
   const r = await callAI({
     task: "consultor_leads",
     system: CONSULTOR_SYSTEM + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE,
     user:
-      wrapUntrusted(ctxSafe, { maxChars: 12000, label: "CONTEXTO DO LEAD (JSON)" }) +
-      `\n\nPergunta do usuário:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA" })}\n\nResponda em Markdown.`,
+      body +
+      `Pergunta atual:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA" })}\n\nResponda em Markdown.`,
     json: false,
     temperature: 0.4,
-    maxTokens: 1500,
+    maxTokens: 1800,
+    inputChars: body.length,
   });
   return { content: r.content, model: r.modelUsed };
 }
 
-async function runMentor(question: string, apiKey: string, authHeader: string):
+async function runMentor(question: string, ctx: IntelContext, authHeader: string, history?: HistoryTurn[]):
   Promise<{ content: string; model: string; citations: Array<{ documentId: string; titulo: string; categoria: string; versao: number; similarity: number }> }>
 {
-  // 1. Busca semântica via edge function irmã (mesma auth)
-  const searchUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/knowledge-search`;
-  const searchRes = await fetch(searchUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: authHeader, apikey: Deno.env.get("SUPABASE_ANON_KEY")! },
-    body: JSON.stringify({ query: question, matchCount: 6, minSimilarity: 0.30 }),
-  });
-  const searchData = await searchRes.json().catch(() => ({}));
-  const chunks: Array<{ document_id: string; content: string; titulo: string; categoria: string; versao: number; similarity: number }>
-    = searchData?.chunks ?? [];
+  // 1. Busca semântica via edge function irmã (mesma auth). Best-effort: falha não bloqueia a resposta.
+  let chunks: Array<{ document_id: string; content: string; titulo: string; categoria: string; versao: number; similarity: number }> = [];
+  try {
+    const searchUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/knowledge-search`;
+    const searchRes = await fetch(searchUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: authHeader, apikey: Deno.env.get("SUPABASE_ANON_KEY")! },
+      body: JSON.stringify({ query: question, matchCount: 6, minSimilarity: 0.30 }),
+    });
+    const searchData = await searchRes.json().catch(() => ({}));
+    chunks = searchData?.chunks ?? [];
+  } catch (e) {
+    console.error(JSON.stringify({ evt: "mentor_kb_search_failed", msg: (e as Error).message }));
+  }
 
   const citations = chunks.map((c) => ({
     documentId: c.document_id, titulo: c.titulo, categoria: c.categoria, versao: c.versao, similarity: c.similarity,
@@ -142,21 +190,27 @@ async function runMentor(question: string, apiKey: string, authHeader: string):
     ? chunks.map((c, i) =>
         `[TRECHO ${i + 1}] Documento: "${c.titulo}" v${c.versao} · Categoria: ${c.categoria}\n${sanitizeExternal(c.content, 3000)}`,
       ).join("\n\n---\n\n")
-    : "(nenhum trecho relevante encontrado na Base de Conhecimento)";
+    : "(nenhum trecho relevante encontrado na Base de Conhecimento — responda mesmo assim, usando o contexto do CRM e seu conhecimento comercial)";
+
+  const body =
+    buildHistoryBlock(history) +
+    buildCrmBlock(ctx) +
+    wrapUntrusted(knowledgeBlock, { maxChars: 18000, label: "KNOWLEDGE_CHUNKS (fonte complementar)" }) + "\n\n";
 
   const r = await callAI({
     task: "mentor_p21",
     system: MENTOR_SYSTEM + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE,
     user:
-      wrapUntrusted(knowledgeBlock, { maxChars: 18000, label: "KNOWLEDGE_CHUNKS" }) +
-      `\n\nPergunta:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA" })}\n\nResponda em Markdown.`,
+      body +
+      `Pergunta atual:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA" })}\n\nResponda em Markdown.`,
     json: false,
-    temperature: 0.2,
-    maxTokens: 1500,
-    inputChars: knowledgeBlock.length,
+    temperature: 0.3,
+    maxTokens: 1800,
+    inputChars: body.length,
   });
   return { content: r.content, model: r.modelUsed, citations };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
