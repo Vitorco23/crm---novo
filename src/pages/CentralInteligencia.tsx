@@ -256,8 +256,9 @@ export default function CentralInteligencia() {
           <Button onClick={newConversation} className="mb-3 gap-2" size="sm">
             <Plus className="h-4 w-4" /> Nova conversa
           </Button>
-          <ScrollArea className="flex-1">
-            <div className="flex flex-col gap-1">
+          <ScrollArea className="flex-1 w-full">
+            <div className="flex w-full min-w-0 flex-col gap-1">
+
               {conversations.length === 0 && (
                 <p className="text-xs text-muted-foreground p-2">Nenhuma conversa ainda.</p>
               )}
@@ -266,7 +267,7 @@ export default function CentralInteligencia() {
                   key={c.id}
                   onClick={() => { if (editingId !== c.id) setActiveId(c.id); }}
                   className={cn(
-                    "group flex items-center gap-1.5 rounded-md px-2 py-2 cursor-pointer text-sm hover:bg-muted",
+                    "group flex w-full min-w-0 items-center gap-1 rounded-md pl-2 pr-1 py-2 cursor-pointer text-sm hover:bg-muted",
                     activeId === c.id && "bg-muted",
                   )}
                 >
@@ -282,36 +283,41 @@ export default function CentralInteligencia() {
                         if (e.key === "Enter") { e.preventDefault(); renameConversation(c.id, editingTitle); }
                         if (e.key === "Escape") { e.preventDefault(); setEditingId(null); }
                       }}
-                      className="h-7 flex-1 text-xs px-2"
+                      className="h-7 min-w-0 flex-1 text-xs px-2"
                       maxLength={120}
                     />
                   ) : (
                     <>
                       <span
-                        className="flex-1 truncate"
+                        className="min-w-0 flex-1 truncate"
                         onDoubleClick={(e) => { e.stopPropagation(); setEditingId(c.id); setEditingTitle(c.title || ""); }}
                       >
                         {c.title || "Conversa"}
                       </span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setEditingId(c.id); setEditingTitle(c.title || ""); }}
-                        className="shrink-0 p-1 rounded transition text-muted-foreground hover:text-foreground hover:bg-background"
-                        aria-label="Renomear conversa"
-                        title="Renomear conversa"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
-                        className="shrink-0 p-1 rounded transition text-muted-foreground hover:text-destructive hover:bg-background"
-                        aria-label="Excluir conversa"
-                        title="Excluir conversa"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex shrink-0 items-center gap-0.5 w-[56px] justify-end">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setEditingId(c.id); setEditingTitle(c.title || ""); }}
+                          className="shrink-0 p-1 rounded transition text-muted-foreground hover:text-foreground hover:bg-background"
+                          aria-label="Renomear conversa"
+                          title="Renomear conversa"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
+                          className="shrink-0 p-1 rounded transition text-muted-foreground hover:text-destructive hover:bg-background"
+                          aria-label="Excluir conversa"
+                          title="Excluir conversa"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
+
               ))}
             </div>
           </ScrollArea>
