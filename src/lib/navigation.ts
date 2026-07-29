@@ -1,7 +1,7 @@
 import {
   PhoneCall, Handshake, Timer, BarChart3, Target, Plug, Rocket, ListChecks,
   DollarSign, Bell, Brain, Compass, FlaskConical, BookMarked,
-  Calendar as CalendarIcon, LucideIcon,
+  Calendar as CalendarIcon, MessageCircle, Library, LucideIcon,
 } from "lucide-react";
 
 export type NavGroupId = "decisao" | "operacao" | "inteligencia" | "planejamento" | "configuracoes";
@@ -33,8 +33,10 @@ export const NAV_ITEMS: NavItem[] = [
   { title: "Lembretes",          url: "/lembretes",     icon: Bell,         group: "operacao",   description: "Follow-ups e notificações" },
   { title: "Pomodoro",           url: "/pomodoro",      icon: Timer,        group: "operacao",   description: "Sessões de foco" },
 
+  { title: "Central de Inteligência", url: "/inteligencia/central", icon: MessageCircle, group: "inteligencia", description: "Chat com IA dos 3 especialistas" },
+  { title: "Knowledge Base",     url: "/inteligencia/knowledge", icon: Library, group: "inteligencia", description: "Documentação oficial da Performance21" },
   { title: "Dashboard",              url: "/dashboard",   icon: BarChart3,    group: "inteligencia", description: "Indicadores comerciais" },
-  { title: "Inteligência Comercial", url: "/inteligencia", icon: Brain,       group: "inteligencia", description: "Diagnósticos e IA" },
+  { title: "Inteligência Comercial", url: "/inteligencia", icon: Brain,       group: "inteligencia", end: true, description: "Diagnósticos e IA" },
   { title: "Memória Comercial",      url: "/memoria",     icon: BookMarked,   group: "inteligencia", description: "Padrões e aprendizado" },
   { title: "Laboratório",            url: "/laboratorio", icon: FlaskConical, group: "inteligencia", description: "Experimentos A/B" },
 
@@ -44,6 +46,7 @@ export const NAV_ITEMS: NavItem[] = [
 
   { title: "Integrações", url: "/integracoes", icon: Plug, group: "configuracoes", description: "Conexões externas" },
 ];
+
 
 export function findNavItem(pathname: string): NavItem | undefined {
   const exact = NAV_ITEMS.find((n) => n.url === pathname);
