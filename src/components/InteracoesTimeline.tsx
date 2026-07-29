@@ -361,7 +361,7 @@ export default function InteracoesTimeline({
               return (
                 <li key={`m-${m.id}`} className="ml-4">
                   <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-accent" />
-                  <div className={`rounded-md border p-3 ${colorFor("Reunião")}`}>
+                  <div className={`rounded-md border p-3 ${colorFor("Reunião")} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""}`}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <Icon className="h-3.5 w-3.5" />
