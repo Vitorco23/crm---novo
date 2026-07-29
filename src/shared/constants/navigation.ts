@@ -1,7 +1,7 @@
 import {
   PhoneCall, Handshake, Timer, BarChart3, Target, Plug, Rocket, ListChecks,
   DollarSign, Bell, Brain, Compass, FlaskConical, BookMarked,
-  Calendar as CalendarIcon, MessageCircle, Library, LucideIcon,
+  Calendar as CalendarIcon, MessageCircle, Library, Flag, LucideIcon,
 } from "lucide-react";
 
 export type NavGroupId = "decisao" | "operacao" | "inteligencia" | "planejamento" | "configuracoes";
@@ -25,6 +25,8 @@ export const NAV_GROUPS: Record<NavGroupId, { label: string; order: number }> = 
 
 export const NAV_ITEMS: NavItem[] = [
   { title: "Central de Decisão", url: "/central",       icon: Compass,      group: "decisao",       description: "Visão executiva da operação" },
+  { title: "Missão do Dia",      url: "/missao",        icon: Flag,         group: "decisao",       description: "Execução operacional do dia" },
+
 
   { title: "Cold Call",          url: "/",              icon: PhoneCall,    group: "operacao",   end: true, description: "Prospecção ativa" },
   { title: "Oportunidades",      url: "/oportunidades", icon: Handshake,    group: "operacao",   description: "Pipeline comercial" },
