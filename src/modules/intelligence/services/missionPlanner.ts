@@ -596,7 +596,7 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
     items.push({
       id: `${d}:followups`,
       kind: "followups",
-      title: `Resolver ${followups.length} de ${DAILY_FOLLOWUP_TARGET} follow-ups`,
+      title: `Resolver ${followups.length} de ${coverage.target} follow-ups`,
       bullets: [
         urgentes ? `${urgentes} urgente(s)` : "",
         quentes ? `${quentes} lead(s) quente(s)` : "",
