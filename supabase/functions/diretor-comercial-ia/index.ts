@@ -4,10 +4,9 @@
 
 import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
-import { createMemoryEngine } from "../_shared/ai-core/index.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
-import { composeSystem } from "../_shared/ai-core/index.ts";
+import { composeSystem, createMemoryEngine } from "../_shared/ai-core/index.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
   wrapUntrusted,

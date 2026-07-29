@@ -12,7 +12,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI } from "../_shared/ai-router.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
-  wrapUntrusted,
   validateShape,
   safeParseJson,
   assertSafeAIOutput,
