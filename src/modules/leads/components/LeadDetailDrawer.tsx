@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import LeadPriorityStrip from "@/modules/leads/components/LeadPriorityStrip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -394,7 +395,11 @@ export default function LeadDetailDrawer({
               <Sparkles className="h-3.5 w-3.5" /> 🧠 Diagnóstico Completo
             </Button>
           </div>
+
+          {/* Prioridade operacional + próxima melhor ação (Priority Engine) */}
+          <LeadPriorityStrip lead={lead} />
         </DialogHeader>
+
 
         {/* Tabs */}
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
