@@ -144,6 +144,15 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization")!;
     const history = normalizeHistory(body.history);
 
+    // Observabilidade: somente metadados agregados (Fase 3D.1).
+    telemetry.setSpecialist(specialist);
+    if (body.conversationId) {
+      (telemetry as unknown as { addSource(s: string): void }).addSource("history");
+    }
+    if (ctx && Object.keys(ctx).length) telemetry.addSource("crm");
+    if (ctx.leadContext) telemetry.addSource("lead");
+    if (history.length) telemetry.addSource("history");
+
     let content = "";
     let model = "";
     let citations: unknown = null;
@@ -163,6 +172,8 @@ Deno.serve(async (req) => {
     } else {
       const r = await runMentor(question, ctx, authHeader, history);
       content = r.content; model = r.model; citations = r.citations;
+      telemetry.addSource("knowledge");
+      telemetry.addTool("knowledge.search");
     }
 
     // Persiste user + assistant se houver conversationId
@@ -191,6 +202,12 @@ Deno.serve(async (req) => {
       ]);
     }
 
+    await telemetry.success({
+      model: model || null,
+      inputChars: question.length,
+      outputChars: content.length,
+    });
+
     return new Response(JSON.stringify({
       specialist, content, model, citations,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -198,6 +215,7 @@ Deno.serve(async (req) => {
     const err = e as Error & { status?: number };
     const status = err.status ?? 500;
     console.error(JSON.stringify({ evt: "intel_router_error", msg: err.message }));
+    await telemetry.failure(err);
     return new Response(JSON.stringify({
       error: status === 429 ? "rate_limited"
            : status === 402 ? "credits_exhausted"
