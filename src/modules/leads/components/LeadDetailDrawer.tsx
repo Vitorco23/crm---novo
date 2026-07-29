@@ -390,9 +390,9 @@ export default function LeadDetailDrawer({
             )}
             <Button size="sm" className="h-8 gap-1 bg-accent text-accent-foreground hover:bg-accent/90 ml-auto"
               onClick={() => { setTab("interacoes"); setAutoRunDiagnosis(true); }}
-              title="Analisar o lead por completo (informações, interações, observações e anexos)"
+              title="Recalcular todo o estado comercial do lead: briefing, temperatura, probabilidade, próxima melhor ação, memória, timeline e prioridade"
             >
-              <Sparkles className="h-3.5 w-3.5" /> 🧠 Diagnóstico Completo
+              <Sparkles className="h-3.5 w-3.5" /> 🧠 Atualizar Inteligência
             </Button>
           </div>
 

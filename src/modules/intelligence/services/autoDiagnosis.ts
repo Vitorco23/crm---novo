@@ -43,19 +43,27 @@ export async function runAutoDiagnosis(leadId: string): Promise<AutoDiagnosis | 
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
   const latest = interactions[0];
-  if (!latest) return null;
+
+  // Fallback: leads sem interações formais mas com ligações registradas
+  // (callNotes) continuam elegíveis — o diagnóstico usa a ligação mais recente.
+  const latestNote = [...(lead.callNotes || [])].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )[0];
+
+  if (!latest && !latestNote && !(lead.notes || "").trim()) return null;
 
   // Extrai resumo/transcrição da ligação mais recente (fonte Matteline).
-  const summary = latest.summary || "";
+  const summary = latest?.summary || latestNote?.text || "";
   // A transcrição bruta não é armazenada no Lead — a UI mostra apenas o resumo.
   // Enviamos o `sellerNotes` como contexto adicional (áudio, link, duração).
-  const meta = latest.sellerNotes || "";
+  const meta = latest?.sellerNotes || "";
 
   const recentInteractions = interactions.slice(0, 6).map((i) => ({
     date: i.date,
     title: i.title,
     summary: i.summary || "",
   }));
+
 
   try {
     const { data, error } = await supabase.functions.invoke("auto-diagnose-lead", {
