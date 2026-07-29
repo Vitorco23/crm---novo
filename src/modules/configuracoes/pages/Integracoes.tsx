@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, CheckCircle2, AlertCircle, Loader2, ExternalLink } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { AgendaRepository } from "@/modules/agenda/services/AgendaRepository";
 import { toast } from "sonner";
 
 type Status = "loading" | "connected" | "not_connected" | "error";
@@ -16,8 +16,7 @@ export default function Integracoes() {
     setStatus("loading");
     setErrorMsg(null);
     try {
-      const { data, error } = await supabase.functions.invoke("google-calendar-status");
-      if (error) throw error;
+      const data = await AgendaRepository.calendarStatus();
       if (data?.connected) {
         setStatus("connected");
       } else {
@@ -36,19 +35,23 @@ export default function Integracoes() {
     const start = new Date(Date.now() + 60 * 60 * 1000); // 1h
     const end = new Date(start.getTime() + 15 * 60 * 1000);
     toast.loading("Criando evento de teste...", { id: "test" });
-    const { data, error } = await supabase.functions.invoke("create-google-meeting", {
-      body: {
+    let data: Awaited<ReturnType<typeof AgendaRepository.createMeeting>> | null = null;
+    let invokeError: Error | null = null;
+    try {
+      data = await AgendaRepository.createMeeting({
         summary: "Teste — CRM Performance21",
         description: "Evento de teste criado pelo CRM. Pode apagar.",
         startISO: start.toISOString(),
         endISO: end.toISOString(),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         withMeet: true,
-      },
-    });
+      });
+    } catch (e) {
+      invokeError = e as Error;
+    }
     toast.dismiss("test");
-    if (error || data?.error) {
-      toast.error("Falha no teste", { description: data?.details || data?.error || error?.message });
+    if (invokeError || data?.error) {
+      toast.error("Falha no teste", { description: data?.details || data?.error || invokeError?.message });
       return;
     }
     toast.success("Evento de teste criado!", {
