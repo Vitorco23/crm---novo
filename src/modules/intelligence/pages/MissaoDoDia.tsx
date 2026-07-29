@@ -64,9 +64,10 @@ export default function MissaoDoDia() {
   const done = entries.filter((e) => e.status === "concluida");
 
   const suggestions = plan.items.filter((i) => !inMission.has(i.id));
-  const followupSuggestions = plan.followups
-    .filter((f) => !inMission.has(`${plan.generatedAt.slice(0, 10)}:followup:${f.leadId}`))
-    .slice(0, 8);
+  const followupSuggestions = plan.followups.filter(
+    (f) => !inMission.has(`${plan.generatedAt.slice(0, 10)}:followup:${f.leadId}`),
+  );
+
 
   const handleComplete = (e: MissionEntry) => {
     completeMissionEntry(e.id);
