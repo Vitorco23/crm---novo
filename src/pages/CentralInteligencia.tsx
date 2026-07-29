@@ -264,21 +264,51 @@ export default function CentralInteligencia() {
               {conversations.map((c) => (
                 <div
                   key={c.id}
-                  onClick={() => setActiveId(c.id)}
+                  onClick={() => { if (editingId !== c.id) setActiveId(c.id); }}
                   className={cn(
-                    "group flex items-center gap-2 rounded-md px-2 py-2 cursor-pointer text-sm hover:bg-muted",
+                    "group flex items-center gap-1.5 rounded-md px-2 py-2 cursor-pointer text-sm hover:bg-muted",
                     activeId === c.id && "bg-muted",
                   )}
                 >
                   <MessageCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="flex-1 truncate">{c.title || "Conversa"}</span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
-                    className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive"
-                    aria-label="Excluir conversa"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {editingId === c.id ? (
+                    <Input
+                      autoFocus
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onBlur={() => renameConversation(c.id, editingTitle)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); renameConversation(c.id, editingTitle); }
+                        if (e.key === "Escape") { e.preventDefault(); setEditingId(null); }
+                      }}
+                      className="h-7 flex-1 text-xs px-2"
+                      maxLength={120}
+                    />
+                  ) : (
+                    <>
+                      <span
+                        className="flex-1 truncate"
+                        onDoubleClick={(e) => { e.stopPropagation(); setEditingId(c.id); setEditingTitle(c.title || ""); }}
+                      >
+                        {c.title || "Conversa"}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingId(c.id); setEditingTitle(c.title || ""); }}
+                        className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-foreground"
+                        aria-label="Renomear conversa"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
+                        className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive"
+                        aria-label="Excluir conversa"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
