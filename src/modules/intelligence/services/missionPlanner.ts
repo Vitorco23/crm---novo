@@ -525,48 +525,37 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
 }
 
 // ---------------------------------------------------------------------------
-// Integração com a Central de Tarefas (módulo atual, sem duplicação)
+// Integração com a Missão do Dia (execução operacional — não é Tarefas/Scrum)
 // ---------------------------------------------------------------------------
 
-/** Tarefas da Missão criadas hoje, indexadas pelo `originRef`. */
-export function getMissionTasksToday(): Map<string, LeadTask> {
-  const d = todayStr();
-  const map = new Map<string, LeadTask>();
-  for (const t of getTasks()) {
-    if (t.origin !== "mission_center" || !t.originRef) continue;
-    if ((t.createdAt || "").slice(0, 10) !== d) continue;
-    map.set(t.originRef, t);
-  }
-  return map;
+/** Itens já presentes na Missão do Dia, indexados pela chave da prioridade. */
+export function getMissionTasksToday(): Map<string, MissionEntry> {
+  return getMissionRefs(todayStr());
 }
 
-/** Cria a tarefa da prioridade usando exatamente o módulo atual de tarefas. */
-export function addMissionTask(item: MissionItem): LeadTask {
-  const existing = getMissionTasksToday().get(item.id);
-  if (existing) return existing;
-
-  const due = new Date();
-  due.setHours(18, 0, 0, 0);
-  if (due.getTime() < Date.now()) due.setTime(Date.now() + 60 * 60 * 1000);
-
-  const description = [item.bullets.length ? `Priorizar: ${item.bullets.join(" · ")}` : "", item.reason ? `Motivo: ${item.reason}` : ""]
-    .filter(Boolean)
-    .join("\n");
-
-  return addTask({
-    leadId: item.leadId ?? null,
+/** Envia a prioridade para a aba Missão do Dia. */
+export function addMissionTask(item: MissionItem): MissionEntry {
+  return addMissionEntry({
+    ref: item.id,
+    kind: item.kind,
     title: item.title,
-    description,
-    dueAt: due.toISOString(),
-    durationMin: Math.min(240, Math.max(15, item.estimatedMinutes)),
+    reason: item.reason,
     priority: item.priority,
-    origin: "mission_center",
-    originRef: item.id,
+    estimatedMinutes: item.estimatedMinutes,
+    bullets: item.bullets,
+    recommendedTime: item.recommendedTime,
+    niche: item.niche,
+    city: item.city,
+    company: item.company,
+    leadId: item.leadId ?? null,
   });
 }
 
-/** Cria a tarefa de um follow-up individual da Missão. */
-export function addFollowupTask(f: FollowupPick): LeadTask {
+/** Envia um follow-up individual para a Missão do Dia. */
+export function addFollowupTask(f: FollowupPick): MissionEntry {
+  const lead = getLeads().find((l) => l.id === f.leadId) as unknown as
+    | { niche?: string; city?: string }
+    | undefined;
   return addMissionTask({
     id: `${todayStr()}:followup:${f.leadId}`,
     kind: "lead",
@@ -576,5 +565,9 @@ export function addFollowupTask(f: FollowupPick): LeadTask {
     priority: f.bucket === "urgente" ? "urgente" : f.bucket === "quente" ? "alta" : "media",
     estimatedMinutes: f.priority?.estimatedMinutes ?? 8,
     leadId: f.leadId,
+    company: f.company,
+    niche: lead?.niche,
+    city: lead?.city,
   });
 }
+
