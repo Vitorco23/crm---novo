@@ -46,7 +46,7 @@ import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import LeadDetailDrawer from "@/modules/leads/components/LeadDetailDrawer";
-import { consumePendingOpenLead, OPEN_LEAD_EVENT, type LeadTabHint, type LeadActionHint, type PendingOpenLead } from "@/modules/leads/services/openLead";
+import { consumePendingOpenLead, OPEN_LEAD_EVENT, PENDING_OPEN_LEAD_KEY, type LeadTabHint, type LeadActionHint, type PendingOpenLead } from "@/modules/leads/services/openLead";
 import ScheduleMeetingDialog from "@/modules/leads/components/ScheduleMeetingDialog";
 import PipelineListView from "@/modules/pipeline/components/PipelineListView";
 import BulkActionsBar from "@/modules/pipeline/components/BulkActionsBar";
