@@ -185,6 +185,7 @@ export interface AIExecutionRecorder {
   setPrompt(promptId: string | null, promptVersion?: string | null): void;
   setSpecialist(specialist: string | null): void;
   setLead(leadId: string | null): void;
+  setConversation(conversationId: string | null): void;
   /** Registra sucesso (ou fallback). Nunca lança. */
   success(args?: FinishArgs): Promise<void>;
   /** Registra falha com código normalizado. Nunca lança. */
@@ -243,6 +244,9 @@ export function startAIExecution(
     },
     setLead(leadId) {
       state.leadId = leadId;
+    },
+    setConversation(conversationId) {
+      state.conversationId = conversationId;
     },
     success(finishArgs = {}) {
       return write({ ...finishArgs, status: finishArgs.status ?? "success", errorCode: null });
