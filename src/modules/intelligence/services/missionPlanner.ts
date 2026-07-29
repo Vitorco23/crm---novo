@@ -673,13 +673,15 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
 
   return {
     generatedAt: new Date().toISOString(),
-    callsGoal: goals.calls,
+    callsGoal: newLeadsGoal,
     meetingsGoal: goals.meetings,
     callsDone: done,
     followups,
     followupsDone: workedTodaySet(leads).size,
-    followupTarget: DAILY_FOLLOWUP_TARGET,
+    followupTarget: coverage.target,
     followupCoverage: coverage,
+    capacity,
+    distribution,
 
     focus,
     items,
