@@ -52,7 +52,7 @@ export type MissionItemKind =
   | "lead";
 
 export interface MissionItem {
-  /** chave estável do dia — usada como `originRef` da tarefa. */
+  /** chave estável do dia — usada como `ref` do item de missão. */
   id: string;
   kind: MissionItemKind;
   title: string;
@@ -62,7 +62,12 @@ export interface MissionItem {
   priority: TaskPriority;
   estimatedMinutes: number;
   leadId?: string;
+  niche?: string;
+  city?: string;
+  recommendedTime?: string;
+  company?: string;
 }
+
 
 export type FollowupBucket = "urgente" | "quente" | "cadencia";
 
