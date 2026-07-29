@@ -18,6 +18,8 @@ import {
 } from "@/modules/intelligence/services/missionPlanner";
 import { openLead } from "@/modules/leads/services/openLead";
 import { on } from "@/shared/services/eventBus";
+import { Link } from "react-router-dom";
+import { MISSION_UPDATED_EVENT, runOneTimeMissionReset } from "@/modules/intelligence/services/missionStore";
 
 const KIND_ICON: Record<MissionItem["kind"], JSX.Element> = {
   calls: <Phone className="h-3.5 w-3.5" />,
@@ -36,6 +38,7 @@ const BUCKET_META: Record<FollowupPick["bucket"], { label: string; cls: string }
 
 export default function MissionPlanBlock() {
   const [tick, setTick] = useState(0);
+  useEffect(() => { runOneTimeMissionReset(); }, []);
   const [showAllFollowups, setShowAllFollowups] = useState(false);
 
   const plan: MissionPlan = useMemo(() => buildMissionPlan(), [tick]);
@@ -54,15 +57,17 @@ export default function MissionPlanBlock() {
       on("MetaAtualizada", bump),
     ];
     window.addEventListener("p21:priority-leads-updated", bump);
+    window.addEventListener(MISSION_UPDATED_EVENT, bump);
     return () => {
       offs.forEach((off) => off());
       window.removeEventListener("p21:priority-leads-updated", bump);
+      window.removeEventListener(MISSION_UPDATED_EVENT, bump);
     };
   }, []);
 
   const handleAdd = useCallback((item: MissionItem) => {
     addMissionTask(item);
-    toast({ title: "Adicionado à Missão", description: item.title });
+    toast({ title: "Adicionado à Missão do Dia", description: item.title });
     setTick((t) => t + 1);
   }, []);
 
@@ -83,8 +88,9 @@ export default function MissionPlanBlock() {
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
               Prioridades para hoje
             </p>
-            <span className="text-[10px] text-muted-foreground tabular-nums">
+            <span className="text-[10px] text-muted-foreground tabular-nums flex items-center gap-2">
               {plan.callsDone}/{plan.callsGoal} ligações registradas
+              <Link to="/missao" className="text-accent hover:underline">Ver Missão do Dia</Link>
             </span>
           </div>
 
