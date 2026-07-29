@@ -111,6 +111,22 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Anti-injection guard on AI-produced fields before they touch the DB.
+    try {
+      assertSafeAIOutput(parsed.title, "extract_memory.title");
+      assertSafeAIOutput(parsed.content, "extract_memory.content");
+      if (parsed.motivo) assertSafeAIOutput(parsed.motivo, "extract_memory.motivo");
+      if (Array.isArray(parsed.objecoes)) parsed.objecoes.forEach((s, i) => assertSafeAIOutput(s, `extract_memory.objecoes[${i}]`));
+      if (Array.isArray(parsed.argumentos)) parsed.argumentos.forEach((s, i) => assertSafeAIOutput(s, `extract_memory.argumentos[${i}]`));
+    } catch (e) {
+      if (e instanceof UnsafeAIOutputError) {
+        return new Response(JSON.stringify({ inserted: false, reason: "unsafe_output", matches: e.matches }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      throw e;
+    }
+
+
     // Enriquecer metadata com sinais qualitativos extraídos pela IA (motor de padrões consome).
     const md: Record<string, unknown> = { ...(metadata || {}) };
     if (parsed.motivo) md.motivo = String(parsed.motivo).slice(0, 240);
@@ -150,7 +166,7 @@ Deno.serve(async (req) => {
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     } catch (e) {
-      console.warn("dedup check failed", (e as Error).message);
+      console.warn(JSON.stringify({ evt: "extract_memory_dedup_failed", msg: (e as Error).message }));
     }
 
     // 4) Insert
@@ -167,15 +183,17 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
     if (insertErr) {
-      return new Response(JSON.stringify({ inserted: false, reason: "insert_failed", error: insertErr.message }),
+      console.error(JSON.stringify({ evt: "extract_memory_insert_failed", msg: insertErr.message }));
+      return new Response(JSON.stringify({ inserted: false, reason: "insert_failed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ inserted: true, memoryId: inserted.id, model: ai.modelUsed }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    console.error("extract-memory error", e);
-    return new Response(JSON.stringify({ error: (e as Error).message }),
+    console.error(JSON.stringify({ evt: "extract_memory_error", msg: (e as Error).message }));
+    return new Response(JSON.stringify({ error: "internal_error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
+
 });

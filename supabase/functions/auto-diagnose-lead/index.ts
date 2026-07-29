@@ -15,7 +15,10 @@ import {
   wrapUntrusted,
   validateShape,
   safeParseJson,
+  assertSafeAIOutput,
+  UnsafeAIOutputError,
 } from "../_shared/untrusted-input.ts";
+
 
 interface Payload {
   leadId?: string;
@@ -175,6 +178,21 @@ Deno.serve(async (req) => {
     }
 
     const data = validation.value;
+
+    // Anti-injection guard on fields that may be surfaced/persisted (updated_memory
+    // is appended to permanent observations, summary/next_action shown to the user).
+    try {
+      assertSafeAIOutput(data.summary, "auto_diagnose.summary");
+      assertSafeAIOutput(data.next_action, "auto_diagnose.next_action");
+      if (data.attention) assertSafeAIOutput(data.attention, "auto_diagnose.attention");
+      if (data.updated_memory) assertSafeAIOutput(data.updated_memory, "auto_diagnose.updated_memory");
+    } catch (e) {
+      if (e instanceof UnsafeAIOutputError) {
+        return json(502, { error: "unsafe_output", matches: e.matches });
+      }
+      throw e;
+    }
+
     return json(200, {
       ok: true,
       data,
@@ -182,7 +200,8 @@ Deno.serve(async (req) => {
       generatedAt: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("auto-diagnose-lead error:", e);
-    return json(500, { error: String((e as Error)?.message || e) });
+    console.error(JSON.stringify({ evt: "auto_diagnose_error", msg: (e as Error)?.message }));
+    return json(500, { error: "internal_error" });
   }
 });
+
