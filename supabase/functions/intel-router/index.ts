@@ -12,6 +12,7 @@ import {
   buildQuestionBlock,
   composeSystem,
   normalizeHistory,
+  createKnowledgeEngineForSpecialist,
   runKnowledgeSearch,
   summarizeContext,
   type ConversationTurn,
@@ -86,12 +87,14 @@ async function runMentor(question: string, ctx: CrmContext, authHeader: string, 
   Promise<{ content: string; model: string; citations: KnowledgeCitation[] }>
 {
   // Ferramenta autorizada pelo Tool Registry. Best-effort: falha não bloqueia a resposta.
+  // Fase 3C: engine com cache por execução + governança da Knowledge Platform.
   const { chunks, citations } = await runKnowledgeSearch({
     specialist: "mentor_p21",
     query: question,
     authHeader,
     matchCount: 6,
     minSimilarity: 0.30,
+    engine: createKnowledgeEngineForSpecialist(),
   });
 
   const built = buildChatContext({ history, crm: ctx, knowledgeChunks: chunks });
