@@ -104,6 +104,14 @@ export async function getMemoryContext(
       minSimilarity: r.minSimilarity,
       includePatterns: r.includePatterns,
     });
+    console.log(JSON.stringify({
+      evt: "memory_query",
+      scope: q.scope,
+      hasEntity: Boolean(r.entity),
+      nicheFilter: r.niche,
+      memoryCount: res.memoryCount,
+      patternCount: res.patternCount,
+    }));
     return {
       block: res.block,
       references: toReferences(res.memories ?? []),
