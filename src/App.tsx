@@ -79,6 +79,11 @@ const App = () => (
                         <Route path="/central" element={<CentralDecisao />} />
                         <Route path="/agenda" element={<Agenda />} />
                         <Route path="/memoria" element={<MemoriaComercial />} />
+                        <Route path="/saude-sistema" element={
+                          <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Saúde do Sistema…</div>}>
+                            <SaudeSistema />
+                          </Suspense>
+                        } />
                         <Route path="/laboratorio" element={
                           <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Laboratório…</div>}>
                             <Laboratorio />
