@@ -1,7 +1,7 @@
 import {
   PhoneCall, Handshake, Timer, BarChart3, Target, Plug, Rocket, ListChecks,
   DollarSign, Bell, Brain, Compass, FlaskConical, BookMarked,
-  Calendar as CalendarIcon, MessageCircle, Library, LucideIcon,
+  Calendar as CalendarIcon, MessageCircle, Library, Flag, LucideIcon,
 } from "lucide-react";
 
 export type NavGroupId = "decisao" | "operacao" | "inteligencia" | "planejamento" | "configuracoes";
