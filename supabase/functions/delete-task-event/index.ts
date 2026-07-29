@@ -1,4 +1,6 @@
 // Deleta evento de tarefa no Google Calendar.
+import { requireUser } from "../_shared/require-auth.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
