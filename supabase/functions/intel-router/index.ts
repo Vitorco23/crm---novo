@@ -6,6 +6,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
+import { startAIExecution } from "../_shared/ai-core/observability.ts";
 import { UNTRUSTED_INPUT_SYSTEM_CLAUSE, safeParseJson } from "../_shared/untrusted-input.ts";
 import {
   buildChatContext,
@@ -116,6 +117,13 @@ Deno.serve(async (req) => {
   const auth = await requireUser(req, corsHeaders);
   if (!auth.ok) return auth.response;
 
+  const authHeaderRaw = req.headers.get("Authorization") ?? req.headers.get("authorization");
+  const telemetry = startAIExecution({
+    task: "intel_router",
+    userId: auth.userId,
+    authHeader: authHeaderRaw,
+  });
+
   try {
     const body = (await req.json().catch(() => ({}))) as IntelRequest;
     const question = String(body.question ?? "").trim();
@@ -137,6 +145,13 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization")!;
     const history = normalizeHistory(body.history);
 
+    // Observabilidade: somente metadados agregados (Fase 3D.1).
+    telemetry.setSpecialist(specialist);
+    telemetry.setConversation(body.conversationId ?? null);
+    if (ctx && Object.keys(ctx).length) telemetry.addSource("crm");
+    if (ctx.leadContext) telemetry.addSource("lead");
+    if (history.length) telemetry.addSource("history");
+
     let content = "";
     let model = "";
     let citations: unknown = null;
@@ -156,6 +171,8 @@ Deno.serve(async (req) => {
     } else {
       const r = await runMentor(question, ctx, authHeader, history);
       content = r.content; model = r.model; citations = r.citations;
+      telemetry.addSource("knowledge");
+      telemetry.addTool("knowledge.search");
     }
 
     // Persiste user + assistant se houver conversationId
@@ -184,6 +201,12 @@ Deno.serve(async (req) => {
       ]);
     }
 
+    await telemetry.success({
+      model: model || null,
+      inputChars: question.length,
+      outputChars: content.length,
+    });
+
     return new Response(JSON.stringify({
       specialist, content, model, citations,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -191,6 +214,7 @@ Deno.serve(async (req) => {
     const err = e as Error & { status?: number };
     const status = err.status ?? 500;
     console.error(JSON.stringify({ evt: "intel_router_error", msg: err.message }));
+    await telemetry.failure(err);
     return new Response(JSON.stringify({
       error: status === 429 ? "rate_limited"
            : status === 402 ? "credits_exhausted"

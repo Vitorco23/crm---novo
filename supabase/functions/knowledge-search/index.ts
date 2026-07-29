@@ -8,6 +8,7 @@ import {
   clampSimilarity,
   normalizeCategory,
 } from "../_shared/ai-core/knowledge-governance.ts";
+import { startAIExecution } from "../_shared/ai-core/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +22,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const auth = await requireUser(req, corsHeaders);
   if (!auth.ok) return auth.response;
+
+  const telemetry = startAIExecution({
+    task: "knowledge_search",
+    userId: auth.userId,
+    authHeader: req.headers.get("Authorization") ?? req.headers.get("authorization"),
+    sources: ["knowledge"],
+    toolsUsed: ["knowledge.search"],
+  });
 
   try {
     const { query, matchCount = 6, minSimilarity = 0.35, categoria = null } =
@@ -64,11 +73,18 @@ Deno.serve(async (req) => {
     });
     if (error) throw new Error(error.message);
 
+    await telemetry.success({
+      model: EMBEDDING_MODEL,
+      inputChars: safeQuery.length,
+      outputChars: null,
+    });
+
     return new Response(JSON.stringify({ chunks: data ?? [] }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error(JSON.stringify({ evt: "kb_search_error", msg: (e as Error).message }));
+    await telemetry.failure(e);
     return new Response(JSON.stringify({ error: "internal_error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

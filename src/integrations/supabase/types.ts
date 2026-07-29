@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_execution_events: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          error_code: string | null
+          estimated_cost: number | null
+          execution_id: string
+          id: string
+          input_chars: number | null
+          input_tokens: number | null
+          latency_ms: number
+          lead_id: string | null
+          model: string | null
+          output_chars: number | null
+          output_tokens: number | null
+          prompt_id: string | null
+          prompt_version: string | null
+          sources: string[]
+          specialist: string | null
+          status: string
+          task: string
+          tools_used: string[]
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          estimated_cost?: number | null
+          execution_id: string
+          id?: string
+          input_chars?: number | null
+          input_tokens?: number | null
+          latency_ms?: number
+          lead_id?: string | null
+          model?: string | null
+          output_chars?: number | null
+          output_tokens?: number | null
+          prompt_id?: string | null
+          prompt_version?: string | null
+          sources?: string[]
+          specialist?: string | null
+          status: string
+          task: string
+          tools_used?: string[]
+          user_id?: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          estimated_cost?: number | null
+          execution_id?: string
+          id?: string
+          input_chars?: number | null
+          input_tokens?: number | null
+          latency_ms?: number
+          lead_id?: string | null
+          model?: string | null
+          output_chars?: number | null
+          output_tokens?: number | null
+          prompt_id?: string | null
+          prompt_version?: string | null
+          sources?: string[]
+          specialist?: string | null
+          status?: string
+          task?: string
+          tools_used?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_router_logs: {
         Row: {
           attempt_index: number

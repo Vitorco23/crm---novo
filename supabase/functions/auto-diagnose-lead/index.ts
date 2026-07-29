@@ -19,6 +19,8 @@ import {
 } from "../_shared/untrusted-input.ts";
 import {
   buildLeadContextPrompt,
+  startAIExecution,
+  type AIExecutionRecorder,
   type LeadIntelligenceInput,
 } from "../_shared/ai-core/index.ts";
 
@@ -81,6 +83,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
+  let telemetry: AIExecutionRecorder | null = null;
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) return json(401, { error: "Unauthorized" });
@@ -92,6 +96,14 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: authErr } = await supabase.auth.getClaims(token);
     if (authErr || !claims?.claims) return json(401, { error: "Unauthorized" });
+    const userId = String((claims.claims as Record<string, unknown>).sub ?? "");
+    telemetry = startAIExecution({
+      task: "auto_diagnosis",
+      userId,
+      authHeader,
+      specialist: "diagnostico_automatico",
+      sources: ["lead", "crm"],
+    });
 
     const body = (await req.json()) as Payload;
     const summary = (body.summary || "").trim();
@@ -120,6 +132,7 @@ Deno.serve(async (req) => {
     } catch (e) {
       const err = e as Error & { status?: number };
       const status = err.status ?? 502;
+      await telemetry?.failure(err, { inputChars: userPrompt.length });
       return json(status, {
         error:
           status === 429 ? "Limite de requisições atingido."
@@ -160,6 +173,13 @@ Deno.serve(async (req) => {
       throw e;
     }
 
+    telemetry?.setLead(typeof (body as { leadId?: string }).leadId === "string" ? (body as { leadId?: string }).leadId! : null);
+    await telemetry?.success({
+      model: result.modelUsed ?? null,
+      inputChars: userPrompt.length,
+      outputChars: String(result.content ?? "").length,
+    });
+
     return json(200, {
       ok: true,
       data,
@@ -168,6 +188,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error(JSON.stringify({ evt: "auto_diagnose_error", msg: (e as Error)?.message }));
+    await telemetry?.failure(e);
     return json(500, { error: "internal_error" });
   }
 });

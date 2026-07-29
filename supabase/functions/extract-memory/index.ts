@@ -15,6 +15,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI } from "../_shared/ai-router.ts";
 import { embedText } from "../_shared/memory-retrieval.ts";
 import { requireUser } from "../_shared/require-auth.ts";
+import { startAIExecution } from "../_shared/ai-core/observability.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
   wrapUntrusted,
@@ -53,6 +54,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const auth = await requireUser(req, corsHeaders);
   if (!auth.ok) return auth.response;
+  const telemetry = startAIExecution({
+    task: "extract_memory",
+    userId: auth.userId,
+    authHeader: req.headers.get("Authorization") ?? req.headers.get("authorization"),
+    specialist: "curador_memoria",
+    sources: ["lead", "memory"],
+    toolsUsed: ["memory.extract"],
+  });
   try {
     const { kind, context, leadId, metadata } = await req.json();
     if (!kind || !context || typeof context !== "string") {
@@ -91,6 +100,8 @@ Deno.serve(async (req) => {
       });
     } catch (e) {
       console.error(JSON.stringify({ evt: "extract_memory_ai_failed", msg: (e as Error).message }));
+      telemetry.setLead(typeof leadId === "string" ? leadId : null);
+      await telemetry.failure(e, { inputChars: userPrompt.length });
       return new Response(JSON.stringify({ inserted: false, reason: "ai_failed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -188,10 +199,18 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    telemetry.setLead(typeof leadId === "string" ? leadId : null);
+    await telemetry.success({
+      model: ai.modelUsed ?? null,
+      inputChars: userPrompt.length,
+      outputChars: String(ai.content ?? "").length,
+    });
+
     return new Response(JSON.stringify({ inserted: true, memoryId: inserted.id, model: ai.modelUsed }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error(JSON.stringify({ evt: "extract_memory_error", msg: (e as Error).message }));
+    await telemetry.failure(e);
     return new Response(JSON.stringify({ error: "internal_error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
