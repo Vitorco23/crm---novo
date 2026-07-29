@@ -116,6 +116,22 @@ async function createCalendarEvent(payload: LandingPayload, leadName: string, co
   };
 }
 
+// Constant-time comparison p/ evitar timing side-channels no shared secret.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
+function extractLandingSecret(req: Request): string | null {
+  const sig = req.headers.get("x-landing-signature");
+  if (sig && sig.trim()) return sig.trim();
+  const auth = req.headers.get("authorization");
+  if (auth && auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -126,8 +142,19 @@ Deno.serve(async (req) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const LANDING_WEBHOOK_SECRET = Deno.env.get("LANDING_WEBHOOK_SECRET");
   if (!SUPABASE_URL || !SERVICE_ROLE) {
     return json(500, { error: "server_misconfigured" });
+  }
+  if (!LANDING_WEBHOOK_SECRET) {
+    console.error("[receive-landing-lead] LANDING_WEBHOOK_SECRET not configured");
+    return json(500, { error: "server_misconfigured" });
+  }
+
+  const provided = extractLandingSecret(req);
+  if (!provided || !safeEqual(provided, LANDING_WEBHOOK_SECRET)) {
+    console.warn("[receive-landing-lead] unauthorized");
+    return json(401, { error: "unauthorized" });
   }
 
   let rawPayload: any;
@@ -136,7 +163,7 @@ Deno.serve(async (req) => {
   } catch {
     return json(400, { error: "invalid_json" });
   }
-  console.log("[receive-landing-lead] payload", JSON.stringify(rawPayload));
+  console.log("[receive-landing-lead] payload received");
 
   const payload = rawPayload as LandingPayload & Record<string, any>;
 
