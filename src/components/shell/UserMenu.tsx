@@ -50,6 +50,11 @@ export function UserMenu() {
         <DropdownMenuItem onSelect={() => navigate("/integracoes")}>
           <Settings className="mr-2 h-4 w-4" /> Integrações
         </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem onSelect={() => navigate("/saude-sistema")}>
+            <Activity className="mr-2 h-4 w-4" /> Saúde do Sistema
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={signOut} className="text-destructive focus:text-destructive">
           <LogOut className="mr-2 h-4 w-4" /> Sair
