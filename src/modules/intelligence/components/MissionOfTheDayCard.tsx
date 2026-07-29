@@ -16,6 +16,7 @@ import {
 import { ACTION_META } from "@/modules/intelligence/services/nextBestAction";
 import { openLead } from "@/modules/leads/services/openLead";
 import DirectorNudge from "@/modules/intelligence/components/DirectorNudge";
+import MissionPlanBlock from "@/modules/intelligence/components/MissionPlanBlock";
 
 const toneCls: Record<string, string> = {
   critical: "bg-rose-500/15 text-rose-500 border-rose-500/30",
