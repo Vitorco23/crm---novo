@@ -123,6 +123,10 @@ export interface MissionPlan {
   followupsDone: number;
   followupTarget: number;
   followupCoverage: FollowupSelection;
+  /** Capacidade operacional do dia (80% da capacidade máxima da aba Metas). */
+  capacity: OperationalCapacity;
+  /** Distribuição dinâmica da capacidade operacional. */
+  distribution: { newLeads: number; followups: number; total: number };
 
   focus: ProspectFocus;
   items: MissionItem[];
