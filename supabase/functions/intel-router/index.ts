@@ -235,26 +235,32 @@ Deno.serve(async (req) => {
     const specialist: Specialist = body.specialistOverride
       ?? await classify(question, ctx);
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY")!;
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization")!;
+    const history = Array.isArray(body.history)
+      ? body.history
+          .filter((h) => h && typeof h.content === "string")
+          .slice(-10)
+          .map((h) => ({ role: h.role === "assistant" ? "assistant" : "user", content: String(h.content).slice(0, 2000) }))
+      : [];
 
     let content = "";
     let model = "";
     let citations: unknown = null;
 
     if (specialist === "diretor_comercial") {
-      const r = await runDiretor(question, ctx.dashboardSnapshot ?? {});
+      const r = await runDiretor(question, ctx, history);
       content = r.content; model = r.model;
     } else if (specialist === "consultor_leads") {
       if (!ctx.leadContext) {
-        content = "⚠️ Nenhum lead aberto. Abra um lead no CRM e faça a pergunta novamente para eu consultar diagnóstico, memória e próxima ação daquele lead.";
-        model = "n/a";
+        // Sem lead aberto: não bloqueia — responde como Diretor Comercial com o contexto disponível.
+        const r = await runDiretor(question, ctx, history);
+        content = r.content; model = r.model;
       } else {
-        const r = await runConsultor(question, ctx.leadContext);
+        const r = await runConsultor(question, ctx, history);
         content = r.content; model = r.model;
       }
     } else {
-      const r = await runMentor(question, apiKey, authHeader);
+      const r = await runMentor(question, ctx, authHeader, history);
       content = r.content; model = r.model; citations = r.citations;
     }
 
