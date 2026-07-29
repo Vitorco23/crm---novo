@@ -50,6 +50,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
                   {user?.email}
                 </span>
                 <ForceUpdateButton />
+                <ThemeToggle className="h-8 w-8" />
                 <Button size="icon" variant="ghost" onClick={signOut} title="Sair">
                   <LogOut className="h-4 w-4" />
                 </Button>
