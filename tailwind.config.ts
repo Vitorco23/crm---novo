@@ -64,7 +64,10 @@ export default {
         24:  "6rem",     // 96
       },
       colors: {
-        border: "hsl(var(--border))",
+        border: {
+          DEFAULT: "hsl(var(--border))",
+          strong: "hsl(var(--border-strong))",
+        },
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
@@ -119,7 +122,32 @@ export default {
           1: "hsl(var(--surface-1))",
           2: "hsl(var(--surface-2))",
           3: "hsl(var(--surface-3))",
+          hover: "hsl(var(--surface-hover))",
+          elevated: "hsl(var(--surface-elevated))",
         },
+        brand: {
+          blue: {
+            DEFAULT: "hsl(var(--brand-blue))",
+            strong: "hsl(var(--brand-blue-strong))",
+            soft: "hsl(var(--brand-blue-soft))",
+          },
+          green: {
+            DEFAULT: "hsl(var(--brand-green))",
+            strong: "hsl(var(--brand-green-strong))",
+            soft: "hsl(var(--brand-green-soft))",
+          },
+        },
+        text: {
+          primary: "hsl(var(--text-primary))",
+          secondary: "hsl(var(--text-secondary))",
+          muted: "hsl(var(--text-muted))",
+          disabled: "hsl(var(--text-disabled))",
+        },
+        icon: {
+          primary: "hsl(var(--icon-primary))",
+          secondary: "hsl(var(--icon-secondary))",
+        },
+        overlay: "hsl(var(--overlay))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

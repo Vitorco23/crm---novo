@@ -102,3 +102,37 @@ Componentes base **nascem** responsivos. Não criar versões mobile-only. Usar b
 2. Estilos duplicados → extrair para variante em `src/components/ui/*`.
 3. Alterou token → verificar dark mode.
 4. Nunca sobrescrever `src/integrations/supabase/*`, `src/pages/*`, nem regras de negócio nesta camada.
+
+---
+
+## 13. Identidade Performance21 & Temas
+
+Paleta oficial derivada do logotipo (azul + verde):
+
+- **Azul Performance** (`brand-blue`, `brand-blue-strong`, `brand-blue-soft`) → inteligência, tecnologia, segurança. Usado como `primary` no light e como destaque interativo no dark.
+- **Verde Performance** (`brand-green`, `brand-green-strong`, `brand-green-soft`) → crescimento, receita, conversão. Base do `accent`, `success` e indicadores positivos.
+- **Neutros frios** (`text-*`, `border`, `border-strong`, `surface-1/2/3`) → tipografia, containers, divisores. Nunca preto absoluto.
+
+O logotipo é **referência cromática apenas** — não replicar gradientes, formas ou efeitos do símbolo na UI.
+
+### Tokens de tema adicionais
+
+`background` · `card` · `popover` · `surface-1/2/3` · `surface-hover` · `surface-elevated` · `border` · `border-strong` · `primary(+hover/active)` · `secondary(+hover)` · `accent(+hover/active)` · `success` · `warning` · `danger` (destructive) · `info` · `text-primary/secondary/muted/disabled` · `icon-primary/secondary` · `overlay` · `shadow-sm/md/lg/xl`.
+
+Todos possuem valores para **light** e **dark**. Componentes consomem apenas tokens — nunca hex.
+
+### Light Theme
+Fundo claro (`210 40% 99%`), cards em branco puro, bordas discretas, texto navy profundo. Sensação de ferramenta produtiva usada o dia inteiro.
+
+### Dark Theme
+Grafite profundo (`218 35% 8%`), nunca preto absoluto. Cards em `surface-1/2/3` com leve elevação. Destaques em azul claro e verde da marca. Inspiração visual: Linear, Vercel, Raycast, Stripe Dashboard.
+
+### Alternância de tema
+
+Infraestrutura pronta:
+
+- **Provider**: `ThemeProvider` em `src/contexts/ThemeContext.tsx` (já montado em `src/App.tsx`, default `dark`).
+- **Hook**: `useTheme()` → `{ theme, resolvedTheme, setTheme, toggleTheme }`.
+- **Componente**: `<ThemeToggle />` em `src/components/ThemeToggle.tsx` — botão ícone Sun/Moon acessível, pronto para colar em qualquer header.
+- **Persistência**: `localStorage` chave `soc-theme`; suporta `light | dark | system`.
+- **Aplicação**: alterna classe `.dark` no `<html>` — todos os componentes reagem automaticamente via tokens.

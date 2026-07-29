@@ -6,95 +6,121 @@
 
 /* =========================================================================
    SOC Performance21 — Design System (infra visual central)
-   Todos os valores visuais da aplicação DEVEM referenciar estes tokens.
-   Nenhum componente deve usar cores/hex/sombras/tamanhos hard-coded.
+   Identidade cromática oficial: Azul Performance (inteligência/tech) +
+   Verde Performance (crescimento/receita) sobre neutros frios.
+   Todo componente DEVE consumir estes tokens; nunca hex/cores fixas.
    Ver docs/DESIGN_SYSTEM.md
    ========================================================================= */
 
 @layer base {
   :root {
-    /* -------- Core semantic colors (HSL, sem `hsl()` wrapper) -------- */
-    --background: 200 60% 98%;
-    --foreground: 216 43% 16%;
+    /* -------- LIGHT THEME — clareza, produtividade, leveza -------- */
+    --background: 210 40% 99%;
+    --foreground: 216 45% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 216 43% 16%;
+    --card-foreground: 216 45% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 216 43% 16%;
+    --popover-foreground: 216 45% 14%;
 
-    --primary: 216 43% 16%;
-    --primary-foreground: 200 60% 98%;
-    --primary-hover: 216 43% 22%;
-    --primary-active: 216 43% 12%;
+    /* Brand Blue (Performance21) — inteligência, segurança, tecnologia */
+    --brand-blue: 216 78% 32%;
+    --brand-blue-strong: 216 82% 24%;
+    --brand-blue-soft: 216 60% 92%;
 
-    --secondary: 200 20% 94%;
-    --secondary-foreground: 216 43% 16%;
-    --secondary-hover: 200 20% 90%;
+    /* Brand Green (Performance21) — crescimento, receita, conversão */
+    --brand-green: 78 56% 47%;
+    --brand-green-strong: 78 60% 38%;
+    --brand-green-soft: 78 50% 92%;
 
-    --muted: 200 15% 93%;
-    --muted-foreground: 216 15% 50%;
+    --primary: 216 78% 32%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 216 82% 28%;
+    --primary-active: 216 85% 22%;
+
+    --secondary: 210 25% 95%;
+    --secondary-foreground: 216 45% 14%;
+    --secondary-hover: 210 25% 91%;
+
+    --muted: 210 22% 94%;
+    --muted-foreground: 216 12% 44%;
 
     --accent: 78 56% 47%;
-    --accent-foreground: 216 43% 16%;
-    --accent-hover: 78 56% 42%;
-    --accent-active: 78 56% 37%;
+    --accent-foreground: 216 45% 14%;
+    --accent-hover: 78 60% 42%;
+    --accent-active: 78 62% 36%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
-    --destructive-hover: 0 72% 46%;
+    --destructive-hover: 0 72% 42%;
 
-    --success: 78 56% 47%;
-    --success-foreground: 216 43% 16%;
+    --success: 78 60% 40%;
+    --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 216 43% 16%;
-    --info: 210 90% 54%;
+    --warning-foreground: 216 45% 14%;
+    --info: 210 90% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 210 20% 90%;
-    --input: 210 20% 90%;
-    --ring: 78 56% 47%;
+    --border: 214 20% 88%;
+    --border-strong: 214 22% 78%;
+    --input: 214 20% 88%;
+    --ring: 216 78% 45%;
 
-    /* -------- Surfaces (elevation) -------- */
+    /* Text roles */
+    --text-primary: 216 45% 14%;
+    --text-secondary: 216 22% 30%;
+    --text-muted: 216 12% 48%;
+    --text-disabled: 216 10% 68%;
+
+    /* Icon roles */
+    --icon-primary: 216 45% 20%;
+    --icon-secondary: 216 15% 45%;
+
+    /* Surfaces (elevation) — evita branco puro em todas as camadas */
     --surface-1: 0 0% 100%;
-    --surface-2: 200 30% 97%;
-    --surface-3: 200 25% 94%;
+    --surface-2: 210 33% 97%;
+    --surface-3: 210 28% 93%;
+    --surface-hover: 210 30% 95%;
+    --surface-elevated: 0 0% 100%;
 
-    /* -------- Sidebar -------- */
-    --sidebar-background: 216 43% 16%;
-    --sidebar-foreground: 200 30% 85%;
+    --overlay: 216 45% 14% / 0.45;
+
+    /* Sidebar — tema escuro fixo para hierarquia constante */
+    --sidebar-background: 216 55% 12%;
+    --sidebar-foreground: 210 28% 82%;
     --sidebar-primary: 78 56% 47%;
-    --sidebar-primary-foreground: 216 43% 16%;
-    --sidebar-accent: 216 35% 22%;
-    --sidebar-accent-foreground: 200 60% 98%;
-    --sidebar-border: 216 30% 24%;
+    --sidebar-primary-foreground: 216 45% 12%;
+    --sidebar-accent: 216 42% 20%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 216 35% 22%;
     --sidebar-ring: 78 56% 47%;
 
-    /* -------- Radius scale -------- */
-    --radius-xs: 0.25rem;   /* 4  */
-    --radius-sm: 0.375rem;  /* 6  */
-    --radius-md: 0.5rem;    /* 8  */
-    --radius-lg: 0.625rem;  /* 10 */
-    --radius-xl: 0.875rem;  /* 14 */
-    --radius-2xl: 1.25rem;  /* 20 */
+    /* Radius scale */
+    --radius-xs: 0.25rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.625rem;
+    --radius-xl: 0.875rem;
+    --radius-2xl: 1.25rem;
     --radius-full: 9999px;
-    --radius: var(--radius-lg); /* legacy alias, mantém shadcn */
+    --radius: var(--radius-lg);
 
-    /* -------- Shadow scale -------- */
-    --shadow-sm: 0 1px 2px 0 hsl(216 43% 16% / 0.05);
-    --shadow-md: 0 4px 8px -2px hsl(216 43% 16% / 0.08), 0 2px 4px -2px hsl(216 43% 16% / 0.04);
-    --shadow-lg: 0 12px 24px -6px hsl(216 43% 16% / 0.12), 0 4px 8px -4px hsl(216 43% 16% / 0.06);
-    --shadow-xl: 0 24px 48px -12px hsl(216 43% 16% / 0.20);
+    /* Shadow scale */
+    --shadow-sm: 0 1px 2px 0 hsl(216 45% 14% / 0.05);
+    --shadow-md: 0 4px 8px -2px hsl(216 45% 14% / 0.08), 0 2px 4px -2px hsl(216 45% 14% / 0.04);
+    --shadow-lg: 0 12px 24px -6px hsl(216 45% 14% / 0.12), 0 4px 8px -4px hsl(216 45% 14% / 0.06);
+    --shadow-xl: 0 24px 48px -12px hsl(216 45% 14% / 0.20);
     --shadow-focus: 0 0 0 3px hsl(var(--ring) / 0.35);
 
-    /* -------- Animation durations & easings -------- */
+    /* Motion */
     --duration-fast: 120ms;
     --duration-base: 200ms;
     --duration-slow: 320ms;
     --ease-standard: cubic-bezier(0.2, 0, 0, 1);
     --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
 
-    /* -------- Z-index scale -------- */
+    /* Z-index */
     --z-base: 0;
     --z-dropdown: 40;
     --z-sticky: 50;
@@ -106,64 +132,88 @@
   }
 
   .dark {
-    --background: 216 50% 11%;
-    --foreground: 200 60% 92%;
+    /* -------- DARK THEME — grafite profundo, sofisticação, foco --------
+       Inspirado em Linear/Vercel/Stripe: nunca preto absoluto, contraste alto,
+       destaques em azul e verde da marca.                                    */
+    --background: 218 35% 8%;
+    --foreground: 210 30% 94%;
 
-    --card: 216 48% 14%;
-    --card-foreground: 200 60% 92%;
+    --card: 218 32% 11%;
+    --card-foreground: 210 30% 94%;
 
-    --popover: 216 48% 14%;
-    --popover-foreground: 200 60% 92%;
+    --popover: 218 34% 12%;
+    --popover-foreground: 210 30% 94%;
 
-    --primary: 78 56% 47%;
-    --primary-foreground: 216 43% 16%;
-    --primary-hover: 78 56% 52%;
-    --primary-active: 78 56% 42%;
+    --brand-blue: 214 90% 62%;
+    --brand-blue-strong: 214 92% 70%;
+    --brand-blue-soft: 216 45% 18%;
 
-    --secondary: 216 40% 18%;
-    --secondary-foreground: 200 60% 92%;
-    --secondary-hover: 216 40% 22%;
+    --brand-green: 78 60% 55%;
+    --brand-green-strong: 78 65% 62%;
+    --brand-green-soft: 78 35% 18%;
 
-    --muted: 216 35% 17%;
-    --muted-foreground: 200 15% 55%;
+    --primary: 214 90% 62%;
+    --primary-foreground: 218 40% 10%;
+    --primary-hover: 214 92% 68%;
+    --primary-active: 214 92% 56%;
 
-    --accent: 78 56% 47%;
-    --accent-foreground: 216 43% 16%;
-    --accent-hover: 78 56% 52%;
-    --accent-active: 78 56% 42%;
+    --secondary: 218 28% 16%;
+    --secondary-foreground: 210 30% 94%;
+    --secondary-hover: 218 28% 20%;
 
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 0 0% 95%;
-    --destructive-hover: 0 62% 50%;
+    --muted: 218 25% 15%;
+    --muted-foreground: 216 12% 62%;
 
-    --success: 78 56% 47%;
-    --success-foreground: 216 43% 16%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 216 43% 16%;
-    --info: 210 90% 60%;
-    --info-foreground: 216 43% 16%;
+    --accent: 78 60% 55%;
+    --accent-foreground: 218 40% 10%;
+    --accent-hover: 78 65% 62%;
+    --accent-active: 78 60% 48%;
 
-    --border: 216 35% 20%;
-    --input: 216 35% 20%;
-    --ring: 78 56% 47%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-hover: 0 65% 60%;
 
-    --surface-1: 216 48% 14%;
-    --surface-2: 216 45% 16%;
-    --surface-3: 216 42% 19%;
+    --success: 78 60% 55%;
+    --success-foreground: 218 40% 10%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 218 40% 10%;
+    --info: 210 90% 66%;
+    --info-foreground: 218 40% 10%;
 
-    --sidebar-background: 216 50% 9%;
-    --sidebar-foreground: 200 30% 80%;
-    --sidebar-primary: 78 56% 47%;
-    --sidebar-primary-foreground: 216 43% 16%;
-    --sidebar-accent: 216 40% 15%;
-    --sidebar-accent-foreground: 200 60% 92%;
-    --sidebar-border: 216 35% 16%;
-    --sidebar-ring: 78 56% 47%;
+    --border: 218 25% 20%;
+    --border-strong: 218 22% 30%;
+    --input: 218 25% 20%;
+    --ring: 214 90% 62%;
 
-    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.30);
-    --shadow-md: 0 4px 8px -2px hsl(0 0% 0% / 0.40), 0 2px 4px -2px hsl(0 0% 0% / 0.30);
-    --shadow-lg: 0 12px 24px -6px hsl(0 0% 0% / 0.50), 0 4px 8px -4px hsl(0 0% 0% / 0.35);
-    --shadow-xl: 0 24px 48px -12px hsl(0 0% 0% / 0.60);
+    --text-primary: 210 30% 94%;
+    --text-secondary: 210 20% 78%;
+    --text-muted: 216 14% 60%;
+    --text-disabled: 216 10% 42%;
+
+    --icon-primary: 210 30% 90%;
+    --icon-secondary: 216 14% 65%;
+
+    --surface-1: 218 32% 11%;
+    --surface-2: 218 30% 13%;
+    --surface-3: 218 28% 16%;
+    --surface-hover: 218 28% 18%;
+    --surface-elevated: 218 34% 14%;
+
+    --overlay: 218 40% 4% / 0.65;
+
+    --sidebar-background: 218 40% 6%;
+    --sidebar-foreground: 210 24% 78%;
+    --sidebar-primary: 78 60% 55%;
+    --sidebar-primary-foreground: 218 40% 10%;
+    --sidebar-accent: 218 30% 14%;
+    --sidebar-accent-foreground: 210 30% 94%;
+    --sidebar-border: 218 28% 16%;
+    --sidebar-ring: 78 60% 55%;
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.35);
+    --shadow-md: 0 4px 8px -2px hsl(0 0% 0% / 0.45), 0 2px 4px -2px hsl(0 0% 0% / 0.35);
+    --shadow-lg: 0 12px 24px -6px hsl(0 0% 0% / 0.55), 0 4px 8px -4px hsl(0 0% 0% / 0.40);
+    --shadow-xl: 0 24px 48px -12px hsl(0 0% 0% / 0.65);
     --shadow-focus: 0 0 0 3px hsl(var(--ring) / 0.45);
   }
 }
@@ -176,6 +226,7 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+    color-scheme: light dark;
   }
 
   body {
@@ -192,26 +243,21 @@
 }
 
 @layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-  }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
-  }
+  .scrollbar-thin { scrollbar-width: thin; }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
 
-  /* Elevation surfaces */
   .surface-1 { background-color: hsl(var(--surface-1)); }
   .surface-2 { background-color: hsl(var(--surface-2)); }
   .surface-3 { background-color: hsl(var(--surface-3)); }
+  .surface-elevated { background-color: hsl(var(--surface-elevated)); box-shadow: var(--shadow-md); }
 
-  /* Standard motion helper */
+  .text-primary-app { color: hsl(var(--text-primary)); }
+  .text-secondary-app { color: hsl(var(--text-secondary)); }
+  .text-muted-app { color: hsl(var(--text-muted)); }
+  .text-disabled-app { color: hsl(var(--text-disabled)); }
+
   .transition-standard {
     transition-property: color, background-color, border-color, box-shadow, transform, opacity;
     transition-duration: var(--duration-base);
