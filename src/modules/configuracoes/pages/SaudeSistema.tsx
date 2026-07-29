@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/shared/utils/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { HealthRepository } from "../services/HealthRepository";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 
@@ -98,28 +98,19 @@ export default function SaudeSistema() {
     setLoading(true);
     try {
       // Ping DB latency
-      const t0 = performance.now();
-      const { error: pingError } = await supabase.from("knowledge_documents").select("id", { count: "exact", head: true });
-      const latency = Math.round(performance.now() - t0);
+      const ping = await HealthRepository.pingDatabase();
+      const pingError = !ping.ok;
+      const latency = ping.latency;
 
       // Knowledge Base
-      const [{ count: docCount }, { data: docs }, { count: versionCount }] = await Promise.all([
-        supabase.from("knowledge_documents").select("id", { count: "exact", head: true }),
-        supabase.from("knowledge_documents").select("categoria, updated_at, created_at").order("updated_at", { ascending: false }).limit(500),
-        supabase.from("knowledge_document_versions").select("id", { count: "exact", head: true }),
-      ]);
+      const { docCount, docs, versionCount } = await HealthRepository.knowledgeSnapshot();
       const categories = docs ? new Set(docs.map((d: any) => d.categoria).filter(Boolean)).size : null;
       const lastUpdated = docs?.[0]?.updated_at ?? null;
       const lastPublished = docs?.map((d: any) => d.created_at).sort().reverse()[0] ?? null;
 
       // AI router logs — last 24h
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: logs } = await supabase
-        .from("ai_router_logs")
-        .select("task, model, success, latency_ms, error_type, created_at")
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
-        .limit(500);
+      const logs = await HealthRepository.aiRouterLogs(since);
 
       const tasks = ["diretor", "consultor", "mentor", "diagnose", "auditor", "briefing"];
       const aiByTask = tasks.map((task) => {

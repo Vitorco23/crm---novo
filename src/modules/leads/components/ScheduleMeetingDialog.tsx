@@ -18,7 +18,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { scheduleMeeting, type Lead, type Meeting, type MeetingSource } from "@/shared/services/store";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { AgendaRepository } from "@/modules/agenda/services/AgendaRepository";
 
 interface Props {
   lead: Lead | null;
@@ -81,19 +81,16 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
           notes.trim() && `\nObservações:\n${notes.trim()}`,
         ].filter(Boolean).join("\n");
 
-        const { data, error } = await supabase.functions.invoke("create-google-meeting", {
-          body: {
-            summary,
-            description,
-            startISO: start.toISOString(),
-            endISO: end.toISOString(),
-            timeZone: browserTZ(),
-            attendeeEmail: attendeeEmail.trim() || undefined,
-            withMeet: channel === "Google Meet",
-          },
+        const data = await AgendaRepository.createMeeting({
+          summary,
+          description,
+          startISO: start.toISOString(),
+          endISO: end.toISOString(),
+          timeZone: browserTZ(),
+          attendeeEmail: attendeeEmail.trim() || undefined,
+          withMeet: channel === "Google Meet",
         });
 
-        if (error) throw error;
         if (data?.error) {
           if (data.error === "google_calendar_not_connected") {
             toast.warning("Google Agenda não conectado", {

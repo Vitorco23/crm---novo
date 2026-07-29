@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { KnowledgeRepository } from "../services/KnowledgeRepository";
+import { useKnowledgeChunkCounts, useKnowledgeDocuments, useInvalidateKnowledge } from "../hooks/useKnowledge";
 import { PageContainer } from "@/shared/components/shell/PageContainer";
 import { PageHeader } from "@/shared/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -37,26 +38,7 @@ interface KDoc {
 
 interface ChunkStats { document_id: string; total: number }
 
-function useChunkCounts(docs: KDoc[]) {
-  const [counts, setCounts] = useState<Record<string, number>>({});
-  useEffect(() => {
-    if (!docs.length) return;
-    supabase
-      .from("knowledge_chunks")
-      .select("document_id")
-      .in("document_id", docs.map((d) => d.id))
-      .then(({ data }) => {
-        const map: Record<string, number> = {};
-        (data ?? []).forEach((r: any) => { map[r.document_id] = (map[r.document_id] ?? 0) + 1; });
-        setCounts(map);
-      });
-  }, [docs]);
-  return counts;
-}
-
 export default function KnowledgeBase() {
-  const [docs, setDocs] = useState<KDoc[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState<string>("all");
   const [editorOpen, setEditorOpen] = useState(false);
@@ -68,20 +50,17 @@ export default function KnowledgeBase() {
   const [bulkTags, setBulkTags] = useState<string>("");
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number; current: string } | null>(null);
-  const chunkCounts = useChunkCounts(docs);
+  const { data: docsData, isLoading: loading, error: docsError } = useKnowledgeDocuments();
+  const docs = useMemo(() => (docsData ?? []) as KDoc[], [docsData]);
+  const docIds = useMemo(() => docs.map((d) => d.id), [docs]);
+  const { data: chunkCountsData } = useKnowledgeChunkCounts(docIds);
+  const chunkCounts = chunkCountsData ?? {};
+  const invalidateKnowledge = useInvalidateKnowledge();
+  const refresh = useCallback(() => { invalidateKnowledge(); }, [invalidateKnowledge]);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("knowledge_documents")
-      .select("*")
-      .order("updated_at", { ascending: false });
-    if (error) toast({ title: "Erro ao carregar", description: error.message, variant: "destructive" });
-    else setDocs((data ?? []) as KDoc[]);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    if (docsError) toast({ title: "Erro ao carregar", description: (docsError as Error).message, variant: "destructive" });
+  }, [docsError]);
 
   const filtered = useMemo(() => {
     return docs.filter((d) => {
@@ -122,21 +101,17 @@ export default function KnowledgeBase() {
       };
       if (docId) {
         // Trigger no banco snapshotta versão anterior e incrementa `versao` automaticamente.
-        const { error } = await supabase
-          .from("knowledge_documents")
-          .update(payload)
-          .eq("id", docId);
-        if (error) throw error;
+        await KnowledgeRepository.updateDocument(docId, payload);
       } else {
-        const { data, error } = await supabase
-          .from("knowledge_documents").insert(payload).select("id").single();
-        if (error) throw error;
-        docId = data.id;
+        docId = await KnowledgeRepository.createDocument(payload);
       }
       toast({ title: "Documento salvo. Indexando…" });
-      const { error: idxErr } = await supabase.functions.invoke("knowledge-index", { body: { documentId: docId } });
-      if (idxErr) toast({ title: "Aviso: indexação falhou", description: idxErr.message, variant: "destructive" });
-      else toast({ title: "✅ Indexado com sucesso" });
+      try {
+        await KnowledgeRepository.indexDocument(docId);
+        toast({ title: "✅ Indexado com sucesso" });
+      } catch (idxErr) {
+        toast({ title: "Aviso: indexação falhou", description: (idxErr as Error).message, variant: "destructive" });
+      }
       setEditorOpen(false);
       setEditing(null);
       refresh();
@@ -149,16 +124,24 @@ export default function KnowledgeBase() {
 
   const reindex = async (id: string) => {
     toast({ title: "Reindexando…" });
-    const { error } = await supabase.functions.invoke("knowledge-index", { body: { documentId: id } });
-    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-    else { toast({ title: "✅ Reindexado" }); refresh(); }
+    try {
+      await KnowledgeRepository.indexDocument(id);
+      toast({ title: "✅ Reindexado" });
+      refresh();
+    } catch (e) {
+      toast({ title: "Erro", description: (e as Error).message, variant: "destructive" });
+    }
   };
 
   const remove = async (id: string) => {
     if (!confirm("Excluir este documento? Todos os embeddings serão removidos.")) return;
-    const { error } = await supabase.from("knowledge_documents").delete().eq("id", id);
-    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-    else { toast({ title: "Excluído" }); refresh(); }
+    try {
+      await KnowledgeRepository.deleteDocument(id);
+      toast({ title: "Excluído" });
+      refresh();
+    } catch (e) {
+      toast({ title: "Erro", description: (e as Error).message, variant: "destructive" });
+    }
   };
 
   const handleImport = async (file: File) => {
@@ -170,10 +153,7 @@ export default function KnowledgeBase() {
         r.onerror = reject;
         r.readAsDataURL(file);
       });
-      const { data, error } = await supabase.functions.invoke("knowledge-import", {
-        body: { filename: file.name, fileBase64: b64 },
-      });
-      if (error) throw error;
+      const data = await KnowledgeRepository.importFile(file.name, b64);
       setEditing({
         titulo: data.suggestedTitle ?? file.name,
         categoria: "Metodologia",
@@ -208,20 +188,15 @@ export default function KnowledgeBase() {
       setBulkProgress({ done: i, total: bulkFiles.length, current: file.name });
       try {
         const b64 = await fileToBase64(file);
-        const { data: imp, error: impErr } = await supabase.functions.invoke("knowledge-import", {
-          body: { filename: file.name, fileBase64: b64 },
-        });
-        if (impErr) throw impErr;
+        const imp = await KnowledgeRepository.importFile(file.name, b64);
         const titulo = (imp?.suggestedTitle ?? file.name).slice(0, 120);
         const conteudo = (imp?.text ?? "").trim();
         if (!conteudo) throw new Error("Arquivo sem conteúdo extraível");
-        const { data: ins, error: insErr } = await supabase.from("knowledge_documents").insert({
+        const newId = await KnowledgeRepository.createDocument({
           titulo, categoria: bulkCategoria, descricao: `Importado de ${file.name}`,
           tags, conteudo_markdown: conteudo, ativo: true,
-        }).select("id").single();
-        if (insErr) throw insErr;
-        const { error: idxErr } = await supabase.functions.invoke("knowledge-index", { body: { documentId: ins.id } });
-        if (idxErr) throw idxErr;
+        });
+        await KnowledgeRepository.indexDocument(newId);
         ok++;
       } catch (e) {
         fail++;

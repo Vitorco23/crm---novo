@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { AgendaRepository } from "@/modules/agenda/services/AgendaRepository";
 import { getTasks, PRIORITY_CLASSES, PRIORITY_LABEL, type LeadTask } from "@/modules/leads/services/leadTasks";
 import { uload } from "@/shared/services/userStorage";
 import { Button } from "@/components/ui/button";
@@ -79,10 +79,9 @@ export default function Agenda() {
   const fetchGoogle = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("list-google-events", {
-        body: { timeMin: range.start.toISOString(), timeMax: range.end.toISOString(), timeZone: browserTZ() },
+      const data = await AgendaRepository.listGoogleEvents({
+        timeMin: range.start.toISOString(), timeMax: range.end.toISOString(), timeZone: browserTZ(),
       });
-      if (error) throw error;
       if (data?.error) {
         console.warn("[Agenda] google list error", data);
         if (data.error !== "google_calendar_not_connected") {
@@ -90,7 +89,7 @@ export default function Agenda() {
         }
         setGEvents([]);
       } else {
-        setGEvents(data.events || []);
+        setGEvents((data.events || []) as unknown as GEvent[]);
       }
     } catch (e: any) {
       console.warn("[Agenda] fetch failed", e);
