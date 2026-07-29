@@ -398,6 +398,68 @@ export default function KnowledgeBase() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={bulkOpen} onOpenChange={(o) => { if (!bulkProgress) setBulkOpen(o); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Importar arquivos em massa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs font-medium mb-1 block">Categoria (aplicada a todos)</label>
+              <select
+                value={bulkCategoria}
+                onChange={(e) => setBulkCategoria(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                disabled={!!bulkProgress}
+              >
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block">Tags (opcional, separadas por vírgula)</label>
+              <Input
+                value={bulkTags}
+                onChange={(e) => setBulkTags(e.target.value)}
+                placeholder="script, discovery"
+                disabled={!!bulkProgress}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block">Arquivos (.md, .txt, .docx, .pdf)</label>
+              <input
+                type="file" multiple accept=".md,.txt,.markdown,.docx,.pdf"
+                onChange={(e) => setBulkFiles(Array.from(e.target.files ?? []))}
+                disabled={!!bulkProgress}
+                className="block w-full text-sm"
+              />
+              {bulkFiles.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{bulkFiles.length} arquivo(s) selecionado(s)</p>
+              )}
+            </div>
+            {bulkProgress && (
+              <div className="rounded-md border p-3 text-xs space-y-1">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Processando {bulkProgress.done + 1}/{bulkProgress.total}: {bulkProgress.current}
+                </div>
+                <div className="h-1.5 bg-muted rounded overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${(bulkProgress.done / bulkProgress.total) * 100}%` }} />
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Cada arquivo será importado, salvo como documento na categoria escolhida e indexado automaticamente.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={!!bulkProgress}>Cancelar</Button>
+            <Button onClick={runBulkImport} disabled={!!bulkProgress || bulkFiles.length === 0}>
+              {bulkProgress ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importando…</> : `Importar ${bulkFiles.length || ""} arquivo(s)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }
