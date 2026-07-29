@@ -12,26 +12,19 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI } from "../_shared/ai-router.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
-  wrapUntrusted,
   validateShape,
   safeParseJson,
   assertSafeAIOutput,
   UnsafeAIOutputError,
 } from "../_shared/untrusted-input.ts";
+import {
+  buildLeadContextPrompt,
+  type LeadIntelligenceInput,
+} from "../_shared/ai-core/index.ts";
 
 
-interface Payload {
-  leadId?: string;
-  company?: string;
-  niche?: string;
-  city?: string;
-  stage?: string;
-  summary?: string;         // resumo Matteline (não confiável)
-  transcription?: string;   // transcrição Matteline (não confiável)
-  notes?: string;           // observações permanentes do vendedor
-  memory?: string;          // trechos de memória comercial (opcional)
-  recentInteractions?: Array<{ date: string; title: string; summary: string }>;
-}
+// Contrato de entrada = contrato de contexto de lead do AI Core (Fase 3B).
+type Payload = LeadIntelligenceInput;
 
 interface DiagnosisPayload {
   temperature: "quente" | "morno" | "frio";
@@ -107,37 +100,11 @@ Deno.serve(async (req) => {
       return json(400, { error: "summary_or_transcription_required" });
     }
 
-    const contextLines = [
-      `Empresa: ${body.company || "N/D"}`,
-      `Nicho: ${body.niche || "N/D"}`,
-      `Cidade: ${body.city || "N/D"}`,
-      `Etapa: ${body.stage || "N/D"}`,
-    ].join("\n");
-
-    const recent = (body.recentInteractions ?? [])
-      .slice(-5)
-      .map((i, idx) => `#${idx + 1} [${i.date}] ${i.title} — ${String(i.summary || "").slice(0, 200)}`)
-      .join("\n") || "(sem interações anteriores)";
-
-    const userPrompt = [
-      "========== DADOS DO LEAD ==========",
-      contextLines,
-      "",
-      "========== OBSERVAÇÕES PERMANENTES ==========",
-      wrapUntrusted(body.notes || "(vazio)", { maxChars: 1200, label: "OBSERVAÇÕES" }),
-      "",
-      body.memory
-        ? `========== MEMÓRIA COMERCIAL ==========\n${wrapUntrusted(body.memory, { maxChars: 1200, label: "MEMÓRIA" })}\n`
-        : "",
-      "========== HISTÓRICO RECENTE ==========",
-      wrapUntrusted(recent, { maxChars: 1500, label: "HISTÓRICO" }),
-      "",
-      "========== ÚLTIMA LIGAÇÃO (Matteline) ==========",
-      summary ? wrapUntrusted(summary, { maxChars: 2000, label: "RESUMO DA LIGAÇÃO" }) : "",
-      transcription ? wrapUntrusted(transcription, { maxChars: 2000, label: "TRANSCRIÇÃO" }) : "",
-      "",
-      "Gere o diagnóstico automático conforme o schema.",
-    ].filter(Boolean).join("\n");
+    // Contexto de lead montado pelo contrato único do AI Core (Fase 3B).
+    const userPrompt = buildLeadContextPrompt(
+      { ...body, summary, transcription },
+      { instruction: "Gere o diagnóstico automático conforme o schema." },
+    );
 
     let result;
     try {

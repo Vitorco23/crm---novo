@@ -3,7 +3,7 @@
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { callAI } from '../_shared/ai-router.ts';
-import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
+import { createMemoryEngine } from "../_shared/ai-core/index.ts";
 import { requireUser } from '../_shared/require-auth.ts';
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
@@ -73,7 +73,9 @@ Deno.serve(async (req) => {
     const isImage = attachment.type.startsWith('image/');
     const isPdf = attachment.type === 'application/pdf' || /\.pdf$/i.test(attachment.name);
 
-    const { block: memoryBlock } = await buildMemoryContextBlock({
+    const memory = createMemoryEngine();
+    const { block: memoryBlock } = await memory.get({
+      scope: "global",
       queryText: `Leitura de anexo. ${leadContext ?? ""}`.slice(0, 2000),
       matchCount: 3,
       minSimilarity: 0.5,

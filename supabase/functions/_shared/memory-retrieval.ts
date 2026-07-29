@@ -113,7 +113,7 @@ export async function buildMemoryContextBlock(opts: {
   matchCount?: number;
   minSimilarity?: number;
   includePatterns?: boolean;
-}): Promise<{ block: string; memoryCount: number; patternCount: number }> {
+}): Promise<{ block: string; memoryCount: number; patternCount: number; memories: MemoryHit[] }> {
   const memories = await retrieveMemories({
     queryText: opts.queryText,
     niche: opts.niche ?? null,
@@ -137,5 +137,5 @@ export async function buildMemoryContextBlock(opts: {
       console.warn("[memory] patterns failed", (e as Error).message);
     }
   }
-  return { block: parts.join("\n\n"), memoryCount: memories.length, patternCount };
+  return { block: parts.join("\n\n"), memoryCount: memories.length, patternCount, memories };
 }

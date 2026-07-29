@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { computeLeadTemperature, lastInteractionLabel, nextActionLabel } from "@/modules/cold-call/services/coldCallMetrics";
 import { getStepForLead, executionMoment } from "@/modules/leads/services/cadence";
-import { displayTemperature, displayNextAction, lastInteractionSnippet, leadBadges } from "@/modules/intelligence/services/leadInsights";
+import { LeadIntelligenceRepository } from "@/modules/leads/services/LeadIntelligenceRepository";
 import { Sparkles as SparklesIcon } from "lucide-react";
 
 import { formatDistanceToNow } from "date-fns";
@@ -190,11 +190,11 @@ function LeadCard({
 
       {/* Smart snippet: temperatura, próxima ação, última interação, diagnóstico */}
       {(() => {
-        const temp = displayTemperature(lead);
-        const next = displayNextAction(lead);
-        const last = lastInteractionSnippet(lead, 80);
+        const temp = LeadIntelligenceRepository.temperature(lead);
+        const next = LeadIntelligenceRepository.nextAction(lead);
+        const last = LeadIntelligenceRepository.lastInteraction(lead, 80);
         const meetings = getMeetingsForLead(lead.id);
-        const badges = leadBadges(lead, meetings).slice(0, 2);
+        const badges = LeadIntelligenceRepository.badges(lead, meetings).slice(0, 2);
         const diag = lead.autoDiagnosis;
         const diagStale = diag && diag.inputHash !== `n${(lead.interactions || []).length}|${(lead.notes || "").length}|${(lead.interactions || []).map((i) => `${i.id}:${i.date}`).sort().join(",")}`;
         return (

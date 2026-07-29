@@ -5,7 +5,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { callAI } from '../_shared/ai-router.ts';
-import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
+import { createMemoryEngine } from "../_shared/ai-core/index.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from '../_shared/nba-types.ts';
 import { buildBusinessCalendarBlock } from '../_shared/business-calendar.ts';
 import {
@@ -146,7 +146,9 @@ Deno.serve(async (req) => {
     const mode: "quick" | "full" = body.mode === "full" ? "full" : "quick";
     const today = new Date().toISOString().slice(0, 10);
 
-    const { block: memoryBlock } = await buildMemoryContextBlock({
+    const memory = createMemoryEngine();
+    const { block: memoryBlock } = await memory.get({
+      scope: body.niche ? "niche" : "global",
       queryText: `${body.company || ""} ${body.niche || ""} ${body.stage || ""}\n${callSummary}`.slice(0, 3000),
       niche: body.niche || null,
       matchCount: 5,
@@ -155,14 +157,6 @@ Deno.serve(async (req) => {
     });
 
     const calendarBlock = buildBusinessCalendarBlock();
-    const userPrompt = mode === "quick"
-      ? [
-          `Data de hoje: ${today}`,
-          '',
-          calendarBlock,
-          '',
-          memoryBlock,
-          '',
     const leadInfoSafe = sanitizeExternal(body.leadInfo || `Empresa: ${body.company || 'N/D'}\nNicho: ${body.niche || 'N/D'}\nEtapa: ${body.stage || 'N/D'}`, 2000);
     const callSummarySafe = sanitizeExternal(callSummary, 6000);
 

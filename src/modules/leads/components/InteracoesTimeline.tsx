@@ -20,7 +20,7 @@ import { CallAuditView } from "@/modules/laboratorio/components/CallAuditView";
 import AutoDiagnosisCard from "@/modules/intelligence/components/AutoDiagnosisCard";
 import LeadExecutiveSummary from "@/modules/leads/components/LeadExecutiveSummary";
 import LeadTrail from "@/modules/leads/components/LeadTrail";
-import { commercialTrail } from "@/modules/intelligence/services/leadInsights";
+import { LeadIntelligenceRepository } from "@/modules/leads/services/LeadIntelligenceRepository";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -249,7 +249,7 @@ export default function InteracoesTimeline({
   });
 
   const meetings = getMeetingsForLead(lead.id);
-  const trail = useMemo(() => commercialTrail(lead, meetings), [lead, meetings]);
+  const trail = useMemo(() => LeadIntelligenceRepository.trail(lead, meetings), [lead, meetings]);
 
   const items = useMemo<TimelineItem[]>(() => {
     const rows: TimelineItem[] = [];
