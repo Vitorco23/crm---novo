@@ -256,8 +256,9 @@ export default function CentralInteligencia() {
           <Button onClick={newConversation} className="mb-3 gap-2" size="sm">
             <Plus className="h-4 w-4" /> Nova conversa
           </Button>
-          <ScrollArea className="flex-1">
-            <div className="flex flex-col gap-1">
+          <ScrollArea className="flex-1 w-full">
+            <div className="flex w-full min-w-0 flex-col gap-1">
+
               {conversations.length === 0 && (
                 <p className="text-xs text-muted-foreground p-2">Nenhuma conversa ainda.</p>
               )}
