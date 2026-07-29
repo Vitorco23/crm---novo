@@ -4,6 +4,7 @@ import { FloatingPomodoroWidget } from "@/components/FloatingPomodoroWidget";
 import { PomodoroHeaderWidget } from "@/components/PomodoroHeaderWidget";
 import { HeaderStatsWidget } from "@/components/HeaderStatsWidget";
 import { ForceUpdateButton } from "@/components/ForceUpdateButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { LogOut, Shield, PictureInPicture2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
