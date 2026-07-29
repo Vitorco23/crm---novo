@@ -20,10 +20,15 @@ import {
 import { getReminders } from "@/modules/agenda/services/reminders";
 import {
   getTasks,
-  addTask,
   type LeadTask,
   type TaskPriority,
 } from "@/modules/leads/services/leadTasks";
+import {
+  addMissionEntry,
+  getMissionRefs,
+  type MissionEntry,
+} from "@/modules/intelligence/services/missionStore";
+
 import { displayTemperature } from "@/modules/intelligence/services/leadInsights";
 import { getCache as getPriorityLeadsCache } from "@/modules/intelligence/services/priorityLeads";
 import { computePriorities, type LeadPriority } from "@/modules/intelligence/services/priorityEngine";
