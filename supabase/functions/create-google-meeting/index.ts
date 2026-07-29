@@ -1,5 +1,7 @@
 // Edge function: cria evento no Google Calendar via Connector Gateway
 // e retorna { eventId, htmlLink, meetLink }
+import { requireUser } from "../_shared/require-auth.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -30,6 +32,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  const auth = await requireUser(req, corsHeaders);
+  if (!auth.ok) return auth.response;
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

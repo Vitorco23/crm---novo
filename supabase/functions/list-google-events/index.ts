@@ -1,4 +1,6 @@
 // Lista eventos do Google Calendar em uma janela de tempo.
+import { requireUser } from "../_shared/require-auth.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -15,6 +17,8 @@ interface Body {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const auth = await requireUser(req, corsHeaders);
+  if (!auth.ok) return auth.response;
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
