@@ -3,6 +3,7 @@
 // e devolve uma seleção com motivo da prioridade e próxima melhor ação.
 
 import { callAI } from "../_shared/ai-router.ts";
+import { requireUser } from "../_shared/require-auth.ts";
 import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
 import { NBA_PROMPT_BLOCK, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
