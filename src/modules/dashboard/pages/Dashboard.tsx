@@ -17,7 +17,9 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import PriorityCard from "@/modules/intelligence/components/PriorityCard";
+import MissionOfTheDayCard from "@/modules/intelligence/components/MissionOfTheDayCard";
 import DiretorComercialIACard from "@/modules/intelligence/components/DiretorComercialIACard";
+
 import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/modules/pipeline/services/exportBuilders";
