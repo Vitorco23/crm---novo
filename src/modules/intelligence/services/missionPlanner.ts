@@ -184,6 +184,32 @@ export function getDailyGoals(): DailyGoals {
 }
 
 // ---------------------------------------------------------------------------
+// Capacidade operacional — 80% da capacidade máxima calculada na aba Metas
+// ---------------------------------------------------------------------------
+
+/** Percentual da capacidade máxima realmente planejável no dia. */
+export const OPERATIONAL_CAPACITY_RATIO = 0.8;
+
+export interface OperationalCapacity {
+  /** Capacidade máxima teórica (horas/dia ÷ minutos por contato). */
+  max: number;
+  /** Capacidade planejada = máxima × 80%. */
+  planned: number;
+  /** Reserva estratégica (reuniões, deslocamentos, imprevistos). */
+  reserve: number;
+  ratio: number;
+}
+
+export function getOperationalCapacity(): OperationalCapacity {
+  const g = getGoalsSettings();
+  const minutes = g.minutesPerCall > 0 ? g.minutesPerCall : 4;
+  const theoretical = g.hoursPerDay > 0 ? (g.hoursPerDay * 60) / minutes : 0;
+  const max = Math.floor(theoretical) || getDailyGoals().calls;
+  const planned = Math.floor(max * OPERATIONAL_CAPACITY_RATIO);
+  return { max, planned, reserve: Math.max(0, max - planned), ratio: OPERATIONAL_CAPACITY_RATIO };
+}
+
+// ---------------------------------------------------------------------------
 // Execução já realizada hoje (a Missão nunca repete o que já foi feito)
 // ---------------------------------------------------------------------------
 
