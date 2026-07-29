@@ -16,7 +16,6 @@ import {
   Handshake, Trophy as TrophyIcon, Send, Instagram, Mail, Activity, Layers, Crown,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import PriorityCard from "@/modules/intelligence/components/PriorityCard";
 import MissionOfTheDayCard from "@/modules/intelligence/components/MissionOfTheDayCard";
 import DiretorComercialIACard from "@/modules/intelligence/components/DiretorComercialIACard";
 
@@ -126,7 +125,6 @@ export default function Dashboard() {
         </div>
         <OperationalPanel filter={filter} custom={custom} />
         <BottleneckCard />
-        <PriorityCard />
       </section>
 
       {/* ============ PAINEL 2: PIPELINE COMERCIAL (independente) ============ */}

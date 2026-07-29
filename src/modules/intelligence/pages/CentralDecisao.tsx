@@ -54,6 +54,7 @@ import { computeDailyGoals, computeDailyTotals } from "@/modules/cold-call/servi
 import { uload, usave } from "@/shared/services/userStorage";
 
 import PriorityCard from "@/modules/intelligence/components/PriorityCard";
+import MissionOfTheDayCard from "@/modules/intelligence/components/MissionOfTheDayCard";
 import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
 import DiretorComercialIACard from "@/modules/intelligence/components/DiretorComercialIACard";
 import PriorityLeadsBlock from "@/modules/intelligence/components/PriorityLeadsBlock";
@@ -279,7 +280,10 @@ export default function CentralDecisao() {
         />
       </div>
 
-      {/* 0. DIRETOR COMERCIAL IA — parecer diário */}
+      {/* 0. MISSÃO DO DIA — prioridade única gerada pelo Priority Engine */}
+      <MissionOfTheDayCard />
+
+      {/* 0.b DIRETOR COMERCIAL IA — parecer diário */}
       <DiretorComercialIACard />
 
       {/* 1. O QUE FAZER AGORA */}
