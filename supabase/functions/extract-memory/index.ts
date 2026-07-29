@@ -15,6 +15,14 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI } from "../_shared/ai-router.ts";
 import { embedText } from "../_shared/memory-retrieval.ts";
 import { requireUser } from "../_shared/require-auth.ts";
+import {
+  UNTRUSTED_INPUT_SYSTEM_CLAUSE,
+  wrapUntrusted,
+  sanitizeExternal,
+  assertSafeAIOutput,
+  UnsafeAIOutputError,
+} from "../_shared/untrusted-input.ts";
+
 
 const JSON_TAIL = `\nExtras opcionais: pode incluir "motivo" (string curta), "objecoes" (array), "argumentos" (array). Use somente informações reais do contexto.`;
 
