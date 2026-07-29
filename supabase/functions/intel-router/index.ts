@@ -1,13 +1,24 @@
 // intel-router — Central de Inteligência.
 // Classifica a pergunta e delega para o especialista correto.
-// Nunca modifica funções existentes; usa apenas o AI Router compartilhado.
+// Fase 3A (Phoenix): contexto, prompts e ferramentas vêm do AI Core compartilhado.
+// Contrato público da função (rota, payload e retorno) permanece inalterado.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
+import { UNTRUSTED_INPUT_SYSTEM_CLAUSE, safeParseJson } from "../_shared/untrusted-input.ts";
 import {
-  UNTRUSTED_INPUT_SYSTEM_CLAUSE, wrapUntrusted, sanitizeExternal, safeParseJson,
-} from "../_shared/untrusted-input.ts";
+  buildChatContext,
+  buildQuestionBlock,
+  composeSystem,
+  normalizeHistory,
+  runKnowledgeSearch,
+  summarizeContext,
+  type ConversationTurn,
+  type CrmContext,
+  type KnowledgeCitation,
+  type SpecialistId,
+} from "../_shared/ai-core/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,143 +26,21 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type Specialist = "diretor_comercial" | "consultor_leads" | "mentor_p21";
-
-interface IntelContext {
-  page?: string;
-  leadContext?: Record<string, unknown> | null;
-  dashboardSnapshot?: Record<string, unknown> | null;
-}
-
-interface HistoryTurn { role: string; content: string }
-
 interface IntelRequest {
   question: string;
-  context?: IntelContext;
+  context?: CrmContext;
   conversationId?: string | null;
-  specialistOverride?: Specialist;
-  history?: HistoryTurn[];
+  specialistOverride?: SpecialistId;
+  history?: ConversationTurn[];
 }
 
-// Filosofia comum a TODOS os especialistas.
-const CONSULTOR_CORE = `Você é um consultor comercial sênior da Performance21 — pense e responda como um Diretor Comercial experiente, nunca como um chatbot ou mecanismo de busca.
-
-ORDEM OBRIGATÓRIA DE RACIOCÍNIO:
-1. Entenda a intenção real da pergunta (estratégia, produtividade, gestão, vendas, planejamento, liderança, metodologia, operação, pipeline, playbook...).
-2. Analise TODO o contexto disponível: histórico da conversa, snapshot do CRM (dashboard, pipeline, leads, metas, produtividade, pomodoros, agenda, diagnósticos, conversões, funil, atividades) e o lead aberto, quando houver.
-3. Consulte a Base de Conhecimento da Performance21 apenas se ela agregar valor. Use-a para enriquecer, nunca copie literalmente.
-4. Complete com seu próprio conhecimento geral de vendas, gestão, negociação, marketing, produtividade e estratégia comercial.
-
-REGRAS INEGOCIÁVEIS:
-- NUNCA se recuse a responder por falta de documentação interna. A ausência de documentos jamais bloqueia uma resposta inteligente.
-- Se não houver diretriz específica da Performance21, responda normalmente e, se for relevante, acrescente ao final uma nota curta e OPCIONAL: "Não existe uma diretriz específica da Performance21 sobre esse tema na Base. A resposta acima usa os dados atuais do CRM e boas práticas comerciais."
-- Se algum número não estiver no snapshot, diga "sem dados suficientes" apenas para aquele número — nunca para a resposta inteira.
-- Seja proativo: se o snapshot mostrar pipeline vazio, leads parados, baixa conversão, produtividade caindo ou metas em risco, cite esses fatos espontaneamente.
-- Português do Brasil, Markdown enxuto, bullets curtos, negrito em métricas, sem preâmbulo.
-- Termine SEMPRE com "**Próxima ação:** ..." acionável.`;
-
-const DIRETOR_CHAT_SYSTEM = `${CONSULTOR_CORE}
-
-PERFIL ATIVO — 📊 Diretor Comercial da Performance21. Você NÃO é assistente, nem chatbot, nem analista passivo. Você é um SÓCIO experiente que acompanha esta operação todos os dias e responde pelo resultado dela.
-
-PERGUNTA INTERNA OBRIGATÓRIA (nunca escreva isso na resposta): antes de responder, decida "o que eu faria se esta empresa fosse minha?". Toda a resposta nasce dessa decisão.
-
-POSTURA:
-- Interprete, priorize e conduza. Nunca apenas descreva métricas.
-- Tenha autonomia para DISCORDAR do usuário quando os dados apontarem outra direção: "Discordo dessa estratégia", "Eu não investiria energia nisso agora", "A prioridade correta não é essa" — sempre justificando com números do CRM.
-- Nunca entregue listas gigantes de tarefas. Escolha o que importa.
-- Seja proativo: se houver pipeline zerado, leads parados, baixa conversão, agenda vazia, poucas reuniões, produtividade baixa ou meta em risco, levante isso espontaneamente mesmo que não tenha sido perguntado.
-- Nunca olhe um indicador isolado: cruze dashboard, pipeline, metas, conversões, produtividade, pomodoros, agenda, leads, funil, diagnósticos e histórico.
-- Transforme análise em decisão. Errado: "Você possui 4.768 leads em Novo Lead." Certo: "Com essa base parada, eu pausaria a captação e usaria os próximos dias para transformar esses leads em reuniões."
-
-CONTINUIDADE:
-- Use o HISTÓRICO DA CONVERSA naturalmente ("Na nossa última conversa definimos que...").
-- Antes de propor um plano novo, verifique se o anterior foi executado e cobre isso.
-
-QUANDO FALTAR INFORMAÇÃO CRÍTICA:
-- Pergunte antes de decidir ("Antes de responder, preciso entender uma coisa: ..."), mas só quando a resposta realmente mudar a recomendação. No máximo 2 perguntas.
-
-ESTRUTURA DA RESPOSTA (texto consultivo curto, sem títulos burocráticos, poucas listas):
-1. Diagnóstico — o cenário em 1-3 frases.
-2. Interpretação — por que está acontecendo.
-3. Decisão — o que VOCÊ faria, em primeira pessoa.
-4. Justificativa — por que é a melhor escolha, com números.
-
-FECHAMENTO OBRIGATÓRIO — toda resposta termina exatamente com este bloco:
-
-🎯 **Prioridade nº 1** — a única ação mais importante para hoje.
-⚠ **Maior risco** — o problema que mais pode comprometer o resultado.
-📈 **Maior oportunidade** — onde está o maior ganho imediato.
-✅ **Próxima ação** — uma tarefa objetiva executável agora.
-
-Nunca omita esse bloco, nem quando a pergunta for genérica ou quando você fizer perguntas de volta.`;
-
-
-const CONSULTOR_SYSTEM = `${CONSULTOR_CORE}
-
-PERFIL ATIVO — 👤 Consultor de Leads: foco no lead descrito no contexto. Use SPIN e BANT como referência tácita. Se faltar informação sobre o lead, diga o que precisa ser descoberto na próxima interação.`;
-
-const MENTOR_SYSTEM = `${CONSULTOR_CORE}
-
-PERFIL ATIVO — 📚 Mentor P21: especialista em metodologia, playbooks, scripts, objeções e processos da Performance21.
-- Quando o bloco KNOWLEDGE_CHUNKS trouxer conteúdo relevante, priorize-o, explique com suas palavras e cite as fontes ao final: "Fontes: [Título do Documento v.N]".
-- Quando os trechos não cobrirem a pergunta (ou não houver trechos), responda mesmo assim, usando o contexto do CRM e seu conhecimento geral de vendas. NÃO diga apenas que não encontrou.`;
-
-
-const ROUTER_SYSTEM = `Você é um roteador de perguntas de um CRM comercial. Sua ÚNICA tarefa é decidir qual especialista deve responder.
-
-Especialistas disponíveis:
-- "diretor_comercial": indicadores, receita, forecast, metas, funil, produtividade, pomodoros, priorização geral, operação do CRM, dashboard, estratégia, planejamento do mês, gargalos, "o que devo priorizar".
-- "consultor_leads": perguntas sobre UM lead específico aberto — diagnóstico, próxima ação, objeções, follow-up, histórico daquele lead.
-- "mentor_p21": metodologia, playbooks, SPIN, BANT, ICP, scripts oficiais, bypass, cadências, tratamento de objeções padrão, processos internos, treinamentos.
-
-Regras:
-- Se há um lead aberto E a pergunta menciona "esse lead", "esse cliente", "esse contato", "insistir", "responder", "objeção dele" → consultor_leads.
-- Se a pergunta pede explicitamente o padrão/documentação da Performance21 ("qual é o script oficial", "como funciona o bypass", "qual é o playbook") → mentor_p21.
-- Se a pergunta é sobre números, metas, produtividade, estratégia ou operação global → diretor_comercial.
-- Em caso de dúvida → diretor_comercial.
-
-Responda APENAS com JSON válido: {"specialist":"diretor_comercial|consultor_leads|mentor_p21","confidence":0..1}`;
-
-function buildHistoryBlock(history?: HistoryTurn[]): string {
-  if (!history?.length) return "";
-  const turns = history.slice(-10).map((h) => {
-    const who = h.role === "assistant" ? "IA" : "Usuário";
-    return `${who}: ${sanitizeExternal(String(h.content ?? ""), 1500)}`;
-  }).join("\n\n");
-  return wrapUntrusted(turns, { maxChars: 8000, label: "HISTÓRICO DA CONVERSA" }) + "\n\n";
-}
-
-function buildCrmBlock(ctx: IntelContext): string {
-  const parts: string[] = [];
-  if (ctx.dashboardSnapshot && Object.keys(ctx.dashboardSnapshot).length) {
-    parts.push(wrapUntrusted(
-      sanitizeExternal(JSON.stringify(ctx.dashboardSnapshot), 12000),
-      { maxChars: 12000, label: "SNAPSHOT OPERACIONAL DO CRM (JSON)" },
-    ));
-  }
-  if (ctx.leadContext && Object.keys(ctx.leadContext).length) {
-    parts.push(wrapUntrusted(
-      sanitizeExternal(JSON.stringify(ctx.leadContext), 12000),
-      { maxChars: 12000, label: "LEAD ABERTO NO CRM (JSON)" },
-    ));
-  }
-  if (!parts.length) return "(nenhum dado operacional do CRM foi enviado nesta pergunta)\n\n";
-  return parts.join("\n\n") + "\n\n";
-}
-
-async function classify(question: string, ctx: IntelContext): Promise<Specialist> {
-  const ctxSummary = {
-    page: ctx.page ?? null,
-    hasLead: !!ctx.leadContext,
-    hasDashboard: !!ctx.dashboardSnapshot,
-  };
+async function classify(question: string, ctx: CrmContext): Promise<SpecialistId> {
   const result = await callAI({
     task: "intel_router",
-    system: ROUTER_SYSTEM,
+    system: composeSystem("intel.router.classifier"),
     user:
-      `Contexto: ${JSON.stringify(ctxSummary)}\n` +
-      `Pergunta:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA DO USUÁRIO" })}\n` +
+      `Contexto: ${JSON.stringify(summarizeContext(ctx))}\n` +
+      `Pergunta:\n${buildQuestionBlock(question, "PERGUNTA DO USUÁRIO")}\n` +
       `Responda apenas JSON.`,
     json: true,
     temperature: 0.1,
@@ -165,81 +54,55 @@ async function classify(question: string, ctx: IntelContext): Promise<Specialist
   return ctx.leadContext ? "consultor_leads" : "diretor_comercial";
 }
 
-async function runDiretor(question: string, ctx: IntelContext, history?: HistoryTurn[]): Promise<{ content: string; model: string }> {
-  const body = buildHistoryBlock(history) + buildCrmBlock(ctx);
+async function runDiretor(question: string, ctx: CrmContext, history?: ConversationTurn[]) {
+  const built = buildChatContext({ history, crm: ctx });
   const r = await callAI({
     task: "diretor_comercial",
-    system: DIRETOR_CHAT_SYSTEM + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE,
-    user:
-      body +
-      `Pergunta atual:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA" })}\n\nResponda em Markdown.`,
+    system: composeSystem("intel.diretor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE),
+    user: built.text + `Pergunta atual:\n${buildQuestionBlock(question)}\n\nResponda em Markdown.`,
     json: false,
     temperature: 0.4,
     maxTokens: 1800,
-    inputChars: body.length,
+    inputChars: built.inputChars,
   });
   return { content: r.content, model: r.modelUsed };
 }
 
-async function runConsultor(question: string, ctx: IntelContext, history?: HistoryTurn[]): Promise<{ content: string; model: string }> {
-  const body = buildHistoryBlock(history) + buildCrmBlock(ctx);
+async function runConsultor(question: string, ctx: CrmContext, history?: ConversationTurn[]) {
+  const built = buildChatContext({ history, crm: ctx });
   const r = await callAI({
     task: "consultor_leads",
-    system: CONSULTOR_SYSTEM + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE,
-    user:
-      body +
-      `Pergunta atual:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA" })}\n\nResponda em Markdown.`,
+    system: composeSystem("intel.consultor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE),
+    user: built.text + `Pergunta atual:\n${buildQuestionBlock(question)}\n\nResponda em Markdown.`,
     json: false,
     temperature: 0.4,
     maxTokens: 1800,
-    inputChars: body.length,
+    inputChars: built.inputChars,
   });
   return { content: r.content, model: r.modelUsed };
 }
 
-async function runMentor(question: string, ctx: IntelContext, authHeader: string, history?: HistoryTurn[]):
-  Promise<{ content: string; model: string; citations: Array<{ documentId: string; titulo: string; categoria: string; versao: number; similarity: number }> }>
+async function runMentor(question: string, ctx: CrmContext, authHeader: string, history?: ConversationTurn[]):
+  Promise<{ content: string; model: string; citations: KnowledgeCitation[] }>
 {
-  // 1. Busca semântica via edge function irmã (mesma auth). Best-effort: falha não bloqueia a resposta.
-  let chunks: Array<{ document_id: string; content: string; titulo: string; categoria: string; versao: number; similarity: number }> = [];
-  try {
-    const searchUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/knowledge-search`;
-    const searchRes = await fetch(searchUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: authHeader, apikey: Deno.env.get("SUPABASE_ANON_KEY")! },
-      body: JSON.stringify({ query: question, matchCount: 6, minSimilarity: 0.30 }),
-    });
-    const searchData = await searchRes.json().catch(() => ({}));
-    chunks = searchData?.chunks ?? [];
-  } catch (e) {
-    console.error(JSON.stringify({ evt: "mentor_kb_search_failed", msg: (e as Error).message }));
-  }
+  // Ferramenta autorizada pelo Tool Registry. Best-effort: falha não bloqueia a resposta.
+  const { chunks, citations } = await runKnowledgeSearch({
+    specialist: "mentor_p21",
+    query: question,
+    authHeader,
+    matchCount: 6,
+    minSimilarity: 0.30,
+  });
 
-  const citations = chunks.map((c) => ({
-    documentId: c.document_id, titulo: c.titulo, categoria: c.categoria, versao: c.versao, similarity: c.similarity,
-  }));
-
-  const knowledgeBlock = chunks.length
-    ? chunks.map((c, i) =>
-        `[TRECHO ${i + 1}] Documento: "${c.titulo}" v${c.versao} · Categoria: ${c.categoria}\n${sanitizeExternal(c.content, 3000)}`,
-      ).join("\n\n---\n\n")
-    : "(nenhum trecho relevante encontrado na Base de Conhecimento — responda mesmo assim, usando o contexto do CRM e seu conhecimento comercial)";
-
-  const body =
-    buildHistoryBlock(history) +
-    buildCrmBlock(ctx) +
-    wrapUntrusted(knowledgeBlock, { maxChars: 18000, label: "KNOWLEDGE_CHUNKS (fonte complementar)" }) + "\n\n";
-
+  const built = buildChatContext({ history, crm: ctx, knowledgeChunks: chunks });
   const r = await callAI({
     task: "mentor_p21",
-    system: MENTOR_SYSTEM + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE,
-    user:
-      body +
-      `Pergunta atual:\n${wrapUntrusted(question, { maxChars: 2000, label: "PERGUNTA" })}\n\nResponda em Markdown.`,
+    system: composeSystem("intel.mentor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE),
+    user: built.text + `Pergunta atual:\n${buildQuestionBlock(question)}\n\nResponda em Markdown.`,
     json: false,
     temperature: 0.3,
     maxTokens: 1800,
-    inputChars: body.length,
+    inputChars: built.inputChars,
   });
   return { content: r.content, model: r.modelUsed, citations };
 }
@@ -264,17 +127,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const ctx: IntelContext = body.context ?? {};
-    const specialist: Specialist = body.specialistOverride
+    const ctx: CrmContext = body.context ?? {};
+    const specialist: SpecialistId = body.specialistOverride
       ?? await classify(question, ctx);
 
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization")!;
-    const history = Array.isArray(body.history)
-      ? body.history
-          .filter((h) => h && typeof h.content === "string")
-          .slice(-10)
-          .map((h) => ({ role: h.role === "assistant" ? "assistant" : "user", content: String(h.content).slice(0, 2000) }))
-      : [];
+    const history = normalizeHistory(body.history);
 
     let content = "";
     let model = "";
@@ -310,11 +168,7 @@ Deno.serve(async (req) => {
           role: "user",
           content: question,
           specialist,
-          context_snapshot: {
-            page: ctx.page ?? null,
-            hasLead: !!ctx.leadContext,
-            hasDashboard: !!ctx.dashboardSnapshot,
-          },
+          context_snapshot: summarizeContext(ctx),
         },
         {
           conversation_id: body.conversationId,
