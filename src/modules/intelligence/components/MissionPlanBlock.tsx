@@ -150,7 +150,7 @@ export default function MissionPlanBlock() {
         <div className="rounded-md border border-border/60 bg-background/40 p-3">
           <div className="flex items-center justify-between gap-2 mb-2">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-              Follow-ups do dia ({plan.followups.length})
+              Follow-ups do dia ({plan.followups.length} de {plan.followupTarget ?? 20})
             </p>
             {plan.followups.length > 6 && (
               <button
@@ -161,6 +161,13 @@ export default function MissionPlanBlock() {
               </button>
             )}
           </div>
+
+          {plan.followupCoverage?.shortfallReason && (
+            <p className="mb-2 text-[10px] text-muted-foreground">
+              {plan.followupCoverage.shortfallReason}
+            </p>
+          )}
+
 
           <div className="space-y-1">
             {followups.map((f) => {
