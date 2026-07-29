@@ -7,7 +7,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { idbGet, idbSet, idbDelete } from "./idbCache";
 
-const ADMIN_EMAIL = "admin@p21.local";
+const ADMIN_EMAIL = "vitorco23@gmail.com";
 
 const SCOPED_KEYS = [
   "p21_leads",
