@@ -403,7 +403,7 @@ export default function InteracoesTimeline({
               return (
                 <li key={key} className="ml-4 group">
                   <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-primary" />
-                  <div className={`rounded-md border ${colorFor("Ligação")}`}>
+                  <div className={`rounded-md border ${colorFor("Ligação")} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""}`}>
                     <button
                       onClick={() => toggle(key)}
                       className="w-full text-left p-3 flex items-start gap-2"
