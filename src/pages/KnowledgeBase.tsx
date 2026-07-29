@@ -116,16 +116,10 @@ export default function KnowledgeBase() {
         ativo: editing.ativo ?? true,
       };
       if (docId) {
-        // Bump version + snapshot the previous one
-        const prev = docs.find((d) => d.id === docId);
-        if (prev) {
-          await supabase.from("knowledge_document_versions").insert({
-            document_id: docId, versao: prev.versao, snapshot: prev,
-          });
-        }
+        // Trigger no banco snapshotta versão anterior e incrementa `versao` automaticamente.
         const { error } = await supabase
           .from("knowledge_documents")
-          .update({ ...payload, versao: (prev?.versao ?? 1) + 1 })
+          .update(payload)
           .eq("id", docId);
         if (error) throw error;
       } else {
