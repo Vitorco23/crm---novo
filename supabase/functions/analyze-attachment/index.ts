@@ -4,6 +4,12 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { callAI } from '../_shared/ai-router.ts';
 import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
+import { requireUser } from '../_shared/require-auth.ts';
+
+// Limite máximo do payload total (bytes). ~15MB acomoda dataUrls base64 típicos
+// de imagens/PDFs de leitura, com margem sobre o limite de 10MB do arquivo bruto.
+const MAX_PAYLOAD_BYTES = 15 * 1024 * 1024;
+const MAX_DATAURL_CHARS = 14 * 1024 * 1024;
 
 const SYSTEM = `Você é o LEITOR DE ANEXOS da Performance21.
 Analise o arquivo enviado (imagem, print de tela, PDF ou documento) no contexto do Lead.
