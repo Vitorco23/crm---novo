@@ -1,5 +1,6 @@
-// Public endpoint: retorna slots disponíveis na agenda Google do dono do CRM.
-// Usado pela Landing Page para mostrar horários livres antes de enviar o lead.
+// Endpoint autenticado: retorna slots disponíveis na agenda Google do dono do CRM.
+// Requer JWT válido do CRM. Para uso na Landing Page pública, chame a partir
+// de um backend proxy que valide o request e ateste identidade via JWT.
 //
 // GET/POST /google-calendar-availability
 // body opcional (JSON):
@@ -8,6 +9,8 @@
 //
 // defaults: próximos 7 dias, slots de 30min, 09:00-18:00 (America/Sao_Paulo),
 // segunda a sexta, calendário "primary".
+
+import { requireUser } from "../_shared/require-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
