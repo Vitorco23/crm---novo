@@ -384,31 +384,47 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     setStages(getStagesForPipeline(pipeline));
   }, [pipeline]);
 
-  // ── Abrir Lead a partir de contextos externos (Próxima Melhor Ação, etc.)
+  // ── Abrir Lead a partir de contextos externos (Missão do Dia, Central de
+  // Decisão, Agenda, Lembretes...). A abertura é feita SEMPRE pelo ID do lead,
+  // nunca pelo conjunto filtrado — os filtros ativos permanecem intactos.
+  const pendingOpenRef = useRef<PendingOpenLead | null>(null);
+
+  const tryOpenPending = useCallback((p: PendingOpenLead | null) => {
+    if (!p) return;
+    const l = getLeads().find((x) => x.id === p.leadId);
+    if (!l) {
+      // Base ainda não carregada/sincronizada: guarda e tenta de novo depois.
+      pendingOpenRef.current = p;
+      return;
+    }
+    // Se o lead pertence a outro pipeline, mantém pendente para o board correto.
+    if (!getStagesForPipeline(pipeline).includes(l.stage)) {
+      pendingOpenRef.current = null;
+      try { sessionStorage.setItem(PENDING_OPEN_LEAD_KEY, JSON.stringify(p)); } catch { /* ignore */ }
+      return;
+    }
+    pendingOpenRef.current = null;
+    setSelectedLead(l);
+    setDrawerTab(p.tab);
+    setDrawerAction(p.action);
+    setDrawerOpen(true);
+  }, [pipeline]);
+
   useEffect(() => {
-    const tryOpen = (p: PendingOpenLead | null) => {
-      if (!p) return;
-      const l = getLeads().find((x) => x.id === p.leadId);
-      if (!l) return;
-      // Só abre se o lead pertence a este pipeline; caso contrário, mantém
-      // pendente para outro board consumir.
-      if (!getStagesForPipeline(pipeline).includes(l.stage)) {
-        try { sessionStorage.setItem("p21_pending_open_lead", JSON.stringify(p)); } catch { /* ignore */ }
-        return;
-      }
-      setSelectedLead(l);
-      setDrawerTab(p.tab);
-      setDrawerAction(p.action);
-      setDrawerOpen(true);
-    };
-    tryOpen(consumePendingOpenLead());
+    tryOpenPending(consumePendingOpenLead());
     const onEvt = (e: Event) => {
       const detail = (e as CustomEvent<PendingOpenLead>).detail;
-      tryOpen(detail || consumePendingOpenLead());
+      tryOpenPending(detail || consumePendingOpenLead());
     };
     window.addEventListener(OPEN_LEAD_EVENT, onEvt as EventListener);
     return () => window.removeEventListener(OPEN_LEAD_EVENT, onEvt as EventListener);
-  }, [pipeline]);
+  }, [tryOpenPending]);
+
+  // Retenta assim que a base de leads chega (sync assíncrono / IndexedDB).
+  useEffect(() => {
+    if (pendingOpenRef.current) tryOpenPending(pendingOpenRef.current);
+  }, [leads, tryOpenPending]);
+
 
 
   const stageSet = useMemo(() => new Set(stages), [stages]);
