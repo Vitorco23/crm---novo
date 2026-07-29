@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import {
-  MessageCircle, Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, ChevronRight,
+  MessageCircle, Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, ChevronRight, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLeads, getPipelineForStage, type Lead } from "@/lib/store";
@@ -104,6 +104,8 @@ export default function CentralInteligencia() {
   const [includeLead, setIncludeLead] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const openLead = useOpenLeadContext();
 
   const refreshConversations = useCallback(async () => {
@@ -149,6 +151,18 @@ export default function CentralInteligencia() {
     setMessages([]);
     requestAnimationFrame(() => inputRef.current?.focus());
   }, []);
+
+  const renameConversation = useCallback(async (id: string, title: string) => {
+    const clean = title.trim().slice(0, 120);
+    setEditingId(null);
+    if (!clean) return;
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title: clean } : c)));
+    const { error } = await supabase.from("intel_conversations").update({ title: clean }).eq("id", id);
+    if (error) {
+      toast({ title: "Erro ao renomear", description: error.message, variant: "destructive" });
+      refreshConversations();
+    }
+  }, [refreshConversations]);
 
   const deleteConversation = useCallback(async (id: string) => {
     if (!confirm("Excluir esta conversa?")) return;
@@ -250,21 +264,51 @@ export default function CentralInteligencia() {
               {conversations.map((c) => (
                 <div
                   key={c.id}
-                  onClick={() => setActiveId(c.id)}
+                  onClick={() => { if (editingId !== c.id) setActiveId(c.id); }}
                   className={cn(
-                    "group flex items-center gap-2 rounded-md px-2 py-2 cursor-pointer text-sm hover:bg-muted",
+                    "group flex items-center gap-1.5 rounded-md px-2 py-2 cursor-pointer text-sm hover:bg-muted",
                     activeId === c.id && "bg-muted",
                   )}
                 >
                   <MessageCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="flex-1 truncate">{c.title || "Conversa"}</span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
-                    className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive"
-                    aria-label="Excluir conversa"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {editingId === c.id ? (
+                    <Input
+                      autoFocus
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onBlur={() => renameConversation(c.id, editingTitle)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); renameConversation(c.id, editingTitle); }
+                        if (e.key === "Escape") { e.preventDefault(); setEditingId(null); }
+                      }}
+                      className="h-7 flex-1 text-xs px-2"
+                      maxLength={120}
+                    />
+                  ) : (
+                    <>
+                      <span
+                        className="flex-1 truncate"
+                        onDoubleClick={(e) => { e.stopPropagation(); setEditingId(c.id); setEditingTitle(c.title || ""); }}
+                      >
+                        {c.title || "Conversa"}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingId(c.id); setEditingTitle(c.title || ""); }}
+                        className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-foreground"
+                        aria-label="Renomear conversa"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
+                        className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-destructive"
+                        aria-label="Excluir conversa"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
