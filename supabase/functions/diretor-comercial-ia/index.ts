@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     try {
       result = await callAI({
         task: "diretor_comercial",
-        system: SYSTEM_PROMPT + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE + "\n\n" + NBA_PROMPT_BLOCK,
+        system: composeSystem("diretor.painel.executivo", UNTRUSTED_INPUT_SYSTEM_CLAUSE, NBA_PROMPT_BLOCK),
         user: userPrompt,
         json: true,
         temperature: 0.3,
