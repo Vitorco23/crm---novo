@@ -1,8 +1,13 @@
-// AI Core — Tool Registry (Projeto Phoenix, Fase 3A).
+// AI Core — Tool Registry (Projeto Phoenix, Fases 3A e 3C).
 // Declara as ferramentas autorizadas, seus contratos, permissões e limites.
 // Nenhum especialista deve chamar uma capacidade fora deste catálogo.
 
 import type { SpecialistId, ToolDefinition } from "./types.ts";
+import {
+  createKnowledgeEngine,
+  getKnowledgeContext,
+  type KnowledgeEngine,
+} from "./knowledge-engine.ts";
 
 export type ToolId = "knowledge.search" | "memory.retrieve";
 
