@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
-import { setCurrentUser, syncFromCloud, hydrateLocal } from "@/lib/userStorage";
+import { setCurrentUser, syncFromCloud, hydrateLocal } from "@/shared/services/userStorage";
 
 const ADMIN_EMAIL = "vitorco23@gmail.com";
 
