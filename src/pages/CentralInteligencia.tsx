@@ -183,11 +183,15 @@ export default function CentralInteligencia() {
     try {
       const leadCtx = includeLead ? buildLeadContext(openLead) : null;
       const dashSnap = buildDashboardSnapshot();
+      const history = messages
+        .slice(-10)
+        .map((m) => ({ role: m.role, content: (m.content ?? "").slice(0, 2000) }));
       const { data, error } = await supabase.functions.invoke("intel-router", {
         body: {
           question: q,
           conversationId: convId,
           specialistOverride: override === "auto" ? undefined : override,
+          history,
           context: {
             page: window.location.pathname,
             leadContext: leadCtx,
