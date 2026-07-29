@@ -140,10 +140,11 @@ Deno.test("escopo category exige categoria e repassa o filtro ao backend", async
 });
 
 Deno.test("escopo global não permite burlar categoria via caracteres de controle", async () => {
-  let received: string | null = null;
+  const seen: Array<string | null> = [];
   await getKnowledgeContext(
     { scope: "category", categoria: "Scripts\u0000' OR 1=1 --", queryText: "x" },
-    { fetcher: (p) => { received = p.categoria; return Promise.resolve({ chunks: [] }); } },
+    { fetcher: (p) => { seen.push(p.categoria); return Promise.resolve({ chunks: [] }); } },
   );
-  assertEquals(received?.includes("\u0000"), false);
+  assertEquals(seen.length, 1);
+  assertEquals((seen[0] ?? "").includes("\u0000"), false);
 });
