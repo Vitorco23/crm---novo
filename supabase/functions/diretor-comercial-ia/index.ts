@@ -1,11 +1,13 @@
 // Diretor Comercial IA — usa AI Router (task: diretor_comercial).
 // Nunca cita modelo diretamente. Fallback automático se GPT-mini indisponível.
+// Fase 3A (Phoenix): o system prompt vive no Prompt Registry do AI Core.
 
 import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
 import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
+import { composeSystem } from "../_shared/ai-core/index.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
   wrapUntrusted,
@@ -20,24 +22,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_PROMPT = `Você é o Diretor Comercial da Performance21. Interpreta o snapshot agregado da operação e devolve um PAINEL EXECUTIVO enxuto, escaneável em 30 segundos.
-
-Regras absolutas:
-- NUNCA invente números. Use somente valores presentes no snapshot; se faltar, escreva "sem dados suficientes".
-- Escreva em português do Brasil, tom consultivo, direto, sem preâmbulos.
-- Frases MUITO curtas. Sem parágrafos. Sem redação. Sem "como IA".
-- Cada bullet deve caber em UMA linha (≤ 90 caracteres).
-
-RESPONDA EXCLUSIVAMENTE COM UM OBJETO JSON VÁLIDO, sem markdown, sem crases, sem comentários, com exatamente estas chaves:
-{
-  "resumoOntem": string[],       // 3 a 5 bullets factuais sobre ontem (ligações, conexões, reuniões, vendas, principal problema)
-  "atencao": string[],           // exatamente os 3 maiores problemas atuais
-  "oportunidades": string[],     // 2 a 3 pontos positivos ou alavancas (nicho vencedor, melhor horário, script vencedor)
-  "prioridades": string[],       // 3 a 5 ações executáveis HOJE, verbo no infinitivo, mensurável
-  "dica": string                 // 1 recomendação, no máximo 2 linhas, direta
-}
-
-Não inclua nenhuma outra chave. Não inclua explicações fora do JSON.`;
+// Prompt migrado para o Prompt Registry: "diretor.painel.executivo".
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -74,7 +59,7 @@ Deno.serve(async (req) => {
     try {
       result = await callAI({
         task: "diretor_comercial",
-        system: SYSTEM_PROMPT + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE + "\n\n" + NBA_PROMPT_BLOCK,
+        system: composeSystem("diretor.painel.executivo", UNTRUSTED_INPUT_SYSTEM_CLAUSE, NBA_PROMPT_BLOCK),
         user: userPrompt,
         json: true,
         temperature: 0.3,
