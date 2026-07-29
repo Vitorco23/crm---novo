@@ -110,7 +110,10 @@ export default function Dashboard() {
       </div>
 
 
+      <MissionOfTheDayCard />
+
       <DiretorComercialIACard />
+
 
       {/* ============ PAINEL 1: OPERACIONAL (período) ============ */}
       <section className="space-y-4">
