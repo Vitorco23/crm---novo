@@ -31,11 +31,27 @@ interface Body {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  const auth = await requireUser(req, corsHeaders);
+  if (!auth.ok) return auth.response;
+
+  // Rejeita payloads acima do limite antes de parsear JSON completo.
+  const contentLength = Number(req.headers.get('content-length') ?? '0');
+  if (contentLength && contentLength > MAX_PAYLOAD_BYTES) {
+    return new Response(JSON.stringify({ error: 'Anexo excede o tamanho máximo permitido (15MB).' }), {
+      status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const { attachment, leadContext } = (await req.json()) as Body;
     if (!attachment?.dataUrl || !attachment?.type) {
       return new Response(JSON.stringify({ error: 'attachment inválido' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (typeof attachment.dataUrl === 'string' && attachment.dataUrl.length > MAX_DATAURL_CHARS) {
+      return new Response(JSON.stringify({ error: 'Anexo excede o tamanho máximo permitido (15MB).' }), {
+        status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     if (attachment.type.startsWith('audio/')) {
