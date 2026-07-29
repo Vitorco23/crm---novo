@@ -1,34 +1,12 @@
-import { PhoneCall, Handshake, Timer, BarChart3, Zap, Target, Plug, Rocket, ListChecks, DollarSign, Bell, Brain, Compass, FlaskConical, Calendar as CalendarIcon, BookMarked } from "lucide-react";
+import { Zap } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
+import { NAV_GROUPS, NAV_ITEMS, NavGroupId } from "@/lib/navigation";
 
-const decisionItems = [
-  { title: "Central de Decisão", url: "/central", icon: Compass },
-];
-
-const pipelineItems = [
-  { title: "Cold Call", url: "/", icon: PhoneCall },
-  { title: "Oportunidades", url: "/oportunidades", icon: Handshake },
-  { title: "Onboarding", url: "/onboarding", icon: Rocket },
-];
-
-const toolItems = [
-  { title: "Agenda", url: "/agenda", icon: CalendarIcon },
-  { title: "Tarefas / Scrum", url: "/scrum", icon: ListChecks },
-  { title: "Pomodoro", url: "/pomodoro", icon: Timer },
-  { title: "Lembretes", url: "/lembretes", icon: Bell },
-  { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
-  { title: "Inteligência Comercial", url: "/inteligencia", icon: Brain },
-  { title: "Memória Comercial", url: "/memoria", icon: BookMarked },
-  { title: "Laboratório Comercial", url: "/laboratorio", icon: FlaskConical },
-  { title: "Metas", url: "/metas", icon: Target },
-  { title: "Financeiro", url: "/financeiro", icon: DollarSign },
-  { title: "Integrações", url: "/integracoes", icon: Plug },
-];
-
+const GROUP_ORDER: NavGroupId[] = ["decisao", "operacao", "inteligencia", "planejamento", "configuracoes"];
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -43,74 +21,45 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div>
-              <p className="text-sm font-bold text-sidebar-accent-foreground tracking-tight">Performance21</p>
-              <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-widest">CRM</p>
+              <p className="text-small font-bold text-sidebar-accent-foreground tracking-tight">Performance21</p>
+              <p className="text-caption text-sidebar-foreground/60 uppercase tracking-widest">SOC · CRM</p>
             </div>
           )}
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/50">
-            Decisão
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {decisionItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className="hover:bg-sidebar-accent/50"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/50">
-            Pipelines
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {pipelineItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end={item.url === "/"} className="hover:bg-sidebar-accent/50"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-sidebar-foreground/50">
-            Ferramentas
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {toolItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className="hover:bg-sidebar-accent/50"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {GROUP_ORDER.map((gid) => {
+          const items = NAV_ITEMS.filter((n) => n.group === gid);
+          if (items.length === 0) return null;
+          return (
+            <SidebarGroup key={gid}>
+              <SidebarGroupLabel className="text-caption uppercase tracking-widest text-sidebar-foreground/50">
+                {NAV_GROUPS[gid].label}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton asChild tooltip={item.title}>
+                          <NavLink
+                            to={item.url}
+                            end={item.end}
+                            className="hover:bg-sidebar-accent/50 transition-standard"
+                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                          >
+                            <Icon className="mr-2 h-4 w-4" />
+                            {!collapsed && <span>{item.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
     </Sidebar>
   );
