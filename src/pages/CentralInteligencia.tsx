@@ -150,6 +150,18 @@ export default function CentralInteligencia() {
     requestAnimationFrame(() => inputRef.current?.focus());
   }, []);
 
+  const renameConversation = useCallback(async (id: string, title: string) => {
+    const clean = title.trim().slice(0, 120);
+    setEditingId(null);
+    if (!clean) return;
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title: clean } : c)));
+    const { error } = await supabase.from("intel_conversations").update({ title: clean }).eq("id", id);
+    if (error) {
+      toast({ title: "Erro ao renomear", description: error.message, variant: "destructive" });
+      refreshConversations();
+    }
+  }, [refreshConversations]);
+
   const deleteConversation = useCallback(async (id: string) => {
     if (!confirm("Excluir esta conversa?")) return;
     const { error } = await supabase.from("intel_conversations").delete().eq("id", id);
