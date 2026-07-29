@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import { PomodoroProvider } from "@/contexts/PomodoroContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PomodoroSessionFormDialog } from "@/components/PomodoroSessionFormDialog";
 import ColdCall from "./pages/ColdCall";
@@ -34,6 +35,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeProvider defaultTheme="dark">
     <TooltipProvider>
       <Toaster />
       <Sonner />
