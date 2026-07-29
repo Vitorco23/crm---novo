@@ -157,14 +157,6 @@ Deno.serve(async (req) => {
     });
 
     const calendarBlock = buildBusinessCalendarBlock();
-    const userPrompt = mode === "quick"
-      ? [
-          `Data de hoje: ${today}`,
-          '',
-          calendarBlock,
-          '',
-          memoryBlock,
-          '',
     const leadInfoSafe = sanitizeExternal(body.leadInfo || `Empresa: ${body.company || 'N/D'}\nNicho: ${body.niche || 'N/D'}\nEtapa: ${body.stage || 'N/D'}`, 2000);
     const callSummarySafe = sanitizeExternal(callSummary, 6000);
 
