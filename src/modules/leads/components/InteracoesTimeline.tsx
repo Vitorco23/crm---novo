@@ -465,10 +465,12 @@ export default function InteracoesTimeline({
             const key = `i-${i.id}`;
             const isOpen = expanded.has(key);
             const oneLiner = (i.summary || i.title || "").replace(/\s+/g, " ").trim().slice(0, 140);
+            const hl = highlightsFor(`${i.title} ${i.summary} ${i.sellerNotes || ""}`);
+            const critical = isCriticalEvent(hl);
             return (
               <li key={key} className="ml-4 group">
-                <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-foreground/70" />
-                <div className={`rounded-md border ${colorFor(i.type)} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""}`}>
+                <span className={`absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background ${critical ? "bg-rose-500" : "bg-foreground/70"}`} />
+                <div className={`rounded-md border ${colorFor(i.type)} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""} ${critical ? "ring-2 ring-rose-500/40 shadow-md" : ""}`}>
                   <button
                     onClick={() => toggle(key)}
                     className="w-full text-left p-3 flex items-start gap-2"
@@ -486,11 +488,19 @@ export default function InteracoesTimeline({
                           {format(parseISO(i.date), "dd/MM 'às' HH:mm", { locale: ptBR })}
                         </span>
                       </div>
+                      {hl.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {hl.map((h) => (
+                            <Badge key={h.key} variant="outline" className={`text-[10px] ${h.cls}`}>{h.label}</Badge>
+                          ))}
+                        </div>
+                      )}
                       {!isOpen && oneLiner && (
                         <p className="text-xs text-muted-foreground truncate mt-0.5">{oneLiner}</p>
                       )}
                     </div>
                   </button>
+
                   {isOpen && (
                     <div className="px-3 pb-3">
                       <p className="text-sm font-medium">{i.title}</p>
