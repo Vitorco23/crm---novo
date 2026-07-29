@@ -78,8 +78,14 @@ function cacheKey(q: MemoryQuery): string {
   ].join("|");
 }
 
+/** Fonte de dados da memória (injetável para testes). */
+export type MemoryFetcher = typeof buildMemoryContextBlock;
+
 /** Consulta sem cache. Nunca lança: falha de memória jamais bloqueia a IA. */
-export async function getMemoryContext(q: MemoryQuery): Promise<MemoryContext> {
+export async function getMemoryContext(
+  q: MemoryQuery,
+  fetcher: MemoryFetcher = buildMemoryContextBlock,
+): Promise<MemoryContext> {
   const r = resolveQuery(q);
   if (!r.queryText.trim()) return EMPTY(q.scope);
   if (q.scope === "lead" && !q.leadId) {
@@ -91,7 +97,7 @@ export async function getMemoryContext(q: MemoryQuery): Promise<MemoryContext> {
     return EMPTY(q.scope);
   }
   try {
-    const res = await buildMemoryContextBlock({
+    const res = await fetcher({
       queryText: r.queryText,
       niche: r.niche,
       matchCount: r.matchCount,
@@ -122,7 +128,7 @@ export interface MemoryEngine {
  * Cria um engine com cache por execução (uma requisição HTTP = um engine).
  * Duas chamadas com o mesmo escopo, entidade e consulta fazem UMA busca.
  */
-export function createMemoryEngine(): MemoryEngine {
+export function createMemoryEngine(fetcher: MemoryFetcher = buildMemoryContextBlock): MemoryEngine {
   const cache = new Map<string, Promise<MemoryContext>>();
   let queries = 0;
   let hits = 0;
@@ -135,7 +141,7 @@ export function createMemoryEngine(): MemoryEngine {
         return { ...(await existing), cached: true };
       }
       queries++;
-      const p = getMemoryContext(q);
+      const p = getMemoryContext(q, fetcher);
       cache.set(key, p);
       return await p;
     },
