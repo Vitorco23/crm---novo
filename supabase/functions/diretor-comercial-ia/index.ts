@@ -1,11 +1,13 @@
 // Diretor Comercial IA — usa AI Router (task: diretor_comercial).
 // Nunca cita modelo diretamente. Fallback automático se GPT-mini indisponível.
+// Fase 3A (Phoenix): o system prompt vive no Prompt Registry do AI Core.
 
 import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
 import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
+import { composeSystem } from "../_shared/ai-core/index.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
   wrapUntrusted,
