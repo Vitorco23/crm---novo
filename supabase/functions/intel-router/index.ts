@@ -116,6 +116,13 @@ Deno.serve(async (req) => {
   const auth = await requireUser(req, corsHeaders);
   if (!auth.ok) return auth.response;
 
+  const authHeaderRaw = req.headers.get("Authorization") ?? req.headers.get("authorization");
+  const telemetry = startAIExecution({
+    task: "intel_router",
+    userId: auth.userId,
+    authHeader: authHeaderRaw,
+  });
+
   try {
     const body = (await req.json().catch(() => ({}))) as IntelRequest;
     const question = String(body.question ?? "").trim();
