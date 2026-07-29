@@ -222,7 +222,7 @@ export default function CentralInteligencia() {
       setSending(false);
       requestAnimationFrame(() => inputRef.current?.focus());
     }
-  }, [input, sending, activeId, override, includeLead, openLead, refreshConversations]);
+  }, [input, sending, activeId, override, includeLead, openLead, refreshConversations, messages]);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
