@@ -18,20 +18,14 @@ import {
   assertSafeAIOutput,
   UnsafeAIOutputError,
 } from "../_shared/untrusted-input.ts";
+import {
+  buildLeadContextPrompt,
+  type LeadIntelligenceInput,
+} from "../_shared/ai-core/index.ts";
 
 
-interface Payload {
-  leadId?: string;
-  company?: string;
-  niche?: string;
-  city?: string;
-  stage?: string;
-  summary?: string;         // resumo Matteline (não confiável)
-  transcription?: string;   // transcrição Matteline (não confiável)
-  notes?: string;           // observações permanentes do vendedor
-  memory?: string;          // trechos de memória comercial (opcional)
-  recentInteractions?: Array<{ date: string; title: string; summary: string }>;
-}
+// Contrato de entrada = contrato de contexto de lead do AI Core (Fase 3B).
+type Payload = LeadIntelligenceInput;
 
 interface DiagnosisPayload {
   temperature: "quente" | "morno" | "frio";
