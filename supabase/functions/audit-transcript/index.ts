@@ -3,6 +3,11 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI } from "../_shared/ai-router.ts";
+import {
+  UNTRUSTED_INPUT_SYSTEM_CLAUSE,
+  wrapUntrusted,
+  sanitizeExternal,
+} from "../_shared/untrusted-input.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,10 +16,14 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_PROMPT =
-  "Você é o Diretor Comercial da agência Performance21. Sua função é auditar a transcrição de uma reunião de vendas e extrair os dados frios. Leia a transcrição e devolva um relatório rápido em tópicos curtos: 1. BANT (Foi validado?), 2. Ralo Comercial (Qual o gargalo?), 3. Objeções (Quais foram e como contornadas?), 4. Próximo Passo.";
+const SYSTEM_PROMPT = [
+  "Você é o Diretor Comercial da agência Performance21. Sua função é auditar a transcrição de uma reunião de vendas e extrair os dados frios. Leia a transcrição e devolva um relatório rápido em tópicos curtos: 1. BANT (Foi validado?), 2. Ralo Comercial (Qual o gargalo?), 3. Objeções (Quais foram e como contornadas?), 4. Próximo Passo.",
+  "",
+  UNTRUSTED_INPUT_SYSTEM_CLAUSE,
+].join("\n");
 
 const MAX_TRANSCRIPT_CHARS = 50_000;
+
 
 function jsonResp(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -58,13 +67,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    const safeTranscript = sanitizeExternal(transcript, MAX_TRANSCRIPT_CHARS);
+    const userPrompt = wrapUntrusted(safeTranscript, {
+      maxChars: MAX_TRANSCRIPT_CHARS,
+      label: "TRANSCRIÇÃO DA REUNIÃO",
+    });
+
     let result;
     try {
       result = await callAI({
         task: "audit_transcript",
         system: SYSTEM_PROMPT,
-        user: transcript,
-        inputChars: transcript.length,
+        user: userPrompt,
+        inputChars: userPrompt.length,
         temperature: 0.3,
         maxTokens: 2048,
       });
@@ -80,11 +95,14 @@ Deno.serve(async (req) => {
       return jsonResp(status, { error: friendly });
     }
 
+
     return jsonResp(200, {
       content: result.content || "Sem resposta da IA.",
       model: result.modelUsed,
     });
   } catch (e) {
-    return jsonResp(500, { error: (e as Error).message });
+    console.error(JSON.stringify({ evt: "audit_transcript_error", msg: (e as Error).message }));
+    return jsonResp(500, { error: "internal_error" });
   }
+
 });

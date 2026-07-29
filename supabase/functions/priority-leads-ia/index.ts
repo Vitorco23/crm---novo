@@ -7,6 +7,12 @@ import { requireUser } from "../_shared/require-auth.ts";
 import { buildMemoryContextBlock } from "../_shared/memory-retrieval.ts";
 import { NBA_PROMPT_BLOCK, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
+import {
+  UNTRUSTED_INPUT_SYSTEM_CLAUSE,
+  wrapUntrusted,
+  sanitizeExternal,
+} from "../_shared/untrusted-input.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,19 +74,21 @@ Deno.serve(async (req) => {
       includePatterns: true,
     });
 
+    const candidatesSafe = sanitizeExternal(JSON.stringify(candidates), 60000);
     const userPrompt =
       `Data/hora atual: ${new Date().toISOString()}\n` +
       `Total de candidatos: ${candidates.length}\n\n` +
       buildBusinessCalendarBlock() + "\n\n" +
       (memoryBlock ? memoryBlock + "\n\n" : "") +
-      `Candidatos (JSON):\n${JSON.stringify(candidates)}\n\n` +
+      wrapUntrusted(candidatesSafe, { maxChars: 60000, label: "CANDIDATOS (JSON)" }) + "\n\n" +
       `Selecione até 5 leads prioritários no formato JSON descrito.`;
 
     let result;
     try {
       result = await callAI({
         task: "priority_leads",
-        system: SYSTEM_PROMPT + "\n\n" + NBA_PROMPT_BLOCK,
+        system: SYSTEM_PROMPT + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE + "\n\n" + NBA_PROMPT_BLOCK,
+
         user: userPrompt,
         json: true,
         temperature: 0.2,
@@ -134,9 +142,11 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
+    console.error(JSON.stringify({ evt: "priority_leads_error", msg: (e as Error).message }));
     return new Response(
-      JSON.stringify({ error: (e as Error).message }),
+      JSON.stringify({ error: "internal_error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+
 });

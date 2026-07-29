@@ -5,6 +5,12 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { callAI } from '../_shared/ai-router.ts';
 import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
 import { requireUser } from '../_shared/require-auth.ts';
+import {
+  UNTRUSTED_INPUT_SYSTEM_CLAUSE,
+  wrapUntrusted,
+  sanitizeExternal,
+} from '../_shared/untrusted-input.ts';
+
 
 // Limite máximo do payload total (bytes). ~15MB acomoda dataUrls base64 típicos
 // de imagens/PDFs de leitura, com margem sobre o limite de 10MB do arquivo bruto.
@@ -21,7 +27,11 @@ Responda em Markdown com:
 - **Sinais comerciais**: o que isso indica sobre interesse/objeção/oportunidade.
 - **Próxima ação sugerida**: 1 linha acionável.
 
-Se o arquivo for ilegível ou irrelevante, diga isso explicitamente em 1 linha.`;
+Se o arquivo for ilegível ou irrelevante, diga isso explicitamente em 1 linha.
+
+${UNTRUSTED_INPUT_SYSTEM_CLAUSE}
+`;
+
 
 interface Body {
   attachment: { name: string; type: string; dataUrl: string };
@@ -70,10 +80,12 @@ Deno.serve(async (req) => {
       includePatterns: true,
     });
 
+    const leadContextSafe = sanitizeExternal(leadContext ?? '(sem contexto extra)', 4000);
     const textBlock = {
       type: 'text',
-      text: `${memoryBlock ? memoryBlock + "\n\n" : ""}Contexto do Lead:\n${leadContext ?? '(sem contexto extra)'}\n\nArquivo: ${attachment.name} (${attachment.type})\n\nLeia o conteúdo abaixo e responda no formato pedido.`,
+      text: `${memoryBlock ? memoryBlock + "\n\n" : ""}${wrapUntrusted(leadContextSafe, { maxChars: 4000, label: 'CONTEXTO DO LEAD' })}\n\nArquivo: ${attachment.name} (${attachment.type})\n\nLeia o conteúdo abaixo e responda no formato pedido.`,
     };
+
 
     let fileBlock: Record<string, unknown>;
     if (isImage) {
@@ -107,9 +119,10 @@ Deno.serve(async (req) => {
       modelUsed: result.modelUsed,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
-    const msg = (e as Error)?.message ?? 'erro desconhecido';
-    return new Response(JSON.stringify({ error: msg }), {
+    console.error(JSON.stringify({ evt: "analyze_attachment_error", msg: (e as Error)?.message }));
+    return new Response(JSON.stringify({ error: 'internal_error' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
 });

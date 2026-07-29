@@ -8,8 +8,17 @@ import { callAI } from '../_shared/ai-router.ts';
 import { buildMemoryContextBlock } from '../_shared/memory-retrieval.ts';
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from '../_shared/nba-types.ts';
 import { buildBusinessCalendarBlock } from '../_shared/business-calendar.ts';
+import {
+  UNTRUSTED_INPUT_SYSTEM_CLAUSE,
+  wrapUntrusted,
+  sanitizeExternal,
+} from '../_shared/untrusted-input.ts';
+
 
 const SYSTEM_QUICK = `Você é o AUDITOR COMERCIAL da Performance21 em modo ANÁLISE RÁPIDA.
+
+${UNTRUSTED_INPUT_SYSTEM_CLAUSE}
+
 
 Você recebe APENAS o resumo da última ligação (feito pela Matteline) e dados básicos do Lead.
 Não invente informação que não esteja no resumo. Não suponha histórico anterior.
@@ -41,6 +50,9 @@ CAMPOS:
 - assuntosDeInteresse: até 3 tags curtas.`;
 
 const SYSTEM_FULL = `Você é o AUDITOR COMERCIAL 360º da Performance21 em modo DIAGNÓSTICO COMPLETO.
+
+${UNTRUSTED_INPUT_SYSTEM_CLAUSE}
+
 
 Você analisa o CONTEXTO COMPLETO do Lead: todas as ligações já realizadas, tarefas concluídas e pendentes, movimentações no pipeline, dados cadastrais (nicho, cidade, etapa, tentativas, ICP) e todo o histórico de eventos daquele Lead.
 
@@ -151,12 +163,21 @@ Deno.serve(async (req) => {
           '',
           memoryBlock,
           '',
-          '========== DADOS BÁSICOS DO LEAD ==========',
-          body.leadInfo || `Empresa: ${body.company || 'N/D'}\nNicho: ${body.niche || 'N/D'}\nEtapa: ${body.stage || 'N/D'}`,
+    const leadInfoSafe = sanitizeExternal(body.leadInfo || `Empresa: ${body.company || 'N/D'}\nNicho: ${body.niche || 'N/D'}\nEtapa: ${body.stage || 'N/D'}`, 2000);
+    const callSummarySafe = sanitizeExternal(callSummary, 6000);
+
+    const userPrompt = mode === "quick"
+      ? [
+          `Data de hoje: ${today}`,
           '',
-          '========== ÚLTIMO RESUMO DE LIGAÇÃO (Matteline) ==========',
+          calendarBlock,
+          '',
+          memoryBlock,
+          '',
+          wrapUntrusted(leadInfoSafe, { maxChars: 2000, label: 'DADOS BÁSICOS DO LEAD' }),
+          '',
           `Tentativa: ${body.attempt ?? 'N/D'}`,
-          callSummary,
+          wrapUntrusted(callSummarySafe, { maxChars: 6000, label: 'ÚLTIMO RESUMO DE LIGAÇÃO (Matteline)' }),
           '',
           'Faça a análise RÁPIDA e devolva o JSON.',
         ].filter(Boolean).join('\n')
@@ -167,34 +188,26 @@ Deno.serve(async (req) => {
           '',
           memoryBlock,
           '',
-          '========== DADOS CADASTRAIS DO LEAD ==========',
-          body.leadInfo || `Empresa: ${body.company || 'N/D'}\nNicho: ${body.niche || 'N/D'}\nEtapa: ${body.stage || 'N/D'}`,
+          wrapUntrusted(leadInfoSafe, { maxChars: 2000, label: 'DADOS CADASTRAIS DO LEAD' }),
           '',
-          '========== LIGAÇÃO EM ANÁLISE ==========',
           `Tentativa: ${body.attempt ?? 'N/D'}`,
-          callSummary,
+          wrapUntrusted(callSummarySafe, { maxChars: 6000, label: 'LIGAÇÃO EM ANÁLISE' }),
           '',
-          '========== TODAS AS LIGAÇÕES DO LEAD (ordem cronológica) ==========',
-          body.allCallNotes || '(apenas a ligação em análise)',
+          wrapUntrusted(sanitizeExternal(body.allCallNotes || '(apenas a ligação em análise)', 8000), { maxChars: 8000, label: 'TODAS AS LIGAÇÕES DO LEAD (ordem cronológica)' }),
           '',
-          '========== INTERAÇÕES COMERCIAIS (timeline completa: reuniões, follow-ups, WhatsApp, e-mail, propostas, visitas etc.) ==========',
-          body.interacoesComerciais || '(nenhuma interação registrada)',
+          wrapUntrusted(sanitizeExternal(body.interacoesComerciais || '(nenhuma interação registrada)', 6000), { maxChars: 6000, label: 'INTERAÇÕES COMERCIAIS (timeline)' }),
           '',
-
-          '========== MOVIMENTAÇÕES NO PIPELINE ==========',
-          body.movimentacoes || '(sem movimentações)',
+          wrapUntrusted(sanitizeExternal(body.movimentacoes || '(sem movimentações)', 3000), { maxChars: 3000, label: 'MOVIMENTAÇÕES NO PIPELINE' }),
           '',
-          '========== TAREFAS CONCLUÍDAS ==========',
-          body.tarefasConcluidas || '(nenhuma)',
+          wrapUntrusted(sanitizeExternal(body.tarefasConcluidas || '(nenhuma)', 3000), { maxChars: 3000, label: 'TAREFAS CONCLUÍDAS' }),
           '',
-          '========== TAREFAS PENDENTES ==========',
-          body.tarefasPendentes || '(nenhuma)',
+          wrapUntrusted(sanitizeExternal(body.tarefasPendentes || '(nenhuma)', 3000), { maxChars: 3000, label: 'TAREFAS PENDENTES' }),
           '',
-          '========== HISTÓRICO DE EVENTOS ==========',
-          body.historicoEventos || '(vazio)',
+          wrapUntrusted(sanitizeExternal(body.historicoEventos || '(vazio)', 4000), { maxChars: 4000, label: 'HISTÓRICO DE EVENTOS' }),
           '',
           'Analise o CONTEXTO COMPLETO acima e devolva o JSON.',
         ].filter(Boolean).join('\n');
+
 
     const inputChars = userPrompt.length;
 
@@ -242,13 +255,14 @@ Deno.serve(async (req) => {
         try {
           data = JSON.parse(m[0]);
         } catch (e2) {
-          console.error('JSON parse failed:', e2, jsonText.slice(0, 500));
-          return new Response(JSON.stringify({ error: 'Formato inválido da IA', raw: jsonText.slice(0, 1000) }), {
+          console.error(JSON.stringify({ evt: "analyze_call_note_json_parse_failed", msg: (e2 as Error).message }));
+          return new Response(JSON.stringify({ error: 'Formato inválido da IA' }), {
             status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
       } else {
-        return new Response(JSON.stringify({ error: 'Formato inválido da IA', raw: jsonText.slice(0, 1000) }), {
+        return new Response(JSON.stringify({ error: 'Formato inválido da IA' }), {
+
           status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -279,9 +293,10 @@ Deno.serve(async (req) => {
       model: result.modelUsed,
     }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
-    console.error('analyze-call-note error:', e);
-    return new Response(JSON.stringify({ error: String((e as Error)?.message || e) }), {
+    console.error(JSON.stringify({ evt: "analyze_call_note_error", msg: (e as Error)?.message }));
+    return new Response(JSON.stringify({ error: 'internal_error' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
 });

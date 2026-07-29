@@ -135,3 +135,92 @@ export function safeParseJson<T = unknown>(raw: string): T | null {
   if (!m) return null;
   try { return JSON.parse(m[0]) as T; } catch { return null; }
 }
+
+// ------------------------------------------------------------------
+// Prompt-injection detection / sanitization / output assertion.
+// Generic, pattern-based (not a fragile allow/deny list of exact strings).
+// Used by every AI Edge Function that ingests external content, and
+// again BEFORE persisting model output to commercial_memory / user_storage
+// / permanent observations / diagnoses.
+// ------------------------------------------------------------------
+
+// Injection heuristics. Each regex is intentionally generic and language-aware
+// (PT-BR + EN). Order does not matter — we just accumulate matches.
+const INJECTION_PATTERNS: Array<{ id: string; re: RegExp }> = [
+  { id: "override_instructions", re: /\b(ignore|disregard|forget|esque[çc]a|ignore?)\s+(all|every|any|previous|prior|todas?|as anteriores|as regras|instructions?|instru[çc][õo]es?|regras?)\b/i },
+  { id: "reveal_prompt",        re: /\b(reveal|show|print|expose|mostre|revele|imprima|exiba)\b[^\n]{0,40}\b(system|developer|internal|hidden|prompt|instru[çc][õo]es?)\b/i },
+  { id: "role_override",        re: /\b(you are now|act as|behave as|voc[êe] (agora )?[eé]|voc[êe] (agora )?atua|assuma o papel|persona|jailbreak|DAN mode)\b/i },
+  { id: "system_takeover",      re: /\b(system\s*prompt|developer\s*(message|prompt)|assistant\s*message|new\s*(rules?|instructions?))\b/i,},
+  { id: "fake_role_tag",        re: /<\/?\s*(system|assistant|tool|function|developer|user)\s*>/i },
+  { id: "control_tokens",       re: /<\|(?:im_start|im_end|start|end|system|assistant|user|tool)\|>/i },
+  { id: "instruction_block",    re: /\[\s*(system|instructions?|rules?)\s*\][^\n]{0,80}/i },
+  { id: "output_hijack",        re: /\b(responda|reply|answer|output|retorne)\s+(apenas|somente|only|s[óo])\s+["'`]?(approved|aprovado|ok|yes|sim)/i },
+  { id: "schema_hijack",        re: /\b(ignore|skip|drop)\b[^\n]{0,40}\b(schema|json|format|formato)\b/i },
+  { id: "code_execution",       re: /\b(exec(ute)?|run|eval)\b[^\n]{0,20}\b(command|c[oó]digo|code|shell|sql)\b/i },
+  { id: "override_word",        re: /\b(override|bypass|desabilit(e|ar)|desative)\b[^\n]{0,40}\b(rules?|regras?|filter|filtro|guard|safety)\b/i },
+];
+
+export interface InjectionScan {
+  suspicious: boolean;
+  matches: string[];  // pattern ids only — never the raw matched text
+  score: number;      // count of distinct pattern matches
+}
+
+/** Detect prompt-injection heuristics in arbitrary text. Returns metadata only. */
+export function detectInjectionPatterns(input: unknown): InjectionScan {
+  const text = typeof input === "string" ? input : input == null ? "" : String(input);
+  if (!text) return { suspicious: false, matches: [], score: 0 };
+  const seen = new Set<string>();
+  for (const { id, re } of INJECTION_PATTERNS) {
+    if (re.test(text)) seen.add(id);
+  }
+  return { suspicious: seen.size > 0, matches: [...seen], score: seen.size };
+}
+
+/**
+ * Neutralize the most dangerous surface patterns without changing meaning:
+ *  - break fake role/control tags so they can't be parsed as protocol markers
+ *  - collapse null bytes / U+2028/U+2029 that some parsers treat as newlines
+ * Content useful for analysis is preserved.
+ */
+export function sanitizeExternal(input: unknown, maxChars = 8000): string {
+  const raw = typeof input === "string" ? input : input == null ? "" : String(input);
+  if (!raw) return "";
+  const neutralized = raw
+    .replace(/\u0000/g, "")
+    .replace(/[\u2028\u2029]/g, "\n")
+    // Insert a zero-width space inside role/control tags so they no longer match a protocol parser
+    .replace(/<\s*(\/?\s*(?:system|assistant|tool|function|developer|user))\s*>/gi, "<\u200b$1\u200b>")
+    .replace(/<\|(im_start|im_end|start|end|system|assistant|user|tool)\|>/gi, "<\u200b|$1|\u200b>");
+  return neutralized.length > maxChars ? neutralized.slice(0, maxChars) + "\n…[truncado]" : neutralized;
+}
+
+export class UnsafeAIOutputError extends Error {
+  matches: string[];
+  constructor(matches: string[]) {
+    super("unsafe_ai_output");
+    this.name = "UnsafeAIOutputError";
+    this.matches = matches;
+  }
+}
+
+/**
+ * Assert that model-produced content is safe to persist (memory, user_storage,
+ * permanent notes, diagnoses). Throws UnsafeAIOutputError if injection
+ * patterns are detected. Callers should catch, log metadata only, and skip
+ * the write.
+ */
+export function assertSafeAIOutput(input: unknown, label = "ai_output"): void {
+  const scan = detectInjectionPatterns(input);
+  if (scan.suspicious) {
+    // Metadata-only log — never the raw content.
+    console.warn(JSON.stringify({
+      evt: "unsafe_ai_output_blocked",
+      label,
+      score: scan.score,
+      matches: scan.matches,
+    }));
+    throw new UnsafeAIOutputError(scan.matches);
+  }
+}
+
