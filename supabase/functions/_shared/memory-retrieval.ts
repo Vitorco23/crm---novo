@@ -137,5 +137,5 @@ export async function buildMemoryContextBlock(opts: {
       console.warn("[memory] patterns failed", (e as Error).message);
     }
   }
-  return { block: parts.join("\n\n"), memoryCount: memories.length, patternCount };
+  return { block: parts.join("\n\n"), memoryCount: memories.length, patternCount, memories };
 }
