@@ -428,6 +428,9 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
       reason: focus.reason,
       priority: "alta",
       estimatedMinutes: Math.max(30, goals.calls * (getGoalsSettings().minutesPerCall || 4)),
+      niche: focus.niche,
+      city: focus.city,
+      recommendedTime: focus.bestHour,
     });
   }
 
@@ -471,6 +474,9 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
       reason: focus.reason,
       priority: "media",
       estimatedMinutes: 60,
+      niche: focus.niche,
+      city: focus.city,
+      recommendedTime: focus.bestHour,
     });
   }
 
@@ -487,7 +493,9 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
   }
 
   // Prioridades estratégicas por lead (críticas/altas) — execução individual.
+  const leadById = new Map(leads.map((l) => [l.id, l]));
   for (const p of prios.filter((x) => x.tier === "critica").slice(0, 3)) {
+    const lead = leadById.get(p.leadId);
     items.push({
       id: `${d}:lead:${p.leadId}`,
       kind: "lead",
@@ -497,7 +505,11 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
       priority: "urgente",
       estimatedMinutes: p.estimatedMinutes,
       leadId: p.leadId,
+      company: p.company,
+      niche: (lead as unknown as { niche?: string })?.niche,
+      city: (lead as unknown as { city?: string })?.city,
     });
+
   }
 
   return {
