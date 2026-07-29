@@ -351,8 +351,10 @@ export default function InteracoesTimeline({
           </p>
         </div>
       ) : (
-        <ol className="relative border-l border-border/60 ml-3 space-y-4">
-          {items.map((it) => {
+        <ol className="relative border-l border-border/60 ml-3 space-y-5">
+          {items.map((it, idx) => {
+            const isLatest = idx === 0;
+
             if (it.kind === "meeting") {
               const m = it.data;
               const Icon = Users;
