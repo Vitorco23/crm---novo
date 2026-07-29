@@ -540,13 +540,17 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
     items.push({
       id: `${d}:followups`,
       kind: "followups",
-      title: `Resolver ${followups.length} follow-ups`,
+      title: `Resolver ${followups.length} de ${DAILY_FOLLOWUP_TARGET} follow-ups`,
       bullets: [
         urgentes ? `${urgentes} urgente(s)` : "",
         quentes ? `${quentes} lead(s) quente(s)` : "",
         cadencia ? `${cadencia} em cadência ativa` : "",
+        coverage.shortfallReason || "",
       ].filter(Boolean),
-      reason: "Seleção diária por urgência, potencial e continuidade de cadência.",
+      reason: coverage.shortfallReason
+        ? "Meta diária de 20 follow-ups limitada pela carteira elegível."
+        : "Seleção diária por urgência, potencial e continuidade de cadência.",
+
       priority: urgentes > 0 ? "urgente" : "alta",
       estimatedMinutes: followups.length * 8,
     });
