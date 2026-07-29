@@ -247,11 +247,20 @@ function isException(lead: Lead, ctx: UrgencyCtx, prio: LeadPriority | null): bo
   return false;
 }
 
-/** Lista diária de follow-ups prioritários (urgência → potencial → cadência). */
-export function buildSmartFollowups(
+/**
+ * Seleção diária de follow-ups.
+ *
+ * A meta de 20 follow-ups é OBRIGATÓRIA: o algoritmo só devolve menos de 20
+ * quando realmente não existirem 20 leads elegíveis em toda a base.
+ *
+ *   Nível 1 — urgências reais (retorno de hoje, reunião, proposta, risco, IA)
+ *   Nível 2 — leads quentes (temperatura alta / diagnóstico favorável)
+ *   Nível 3 — cadência operacional (Tentativa 5 → 4 → 3 → 2)
+ */
+export function buildFollowupSelection(
   target = DAILY_FOLLOWUP_TARGET,
   priorities?: LeadPriority[],
-): FollowupPick[] {
+): FollowupSelection {
   const leads = getLeads().filter((l) => !CLOSED.has(l.stage));
   const prios = priorities ?? computePriorities();
   const prioById = new Map(prios.map((p) => [p.leadId, p]));
@@ -277,9 +286,11 @@ export function buildSmartFollowups(
     });
   };
 
-  // 1) Prioridade máxima — urgências reais (ignoram cooldown, mas não o "já feito hoje")
-  const urgent = leads
-    .filter((l) => !workedToday.has(l.id) && isException(l, ctx, prioById.get(l.id) || null))
+  const available = leads.filter((l) => !workedToday.has(l.id));
+
+  // ---------------------------------------------------------------- Nível 1
+  const urgent = available
+    .filter((l) => isException(l, ctx, prioById.get(l.id) || null))
     .sort((a, b) => (prioById.get(b.id)?.score || 0) - (prioById.get(a.id)?.score || 0));
   for (const l of urgent) {
     const p = prioById.get(l.id);
@@ -291,16 +302,16 @@ export function buildSmartFollowups(
     push(l, "urgente", motivo);
   }
 
-  // 2) Leads quentes — temperatura elevada / diagnóstico favorável
-  const hot = leads
-    .filter((l) => !picked.has(l.id) && !workedToday.has(l.id))
-    .filter((l) => {
-      if (daysSince(lastTouchISO(l)) < FOLLOWUP_COOLDOWN_DAYS) return false;
-      const t = displayTemperature(l).key;
-      const prob = l.autoDiagnosis?.probability ?? 0;
-      const p = prob > 1 ? prob / 100 : prob;
-      return t === "quente" || p >= 0.5;
-    })
+  // ---------------------------------------------------------------- Nível 2
+  const isHot = (l: Lead) => {
+    const t = displayTemperature(l).key;
+    const prob = l.autoDiagnosis?.probability ?? 0;
+    const p = prob > 1 ? prob / 100 : prob;
+    return t === "quente" || p >= 0.5;
+  };
+  const hot = available
+    .filter((l) => !picked.has(l.id) && isHot(l))
+    .filter((l) => daysSince(lastTouchISO(l)) >= FOLLOWUP_COOLDOWN_DAYS)
     .sort((a, b) => (prioById.get(b.id)?.score || 0) - (prioById.get(a.id)?.score || 0));
   for (const l of hot) {
     const prob = l.autoDiagnosis?.probability ?? 0;
@@ -308,23 +319,82 @@ export function buildSmartFollowups(
     push(l, "quente", p >= 0.5 ? `Probabilidade de avanço ${Math.round(p * 100)}%` : "Lead quente sem retorno recente");
   }
 
-  // 3) Continuidade da cadência — Tentativa 2 em diante
-  const cadence = leads
-    .filter((l) => !picked.has(l.id) && !workedToday.has(l.id))
-    .filter((l) => cadenceAttempt(l.stage) >= 2)
+  // ---------------------------------------------------------------- Nível 3
+  // Cadência operacional — Tentativa 5 → 4 → 3 → 2, sempre completando a meta.
+  const cadencePool = available.filter((l) => {
+    const a = cadenceAttempt(l.stage);
+    return a >= 2 && a <= 5;
+  });
+
+  const orderCadence = (a: Lead, b: Lead) => {
+    const ca = cadenceAttempt(a.stage);
+    const cb = cadenceAttempt(b.stage);
+    if (ca !== cb) return cb - ca; // Tentativa 5 primeiro
+    return daysSince(lastTouchISO(b)) - daysSince(lastTouchISO(a));
+  };
+
+  // 3a) respeitando integralmente o cooldown
+  const cadenceReady = cadencePool
+    .filter((l) => !picked.has(l.id))
     .filter((l) => daysSince(lastTouchISO(l)) >= FOLLOWUP_COOLDOWN_DAYS)
-    .sort((a, b) => {
-      const da = daysSince(lastTouchISO(a));
-      const db = daysSince(lastTouchISO(b));
-      if (db !== da) return db - da;
-      return cadenceAttempt(b.stage) - cadenceAttempt(a.stage);
-    });
-  for (const l of cadence) {
+    .sort(orderCadence);
+  for (const l of cadenceReady) {
     push(l, "cadencia", `Cadência ativa — ${l.stage} há ${daysSince(lastTouchISO(l))} dia(s) sem contato`);
   }
 
-  return out.slice(0, target);
+  // 3b) meta ainda não atingida → completar com a cadência restante
+  //     (nunca leads já trabalhados hoje; o intervalo natural é relaxado apenas
+  //      o necessário para cumprir a meta operacional do dia)
+  if (out.length < target) {
+    const cadenceFill = cadencePool
+      .filter((l) => !picked.has(l.id))
+      .sort(orderCadence);
+    for (const l of cadenceFill) {
+      const dt = daysSince(lastTouchISO(l));
+      push(l, "cadencia", `Completa a meta diária — ${l.stage}${dt < 900 ? ` · ${dt} dia(s) sem contato` : ""}`);
+    }
+  }
+
+  // 3c) leads quentes que ainda estavam em cooldown entram antes de faltar meta
+  if (out.length < target) {
+    const hotFill = available
+      .filter((l) => !picked.has(l.id) && isHot(l))
+      .sort((a, b) => (prioById.get(b.id)?.score || 0) - (prioById.get(a.id)?.score || 0));
+    for (const l of hotFill) push(l, "quente", "Completa a meta diária — lead com potencial alto");
+  }
+
+  const picks = out.slice(0, target);
+
+  const eligible = {
+    urgentes: urgent.length,
+    quentes: available.filter((l) => isHot(l)).length,
+    tentativa5: cadencePool.filter((l) => cadenceAttempt(l.stage) === 5).length,
+    tentativa4: cadencePool.filter((l) => cadenceAttempt(l.stage) === 4).length,
+    tentativa3: cadencePool.filter((l) => cadenceAttempt(l.stage) === 3).length,
+    tentativa2: cadencePool.filter((l) => cadenceAttempt(l.stage) === 2).length,
+  };
+  const eligibleTotal = new Set([
+    ...urgent.map((l) => l.id),
+    ...available.filter(isHot).map((l) => l.id),
+    ...cadencePool.map((l) => l.id),
+  ]).size;
+
+  const shortfallReason =
+    picks.length >= target
+      ? undefined
+      : `Existem apenas ${eligibleTotal} lead(s) elegível(is) segundo as regras atuais (urgências, leads quentes e Tentativas 2 a 5).`;
+
+  return { picks, target, eligible, eligibleTotal, shortfallReason };
 }
+
+/** Compatibilidade: lista diária de follow-ups prioritários. */
+export function buildSmartFollowups(
+  target = DAILY_FOLLOWUP_TARGET,
+  priorities?: LeadPriority[],
+): FollowupPick[] {
+  return buildFollowupSelection(target, priorities).picks;
+}
+
 
 // ---------------------------------------------------------------------------
 // Foco de prospecção — nicho, cidade, melhor horário e script (dados reais)
