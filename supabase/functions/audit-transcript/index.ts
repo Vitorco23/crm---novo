@@ -101,6 +101,8 @@ Deno.serve(async (req) => {
       model: result.modelUsed,
     });
   } catch (e) {
-    return jsonResp(500, { error: (e as Error).message });
+    console.error(JSON.stringify({ evt: "audit_transcript_error", msg: (e as Error).message }));
+    return jsonResp(500, { error: "internal_error" });
   }
+
 });
