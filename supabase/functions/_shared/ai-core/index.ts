@@ -9,3 +9,4 @@ export * from "./memory-engine.ts";
 export * from "./lead-context.ts";
 export * from "./knowledge-governance.ts";
 export * from "./knowledge-engine.ts";
+export * from "./knowledge-ingestion.ts";
