@@ -20,6 +20,7 @@ import {
   MISSION_UPDATED_EVENT, type MissionEntry,
 } from "@/modules/intelligence/services/missionStore";
 import { buildMissionPlan, addMissionTask, addFollowupTask } from "@/modules/intelligence/services/missionPlanner";
+import { OperationalCapacityCard } from "@/modules/intelligence/components/OperationalCapacityCard";
 import { openLead } from "@/modules/leads/services/openLead";
 import { on } from "@/shared/services/eventBus";
 import { PRIORITY_CLASSES, PRIORITY_LABEL } from "@/modules/leads/services/leadTasks";
