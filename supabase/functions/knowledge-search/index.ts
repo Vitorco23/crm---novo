@@ -3,6 +3,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireUser } from "../_shared/require-auth.ts";
 import { sanitizeExternal } from "../_shared/untrusted-input.ts";
+import {
+  clampMatchCount,
+  clampSimilarity,
+  normalizeCategory,
+} from "../_shared/ai-core/knowledge-governance.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,9 +58,9 @@ Deno.serve(async (req) => {
 
     const { data, error } = await sb.rpc("match_knowledge_chunks", {
       query_embedding: queryEmbedding,
-      match_count: Math.min(Math.max(matchCount, 1), 12),
-      min_similarity: minSimilarity,
-      filter_categoria: categoria,
+      match_count: clampMatchCount(matchCount),
+      min_similarity: clampSimilarity(minSimilarity),
+      filter_categoria: normalizeCategory(categoria),
     });
     if (error) throw new Error(error.message);
 
