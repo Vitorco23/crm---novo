@@ -21,6 +21,8 @@ import Integracoes from "@/modules/configuracoes/pages/Integracoes";
 import Lembretes from "@/modules/agenda/pages/Lembretes";
 import InteligenciaComercial from "@/modules/intelligence/pages/InteligenciaComercial";
 import CentralDecisao from "@/modules/intelligence/pages/CentralDecisao";
+import MissaoDoDia from "@/modules/intelligence/pages/MissaoDoDia";
+
 import Agenda from "@/modules/agenda/pages/Agenda";
 import MemoriaComercial from "@/modules/intelligence/pages/MemoriaComercial";
 import { lazy, Suspense } from "react";
