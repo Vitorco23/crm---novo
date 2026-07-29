@@ -3,7 +3,7 @@
 // NÃO chama IA. NÃO altera nenhum dado. Zero consultas novas.
 import { User, Phone, ShieldAlert, Clock, Target, Flame, Thermometer, Snowflake, Sparkles, Timer } from "lucide-react";
 import type { Lead } from "@/shared/services/store";
-import { executiveSummary, displayTemperature, displayNextAction } from "@/modules/intelligence/services/leadInsights";
+import { LeadIntelligenceRepository } from "@/modules/leads/services/LeadIntelligenceRepository";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -41,9 +41,9 @@ function LastContactLabel({ lead }: { lead: Lead }) {
 }
 
 export default function LeadExecutiveSummary({ lead }: { lead: Lead }) {
-  const s = executiveSummary(lead);
-  const temp = displayTemperature(lead);
-  const nextAction = displayNextAction(lead);
+  const s = LeadIntelligenceRepository.executiveSummary(lead);
+  const temp = LeadIntelligenceRepository.temperature(lead);
+  const nextAction = LeadIntelligenceRepository.nextAction(lead);
   const probability = Math.max(0, Math.min(100, Math.round(lead.autoDiagnosis?.probability || 0)));
   const hasProb = Boolean(lead.autoDiagnosis?.probability);
   const mins = estimateMinutes(nextAction);
