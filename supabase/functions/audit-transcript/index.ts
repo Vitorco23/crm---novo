@@ -67,13 +67,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    const safeTranscript = sanitizeExternal(transcript, MAX_TRANSCRIPT_CHARS);
+    const userPrompt = wrapUntrusted(safeTranscript, {
+      maxChars: MAX_TRANSCRIPT_CHARS,
+      label: "TRANSCRIÇÃO DA REUNIÃO",
+    });
+
     let result;
     try {
       result = await callAI({
         task: "audit_transcript",
         system: SYSTEM_PROMPT,
-        user: transcript,
-        inputChars: transcript.length,
+        user: userPrompt,
+        inputChars: userPrompt.length,
         temperature: 0.3,
         maxTokens: 2048,
       });
@@ -88,6 +94,7 @@ Deno.serve(async (req) => {
           : "Não foi possível gerar a auditoria neste momento. Tente novamente em instantes.";
       return jsonResp(status, { error: friendly });
     }
+
 
     return jsonResp(200, {
       content: result.content || "Sem resposta da IA.",
