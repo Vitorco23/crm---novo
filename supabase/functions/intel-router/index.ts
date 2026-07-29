@@ -146,9 +146,7 @@ Deno.serve(async (req) => {
 
     // Observabilidade: somente metadados agregados (Fase 3D.1).
     telemetry.setSpecialist(specialist);
-    if (body.conversationId) {
-      (telemetry as unknown as { addSource(s: string): void }).addSource("history");
-    }
+    telemetry.setConversation(body.conversationId ?? null);
     if (ctx && Object.keys(ctx).length) telemetry.addSource("crm");
     if (ctx.leadContext) telemetry.addSource("lead");
     if (history.length) telemetry.addSource("history");
