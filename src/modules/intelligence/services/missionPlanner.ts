@@ -618,6 +618,9 @@ export function buildMissionPlan(priorities?: LeadPriority[]): MissionPlan {
     callsDone: done,
     followups,
     followupsDone: workedTodaySet(leads).size,
+    followupTarget: DAILY_FOLLOWUP_TARGET,
+    followupCoverage: coverage,
+
     focus,
     items,
   };
