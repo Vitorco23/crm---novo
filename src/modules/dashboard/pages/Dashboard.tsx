@@ -341,6 +341,39 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
   );
 }
 
+function EfficiencyCard({
+  icon: Icon, label, ratio, unit,
+}: { icon: any; label: string; ratio: EfficiencyRatio; unit: string }) {
+  const inconclusive = ratio.callsPerResult == null;
+  const hint = inconclusive
+    ? ratio.reason === "sem-ligacoes"
+      ? "Sem ligações registradas no período."
+      : `Sem ${unit} registrada no período — dados inconclusivos.`
+    : `${ratio.calls} ligações · ${ratio.results} ${ratio.results === 1 ? unit : unit + "s"}${
+        ratio.reason === "amostra-baixa" ? " · amostra baixa" : ""
+      }`;
+
+  return (
+    <Card className={inconclusive ? "border-dashed" : "border-accent/30"}>
+      <CardContent className="pt-4 pb-3">
+        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+          <Icon className="h-3.5 w-3.5" /> {label}
+        </div>
+        {inconclusive ? (
+          <p className="text-lg font-semibold text-muted-foreground/70">—</p>
+        ) : (
+          <p className="text-2xl font-bold text-foreground tabular-nums">
+            {ratio.callsPerResult}
+            <span className="text-xs font-normal text-muted-foreground ml-1">ligações / {unit}</span>
+          </p>
+        )}
+        <p className="text-[10px] text-muted-foreground mt-1">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 function MetricCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: number; sub?: string }) {
   return (
     <Card>
