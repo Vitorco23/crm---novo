@@ -269,9 +269,65 @@ function Checklist({ items }: { items: string[] }) {
   );
 }
 
+function AnaliseExecutiva({ analise }: { analise: NonNullable<Parecer["analise"]> }) {
+  return (
+    <div className="space-y-3">
+      {/* Diagnóstico executivo */}
+      <div className="rounded-md border-l-4 border-l-primary bg-primary/5 p-3">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary mb-1">
+          <BrainCircuit className="h-3.5 w-3.5" /> Diagnóstico executivo
+        </div>
+        <div className="text-[13px] leading-snug">{analise.diagnostico}</div>
+        {analise.tendencia && (
+          <div className="mt-2 flex items-start gap-1.5 text-[12px] text-muted-foreground">
+            <TrendingUp className="h-3.5 w-3.5 mt-[1px] shrink-0" />
+            <span>{analise.tendencia}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {/* Gargalo único */}
+        <SectionCard icon={<AlertTriangle className="h-3.5 w-3.5" />} title="🚧 Principal gargalo" tone="danger">
+          <div className="text-[13px] font-semibold leading-snug">
+            {analise.gargalo.titulo || "Sem gargalo identificado."}
+          </div>
+          {analise.gargalo.evidencia && (
+            <div className="text-[12px] text-muted-foreground mt-1 leading-snug">
+              {analise.gargalo.evidencia}
+            </div>
+          )}
+        </SectionCard>
+
+        {/* Impacto financeiro */}
+        <SectionCard icon={<Target className="h-3.5 w-3.5" />} title="💰 Impacto financeiro">
+          <div className="text-[13px] leading-snug">
+            {analise.impactoFinanceiro || "Sem dados suficientes."}
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Decisão do dia */}
+      <div className="rounded-md border-l-4 border-l-accent bg-accent/10 p-3">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent-foreground/80 mb-1">
+          <Lightbulb className="h-3.5 w-3.5" /> Decisão do dia
+        </div>
+        <div className="text-[13px] leading-snug font-medium">{analise.decisaoDoDia}</div>
+      </div>
+
+      {/* Plano de ataque */}
+      <SectionCard icon={<CheckSquare className="h-3.5 w-3.5" />} title="⚔ Plano de ataque" tone="accent">
+        <Checklist items={analise.planoDeAtaque} />
+      </SectionCard>
+    </div>
+  );
+}
+
 function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boolean }) {
   const painel = parecer.painel;
+  const analise = parecer.analise;
   const meta = parecer.metaHoje;
+
 
   return (
     <div className="space-y-3">
