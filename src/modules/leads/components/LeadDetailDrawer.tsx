@@ -187,6 +187,8 @@ export default function LeadDetailDrawer({
   const [aiReadResults, setAiReadResults] = useState<Record<string, string>>({});
   const [autoNewInteraction, setAutoNewInteraction] = useState(false);
   const [autoRunDiagnosis, setAutoRunDiagnosis] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const attachFilesRef = useRef<((files: File[], autoAnalyze?: boolean) => Promise<void>) | null>(null);
 
 
   useEffect(() => {
