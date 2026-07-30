@@ -133,6 +133,10 @@ export async function refreshLeadIntelligence(
   const snapBefore = snapshotIntelligence(before);
   const hadDiagnosis = Boolean(before.autoDiagnosis);
 
+  // Lê os anexos pendentes (prints, PDFs, docs) só agora — sob demanda, para
+  // que o diagnóstico a seguir já considere o conteúdo das imagens.
+  try { await analyzePendingAttachments(leadId); } catch { /* não bloqueia */ }
+
   const diagnosis = await runAutoDiagnosis(leadId);
   if (!diagnosis) {
     return { ok: false, changed: false, changes: [], error: "Não foi possível gerar a inteligência do lead." };
