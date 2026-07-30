@@ -11,7 +11,8 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-matteline-signature",
+    "authorization, x-client-info, apikey, content-type, x-matteline-signature, x-matteline-secret, x-webhook-secret, x-secret, x-api-key, secret",
+
 };
 
 interface MattelinePayload {
