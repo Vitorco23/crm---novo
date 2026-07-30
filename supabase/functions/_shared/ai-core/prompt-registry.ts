@@ -168,8 +168,9 @@ const REGISTRY: Record<PromptId, PromptDefinition> = {
   },
   "diretor.painel.executivo": {
     id: "diretor.painel.executivo",
-    version: 1,
-    purpose: "Painel executivo diário em JSON estrito a partir do snapshot.",
+    version: 2,
+    purpose: "Parecer executivo diário (diagnóstico, gargalo único, decisão e plano) em JSON estrito.",
+
     system: DIRETOR_PAINEL_SYSTEM,
     tools: ["memory.retrieve"],
   },
