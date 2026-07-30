@@ -51,6 +51,9 @@ export interface LeadAttachment {
   type: string;
   dataUrl: string;
   createdAt: string;
+  /** Leitura da IA deste anexo (persistida e usada no diagnóstico do lead). */
+  aiAnalysis?: string;
+  aiAnalyzedAt?: string;
 }
 
 export interface CallAuditFollowupStep {
@@ -642,17 +645,34 @@ export function moveLeadsToStageBatch(
   return { autoTransfer, movedCount };
 }
 
-export function addAttachment(leadId: string, attachment: Omit<LeadAttachment, "id" | "createdAt">) {
+export function addAttachment(
+  leadId: string,
+  attachment: Omit<LeadAttachment, "id" | "createdAt">,
+): string | null {
   const leads = getLeads();
   const lead = leads.find((l) => l.id === leadId);
-  if (lead) {
-    lead.attachments.push({
-      ...attachment,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    });
-    saveLeads(leads);
-  }
+  if (!lead) return null;
+  const id = crypto.randomUUID();
+  lead.attachments.push({
+    ...attachment,
+    id,
+    createdAt: new Date().toISOString(),
+  });
+  saveLeads(leads);
+  return id;
+}
+
+/** Guarda a leitura da IA de um anexo (usada também no diagnóstico do lead). */
+export function setAttachmentAnalysis(leadId: string, attachmentId: string, analysis: string) {
+  const leads = getLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) return;
+  lead.attachments = lead.attachments.map((a) =>
+    a.id === attachmentId
+      ? { ...a, aiAnalysis: analysis, aiAnalyzedAt: new Date().toISOString() }
+      : a,
+  );
+  saveLeads(leads);
 }
 
 export function removeAttachment(leadId: string, attachmentId: string) {
@@ -1063,7 +1083,10 @@ export function computeDiagnosisInputHash(lead: Lead): string {
     .map((i) => `${i.id}:${i.date}`)
     .sort();
   const notesLen = (lead.notes || "").length;
-  return `n${parts.length}|${notesLen}|${parts.join(",")}`;
+  // Anexos analisados pela IA também alteram o contexto do diagnóstico.
+  const analyzed = (lead.attachments || []).filter((a) => (a.aiAnalysis || "").trim());
+  const attSig = analyzed.map((a) => `${a.id}:${(a.aiAnalysis || "").length}`).sort().join(",");
+  return `n${parts.length}|${notesLen}|${parts.join(",")}|a${analyzed.length}:${attSig}`;
 }
 
 export function setLeadAutoDiagnosis(leadId: string, diagnosis: AutoDiagnosis) {

@@ -1,6 +1,6 @@
 import {
   type Lead, type ICPStars, type PipelineName, type MeetingSource,
-  addAttachment, removeAttachment, updateLead,
+  addAttachment, removeAttachment, updateLead, setAttachmentAnalysis,
   addCallNote, removeCallNote, getMeetingsForLead,
   getPipelineForStage, getStagesForPipeline, moveLeadToStage,
   updateMeetingSource, updateMeetingDateTime,
@@ -187,6 +187,8 @@ export default function LeadDetailDrawer({
   const [aiReadResults, setAiReadResults] = useState<Record<string, string>>({});
   const [autoNewInteraction, setAutoNewInteraction] = useState(false);
   const [autoRunDiagnosis, setAutoRunDiagnosis] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const attachFilesRef = useRef<((files: File[], autoAnalyze?: boolean) => Promise<void>) | null>(null);
 
 
   useEffect(() => {
@@ -231,7 +233,25 @@ export default function LeadDetailDrawer({
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   ), [lead?.callNotes]);
 
+  // Colar (Ctrl+V) prints direto no modal — sem precisar salvar o arquivo antes.
+  useEffect(() => {
+    if (!open) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const items = Array.from(e.clipboardData?.items || []);
+      const files = items
+        .filter((it) => it.kind === "file" && it.type.startsWith("image/"))
+        .map((it) => it.getAsFile())
+        .filter((f): f is File => !!f);
+      if (!files.length) return;
+      e.preventDefault();
+      void attachFilesRef.current?.(files, true);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [open]);
+
   if (!lead || !draft) return null;
+
   const pipeline = getPipelineForStage(lead.stage);
   const isOnboarding = pipeline === "onboarding";
   const isOportunidades = pipeline === "oportunidades";
@@ -245,18 +265,58 @@ export default function LeadDetailDrawer({
   const TempIcon = tempIcon;
   const tempCls = temp === "Quente" ? "text-orange-500" : temp === "Morno" ? "text-yellow-500" : "text-sky-400";
 
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
+      reader.readAsDataURL(file);
+    });
+
+  /** Anexa 1..n arquivos (upload, colar ou arrastar). Imagens coladas são lidas pela IA. */
+  const attachFiles = async (files: File[], autoAnalyze = false) => {
+    const valid = files.filter((f) => {
+      if (f.size > 10 * 1024 * 1024) {
+        toast.error(`Arquivo muito grande (máx 10MB): ${f.name || "print"}`);
+        return false;
+      }
+      return true;
+    });
+    if (!valid.length) return;
+
+    const created: { id: string; name: string; type: string; dataUrl: string }[] = [];
+    for (const file of valid) {
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+        const name = file.name || `print-${stamp}.png`;
+        const id = addAttachment(lead.id, { name, type: file.type || "image/png", dataUrl });
+        if (id) created.push({ id, name, type: file.type || "image/png", dataUrl });
+      } catch {
+        toast.error("Não foi possível anexar o arquivo");
+      }
+    }
+    if (!created.length) return;
+    onRefresh();
+    toast.success(created.length > 1 ? `${created.length} arquivos anexados!` : "Arquivo anexado!");
+    setTab("anexos");
+
+    if (autoAnalyze) {
+      for (const att of created) {
+        if (att.type.startsWith("audio/")) continue;
+        await handleReadAttachmentWithAI(att);
+      }
+    }
+  };
+  attachFilesRef.current = attachFiles;
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 10MB)"); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      addAttachment(lead.id, { name: file.name, type: file.type, dataUrl: reader.result as string });
-      onRefresh(); toast.success("Arquivo anexado!");
-    };
-    reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    void attachFiles(files);
     e.target.value = "";
   };
+
 
   const handleReadAttachmentWithAI = async (att: { id: string; name: string; type: string; dataUrl: string }) => {
     if (att.type.startsWith("audio/")) {
@@ -275,7 +335,11 @@ export default function LeadDetailDrawer({
       const data = await IntelligenceRepository.analyzeAttachment({
         attachment: { name: att.name, type: att.type, dataUrl: att.dataUrl }, leadContext,
       });
-      setAiReadResults((prev) => ({ ...prev, [att.id]: String(data?.content ?? "") }));
+      const content = String(data?.content ?? "");
+      setAiReadResults((prev) => ({ ...prev, [att.id]: content }));
+      // Persiste a leitura para que a IA do card (diagnóstico) também a use.
+      if (content.trim()) setAttachmentAnalysis(lead.id, att.id, content);
+      onRefresh();
       toast.success("Anexo analisado pela IA");
     } catch (e) {
       console.error(e);
@@ -284,6 +348,7 @@ export default function LeadDetailDrawer({
       setAiReadingId(null);
     }
   };
+
 
   const persist = (patch: Partial<Lead>) => {
     const next = { ...draft, ...patch };
@@ -754,7 +819,18 @@ export default function LeadDetailDrawer({
 
 
           {/* ANEXOS */}
-          <TabsContent value="anexos" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
+          <TabsContent
+            value="anexos"
+            className="flex-1 overflow-y-auto px-6 py-4 mt-0"
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const files = Array.from(e.dataTransfer.files || []);
+              if (files.length) void attachFiles(files, files.every((f) => f.type.startsWith("image/")));
+            }}
+          >
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <FileAudio className="h-3 w-3" /> Arquivos ({lead.attachments.length})
@@ -762,8 +838,16 @@ export default function LeadDetailDrawer({
               <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
                 <Paperclip className="h-3 w-3 mr-1" /> Anexar arquivo
               </Button>
-              <input ref={fileRef} type="file" accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
+              <input ref={fileRef} type="file" multiple accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
             </div>
+            <div
+              className={`mb-3 rounded-md border border-dashed px-3 py-2 text-[11px] transition-colors ${
+                dragOver ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground/80"
+              }`}
+            >
+              📋 Cole um print com <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">V</kbd> ou arraste arquivos aqui — imagens são lidas pela IA automaticamente e entram no diagnóstico do lead.
+            </div>
+
             {lead.attachments.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-2">
                 {lead.attachments.map((att) => {
@@ -805,7 +889,7 @@ export default function LeadDetailDrawer({
                             {aiReadingId === att.id ? (
                               <><Loader2 className="h-3 w-3 animate-spin" /> Lendo…</>
                             ) : (
-                              <>👁 Ler com IA</>
+                              <>👁 {att.aiAnalysis ? "Reler com IA" : "Ler com IA"}</>
                             )}
                           </Button>
                         )}
@@ -815,11 +899,12 @@ export default function LeadDetailDrawer({
                           Áudios não são enviados para IA. A análise comercial usa os resumos da Matteline.
                         </p>
                       )}
-                      {aiReadResults[att.id] && (
+                      {(aiReadResults[att.id] || att.aiAnalysis) && (
                         <div className="mt-2 rounded border border-border/40 bg-background/60 p-2 text-xs prose prose-invert prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-headings:my-1">
-                          <ReactMarkdown>{aiReadResults[att.id]}</ReactMarkdown>
+                          <ReactMarkdown>{aiReadResults[att.id] || att.aiAnalysis || ""}</ReactMarkdown>
                         </div>
                       )}
+
                     </div>
                   );
                 })}

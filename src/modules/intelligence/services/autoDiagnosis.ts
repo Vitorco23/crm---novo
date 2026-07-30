@@ -64,6 +64,19 @@ export async function runAutoDiagnosis(leadId: string): Promise<AutoDiagnosis | 
     summary: i.summary || "",
   }));
 
+  // Leituras de anexos já feitas pela IA (prints de WhatsApp, PDFs, documentos).
+  // Entram como contexto textual — o arquivo bruto nunca é reenviado aqui.
+  const attachmentInsights = (lead.attachments || [])
+    .filter((a) => (a.aiAnalysis || "").trim())
+    .slice(-5)
+    .map((a) => `• ${a.name} (${a.type}):\n${String(a.aiAnalysis).slice(0, 2000)}`)
+    .join("\n\n");
+
+  const notesWithAttachments = [
+    lead.notes || "",
+    attachmentInsights ? `ANEXOS ANALISADOS PELA IA:\n${attachmentInsights}` : "",
+  ].filter(Boolean).join("\n\n");
+
 
   try {
     const { data, error } = await supabase.functions.invoke("auto-diagnose-lead", {
@@ -75,7 +88,8 @@ export async function runAutoDiagnosis(leadId: string): Promise<AutoDiagnosis | 
         stage: lead.stage,
         summary: [summary, meta].filter(Boolean).join("\n\n"),
         transcription: "",
-        notes: lead.notes || "",
+        notes: notesWithAttachments,
+
         recentInteractions,
       },
     });
