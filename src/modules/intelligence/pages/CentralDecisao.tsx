@@ -266,8 +266,8 @@ export default function CentralDecisao() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Central de Decisão</h1>
             <p className="text-sm text-muted-foreground">
-              Onde a operação inteira cabe em uma tela — o que fazer agora, o que
-              está travando o crescimento e onde estão as oportunidades.
+              Centro de comando da operação — o que fazer agora, em que ordem e com quem falar.
+              Indicadores históricos ficam no Dashboard.
             </p>
           </div>
         </div>
@@ -287,7 +287,6 @@ export default function CentralDecisao() {
       <DiretorComercialIACard />
 
       {/* 1. O QUE FAZER AGORA */}
-      {/* 1. O QUE FAZER AGORA */}
       <Section title="O que fazer agora" icon={<Zap className="h-4 w-4" />} accent>
         <PriorityCard />
         <NextActionsList data={data} />
@@ -296,32 +295,14 @@ export default function CentralDecisao() {
       {/* 1.b LEADS PRIORITÁRIOS DO DIA (IA) */}
       <PriorityLeadsBlock />
 
-      {/* 2. PRIORIDADES DA OPERAÇÃO + 3. ALERTAS lado a lado */}
+      {/* 2. PONTOS DE ATENÇÃO (prioridades + alertas unificados) + AGENDA DE HOJE */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <PrioritiesBlock tick={tick} />
-        <AlertsBlock tick={tick} />
-      </div>
-
-      {/* 4. OPORTUNIDADES + 5. O QUE MUDOU */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <OpportunitiesBlock tick={tick} />
-        <ChangesBlock data={data} tick={tick} />
-      </div>
-
-      {/* 6. RESUMO EXECUTIVO */}
-      <ExecutiveSummary data={data} tick={tick} />
-
-      {/* 7. METAS + 9. AGENDA */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <GoalsBlock data={data} tick={tick} />
+        <OperationalAlertsBlock tick={tick} />
         <AgendaBlock tick={tick} />
       </div>
 
-      {/* 8. GARGALO (reusa componente existente) */}
-      <BottleneckCard />
-
-      {/* 10. PIPELINE */}
-      <PipelineBlock data={data} />
+      {/* 3. METAS DO DIA — execução, não análise histórica */}
+      <GoalsBlock data={data} tick={tick} />
     </div>
   );
 }
