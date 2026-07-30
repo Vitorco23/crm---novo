@@ -369,6 +369,85 @@ export function collectSnapshot(): DiretorSnapshot {
     b.meetings += s.meetings || 0;
   });
 
+  // ---- Contexto estratégico (Sprint 2): oportunidades, carteira, follow-ups, agenda, tendências ----
+  const daysSince = (iso: string) =>
+    Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
+
+  const abertas = leads.filter((l) => oppStages.has(l.stage) && !CLOSED.has(l.stage));
+  const oportunidadesAbertas = [...abertas]
+    .sort((a, b) => (b.contractValue || 0) - (a.contractValue || 0))
+    .slice(0, 8)
+    .map((l) => ({
+      empresa: l.company || l.contactName || "—",
+      etapa: l.stage,
+      valor: l.contractValue || 0,
+      temperatura: displayTemperature(l).label,
+      probabilidade: l.autoDiagnosis?.probability ?? null,
+      diasParado: daysSince(l.stageChangedAt),
+    }));
+
+  const carteiraAtivos = leads.filter((l) => !CLOSED.has(l.stage));
+  const tempOf = (l: (typeof carteiraAtivos)[number]) => displayTemperature(l).key;
+  const carteira = {
+    quentes: carteiraAtivos.filter((l) => tempOf(l) === "quente").length,
+    mornos: carteiraAtivos.filter((l) => tempOf(l) === "morno").length,
+    frios: carteiraAtivos.filter((l) => tempOf(l) === "frio").length,
+    valorQuentes: abertas
+      .filter((l) => tempOf(l) === "quente")
+      .reduce((a, l) => a + (l.contractValue || 0), 0),
+  };
+
+  const tasks = getTasks();
+  const atrasadas = tasks.filter(
+    (t) => t.status === "pendente" && new Date(t.dueAt).getTime() < startOfLocalDay(now).getTime(),
+  );
+  const followupsAtrasados = {
+    total: atrasadas.length,
+    exemplos: atrasadas
+      .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
+      .slice(0, 5)
+      .map((t) => ({
+        empresa: (t.leadId && leadById.get(t.leadId)?.company) || "—",
+        diasAtraso: daysSince(t.dueAt),
+        tarefa: (t.title || "").slice(0, 80),
+      })),
+  };
+
+  const agendaHoje = {
+    reunioes: getMeetings().filter((m) => m.date === todayKey()).length,
+    tarefasPendentes: tasks.filter(
+      (t) =>
+        t.status === "pendente" &&
+        new Date(t.dueAt).getTime() >= startOfLocalDay(now).getTime() &&
+        new Date(t.dueAt).getTime() <= endOfLocalDay(now).getTime(),
+    ).length,
+  };
+
+  // Tendência determinística: últimos 7 dias vs. 7 dias anteriores.
+  const p7End = endOfLocalDay(now);
+  const p7Start = startOfLocalDay(new Date(now.getTime() - 6 * 86400000));
+  const prev7End = endOfLocalDay(new Date(now.getTime() - 7 * 86400000));
+  const prev7Start = startOfLocalDay(new Date(now.getTime() - 13 * 86400000));
+  const cur = aggregatePeriod(p7Start, p7End);
+  const prev = aggregatePeriod(prev7Start, prev7End);
+  const varPct = (a: number, b: number): number | null =>
+    b > 0 ? Math.round(((a - b) / b) * 1000) / 10 : a > 0 ? null : 0;
+  const rate = (m: number, c: number): number | null =>
+    c > 0 ? Math.round((m / c) * 1000) / 10 : null;
+
+  const tendencias = {
+    janela: "últimos 7 dias vs. 7 dias anteriores",
+    ligacoes: { atual: cur.calls, anterior: prev.calls, variacaoPct: varPct(cur.calls, prev.calls) },
+    conexoes: { atual: cur.connections, anterior: prev.connections, variacaoPct: varPct(cur.connections, prev.connections) },
+    reunioes: { atual: cur.meetingsScheduled, anterior: prev.meetingsScheduled, variacaoPct: varPct(cur.meetingsScheduled, prev.meetingsScheduled) },
+    vendas: { atual: cur.wins, anterior: prev.wins, variacaoPct: varPct(cur.wins, prev.wins) },
+    taxaLigacaoReuniaoPct: {
+      atual: rate(cur.meetingsScheduled, cur.calls),
+      anterior: rate(prev.meetingsScheduled, prev.calls),
+    },
+  };
+
+
   return {
     today: todayKey(),
     yesterday: yesterdayKey(),
