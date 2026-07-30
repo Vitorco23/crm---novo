@@ -65,7 +65,9 @@ export interface Parecer {
   generatedAt: string; // ISO
   model: string;
   content?: string;    // markdown (formato legado)
-  painel?: PainelExecutivo;   // novo formato executivo
+  painel?: PainelExecutivo;   // painel legado / compatibilidade
+  analise?: AnaliseDiretor;   // parecer executivo (Sprint 2)
+
   metaHoje?: MetaHojeProgresso;
   nextBestAction?: import("@/modules/intelligence/services/nextBestAction").NextBestAction; // NBA do dia (global)
 }
