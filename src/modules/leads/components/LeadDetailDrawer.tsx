@@ -244,7 +244,7 @@ export default function LeadDetailDrawer({
         .filter((f): f is File => !!f);
       if (!files.length) return;
       e.preventDefault();
-      void attachFilesRef.current?.(files, true);
+      void attachFilesRef.current?.(files);
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
@@ -273,7 +273,8 @@ export default function LeadDetailDrawer({
       reader.readAsDataURL(file);
     });
 
-  /** Anexa 1..n arquivos (upload, colar ou arrastar). Imagens coladas são lidas pela IA. */
+  /** Anexa 1..n arquivos (upload, colar ou arrastar). NÃO consome IA — a leitura
+   *  acontece apenas quando o usuário aciona "Atualizar Inteligência" ou "Ler com IA". */
   const attachFiles = async (files: File[], autoAnalyze = false) => {
     const valid = files.filter((f) => {
       if (f.size > 10 * 1024 * 1024) {
@@ -301,12 +302,7 @@ export default function LeadDetailDrawer({
     toast.success(created.length > 1 ? `${created.length} arquivos anexados!` : "Arquivo anexado!");
     setTab("anexos");
 
-    if (autoAnalyze) {
-      for (const att of created) {
-        if (att.type.startsWith("audio/")) continue;
-        await handleReadAttachmentWithAI(att);
-      }
-    }
+    void autoAnalyze; // leitura por IA é sempre manual/sob demanda (economia de tokens)
   };
   attachFilesRef.current = attachFiles;
 
