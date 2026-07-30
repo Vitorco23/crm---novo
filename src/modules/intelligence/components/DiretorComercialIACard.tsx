@@ -430,6 +430,9 @@ function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boole
 
       {analise && <AnaliseExecutiva analise={analise} />}
 
+      <MemoriaEstrategicaPanel />
+
+
       {painel && (
 
         <div className="grid gap-3 md:grid-cols-2">
