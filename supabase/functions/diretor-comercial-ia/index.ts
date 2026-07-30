@@ -58,12 +58,21 @@ Deno.serve(async (req) => {
     });
 
     const snapshotSafe = sanitizeExternal(JSON.stringify(snapshot), 40000);
+    const previousRaw = typeof body?.previousAnalysis === "string" ? body.previousAnalysis : "";
+    const previousBlock = previousRaw
+      ? wrapUntrusted(sanitizeExternal(previousRaw, 2000), {
+          maxChars: 2000,
+          label: "ANÁLISE DO DIA ANTERIOR (não repita o mesmo texto; mostre evolução)",
+        }) + "\n\n"
+      : "";
     const userPrompt =
       `Data de referência: ${snapshot.today ?? new Date().toISOString().slice(0, 10)}\n\n` +
       buildBusinessCalendarBlock() + "\n\n" +
       (memoryBlock ? memoryBlock + "\n\n" : "") +
+      previousBlock +
       wrapUntrusted(snapshotSafe, { maxChars: 40000, label: "SNAPSHOT DA OPERAÇÃO (JSON)" }) +
-      `\n\nGere o painel executivo no formato JSON descrito.`;
+      `\n\nGere o parecer executivo no formato JSON descrito.`;
+
 
     let result;
     try {
