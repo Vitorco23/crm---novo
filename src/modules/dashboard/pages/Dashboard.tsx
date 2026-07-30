@@ -23,6 +23,7 @@ import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/modules/pipeline/services/exportBuilders";
 import { resolvePeriod } from "@/modules/pipeline/services/exportEngine";
+import { computeEfficiencyRatio, countOutcomes, type EfficiencyRatio } from "@/modules/dashboard/services/efficiency";
 import { cn } from "@/shared/utils/utils";
 
 type Filter = "day" | "week" | "month" | "custom";
@@ -205,6 +206,16 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
     return enriched.sort((a, b) => b.totalActivity - a.totalActivity)[0];
   }, [filteredSessions, movements]);
 
+  // KPIs de eficiência — quantas ligações por reunião / por venda no período
+  const filteredMovements = useMemo(
+    () => movements.filter((m) => filterByDate(m.timestamp, filter, custom)),
+    [movements, filter, custom]
+  );
+  const outcomes = useMemo(() => countOutcomes(filteredMovements), [filteredMovements]);
+  const meetingsForRatio = Math.max(outcomes.meetings, sessionMeetings, callMeetings);
+  const callsPerMeeting = computeEfficiencyRatio(sessionCalls, meetingsForRatio);
+  const callsPerSale = computeEfficiencyRatio(sessionCalls, outcomes.sales);
+
   return (
     <div className="space-y-4">
       {/* Métricas do período */}
@@ -214,6 +225,23 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
         <MetricCard icon={UserCheck} label="Decisores" value={sessionDecisionMakers} sub={rateConnDM != null ? `${rateConnDM}% das conexões` : undefined} />
         <MetricCard icon={CalendarCheck} label="Reuniões" value={sessionMeetings} sub={rateDMMeet != null ? `${rateDMMeet}% dos decisores` : undefined} />
       </div>
+
+      {/* Custo em ligações (eficiência) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <EfficiencyCard
+          icon={CalendarCheck}
+          label="Ligações por reunião"
+          ratio={callsPerMeeting}
+          unit="reunião"
+        />
+        <EfficiencyCard
+          icon={Handshake}
+          label="Ligações por venda"
+          ratio={callsPerSale}
+          unit="venda"
+        />
+      </div>
+
 
       {/* Funil de Outreach do período */}
       <Card>
@@ -312,6 +340,39 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
     </div>
   );
 }
+
+function EfficiencyCard({
+  icon: Icon, label, ratio, unit,
+}: { icon: any; label: string; ratio: EfficiencyRatio; unit: string }) {
+  const inconclusive = ratio.callsPerResult == null;
+  const hint = inconclusive
+    ? ratio.reason === "sem-ligacoes"
+      ? "Sem ligações registradas no período."
+      : `Sem ${unit} registrada no período — dados inconclusivos.`
+    : `${ratio.calls} ligações · ${ratio.results} ${ratio.results === 1 ? unit : unit + "s"}${
+        ratio.reason === "amostra-baixa" ? " · amostra baixa" : ""
+      }`;
+
+  return (
+    <Card className={inconclusive ? "border-dashed" : "border-accent/30"}>
+      <CardContent className="pt-4 pb-3">
+        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+          <Icon className="h-3.5 w-3.5" /> {label}
+        </div>
+        {inconclusive ? (
+          <p className="text-lg font-semibold text-muted-foreground/70">—</p>
+        ) : (
+          <p className="text-2xl font-bold text-foreground tabular-nums">
+            {ratio.callsPerResult}
+            <span className="text-xs font-normal text-muted-foreground ml-1">ligações / {unit}</span>
+          </p>
+        )}
+        <p className="text-[10px] text-muted-foreground mt-1">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function MetricCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: number; sub?: string }) {
   return (
