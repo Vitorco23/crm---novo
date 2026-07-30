@@ -23,6 +23,7 @@ import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/modules/pipeline/services/exportBuilders";
 import { resolvePeriod } from "@/modules/pipeline/services/exportEngine";
+import { computeEfficiencyRatio, countOutcomes, type EfficiencyRatio } from "@/modules/dashboard/services/efficiency";
 import { cn } from "@/shared/utils/utils";
 
 type Filter = "day" | "week" | "month" | "custom";
