@@ -514,10 +514,31 @@ export function collectSnapshot(): DiretorSnapshot {
 // GERAÇÃO
 // ============================================================
 
+/** Resumo textual da última análise — usado para evitar repetição diária. */
+function lastAnalysisDigest(): string {
+  const prev = getHistory().find((p) => p.date !== todayKey() && (p.analise || p.painel));
+  if (!prev) return "";
+  const a = prev.analise;
+  if (a) {
+    return [
+      `Data: ${prev.date}`,
+      `Diagnóstico: ${a.diagnostico}`,
+      `Gargalo: ${a.gargalo?.titulo ?? ""}`,
+      `Decisão: ${a.decisaoDoDia}`,
+      `Plano: ${(a.planoDeAtaque || []).join(" | ")}`,
+    ].join("\n");
+  }
+  return [
+    `Data: ${prev.date}`,
+    `Prioridades: ${(prev.painel?.prioridades || []).join(" | ")}`,
+    `Dica: ${prev.painel?.dica ?? ""}`,
+  ].join("\n");
+}
+
 export async function generateParecer(): Promise<Parecer> {
   const snapshot = collectSnapshot();
   const { data, error } = await supabase.functions.invoke("diretor-comercial-ia", {
-    body: { snapshot },
+    body: { snapshot, previousAnalysis: lastAnalysisDigest() },
   });
 
   if (error) {
@@ -530,10 +551,26 @@ export async function generateParecer(): Promise<Parecer> {
   }
 
   const painel = (data as any)?.painel as PainelExecutivo | undefined;
+  const analiseRaw = (data as any)?.analise as AnaliseDiretor | undefined;
   const model = (data as any)?.model || "openai/gpt-5.4-nano";
   if (!painel || typeof painel !== "object") {
     throw new Error("Resposta inválida da IA");
   }
+
+  const analise: AnaliseDiretor | undefined =
+    analiseRaw && (analiseRaw.diagnostico || analiseRaw.decisaoDoDia)
+      ? {
+          diagnostico: analiseRaw.diagnostico || "",
+          gargalo: {
+            titulo: analiseRaw.gargalo?.titulo || "",
+            evidencia: analiseRaw.gargalo?.evidencia || "",
+          },
+          impactoFinanceiro: analiseRaw.impactoFinanceiro || "",
+          decisaoDoDia: analiseRaw.decisaoDoDia || "",
+          planoDeAtaque: (analiseRaw.planoDeAtaque || []).slice(0, 3),
+          tendencia: analiseRaw.tendencia || "",
+        }
+      : undefined;
 
   const dg = snapshot.metas.dailyGoals as any;
   const hoje = snapshot.hojeAteAgora as any;
@@ -549,9 +586,11 @@ export async function generateParecer(): Promise<Parecer> {
     generatedAt: new Date().toISOString(),
     model,
     painel,
+    analise,
     metaHoje,
     nextBestAction: (data as any)?.nextBestAction ?? undefined,
   };
+
   saveParecer(parecer);
   try { window.dispatchEvent(new Event("p21:diretor-ia-updated")); } catch { /* noop */ }
   return parecer;
