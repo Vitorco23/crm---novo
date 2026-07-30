@@ -24,6 +24,10 @@ import {
 } from "@/modules/cold-call/services/bottleneckEngine";
 import { getTasks } from "@/modules/leads/services/leadTasks";
 import { displayTemperature } from "@/modules/intelligence/services/leadInsights";
+import {
+  buildStrategicMemory, buildDecisionMemoryDigest,
+  type MemoriaEstrategica,
+} from "@/modules/intelligence/services/strategicMemory";
 
 
 // ---- Persistência ----
@@ -247,6 +251,11 @@ export interface DiretorSnapshot {
     vendas: { atual: number; anterior: number; variacaoPct: number | null };
     taxaLigacaoReuniaoPct: { atual: number | null; anterior: number | null };
   };
+  /**
+   * Memória Estratégica (Sprint 3): comparativos históricos determinísticos,
+   * padrões comportamentais, nichos/scripts e memória das decisões anteriores.
+   */
+  memoriaEstrategica: MemoriaEstrategica;
 }
 
 
@@ -506,6 +515,7 @@ export function collectSnapshot(): DiretorSnapshot {
     followupsAtrasados,
     agendaHoje,
     tendencias,
+    memoriaEstrategica: buildStrategicMemory(),
   };
 
 }
@@ -537,8 +547,13 @@ function lastAnalysisDigest(): string {
 
 export async function generateParecer(): Promise<Parecer> {
   const snapshot = collectSnapshot();
+  const memoriaDigest = buildDecisionMemoryDigest(snapshot.memoriaEstrategica);
+  const previousAnalysis = [lastAnalysisDigest(), memoriaDigest]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 2000);
   const { data, error } = await supabase.functions.invoke("diretor-comercial-ia", {
-    body: { snapshot, previousAnalysis: lastAnalysisDigest() },
+    body: { snapshot, previousAnalysis },
   });
 
   if (error) {

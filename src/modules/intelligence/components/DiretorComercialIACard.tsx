@@ -15,6 +15,7 @@ import {
   todayKey, type Parecer,
 } from "@/modules/intelligence/services/diretorIA";
 import NextBestActionCard from "@/modules/intelligence/components/NextBestActionCard";
+import { buildStrategicMemory } from "@/modules/intelligence/services/strategicMemory";
 
 function formatDatePt(dateStr: string): string {
   try {
@@ -323,6 +324,79 @@ function AnaliseExecutiva({ analise }: { analise: NonNullable<Parecer["analise"]
   );
 }
 
+/**
+ * Memória Estratégica (Sprint 3) — evolução determinística da operação
+ * e acompanhamento das decisões anteriores do Diretor. Sem inferência de IA.
+ */
+function MemoriaEstrategicaPanel() {
+  const mem = useMemo(() => {
+    try { return buildStrategicMemory(); } catch { return null; }
+  }, []);
+  if (!mem) return null;
+
+  const semDados = !mem.amostra.suficienteParaTendencia;
+  const dec = mem.decisoesAnteriores[0];
+  const vereditoLabel: Record<string, string> = {
+    melhorou: "melhorou", piorou: "piorou", estavel: "sem mudança relevante",
+    sem_dados: "sem dados suficientes para avaliar",
+  };
+
+  return (
+    <SectionCard icon={<TrendingUp className="h-3.5 w-3.5" />} title="🧭 Memória Estratégica">
+      {semDados ? (
+        <div className="text-[13px] text-muted-foreground">
+          Ainda não há dados suficientes para concluir tendências
+          ({mem.amostra.diasComDados} dias com atividade, {mem.amostra.totalLigacoes30d} ligações em 30 dias).
+        </div>
+      ) : (
+        <div className="space-y-2 text-[13px]">
+          <div className="text-xs text-muted-foreground">{mem.semanaVsAnterior.janela}</div>
+          {mem.melhorou.length > 0 && (
+            <div>
+              <span className="font-medium text-emerald-500">Melhorou: </span>
+              {mem.melhorou.slice(0, 3).join(" · ")}
+            </div>
+          )}
+          {mem.piorou.length > 0 && (
+            <div>
+              <span className="font-medium text-destructive">Piorou: </span>
+              {mem.piorou.slice(0, 3).join(" · ")}
+            </div>
+          )}
+          {mem.estavel.length > 0 && (
+            <div className="text-muted-foreground">
+              Estável: {mem.estavel.slice(0, 2).join(" · ")}
+            </div>
+          )}
+          {mem.produtividade.suficiente && mem.produtividade.melhorFaixaHoraria && (
+            <div className="text-muted-foreground">
+              Melhor janela de produção: {mem.produtividade.melhorFaixaHoraria.faixa}
+              {mem.produtividade.melhorDiaSemana ? ` · melhor dia: ${mem.produtividade.melhorDiaSemana.dia}` : ""}
+            </div>
+          )}
+          {mem.financeiro.custoOperacionalPorReuniao !== null && (
+            <div className="text-muted-foreground">
+              Custo operacional: {mem.financeiro.custoOperacionalPorReuniao} ligações por reunião
+              {mem.financeiro.custoOperacionalPorVenda !== null
+                ? ` · ${mem.financeiro.custoOperacionalPorVenda} por venda`
+                : ""}
+            </div>
+          )}
+          {dec && (
+            <div className="pt-1 border-t text-muted-foreground">
+              Decisão de {formatDatePt(dec.data)}: “{dec.decisao}” —{" "}
+              {vereditoLabel[dec.resultado.veredito]}.
+            </div>
+          )}
+          {mem.padroesPersistentes.map((p, i) => (
+            <div key={i} className="text-amber-500">{p}</div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boolean }) {
   const painel = parecer.painel;
   const analise = parecer.analise;
@@ -355,6 +429,9 @@ function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boole
 
 
       {analise && <AnaliseExecutiva analise={analise} />}
+
+      <MemoriaEstrategicaPanel />
+
 
       {painel && (
 
