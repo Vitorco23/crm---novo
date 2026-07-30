@@ -378,7 +378,7 @@ export function collectSnapshot(): DiretorSnapshot {
     .sort((a, b) => (b.contractValue || 0) - (a.contractValue || 0))
     .slice(0, 8)
     .map((l) => ({
-      empresa: l.company || l.contactName || "—",
+      empresa: l.company || l.name || "—",
       etapa: l.stage,
       valor: l.contractValue || 0,
       temperatura: displayTemperature(l).label,
