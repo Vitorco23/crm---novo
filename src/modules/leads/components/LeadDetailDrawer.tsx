@@ -819,7 +819,18 @@ export default function LeadDetailDrawer({
 
 
           {/* ANEXOS */}
-          <TabsContent value="anexos" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
+          <TabsContent
+            value="anexos"
+            className="flex-1 overflow-y-auto px-6 py-4 mt-0"
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const files = Array.from(e.dataTransfer.files || []);
+              if (files.length) void attachFiles(files, files.every((f) => f.type.startsWith("image/")));
+            }}
+          >
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <FileAudio className="h-3 w-3" /> Arquivos ({lead.attachments.length})
@@ -827,8 +838,16 @@ export default function LeadDetailDrawer({
               <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
                 <Paperclip className="h-3 w-3 mr-1" /> Anexar arquivo
               </Button>
-              <input ref={fileRef} type="file" accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
+              <input ref={fileRef} type="file" multiple accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
             </div>
+            <div
+              className={`mb-3 rounded-md border border-dashed px-3 py-2 text-[11px] transition-colors ${
+                dragOver ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground/80"
+              }`}
+            >
+              📋 Cole um print com <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">V</kbd> ou arraste arquivos aqui — imagens são lidas pela IA automaticamente e entram no diagnóstico do lead.
+            </div>
+
             {lead.attachments.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-2">
                 {lead.attachments.map((att) => {
