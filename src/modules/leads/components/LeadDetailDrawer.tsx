@@ -248,13 +248,7 @@ export default function LeadDetailDrawer({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast.error("Arquivo muito grande (máx 10MB)"); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      addAttachment(lead.id, { name: file.name, type: file.type, dataUrl: reader.result as string });
-      onRefresh(); toast.success("Arquivo anexado!");
-    };
-    reader.readAsDataURL(file);
+    void attachFiles([file]);
     e.target.value = "";
   };
 
@@ -275,7 +269,11 @@ export default function LeadDetailDrawer({
       const data = await IntelligenceRepository.analyzeAttachment({
         attachment: { name: att.name, type: att.type, dataUrl: att.dataUrl }, leadContext,
       });
-      setAiReadResults((prev) => ({ ...prev, [att.id]: String(data?.content ?? "") }));
+      const content = String(data?.content ?? "");
+      setAiReadResults((prev) => ({ ...prev, [att.id]: content }));
+      // Persiste a leitura para que a IA do card (diagnóstico) também a use.
+      if (content.trim()) setAttachmentAnalysis(lead.id, att.id, content);
+      onRefresh();
       toast.success("Anexo analisado pela IA");
     } catch (e) {
       console.error(e);
@@ -284,6 +282,7 @@ export default function LeadDetailDrawer({
       setAiReadingId(null);
     }
   };
+
 
   const persist = (patch: Partial<Lead>) => {
     const next = { ...draft, ...patch };
