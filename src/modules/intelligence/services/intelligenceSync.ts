@@ -14,7 +14,7 @@ import {
   type DiagnosisVersion,
   type Lead,
 } from "@/shared/services/store";
-import { runAutoDiagnosis } from "./autoDiagnosis";
+import { runAutoDiagnosis, analyzePendingAttachments } from "./autoDiagnosis";
 import { executiveSummary } from "./leadInsights";
 import { computeLeadPriority } from "./priorityEngine";
 import { extractMemoryFromLead } from "./commercialMemory";
