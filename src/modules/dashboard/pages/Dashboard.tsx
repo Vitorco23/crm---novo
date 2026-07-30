@@ -14,10 +14,9 @@ import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign,
   Handshake, Trophy as TrophyIcon, Send, Instagram, Mail, Activity, Layers, Crown,
-  Calendar as CalendarIcon,
+  Calendar as CalendarIcon, Sparkles,
 } from "lucide-react";
-import MissionOfTheDayCard from "@/modules/intelligence/components/MissionOfTheDayCard";
-import DiretorComercialIACard from "@/modules/intelligence/components/DiretorComercialIACard";
+import StrategicIntelligencePanel, { type PeriodKey } from "@/modules/dashboard/components/StrategicIntelligencePanel";
 
 import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
@@ -54,10 +53,18 @@ export default function Dashboard() {
     ? { start: new Date(customStart.setHours(0, 0, 0, 0)), end: new Date(customEnd.setHours(23, 59, 59, 999)) }
     : undefined;
 
+  const strategicPeriod: PeriodKey =
+    filter === "day" ? "today" : filter === "week" ? "last7" : "thisMonth";
+
   return (
     <div className="p-4 max-w-6xl mx-auto space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-[11px] text-muted-foreground">
+            Sala de inteligência comercial — como está a operação. Para executar, use a Central de Decisão.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 bg-muted rounded-lg p-0.5">
             {(["day", "week", "month", "custom"] as Filter[]).map((f) => (
@@ -110,10 +117,6 @@ export default function Dashboard() {
       </div>
 
 
-      <MissionOfTheDayCard />
-
-      <DiretorComercialIACard />
-
 
       {/* ============ PAINEL 1: OPERACIONAL (período) ============ */}
       <section className="space-y-4">
@@ -140,10 +143,21 @@ export default function Dashboard() {
         <PipelinePanel />
       </section>
 
-      {/* ============ FINANCEIRO + AGENDA (mantidos) ============ */}
+      {/* ============ PAINEL 3: INTELIGÊNCIA ESTRATÉGICA ============ */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 border-l-2 border-accent pl-3">
+          <Sparkles className="h-4 w-4 text-accent" />
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Inteligência Estratégica</h2>
+            <p className="text-[11px] text-muted-foreground">Resumo executivo, oportunidades, variações vs. período anterior e leitura analítica do pipeline.</p>
+          </div>
+        </div>
+        <StrategicIntelligencePanel period={strategicPeriod} />
+      </section>
+
+      {/* ============ FINANCEIRO ============ */}
       <section className="space-y-4">
         <FinancialHealthRow />
-        <UpcomingMeetingsBlock />
       </section>
     </div>
   );
@@ -683,104 +697,6 @@ function FinancialHealthRow() {
         <p className="text-[10px] text-accent mt-1 tabular-nums">{formatBRL(data.wonAmount)}</p>
       </CardContent></Card>
     </div>
-  );
-}
-
-function UpcomingMeetingsBlock() {
-  const { today, upcoming } = useMemo(() => {
-    const all = getMeetings();
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const in7 = new Date(now);
-    in7.setDate(in7.getDate() + 7);
-
-    const sortFn = (a: { date: string; time: string }, b: { date: string; time: string }) =>
-      (a.date + a.time).localeCompare(b.date + b.time);
-
-    const today = all.filter((m) => m.date === todayStr).sort(sortFn);
-
-    const upcomingFlat = all
-      .filter((m) => {
-        if (m.date <= todayStr) return false;
-        const d = new Date(m.date + "T00:00:00");
-        return d <= in7;
-      })
-      .sort(sortFn);
-
-    const grouped: Record<string, typeof upcomingFlat> = {};
-    upcomingFlat.forEach((m) => {
-      (grouped[m.date] ??= []).push(m);
-    });
-
-    return { today, upcoming: grouped };
-  }, []);
-
-  const formatDay = (dateStr: string) =>
-    format(new Date(dateStr + "T00:00:00"), "EEE, dd 'de' MMM", { locale: ptBR });
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <CalendarCheck className="h-4 w-4 text-accent" /> Próximas Reuniões
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Hoje</p>
-          {today.length === 0 ? (
-            <p className="text-xs text-muted-foreground/70 italic">
-              Nenhuma reunião hoje — foco em prospecção
-            </p>
-          ) : (
-            <div className="space-y-1.5">
-              {today.map((m) => {
-                const link = m.meetLink || m.link || m.googleEventUrl;
-                return (
-                  <div key={m.id} className="flex items-center gap-3 rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
-                    <span className="text-sm font-semibold text-accent tabular-nums w-12">{m.time}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{m.company}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {m.contactName || "—"}
-                        {m.channel ? ` · ${m.channel}` : ""}
-                      </p>
-                    </div>
-                    {link && (
-                      <a href={link} target="_blank" rel="noopener noreferrer"
-                        className="text-[11px] px-2 py-1 rounded bg-accent text-accent-foreground hover:bg-accent/90 transition-colors">
-                        Entrar
-                      </a>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {Object.keys(upcoming).length > 0 && (
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Próximos 7 dias</p>
-            <div className="space-y-2">
-              {Object.entries(upcoming).map(([date, list]) => (
-                <div key={date}>
-                  <p className="text-[11px] font-medium text-muted-foreground mb-1">{formatDay(date)}</p>
-                  <div className="space-y-0.5 pl-2 border-l border-border">
-                    {list.map((m) => (
-                      <div key={m.id} className="flex items-center gap-3 text-xs py-0.5">
-                        <span className="text-muted-foreground tabular-nums w-12">{m.time}</span>
-                        <span className="text-foreground truncate">{m.company}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
