@@ -58,12 +58,21 @@ Deno.serve(async (req) => {
     });
 
     const snapshotSafe = sanitizeExternal(JSON.stringify(snapshot), 40000);
+    const previousRaw = typeof body?.previousAnalysis === "string" ? body.previousAnalysis : "";
+    const previousBlock = previousRaw
+      ? wrapUntrusted(sanitizeExternal(previousRaw, 2000), {
+          maxChars: 2000,
+          label: "ANÁLISE DO DIA ANTERIOR (não repita o mesmo texto; mostre evolução)",
+        }) + "\n\n"
+      : "";
     const userPrompt =
       `Data de referência: ${snapshot.today ?? new Date().toISOString().slice(0, 10)}\n\n` +
       buildBusinessCalendarBlock() + "\n\n" +
       (memoryBlock ? memoryBlock + "\n\n" : "") +
+      previousBlock +
       wrapUntrusted(snapshotSafe, { maxChars: 40000, label: "SNAPSHOT DA OPERAÇÃO (JSON)" }) +
-      `\n\nGere o painel executivo no formato JSON descrito.`;
+      `\n\nGere o parecer executivo no formato JSON descrito.`;
+
 
     let result;
     try {
@@ -110,13 +119,33 @@ Deno.serve(async (req) => {
 
     const asArr = (v: any, max: number): string[] =>
       Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean).slice(0, max) : [];
+    const asStr = (v: any, max: number): string =>
+      typeof v === "string" ? v.trim().slice(0, max) : "";
 
+    // Parecer executivo (Sprint 2 — Diretor Comercial estratégico)
+    const analise = {
+      diagnostico: asStr(parsed.diagnostico, 600),
+      gargalo: {
+        titulo: asStr(parsed?.gargalo?.titulo, 90),
+        evidencia: asStr(parsed?.gargalo?.evidencia, 260),
+      },
+      impactoFinanceiro: asStr(parsed.impactoFinanceiro, 360),
+      decisaoDoDia: asStr(parsed.decisaoDoDia, 400),
+      planoDeAtaque: asArr(parsed.planoDeAtaque, 3),
+      tendencia: asStr(parsed.tendencia, 220),
+    };
+
+    // Compatibilidade com o formato anterior do painel.
     const painel = {
       resumoOntem: asArr(parsed.resumoOntem, 6),
-      atencao: asArr(parsed.atencao, 3),
+      atencao: analise.gargalo.titulo
+        ? [analise.gargalo.titulo, analise.gargalo.evidencia].filter(Boolean)
+        : asArr(parsed.atencao, 3),
       oportunidades: asArr(parsed.oportunidades, 4),
-      prioridades: asArr(parsed.prioridades, 6),
-      dica: typeof parsed.dica === "string" ? parsed.dica.slice(0, 320) : "",
+      prioridades: analise.planoDeAtaque.length
+        ? analise.planoDeAtaque
+        : asArr(parsed.prioridades, 6),
+      dica: analise.decisaoDoDia || asStr(parsed.dica, 320),
     };
 
     // Próxima Melhor Ação global (Diretor) — sem leadId
@@ -134,9 +163,11 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         painel,
+        analise,
         nextBestAction: nba,
         model: result.modelUsed,
       }),
+
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

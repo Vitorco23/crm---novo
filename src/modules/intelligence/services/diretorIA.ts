@@ -22,6 +22,9 @@ import {
 import {
   analyzeBottleneck, resolveBottleneckPeriod, previousPeriod, compareBottlenecks,
 } from "@/modules/cold-call/services/bottleneckEngine";
+import { getTasks } from "@/modules/leads/services/leadTasks";
+import { displayTemperature } from "@/modules/intelligence/services/leadInsights";
+
 
 // ---- Persistência ----
 export const LAST_RUN_KEY = "p21_diretor_ia_last_run";
@@ -36,11 +39,25 @@ export interface PainelExecutivo {
   dica: string;
 }
 
+/**
+ * Parecer executivo do Diretor Comercial (Sprint 2).
+ * Diagnóstico → gargalo único → impacto → decisão → plano de ataque.
+ */
+export interface AnaliseDiretor {
+  diagnostico: string;
+  gargalo: { titulo: string; evidencia: string };
+  impactoFinanceiro: string;
+  decisaoDoDia: string;
+  planoDeAtaque: string[];
+  tendencia: string;
+}
+
 export interface MetaHojeProgresso {
   ligacoes: { atual: number; meta: number };
   reunioes: { atual: number; meta: number };
   vendas: { atual: number; meta: number };
 }
+
 
 export interface Parecer {
   id: string;
@@ -48,7 +65,9 @@ export interface Parecer {
   generatedAt: string; // ISO
   model: string;
   content?: string;    // markdown (formato legado)
-  painel?: PainelExecutivo;   // novo formato executivo
+  painel?: PainelExecutivo;   // painel legado / compatibilidade
+  analise?: AnaliseDiretor;   // parecer executivo (Sprint 2)
+
   metaHoje?: MetaHojeProgresso;
   nextBestAction?: import("@/modules/intelligence/services/nextBestAction").NextBestAction; // NBA do dia (global)
 }
@@ -200,7 +219,36 @@ export interface DiretorSnapshot {
   topNichos: Array<{ label: string; calls: number; meetings: number; rate: number }>;
   topCidades: Array<{ label: string; calls: number; meetings: number; rate: number }>;
   topHorarios: Array<{ hora: string; calls: number; meetings: number; rate: number }>;
+  /** Contexto estratégico adicional (Sprint 2) — usado para decisão, não para narração. */
+  oportunidadesAbertas: Array<{
+    empresa: string;
+    etapa: string;
+    valor: number;
+    temperatura: string;
+    probabilidade: number | null;
+    diasParado: number;
+  }>;
+  carteira: {
+    quentes: number;
+    mornos: number;
+    frios: number;
+    valorQuentes: number;
+  };
+  followupsAtrasados: {
+    total: number;
+    exemplos: Array<{ empresa: string; diasAtraso: number; tarefa: string }>;
+  };
+  agendaHoje: { reunioes: number; tarefasPendentes: number };
+  tendencias: {
+    janela: string;
+    ligacoes: { atual: number; anterior: number; variacaoPct: number | null };
+    conexoes: { atual: number; anterior: number; variacaoPct: number | null };
+    reunioes: { atual: number; anterior: number; variacaoPct: number | null };
+    vendas: { atual: number; anterior: number; variacaoPct: number | null };
+    taxaLigacaoReuniaoPct: { atual: number | null; anterior: number | null };
+  };
 }
+
 
 export function collectSnapshot(): DiretorSnapshot {
   const now = new Date();
@@ -321,6 +369,85 @@ export function collectSnapshot(): DiretorSnapshot {
     b.meetings += s.meetings || 0;
   });
 
+  // ---- Contexto estratégico (Sprint 2): oportunidades, carteira, follow-ups, agenda, tendências ----
+  const daysSince = (iso: string) =>
+    Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
+
+  const abertas = leads.filter((l) => oppStages.has(l.stage) && !CLOSED.has(l.stage));
+  const oportunidadesAbertas = [...abertas]
+    .sort((a, b) => (b.contractValue || 0) - (a.contractValue || 0))
+    .slice(0, 8)
+    .map((l) => ({
+      empresa: l.company || "—",
+      etapa: l.stage,
+      valor: l.contractValue || 0,
+      temperatura: displayTemperature(l).label,
+      probabilidade: l.autoDiagnosis?.probability ?? null,
+      diasParado: daysSince(l.stageChangedAt),
+    }));
+
+  const carteiraAtivos = leads.filter((l) => !CLOSED.has(l.stage));
+  const tempOf = (l: (typeof carteiraAtivos)[number]) => displayTemperature(l).key;
+  const carteira = {
+    quentes: carteiraAtivos.filter((l) => tempOf(l) === "quente").length,
+    mornos: carteiraAtivos.filter((l) => tempOf(l) === "morno").length,
+    frios: carteiraAtivos.filter((l) => tempOf(l) === "frio").length,
+    valorQuentes: abertas
+      .filter((l) => tempOf(l) === "quente")
+      .reduce((a, l) => a + (l.contractValue || 0), 0),
+  };
+
+  const tasks = getTasks();
+  const atrasadas = tasks.filter(
+    (t) => t.status === "pendente" && new Date(t.dueAt).getTime() < startOfLocalDay(now).getTime(),
+  );
+  const followupsAtrasados = {
+    total: atrasadas.length,
+    exemplos: atrasadas
+      .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
+      .slice(0, 5)
+      .map((t) => ({
+        empresa: (t.leadId && leadById.get(t.leadId)?.company) || "—",
+        diasAtraso: daysSince(t.dueAt),
+        tarefa: (t.title || "").slice(0, 80),
+      })),
+  };
+
+  const agendaHoje = {
+    reunioes: getMeetings().filter((m) => m.date === todayKey()).length,
+    tarefasPendentes: tasks.filter(
+      (t) =>
+        t.status === "pendente" &&
+        new Date(t.dueAt).getTime() >= startOfLocalDay(now).getTime() &&
+        new Date(t.dueAt).getTime() <= endOfLocalDay(now).getTime(),
+    ).length,
+  };
+
+  // Tendência determinística: últimos 7 dias vs. 7 dias anteriores.
+  const p7End = endOfLocalDay(now);
+  const p7Start = startOfLocalDay(new Date(now.getTime() - 6 * 86400000));
+  const prev7End = endOfLocalDay(new Date(now.getTime() - 7 * 86400000));
+  const prev7Start = startOfLocalDay(new Date(now.getTime() - 13 * 86400000));
+  const cur = aggregatePeriod(p7Start, p7End);
+  const prev = aggregatePeriod(prev7Start, prev7End);
+  const varPct = (a: number, b: number): number | null =>
+    b > 0 ? Math.round(((a - b) / b) * 1000) / 10 : a > 0 ? null : 0;
+  const rate = (m: number, c: number): number | null =>
+    c > 0 ? Math.round((m / c) * 1000) / 10 : null;
+
+  const tendencias = {
+    janela: "últimos 7 dias vs. 7 dias anteriores",
+    ligacoes: { atual: cur.calls, anterior: prev.calls, variacaoPct: varPct(cur.calls, prev.calls) },
+    conexoes: { atual: cur.connections, anterior: prev.connections, variacaoPct: varPct(cur.connections, prev.connections) },
+    reunioes: { atual: cur.meetingsScheduled, anterior: prev.meetingsScheduled, variacaoPct: varPct(cur.meetingsScheduled, prev.meetingsScheduled) },
+    vendas: { atual: cur.wins, anterior: prev.wins, variacaoPct: varPct(cur.wins, prev.wins) },
+    taxaLigacaoReuniaoPct: {
+      atual: rate(cur.meetingsScheduled, cur.calls),
+      anterior: rate(prev.meetingsScheduled, prev.calls),
+    },
+  };
+
+
   return {
     today: todayKey(),
     yesterday: yesterdayKey(),
@@ -374,17 +501,44 @@ export function collectSnapshot(): DiretorSnapshot {
     topHorarios: topByRate(hourBucket, 5).map((r) => ({
       hora: r.label, calls: r.calls, meetings: r.meetings, rate: r.rate,
     })),
+    oportunidadesAbertas,
+    carteira,
+    followupsAtrasados,
+    agendaHoje,
+    tendencias,
   };
+
 }
 
 // ============================================================
 // GERAÇÃO
 // ============================================================
 
+/** Resumo textual da última análise — usado para evitar repetição diária. */
+function lastAnalysisDigest(): string {
+  const prev = getHistory().find((p) => p.date !== todayKey() && (p.analise || p.painel));
+  if (!prev) return "";
+  const a = prev.analise;
+  if (a) {
+    return [
+      `Data: ${prev.date}`,
+      `Diagnóstico: ${a.diagnostico}`,
+      `Gargalo: ${a.gargalo?.titulo ?? ""}`,
+      `Decisão: ${a.decisaoDoDia}`,
+      `Plano: ${(a.planoDeAtaque || []).join(" | ")}`,
+    ].join("\n");
+  }
+  return [
+    `Data: ${prev.date}`,
+    `Prioridades: ${(prev.painel?.prioridades || []).join(" | ")}`,
+    `Dica: ${prev.painel?.dica ?? ""}`,
+  ].join("\n");
+}
+
 export async function generateParecer(): Promise<Parecer> {
   const snapshot = collectSnapshot();
   const { data, error } = await supabase.functions.invoke("diretor-comercial-ia", {
-    body: { snapshot },
+    body: { snapshot, previousAnalysis: lastAnalysisDigest() },
   });
 
   if (error) {
@@ -397,10 +551,26 @@ export async function generateParecer(): Promise<Parecer> {
   }
 
   const painel = (data as any)?.painel as PainelExecutivo | undefined;
+  const analiseRaw = (data as any)?.analise as AnaliseDiretor | undefined;
   const model = (data as any)?.model || "openai/gpt-5.4-nano";
   if (!painel || typeof painel !== "object") {
     throw new Error("Resposta inválida da IA");
   }
+
+  const analise: AnaliseDiretor | undefined =
+    analiseRaw && (analiseRaw.diagnostico || analiseRaw.decisaoDoDia)
+      ? {
+          diagnostico: analiseRaw.diagnostico || "",
+          gargalo: {
+            titulo: analiseRaw.gargalo?.titulo || "",
+            evidencia: analiseRaw.gargalo?.evidencia || "",
+          },
+          impactoFinanceiro: analiseRaw.impactoFinanceiro || "",
+          decisaoDoDia: analiseRaw.decisaoDoDia || "",
+          planoDeAtaque: (analiseRaw.planoDeAtaque || []).slice(0, 3),
+          tendencia: analiseRaw.tendencia || "",
+        }
+      : undefined;
 
   const dg = snapshot.metas.dailyGoals as any;
   const hoje = snapshot.hojeAteAgora as any;
@@ -416,9 +586,11 @@ export async function generateParecer(): Promise<Parecer> {
     generatedAt: new Date().toISOString(),
     model,
     painel,
+    analise,
     metaHoje,
     nextBestAction: (data as any)?.nextBestAction ?? undefined,
   };
+
   saveParecer(parecer);
   try { window.dispatchEvent(new Event("p21:diretor-ia-updated")); } catch { /* noop */ }
   return parecer;
