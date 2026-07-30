@@ -14,6 +14,7 @@ import {
 import { isToday } from "date-fns";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildMetasSheets } from "@/modules/pipeline/services/exportBuilders";
+import RealConversionPanel from "@/modules/metas/components/RealConversionPanel";
 
 const fmtNum = (n: number) => new Intl.NumberFormat("pt-BR").format(Math.ceil(n));
 const fmtMoney = (n: number) =>
@@ -166,12 +167,29 @@ export default function Metas() {
 
         {/* RIGHT: Outputs */}
         <div className="space-y-4">
+          {/* Real conversion rates from CRM data */}
+          <RealConversionPanel
+            estimates={{
+              callToConnection: g.callToConnection,
+              connectionToDecisionMaker: g.connectionToDecisionMaker,
+              decisionMakerToMeetingScheduled: g.decisionMakerToMeetingScheduled,
+              meetingScheduledToHeld: g.meetingScheduledToHeld,
+              meetingHeldToClose: g.meetingHeldToClose,
+            }}
+            onApplyReal={(rates) => {
+              const next = { ...g, ...rates } as GoalsSettings;
+              setG(next);
+              saveGoalsSettings(next);
+            }}
+          />
+
           {/* Today's progress */}
           <TodayProgress
             callsGoal={calc.callsPerDay}
             decisionMakersGoal={calc.decisionMakersPerDay}
             meetingsGoal={calc.meetingsPerDay}
           />
+
 
           {/* Daily */}
           <Card>
