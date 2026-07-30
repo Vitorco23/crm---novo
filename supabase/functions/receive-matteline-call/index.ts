@@ -11,7 +11,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-matteline-signature, x-matteline-secret, x-webhook-secret, x-secret, x-api-key, secret",
+    "authorization, x-client-info, apikey, content-type, x-callface-signature, x-matteline-signature, x-matteline-secret, x-webhook-secret, x-secret, x-api-key, secret",
 
 };
 
@@ -49,6 +49,7 @@ function safeEqual(a: string, b: string): boolean {
 // Aceita o segredo compartilhado em qualquer um dos headers usados por
 // provedores/webhooks (case-insensitive por natureza da API de Headers).
 const SECRET_HEADERS = [
+  "x-callface-signature",
   "x-matteline-signature",
   "x-matteline-secret",
   "x-webhook-secret",
