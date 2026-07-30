@@ -547,8 +547,13 @@ function lastAnalysisDigest(): string {
 
 export async function generateParecer(): Promise<Parecer> {
   const snapshot = collectSnapshot();
+  const memoriaDigest = buildDecisionMemoryDigest(snapshot.memoriaEstrategica);
+  const previousAnalysis = [lastAnalysisDigest(), memoriaDigest]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 2000);
   const { data, error } = await supabase.functions.invoke("diretor-comercial-ia", {
-    body: { snapshot, previousAnalysis: lastAnalysisDigest() },
+    body: { snapshot, previousAnalysis },
   });
 
   if (error) {
