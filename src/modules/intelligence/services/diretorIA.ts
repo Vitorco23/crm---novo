@@ -39,11 +39,25 @@ export interface PainelExecutivo {
   dica: string;
 }
 
+/**
+ * Parecer executivo do Diretor Comercial (Sprint 2).
+ * Diagnóstico → gargalo único → impacto → decisão → plano de ataque.
+ */
+export interface AnaliseDiretor {
+  diagnostico: string;
+  gargalo: { titulo: string; evidencia: string };
+  impactoFinanceiro: string;
+  decisaoDoDia: string;
+  planoDeAtaque: string[];
+  tendencia: string;
+}
+
 export interface MetaHojeProgresso {
   ligacoes: { atual: number; meta: number };
   reunioes: { atual: number; meta: number };
   vendas: { atual: number; meta: number };
 }
+
 
 export interface Parecer {
   id: string;
