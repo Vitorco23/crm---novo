@@ -1,16 +1,9 @@
 // ============================================================
-// Central de Decisão — visão executiva única do CRM Performance21.
+// Central de Decisão — centro de comando operacional do CRM.
 // ------------------------------------------------------------
-// Esta página é um NOVO módulo. Ela NÃO altera nenhum outro
-// módulo do sistema: apenas lê os dados existentes (leads,
-// sessões, movimentos, reuniões, lembretes, financeiro, metas)
-// e consome os motores já implementados:
-//
-//  • Motor de Gargalos    → src/lib/bottleneckEngine.ts
-//  • Motor de Insights    → src/lib/insights.ts
-//  • Métricas diárias     → src/lib/coldCallMetrics.ts
-//  • Prioridade do momento→ src/components/PriorityCard.tsx (reuso)
-//  • Gargalo (card cheio) → src/components/BottleneckCard.tsx (reuso)
+// Responsabilidade única: responder "o que eu faço agora?".
+// Blocos analíticos (funil, receita, comparativos, ranking,
+// gargalo, pipeline) vivem no Dashboard.
 //
 // Cada bloco é um componente independente e memoizado. Todos
 // respondem a `storage` + `p21:storage-synced` (barramento de
@@ -18,7 +11,6 @@
 // ============================================================
 
 import { useEffect, useMemo, useState, useCallback, ReactNode } from "react";
-import { Link } from "react-router-dom";
 import {
   Card, CardContent, CardHeader, CardTitle,
 } from "@/components/ui/card";
@@ -28,23 +20,18 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Compass, AlertTriangle, Sparkles, TrendingUp, TrendingDown,
-  Target, CalendarClock, Layers, ListChecks, Activity,
-  ChevronRight, Zap, Phone, MessageSquare, Handshake,
-  DollarSign, Lightbulb, ArrowRight, Flame, CheckCircle2, Clock,
+  Compass, AlertTriangle, Target, CalendarClock, ListChecks, Activity,
+  Zap, Phone, MessageSquare, Handshake,
+  DollarSign, Lightbulb, ArrowRight, Clock,
 } from "lucide-react";
 
 import {
   getLeads, getMeetings, getMovementEvents, getSessions,
-  getGoalsSettings, getStagesForPipeline,
+  getGoalsSettings,
   type Lead, type Meeting, type MovementEvent, type PomodoroSession,
 } from "@/shared/services/store";
 import { getTransactions, monthKey, formatBRL } from "@/modules/financeiro/services/finance";
 import { getReminders } from "@/modules/agenda/services/reminders";
-import {
-  analyzeBottleneck, resolveBottleneckPeriod, previousPeriod, compareBottlenecks,
-  type Bottleneck,
-} from "@/modules/cold-call/services/bottleneckEngine";
 import {
   runInsightsEngine, getInsights, sortInsights, getLastRunAt,
   CATEGORY_LABELS, PRIORITY_LABELS,
@@ -55,7 +42,6 @@ import { uload, usave } from "@/shared/services/userStorage";
 
 import PriorityCard from "@/modules/intelligence/components/PriorityCard";
 import MissionOfTheDayCard from "@/modules/intelligence/components/MissionOfTheDayCard";
-import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
 import DiretorComercialIACard from "@/modules/intelligence/components/DiretorComercialIACard";
 import PriorityLeadsBlock from "@/modules/intelligence/components/PriorityLeadsBlock";
 
