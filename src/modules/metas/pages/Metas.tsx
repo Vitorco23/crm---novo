@@ -14,6 +14,7 @@ import {
 import { isToday } from "date-fns";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildMetasSheets } from "@/modules/pipeline/services/exportBuilders";
+import RealConversionPanel from "@/modules/metas/components/RealConversionPanel";
 
 const fmtNum = (n: number) => new Intl.NumberFormat("pt-BR").format(Math.ceil(n));
 const fmtMoney = (n: number) =>
