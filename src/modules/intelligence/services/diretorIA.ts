@@ -251,6 +251,11 @@ export interface DiretorSnapshot {
     vendas: { atual: number; anterior: number; variacaoPct: number | null };
     taxaLigacaoReuniaoPct: { atual: number | null; anterior: number | null };
   };
+  /**
+   * Memória Estratégica (Sprint 3): comparativos históricos determinísticos,
+   * padrões comportamentais, nichos/scripts e memória das decisões anteriores.
+   */
+  memoriaEstrategica: MemoriaEstrategica;
 }
 
 
