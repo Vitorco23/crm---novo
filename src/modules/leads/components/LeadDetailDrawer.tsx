@@ -231,7 +231,25 @@ export default function LeadDetailDrawer({
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   ), [lead?.callNotes]);
 
+  // Colar (Ctrl+V) prints direto no modal — sem precisar salvar o arquivo antes.
+  useEffect(() => {
+    if (!open) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const items = Array.from(e.clipboardData?.items || []);
+      const files = items
+        .filter((it) => it.kind === "file" && it.type.startsWith("image/"))
+        .map((it) => it.getAsFile())
+        .filter((f): f is File => !!f);
+      if (!files.length) return;
+      e.preventDefault();
+      void attachFilesRef.current?.(files, true);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [open]);
+
   if (!lead || !draft) return null;
+
   const pipeline = getPipelineForStage(lead.stage);
   const isOnboarding = pipeline === "onboarding";
   const isOportunidades = pipeline === "oportunidades";
