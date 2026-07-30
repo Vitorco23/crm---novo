@@ -501,7 +501,13 @@ export function collectSnapshot(): DiretorSnapshot {
     topHorarios: topByRate(hourBucket, 5).map((r) => ({
       hora: r.label, calls: r.calls, meetings: r.meetings, rate: r.rate,
     })),
+    oportunidadesAbertas,
+    carteira,
+    followupsAtrasados,
+    agendaHoje,
+    tendencias,
   };
+
 }
 
 // ============================================================
