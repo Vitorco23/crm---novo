@@ -166,12 +166,29 @@ export default function Metas() {
 
         {/* RIGHT: Outputs */}
         <div className="space-y-4">
+          {/* Real conversion rates from CRM data */}
+          <RealConversionPanel
+            estimates={{
+              callToConnection: g.callToConnection,
+              connectionToDecisionMaker: g.connectionToDecisionMaker,
+              decisionMakerToMeetingScheduled: g.decisionMakerToMeetingScheduled,
+              meetingScheduledToHeld: g.meetingScheduledToHeld,
+              meetingHeldToClose: g.meetingHeldToClose,
+            }}
+            onApplyReal={(rates) => {
+              const next = { ...g, ...rates } as GoalsSettings;
+              setG(next);
+              saveGoalsSettings(next);
+            }}
+          />
+
           {/* Today's progress */}
           <TodayProgress
             callsGoal={calc.callsPerDay}
             decisionMakersGoal={calc.decisionMakersPerDay}
             meetingsGoal={calc.meetingsPerDay}
           />
+
 
           {/* Daily */}
           <Card>
