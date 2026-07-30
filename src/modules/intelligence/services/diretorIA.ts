@@ -24,6 +24,10 @@ import {
 } from "@/modules/cold-call/services/bottleneckEngine";
 import { getTasks } from "@/modules/leads/services/leadTasks";
 import { displayTemperature } from "@/modules/intelligence/services/leadInsights";
+import {
+  buildStrategicMemory, buildDecisionMemoryDigest,
+  type MemoriaEstrategica,
+} from "@/modules/intelligence/services/strategicMemory";
 
 
 // ---- Persistência ----
