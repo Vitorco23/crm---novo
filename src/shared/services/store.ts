@@ -51,6 +51,9 @@ export interface LeadAttachment {
   type: string;
   dataUrl: string;
   createdAt: string;
+  /** Leitura da IA deste anexo (persistida e usada no diagnóstico do lead). */
+  aiAnalysis?: string;
+  aiAnalyzedAt?: string;
 }
 
 export interface CallAuditFollowupStep {
