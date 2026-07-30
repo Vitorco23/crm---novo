@@ -1083,7 +1083,10 @@ export function computeDiagnosisInputHash(lead: Lead): string {
     .map((i) => `${i.id}:${i.date}`)
     .sort();
   const notesLen = (lead.notes || "").length;
-  return `n${parts.length}|${notesLen}|${parts.join(",")}`;
+  // Anexos analisados pela IA também alteram o contexto do diagnóstico.
+  const analyzed = (lead.attachments || []).filter((a) => (a.aiAnalysis || "").trim());
+  const attSig = analyzed.map((a) => `${a.id}:${(a.aiAnalysis || "").length}`).sort().join(",");
+  return `n${parts.length}|${notesLen}|${parts.join(",")}|a${analyzed.length}:${attSig}`;
 }
 
 export function setLeadAutoDiagnosis(leadId: string, diagnosis: AutoDiagnosis) {
