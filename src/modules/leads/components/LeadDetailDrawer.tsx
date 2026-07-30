@@ -889,7 +889,7 @@ export default function LeadDetailDrawer({
                             {aiReadingId === att.id ? (
                               <><Loader2 className="h-3 w-3 animate-spin" /> Lendo…</>
                             ) : (
-                              <>👁 Ler com IA</>
+                              <>👁 {att.aiAnalysis ? "Reler com IA" : "Ler com IA"}</>
                             )}
                           </Button>
                         )}
@@ -899,11 +899,12 @@ export default function LeadDetailDrawer({
                           Áudios não são enviados para IA. A análise comercial usa os resumos da Matteline.
                         </p>
                       )}
-                      {aiReadResults[att.id] && (
+                      {(aiReadResults[att.id] || att.aiAnalysis) && (
                         <div className="mt-2 rounded border border-border/40 bg-background/60 p-2 text-xs prose prose-invert prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-headings:my-1">
-                          <ReactMarkdown>{aiReadResults[att.id]}</ReactMarkdown>
+                          <ReactMarkdown>{aiReadResults[att.id] || att.aiAnalysis || ""}</ReactMarkdown>
                         </div>
                       )}
+
                     </div>
                   );
                 })}
