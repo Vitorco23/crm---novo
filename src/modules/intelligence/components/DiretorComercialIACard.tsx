@@ -380,25 +380,29 @@ function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boole
             )}
           </SectionCard>
 
-          {/* Atenção */}
-          <SectionCard icon={<AlertTriangle className="h-3.5 w-3.5" />} title="🚨 O que merece atenção" tone="danger">
-            <BulletList items={painel.atencao} emptyText="Nada crítico no momento." />
-          </SectionCard>
+          {/* Atenção (apenas no formato legado — substituído pelo gargalo único) */}
+          {!analise && (
+            <SectionCard icon={<AlertTriangle className="h-3.5 w-3.5" />} title="🚨 O que merece atenção" tone="danger">
+              <BulletList items={painel.atencao} emptyText="Nada crítico no momento." />
+            </SectionCard>
+          )}
 
           {/* Oportunidades */}
           <SectionCard icon={<TrendingUp className="h-3.5 w-3.5" />} title="📈 Oportunidades" tone="success">
             <BulletList items={painel.oportunidades} emptyText="Sem oportunidades destacadas." />
           </SectionCard>
 
-          {/* Prioridades - full width */}
-          <div className="md:col-span-2">
-            <SectionCard icon={<CheckSquare className="h-3.5 w-3.5" />} title="✅ Prioridades para Hoje" tone="accent">
-              <Checklist items={painel.prioridades} />
-            </SectionCard>
-          </div>
+          {/* Prioridades - full width (legado; substituído pelo Plano de Ataque) */}
+          {!analise && (
+            <div className="md:col-span-2">
+              <SectionCard icon={<CheckSquare className="h-3.5 w-3.5" />} title="✅ Prioridades para Hoje" tone="accent">
+                <Checklist items={painel.prioridades} />
+              </SectionCard>
+            </div>
+          )}
 
-          {/* Dica - full width */}
-          {painel.dica && (
+          {/* Dica - full width (legado; substituído pela Decisão do Dia) */}
+          {!analise && painel.dica && (
             <div className="md:col-span-2">
               <div className="rounded-md border-l-4 border-l-primary bg-primary/5 p-3">
                 <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary mb-1">
@@ -408,6 +412,7 @@ function ParecerViewer({ parecer, compact }: { parecer: Parecer; compact?: boole
               </div>
             </div>
           )}
+
         </div>
       )}
     </div>
