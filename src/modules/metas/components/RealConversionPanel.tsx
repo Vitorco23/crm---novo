@@ -3,11 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity, ArrowDown, ArrowUp, Minus } from "lucide-react";
-import {
-  computeRealConversion,
-  type RealPeriod,
-  type GoalRatesMap,
-} from "@/modules/metas/services/realConversion";
+import { computeRealConversion, type RealPeriod } from "@/modules/metas/services/realConversion";
 
 const PERIODS: { value: RealPeriod; label: string }[] = [
   { value: 7, label: "7d" },
