@@ -15,6 +15,7 @@ import {
   todayKey, type Parecer,
 } from "@/modules/intelligence/services/diretorIA";
 import NextBestActionCard from "@/modules/intelligence/components/NextBestActionCard";
+import { buildStrategicMemory } from "@/modules/intelligence/services/strategicMemory";
 
 function formatDatePt(dateStr: string): string {
   try {
