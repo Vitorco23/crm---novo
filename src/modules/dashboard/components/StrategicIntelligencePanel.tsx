@@ -19,7 +19,7 @@ import {
 
 import {
   getLeads, getMeetings, getMovementEvents, getSessions,
-  getStagesForPipeline,
+  getStagesForPipeline, getGoalsSettings,
   type Lead, type Meeting, type MovementEvent, type PomodoroSession,
 } from "@/shared/services/store";
 import { getTransactions, monthKey, formatBRL } from "@/modules/financeiro/services/finance";
