@@ -219,7 +219,36 @@ export interface DiretorSnapshot {
   topNichos: Array<{ label: string; calls: number; meetings: number; rate: number }>;
   topCidades: Array<{ label: string; calls: number; meetings: number; rate: number }>;
   topHorarios: Array<{ hora: string; calls: number; meetings: number; rate: number }>;
+  /** Contexto estratégico adicional (Sprint 2) — usado para decisão, não para narração. */
+  oportunidadesAbertas: Array<{
+    empresa: string;
+    etapa: string;
+    valor: number;
+    temperatura: string;
+    probabilidade: number | null;
+    diasParado: number;
+  }>;
+  carteira: {
+    quentes: number;
+    mornos: number;
+    frios: number;
+    valorQuentes: number;
+  };
+  followupsAtrasados: {
+    total: number;
+    exemplos: Array<{ empresa: string; diasAtraso: number; tarefa: string }>;
+  };
+  agendaHoje: { reunioes: number; tarefasPendentes: number };
+  tendencias: {
+    janela: string;
+    ligacoes: { atual: number; anterior: number; variacaoPct: number | null };
+    conexoes: { atual: number; anterior: number; variacaoPct: number | null };
+    reunioes: { atual: number; anterior: number; variacaoPct: number | null };
+    vendas: { atual: number; anterior: number; variacaoPct: number | null };
+    taxaLigacaoReuniaoPct: { atual: number | null; anterior: number | null };
+  };
 }
+
 
 export function collectSnapshot(): DiretorSnapshot {
   const now = new Date();
