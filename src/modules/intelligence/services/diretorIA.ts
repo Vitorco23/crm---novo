@@ -515,6 +515,7 @@ export function collectSnapshot(): DiretorSnapshot {
     followupsAtrasados,
     agendaHoje,
     tendencias,
+    memoriaEstrategica: buildStrategicMemory(),
   };
 
 }
