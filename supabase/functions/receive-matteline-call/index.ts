@@ -46,13 +46,47 @@ function safeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
+// Aceita o segredo compartilhado em qualquer um dos headers usados por
+// provedores/webhooks (case-insensitive por natureza da API de Headers).
+const SECRET_HEADERS = [
+  "x-matteline-signature",
+  "x-matteline-secret",
+  "x-webhook-secret",
+  "x-secret",
+  "x-api-key",
+  "secret",
+  "apikey",
+];
+
 function extractProvidedSecret(req: Request): string | null {
-  const sig = req.headers.get("x-matteline-signature");
-  if (sig && sig.trim()) return sig.trim();
+  for (const name of SECRET_HEADERS) {
+    const v = req.headers.get(name);
+    if (v && v.trim()) return v.trim();
+  }
   const auth = req.headers.get("authorization");
-  if (auth && auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  if (auth && auth.trim()) {
+    const t = auth.trim();
+    if (t.toLowerCase().startsWith("bearer ")) return t.slice(7).trim();
+    if (t.toLowerCase().startsWith("basic ")) {
+      try {
+        const decoded = atob(t.slice(6).trim());
+        const idx = decoded.indexOf(":");
+        return (idx >= 0 ? decoded.slice(idx + 1) : decoded).trim() || null;
+      } catch {
+        return t;
+      }
+    }
+    return t;
+  }
+  // Fallback: alguns provedores só permitem query string.
+  try {
+    const qs = new URL(req.url).searchParams;
+    const q = qs.get("secret") || qs.get("token") || qs.get("key");
+    if (q && q.trim()) return q.trim();
+  } catch { /* ignore */ }
   return null;
 }
+
 
 // Same normalization as before — preserved verbatim to avoid regressions.
 function normalizePhone(raw: string | undefined | null): string {
