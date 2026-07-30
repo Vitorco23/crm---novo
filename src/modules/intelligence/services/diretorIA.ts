@@ -22,6 +22,9 @@ import {
 import {
   analyzeBottleneck, resolveBottleneckPeriod, previousPeriod, compareBottlenecks,
 } from "@/modules/cold-call/services/bottleneckEngine";
+import { getTasks } from "@/modules/leads/services/leadTasks";
+import { displayTemperature } from "@/modules/intelligence/services/leadInsights";
+
 
 // ---- Persistência ----
 export const LAST_RUN_KEY = "p21_diretor_ia_last_run";
