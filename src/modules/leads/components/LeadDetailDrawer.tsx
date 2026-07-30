@@ -824,7 +824,7 @@ export default function LeadDetailDrawer({
               e.preventDefault();
               setDragOver(false);
               const files = Array.from(e.dataTransfer.files || []);
-              if (files.length) void attachFiles(files, files.every((f) => f.type.startsWith("image/")));
+              if (files.length) void attachFiles(files);
             }}
           >
             <div className="flex items-center justify-between mb-3">
@@ -841,7 +841,7 @@ export default function LeadDetailDrawer({
                 dragOver ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground/80"
               }`}
             >
-              📋 Cole um print com <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">V</kbd> ou arraste arquivos aqui — imagens são lidas pela IA automaticamente e entram no diagnóstico do lead.
+              📋 Cole um print com <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">V</kbd> ou arraste arquivos aqui — os anexos só são lidos pela IA quando você clicar em <strong>Atualizar Inteligência</strong> (ou em “Ler com IA”).
             </div>
 
             {lead.attachments.length > 0 ? (
