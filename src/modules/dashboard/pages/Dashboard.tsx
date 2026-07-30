@@ -205,6 +205,16 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
     return enriched.sort((a, b) => b.totalActivity - a.totalActivity)[0];
   }, [filteredSessions, movements]);
 
+  // KPIs de eficiência — quantas ligações por reunião / por venda no período
+  const filteredMovements = useMemo(
+    () => movements.filter((m) => filterByDate(m.timestamp, filter, custom)),
+    [movements, filter, custom]
+  );
+  const outcomes = useMemo(() => countOutcomes(filteredMovements), [filteredMovements]);
+  const meetingsForRatio = Math.max(outcomes.meetings, sessionMeetings, callMeetings);
+  const callsPerMeeting = computeEfficiencyRatio(sessionCalls, meetingsForRatio);
+  const callsPerSale = computeEfficiencyRatio(sessionCalls, outcomes.sales);
+
   return (
     <div className="space-y-4">
       {/* Métricas do período */}
@@ -214,6 +224,23 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
         <MetricCard icon={UserCheck} label="Decisores" value={sessionDecisionMakers} sub={rateConnDM != null ? `${rateConnDM}% das conexões` : undefined} />
         <MetricCard icon={CalendarCheck} label="Reuniões" value={sessionMeetings} sub={rateDMMeet != null ? `${rateDMMeet}% dos decisores` : undefined} />
       </div>
+
+      {/* Custo em ligações (eficiência) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <EfficiencyCard
+          icon={CalendarCheck}
+          label="Ligações por reunião"
+          ratio={callsPerMeeting}
+          unit="reunião"
+        />
+        <EfficiencyCard
+          icon={Handshake}
+          label="Ligações por venda"
+          ratio={callsPerSale}
+          unit="venda"
+        />
+      </div>
+
 
       {/* Funil de Outreach do período */}
       <Card>
