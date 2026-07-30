@@ -1,6 +1,6 @@
 import {
   type Lead, type ICPStars, type PipelineName, type MeetingSource,
-  addAttachment, removeAttachment, updateLead,
+  addAttachment, removeAttachment, updateLead, setAttachmentAnalysis,
   addCallNote, removeCallNote, getMeetingsForLead,
   getPipelineForStage, getStagesForPipeline, moveLeadToStage,
   updateMeetingSource, updateMeetingDateTime,
