@@ -265,12 +265,58 @@ export default function LeadDetailDrawer({
   const TempIcon = tempIcon;
   const tempCls = temp === "Quente" ? "text-orange-500" : temp === "Morno" ? "text-yellow-500" : "text-sky-400";
 
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
+      reader.readAsDataURL(file);
+    });
+
+  /** Anexa 1..n arquivos (upload, colar ou arrastar). Imagens coladas são lidas pela IA. */
+  const attachFiles = async (files: File[], autoAnalyze = false) => {
+    const valid = files.filter((f) => {
+      if (f.size > 10 * 1024 * 1024) {
+        toast.error(`Arquivo muito grande (máx 10MB): ${f.name || "print"}`);
+        return false;
+      }
+      return true;
+    });
+    if (!valid.length) return;
+
+    const created: { id: string; name: string; type: string; dataUrl: string }[] = [];
+    for (const file of valid) {
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+        const name = file.name || `print-${stamp}.png`;
+        const id = addAttachment(lead.id, { name, type: file.type || "image/png", dataUrl });
+        if (id) created.push({ id, name, type: file.type || "image/png", dataUrl });
+      } catch {
+        toast.error("Não foi possível anexar o arquivo");
+      }
+    }
+    if (!created.length) return;
+    onRefresh();
+    toast.success(created.length > 1 ? `${created.length} arquivos anexados!` : "Arquivo anexado!");
+    setTab("anexos");
+
+    if (autoAnalyze) {
+      for (const att of created) {
+        if (att.type.startsWith("audio/")) continue;
+        await handleReadAttachmentWithAI(att);
+      }
+    }
+  };
+  attachFilesRef.current = attachFiles;
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    void attachFiles([file]);
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    void attachFiles(files);
     e.target.value = "";
   };
+
 
   const handleReadAttachmentWithAI = async (att: { id: string; name: string; type: string; dataUrl: string }) => {
     if (att.type.startsWith("audio/")) {
