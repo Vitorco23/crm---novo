@@ -567,9 +567,14 @@ function NextActionsList({ data }: { data: CentralDataset }) {
     </ul>
   );
 }
-
 // ============================================================
-// BLOCO 2: PRIORIDADES DA OPERAÇÃO
+// BLOCO 2: PONTOS DE ATENÇÃO (Prioridades + Alertas unificados)
+// ------------------------------------------------------------
+// Sprint 1: "Prioridades da Operação" e "Alertas" comunicavam
+// o mesmo problema em dois cards. Agora existe um único
+// componente, que ordena os insights ativos por criticidade e
+// remove duplicidade pelo id. Nenhuma regra de negócio mudou —
+// as fontes (motor de insights) e a ordenação são as mesmas.
 // ============================================================
 
 const PRIO_STYLE: Record<InsightPriority, { badge: string; ring: string; dot: string }> = {
@@ -579,45 +584,45 @@ const PRIO_STYLE: Record<InsightPriority, { badge: string; ring: string; dot: st
   baixa:   { badge: "bg-muted text-muted-foreground border-border", ring: "border-l-muted", dot: "⚪" },
 };
 
-// Categorias tratadas como "oportunidade positiva" (não risco).
-const OPPORTUNITY_CATEGORIES = new Set(["cidade", "nicho", "campanha", "script", "horario"]);
-function isOpportunity(i: Insight): boolean {
-  if (!OPPORTUNITY_CATEGORIES.has(i.category)) return false;
-  const t = i.title.toLowerCase();
-  return /destaque|campe|lider|melhor|crescimento|evolu|em alta/.test(t);
-}
 function isRisk(i: Insight): boolean {
   const t = (i.title + " " + i.description).toLowerCase();
   return i.priority === "critica" || i.priority === "alta"
     || /queda|risco|abaixo|baixo|atras|vencid|parad|gargalo/.test(t);
 }
 
-function PrioritiesBlock({ tick }: { tick: number }) {
-  const all = useMemo(
-    () => sortInsights(getInsights().filter((i) => i.status === "active" && isRisk(i))),
+const ALERT_CATEGORIES = new Set([
+  "funil", "comercial", "metas", "pipeline", "financeiro", "crm", "produtividade",
+]);
+
+function OperationalAlertsBlock({ tick }: { tick: number }) {
+  const items = useMemo(() => {
+    const active = getInsights().filter((i) => i.status === "active");
+    const relevant = active.filter((i) => isRisk(i) || ALERT_CATEGORIES.has(i.category));
+    const seen = new Set<string>();
+    return sortInsights(relevant)
+      .filter((i) => (seen.has(i.id) ? false : (seen.add(i.id), true)))
+      .slice(0, 8);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tick]
-  );
-  const top = all.slice(0, 5);
+  }, [tick]);
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
-          <Flame className="h-4 w-4 text-rose-500" />
-          Prioridades da Operação
-          {top.length > 0 && (
-            <Badge variant="outline" className="text-[10px] ml-1">{top.length}</Badge>
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          Pontos de Atenção
+          {items.length > 0 && (
+            <Badge variant="outline" className="text-[10px] ml-1">{items.length}</Badge>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {top.length === 0 ? (
+        {items.length === 0 ? (
           <p className="text-xs text-muted-foreground py-2">
-            Nenhuma prioridade crítica ativa. A operação segue dentro do esperado.
+            Nenhum ponto de atenção ativo. Siga a missão do dia.
           </p>
         ) : (
-          top.map((i) => {
+          items.map((i) => {
             const s = PRIO_STYLE[i.priority];
             return (
               <div key={i.id} className={`rounded-md border border-l-4 ${s.ring} p-3`}>
@@ -631,10 +636,6 @@ function PrioritiesBlock({ tick }: { tick: number }) {
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{i.description}</p>
-                <p className="text-[11px] mt-1">
-                  <span className="font-semibold text-foreground/80">Motivo: </span>
-                  <span className="text-muted-foreground">{i.reason}</span>
-                </p>
                 <p className="text-[11px] mt-1 flex items-start gap-1">
                   <Lightbulb className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
                   <span><span className="font-semibold text-foreground/80">Ação: </span>{i.suggestion}</span>
@@ -648,61 +649,6 @@ function PrioritiesBlock({ tick }: { tick: number }) {
   );
 }
 
-// ============================================================
-// BLOCO 3: ALERTAS
-// ------------------------------------------------------------
-// Fonte: insights ativos de operação (funil, comercial, metas,
-// pipeline, financeiro, crm, produtividade). Dedup pelo causeKey
-// (o motor já resolve alertas resolvidos automaticamente).
-// ============================================================
-
-const ALERT_CATEGORIES = new Set([
-  "funil", "comercial", "metas", "pipeline", "financeiro", "crm", "produtividade",
-]);
-
-function AlertsBlock({ tick }: { tick: number }) {
-  const alerts = useMemo(() => {
-    const active = getInsights().filter(
-      (i) => i.status === "active" && ALERT_CATEGORIES.has(i.category)
-    );
-    return sortInsights(active).slice(0, 8);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick]);
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
-          Alertas
-          {alerts.length > 0 && (
-            <Badge variant="outline" className="text-[10px]">{alerts.length}</Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {alerts.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">
-            Sem alertas ativos. Todos os pontos de atenção anteriores foram resolvidos.
-          </p>
-        ) : (
-          alerts.map((i) => {
-            const s = PRIO_STYLE[i.priority];
-            return (
-              <div key={i.id} className={`rounded-md border-l-2 ${s.ring} bg-muted/20 px-3 py-2`}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium truncate">{i.title}</span>
-                  <span className="text-[10px] text-muted-foreground">{CATEGORY_LABELS[i.category]}</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{i.description}</p>
-              </div>
-            );
-          })
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 // BLOCO 7: METAS
 // ============================================================
