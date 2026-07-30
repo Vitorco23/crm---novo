@@ -144,7 +144,11 @@ Deno.serve(async (req) => {
   //    caller cannot force expensive JSON parsing or DB round trips.
   const provided = extractProvidedSecret(req);
   if (!provided || !safeEqual(provided, WEBHOOK_SECRET)) {
-    console.warn("[receive-matteline-call] unauthorized");
+    console.warn(
+      "[receive-matteline-call] unauthorized; headers seen:",
+      [...req.headers.keys()].join(","),
+    );
+
     return json(401, { error: "unauthorized" });
   }
 
