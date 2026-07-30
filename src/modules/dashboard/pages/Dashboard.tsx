@@ -14,10 +14,9 @@ import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign,
   Handshake, Trophy as TrophyIcon, Send, Instagram, Mail, Activity, Layers, Crown,
-  Calendar as CalendarIcon,
+  Calendar as CalendarIcon, Sparkles,
 } from "lucide-react";
-import MissionOfTheDayCard from "@/modules/intelligence/components/MissionOfTheDayCard";
-import DiretorComercialIACard from "@/modules/intelligence/components/DiretorComercialIACard";
+import StrategicIntelligencePanel, { type PeriodKey } from "@/modules/dashboard/components/StrategicIntelligencePanel";
 
 import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
@@ -54,10 +53,18 @@ export default function Dashboard() {
     ? { start: new Date(customStart.setHours(0, 0, 0, 0)), end: new Date(customEnd.setHours(23, 59, 59, 999)) }
     : undefined;
 
+  const strategicPeriod: PeriodKey =
+    filter === "day" ? "today" : filter === "week" ? "last7" : "thisMonth";
+
   return (
     <div className="p-4 max-w-6xl mx-auto space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-[11px] text-muted-foreground">
+            Sala de inteligência comercial — como está a operação. Para executar, use a Central de Decisão.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 bg-muted rounded-lg p-0.5">
             {(["day", "week", "month", "custom"] as Filter[]).map((f) => (
@@ -110,10 +117,6 @@ export default function Dashboard() {
       </div>
 
 
-      <MissionOfTheDayCard />
-
-      <DiretorComercialIACard />
-
 
       {/* ============ PAINEL 1: OPERACIONAL (período) ============ */}
       <section className="space-y-4">
@@ -140,10 +143,21 @@ export default function Dashboard() {
         <PipelinePanel />
       </section>
 
-      {/* ============ FINANCEIRO + AGENDA (mantidos) ============ */}
+      {/* ============ PAINEL 3: INTELIGÊNCIA ESTRATÉGICA ============ */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 border-l-2 border-accent pl-3">
+          <Sparkles className="h-4 w-4 text-accent" />
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Inteligência Estratégica</h2>
+            <p className="text-[11px] text-muted-foreground">Resumo executivo, oportunidades, variações vs. período anterior e leitura analítica do pipeline.</p>
+          </div>
+        </div>
+        <StrategicIntelligencePanel period={strategicPeriod} />
+      </section>
+
+      {/* ============ FINANCEIRO ============ */}
       <section className="space-y-4">
         <FinancialHealthRow />
-        <UpcomingMeetingsBlock />
       </section>
     </div>
   );
