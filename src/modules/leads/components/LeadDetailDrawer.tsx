@@ -244,7 +244,7 @@ export default function LeadDetailDrawer({
         .filter((f): f is File => !!f);
       if (!files.length) return;
       e.preventDefault();
-      void attachFilesRef.current?.(files, true);
+      void attachFilesRef.current?.(files);
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
@@ -273,7 +273,8 @@ export default function LeadDetailDrawer({
       reader.readAsDataURL(file);
     });
 
-  /** Anexa 1..n arquivos (upload, colar ou arrastar). Imagens coladas são lidas pela IA. */
+  /** Anexa 1..n arquivos (upload, colar ou arrastar). NÃO consome IA — a leitura
+   *  acontece apenas quando o usuário aciona "Atualizar Inteligência" ou "Ler com IA". */
   const attachFiles = async (files: File[], autoAnalyze = false) => {
     const valid = files.filter((f) => {
       if (f.size > 10 * 1024 * 1024) {
@@ -301,12 +302,7 @@ export default function LeadDetailDrawer({
     toast.success(created.length > 1 ? `${created.length} arquivos anexados!` : "Arquivo anexado!");
     setTab("anexos");
 
-    if (autoAnalyze) {
-      for (const att of created) {
-        if (att.type.startsWith("audio/")) continue;
-        await handleReadAttachmentWithAI(att);
-      }
-    }
+    void autoAnalyze; // leitura por IA é sempre manual/sob demanda (economia de tokens)
   };
   attachFilesRef.current = attachFiles;
 
@@ -828,7 +824,7 @@ export default function LeadDetailDrawer({
               e.preventDefault();
               setDragOver(false);
               const files = Array.from(e.dataTransfer.files || []);
-              if (files.length) void attachFiles(files, files.every((f) => f.type.startsWith("image/")));
+              if (files.length) void attachFiles(files);
             }}
           >
             <div className="flex items-center justify-between mb-3">
@@ -845,7 +841,7 @@ export default function LeadDetailDrawer({
                 dragOver ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground/80"
               }`}
             >
-              📋 Cole um print com <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">V</kbd> ou arraste arquivos aqui — imagens são lidas pela IA automaticamente e entram no diagnóstico do lead.
+              📋 Cole um print com <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">V</kbd> ou arraste arquivos aqui — os anexos só são lidos pela IA quando você clicar em <strong>Atualizar Inteligência</strong> (ou em “Ler com IA”).
             </div>
 
             {lead.attachments.length > 0 ? (

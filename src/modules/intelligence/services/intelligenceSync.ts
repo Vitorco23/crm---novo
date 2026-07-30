@@ -14,7 +14,7 @@ import {
   type DiagnosisVersion,
   type Lead,
 } from "@/shared/services/store";
-import { runAutoDiagnosis } from "./autoDiagnosis";
+import { runAutoDiagnosis, analyzePendingAttachments } from "./autoDiagnosis";
 import { executiveSummary } from "./leadInsights";
 import { computeLeadPriority } from "./priorityEngine";
 import { extractMemoryFromLead } from "./commercialMemory";
@@ -132,6 +132,10 @@ export async function refreshLeadIntelligence(
 
   const snapBefore = snapshotIntelligence(before);
   const hadDiagnosis = Boolean(before.autoDiagnosis);
+
+  // Lê os anexos pendentes (prints, PDFs, docs) só agora — sob demanda, para
+  // que o diagnóstico a seguir já considere o conteúdo das imagens.
+  try { await analyzePendingAttachments(leadId); } catch { /* não bloqueia */ }
 
   const diagnosis = await runAutoDiagnosis(leadId);
   if (!diagnosis) {

@@ -12,7 +12,52 @@ import {
   setLeadAutoDiagnosis,
   updateLead,
   getLeads,
+  setAttachmentAnalysis,
 } from "@/shared/services/store";
+import { analyzeAttachment } from "./IntelMutations";
+
+/** Máximo de anexos lidos por execução de "Atualizar Inteligência" (controle de custo). */
+const MAX_ATTACHMENTS_PER_RUN = 4;
+
+/**
+ * Lê com IA os anexos ainda não analisados do lead (imagens, PDFs, documentos).
+ * Executado sob demanda — apenas dentro do fluxo "Atualizar Inteligência".
+ * Áudios são ignorados (as gravações já chegam resumidas pelo VoIP).
+ */
+export async function analyzePendingAttachments(leadId: string): Promise<number> {
+  const lead = getLeads().find((l) => l.id === leadId);
+  if (!lead) return 0;
+
+  const pending = (lead.attachments || [])
+    .filter((a) => !a.type?.startsWith("audio/") && !(a.aiAnalysis || "").trim())
+    .slice(-MAX_ATTACHMENTS_PER_RUN);
+  if (!pending.length) return 0;
+
+  const leadContext = [
+    lead.contact && `Contato: ${lead.contact}`,
+    lead.company && `Empresa: ${lead.company}`,
+    lead.niche && `Nicho: ${lead.niche}`,
+    lead.city && `Cidade: ${lead.city}`,
+    lead.stage && `Etapa: ${lead.stage}`,
+  ].filter(Boolean).join("\n");
+
+  let done = 0;
+  for (const att of pending) {
+    try {
+      const { content } = await analyzeAttachment({
+        attachment: { name: att.name, type: att.type, dataUrl: att.dataUrl },
+        leadContext,
+      });
+      if (content.trim()) {
+        setAttachmentAnalysis(leadId, att.id, content);
+        done++;
+      }
+    } catch (e) {
+      console.warn("[autoDiagnosis] attachment read failed", (e as Error)?.message);
+    }
+  }
+  return done;
+}
 
 const MEMORY_HEADER = "IA Comercial";
 
