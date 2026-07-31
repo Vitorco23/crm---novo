@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Download, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import type { Lead } from "@/shared/services/store";
@@ -101,18 +104,18 @@ export default function ExportLeadsDialog({
           {showAttemptFilter && (
             <div className="space-y-1.5">
               <Label className="text-xs">Tentativa</Label>
-              <RadioGroup
-                value={attempt}
-                onValueChange={(v) => setAttempt(v as AttemptFilter)}
-                className="grid grid-cols-2 gap-1"
-              >
-                {ATTEMPT_FILTER_OPTIONS.map((o) => (
-                  <label key={o.value} className="flex items-center gap-2 text-xs rounded px-2 py-1.5 hover:bg-accent/10 cursor-pointer">
-                    <RadioGroupItem value={o.value} id={`exp-attempt-${o.value}`} />
-                    {o.label}
-                  </label>
-                ))}
-              </RadioGroup>
+              <Select value={attempt} onValueChange={(v) => setAttempt(v as AttemptFilter)}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Selecione a tentativa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ATTEMPT_FILTER_OPTIONS.filter((o) => o.value !== "all").map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                  <SelectSeparator />
+                  <SelectItem value="all">Todas as Tentativas</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
 
