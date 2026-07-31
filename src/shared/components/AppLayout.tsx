@@ -17,24 +17,6 @@ import { NotificationsMenu } from "@/shared/components/shell/NotificationsMenu";
 import { UserMenu } from "@/shared/components/shell/UserMenu";
 import { findNavItem } from "@/shared/constants/navigation";
 
-function DockedPomodoroSlot() {
-  const { mode, setMode } = usePomodoroMode();
-  if (mode !== "docked") return null;
-  return (
-    <div className="hidden md:flex items-center gap-1">
-      <PomodoroHeaderWidget />
-      <Button
-        size="icon"
-        variant="ghost"
-        className="h-7 w-7"
-        onClick={() => setMode("floating")}
-        title="Soltar como janela flutuante"
-      >
-        <PictureInPicture2 className="h-3.5 w-3.5" />
-      </Button>
-    </div>
-  );
-}
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   useReminderNotifications();
