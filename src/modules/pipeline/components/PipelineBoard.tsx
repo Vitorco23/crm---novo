@@ -51,7 +51,7 @@ import ScheduleMeetingDialog from "@/modules/leads/components/ScheduleMeetingDia
 import PipelineListView from "@/modules/pipeline/components/PipelineListView";
 import BulkActionsBar from "@/modules/pipeline/components/BulkActionsBar";
 import BulkEditDialog from "@/modules/pipeline/components/BulkEditDialog";
-import MattelineCampaignDialog from "@/modules/cold-call/components/MattelineCampaignDialog";
+import ExportLeadsDialog from "@/modules/pipeline/components/ExportLeadsDialog";
 import ImportMappingDialog, { type LeadFieldKey } from "@/modules/pipeline/components/ImportMappingDialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
