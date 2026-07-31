@@ -51,6 +51,7 @@ import ScheduleMeetingDialog from "@/modules/leads/components/ScheduleMeetingDia
 import PipelineListView from "@/modules/pipeline/components/PipelineListView";
 import BulkActionsBar from "@/modules/pipeline/components/BulkActionsBar";
 import BulkEditDialog from "@/modules/pipeline/components/BulkEditDialog";
+import MattelineCampaignDialog from "@/modules/cold-call/components/MattelineCampaignDialog";
 import ImportMappingDialog, { type LeadFieldKey } from "@/modules/pipeline/components/ImportMappingDialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -325,6 +326,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [drawerAction, setDrawerAction] = useState<LeadActionHint | undefined>(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [campaignOpen, setCampaignOpen] = useState(false);
   const [alignmentLead, setAlignmentLead] = useState<Lead | null>(null);
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
@@ -938,7 +940,31 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             </Badge>
           </>
         )}
+
+        {pipeline === "cold_call" && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs ml-auto"
+            disabled={pipelineLeads.length === 0}
+            onClick={() => setCampaignOpen(true)}
+          >
+            📞 Criar Campanha Matteline
+          </Button>
+        )}
       </div>
+
+      {pipeline === "cold_call" && (
+        <MattelineCampaignDialog
+          open={campaignOpen}
+          onOpenChange={setCampaignOpen}
+          filteredLeads={pipelineLeads}
+          niches={filterNiches}
+          cities={filterCities}
+          onDone={refresh}
+        />
+      )}
+
 
       <BulkActionsBar
         count={selectedIds.size}

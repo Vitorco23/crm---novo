@@ -163,7 +163,16 @@ export interface Lead {
   autoDiagnosis?: AutoDiagnosis;
   /** Histórico versionado da inteligência do lead (mais recente primeiro). */
   diagnosisHistory?: DiagnosisVersion[];
+  // ===== Discagem automática (Matteline) =====
+  /** Quantidade de tentativas de discagem já enviadas ao Matteline. */
+  dialAttempts?: number;
+  lastDialSentAt?: string;
+  lastDialCampaign?: string;
+  lastDialCampaignId?: string;
+  lastDialContactId?: string;
+  dialStatus?: "enviado" | "erro" | "pendente";
 }
+
 
 export interface AutoDiagnosis {
   temperature: "quente" | "morno" | "frio";
