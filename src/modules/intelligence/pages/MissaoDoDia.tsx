@@ -99,6 +99,11 @@ export default function MissaoDoDia() {
         }
       />
 
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-foreground">Objetivos do Dia</h2>
+        <ColdCallOpsPanel refreshKey={tick} />
+      </section>
+
       <OperationalCapacityCard plan={plan} />
 
       <Card>
