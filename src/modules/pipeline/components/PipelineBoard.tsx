@@ -51,6 +51,7 @@ import ScheduleMeetingDialog from "@/modules/leads/components/ScheduleMeetingDia
 import PipelineListView from "@/modules/pipeline/components/PipelineListView";
 import BulkActionsBar from "@/modules/pipeline/components/BulkActionsBar";
 import BulkEditDialog from "@/modules/pipeline/components/BulkEditDialog";
+import MattelineCampaignDialog from "@/modules/cold-call/components/MattelineCampaignDialog";
 import ImportMappingDialog, { type LeadFieldKey } from "@/modules/pipeline/components/ImportMappingDialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -325,6 +326,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [drawerAction, setDrawerAction] = useState<LeadActionHint | undefined>(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [campaignOpen, setCampaignOpen] = useState(false);
   const [alignmentLead, setAlignmentLead] = useState<Lead | null>(null);
   const [editingStage, setEditingStage] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
