@@ -4,14 +4,14 @@ type Mode = "floating" | "docked";
 const KEY = "p21:pomodoro-mode";
 
 const Ctx = createContext<{ mode: Mode; setMode: (m: Mode) => void }>({
-  mode: "floating",
+  mode: "docked",
   setMode: () => {},
 });
 
 export function PomodoroModeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<Mode>(() => {
     const v = typeof window !== "undefined" ? localStorage.getItem(KEY) : null;
-    return v === "docked" ? "docked" : "floating";
+    return v === "floating" ? "floating" : "docked";
   });
   useEffect(() => {
     localStorage.setItem(KEY, mode);

@@ -1,40 +1,19 @@
 import { useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { PictureInPicture2 } from "lucide-react";
 import { AppSidebar } from "@/shared/components/AppSidebar";
 import { FloatingPomodoroWidget } from "@/modules/cold-call/components/FloatingPomodoroWidget";
-import { PomodoroHeaderWidget } from "@/modules/cold-call/components/PomodoroHeaderWidget";
 import { HeaderStatsWidget } from "@/shared/components/HeaderStatsWidget";
 import { ForceUpdateButton } from "@/modules/configuracoes/components/ForceUpdateButton";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { useReminderNotifications } from "@/modules/agenda/hooks/useReminderNotifications";
-import { PomodoroModeProvider, usePomodoroMode } from "@/contexts/PomodoroModeContext";
+import { PomodoroModeProvider } from "@/contexts/PomodoroModeContext";
 import { Breadcrumbs } from "@/shared/components/shell/Breadcrumbs";
 import { GlobalSearch } from "@/shared/components/shell/GlobalSearch";
 import { NotificationsMenu } from "@/shared/components/shell/NotificationsMenu";
 import { UserMenu } from "@/shared/components/shell/UserMenu";
 import { findNavItem } from "@/shared/constants/navigation";
 
-function DockedPomodoroSlot() {
-  const { mode, setMode } = usePomodoroMode();
-  if (mode !== "docked") return null;
-  return (
-    <div className="hidden md:flex items-center gap-1">
-      <PomodoroHeaderWidget />
-      <Button
-        size="icon"
-        variant="ghost"
-        className="h-7 w-7"
-        onClick={() => setMode("floating")}
-        title="Soltar como janela flutuante"
-      >
-        <PictureInPicture2 className="h-3.5 w-3.5" />
-      </Button>
-    </div>
-  );
-}
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   useReminderNotifications();
@@ -67,8 +46,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
             {/* KPI compacto (meta do mês) */}
             <HeaderStatsWidget />
 
-            {/* Pomodoro docked */}
-            <DockedPomodoroSlot />
+
+
 
             <Separator orientation="vertical" className="h-6 hidden sm:block" />
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import PipelineBoard from "@/modules/pipeline/components/PipelineBoard";
 import ColdCallOpsPanel from "@/modules/cold-call/components/ColdCallOpsPanel";
+import { ColdCallConsole } from "@/modules/cold-call/components/ColdCallConsole";
 
 export default function ColdCall() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -14,10 +15,12 @@ export default function ColdCall() {
 
   return (
     <div className="space-y-4">
-      <div className="px-4 pt-4">
+      <div className="px-4 pt-4 space-y-3">
+        <ColdCallConsole />
         <ColdCallOpsPanel refreshKey={refreshKey} />
       </div>
       <PipelineBoard pipeline="cold_call" title="Cold Call" subtitle="Prospecção Ativa" />
     </div>
   );
 }
+

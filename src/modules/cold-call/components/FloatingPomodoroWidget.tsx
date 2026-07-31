@@ -87,7 +87,7 @@ export function FloatingPomodoroWidget() {
         variant="ghost"
         className="h-6 w-6"
         onClick={() => setMode("docked")}
-        title="Fixar no cabeçalho"
+        title="Fixar no Console da Cold Call"
       >
         <PinOff className="h-3.5 w-3.5" />
       </Button>
