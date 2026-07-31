@@ -47,7 +47,7 @@ export function isValidExportPhone(raw?: string): boolean {
 export function filterByAttempt(leads: Lead[], attempt: AttemptFilter): Lead[] {
   if (attempt === "all") return leads;
   const n = Number(attempt);
-  return leads.filter((l) => (l.dialAttempts ?? 0) === n);
+  return leads.filter((l) => stageAttemptNumber(l.stage) === n);
 }
 
 export interface DialerRow {
