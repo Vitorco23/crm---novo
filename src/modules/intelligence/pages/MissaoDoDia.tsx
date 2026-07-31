@@ -21,6 +21,7 @@ import {
 } from "@/modules/intelligence/services/missionStore";
 import { buildMissionPlan, addMissionTask, addFollowupTask } from "@/modules/intelligence/services/missionPlanner";
 import { OperationalCapacityCard } from "@/modules/intelligence/components/OperationalCapacityCard";
+import ColdCallOpsPanel from "@/modules/cold-call/components/ColdCallOpsPanel";
 import { openLead } from "@/modules/leads/services/openLead";
 import { on } from "@/shared/services/eventBus";
 import { PRIORITY_CLASSES, PRIORITY_LABEL } from "@/modules/leads/services/leadTasks";
@@ -98,6 +99,11 @@ export default function MissaoDoDia() {
           </div>
         }
       />
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-foreground">Objetivos do Dia</h2>
+        <ColdCallOpsPanel refreshKey={tick} />
+      </section>
 
       <OperationalCapacityCard plan={plan} />
 
