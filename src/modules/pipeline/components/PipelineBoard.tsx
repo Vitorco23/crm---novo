@@ -51,7 +51,7 @@ import ScheduleMeetingDialog from "@/modules/leads/components/ScheduleMeetingDia
 import PipelineListView from "@/modules/pipeline/components/PipelineListView";
 import BulkActionsBar from "@/modules/pipeline/components/BulkActionsBar";
 import BulkEditDialog from "@/modules/pipeline/components/BulkEditDialog";
-import MattelineCampaignDialog from "@/modules/cold-call/components/MattelineCampaignDialog";
+import ExportLeadsDialog from "@/modules/pipeline/components/ExportLeadsDialog";
 import ImportMappingDialog, { type LeadFieldKey } from "@/modules/pipeline/components/ImportMappingDialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -941,29 +941,26 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           </>
         )}
 
-        {pipeline === "cold_call" && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs ml-auto"
-            disabled={pipelineLeads.length === 0}
-            onClick={() => setCampaignOpen(true)}
-          >
-            📞 Criar Campanha Matteline
-          </Button>
-        )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs ml-auto"
+          disabled={pipelineLeads.length === 0}
+          onClick={() => setCampaignOpen(true)}
+        >
+          📥 Exportar Leads
+        </Button>
       </div>
 
-      {pipeline === "cold_call" && (
-        <MattelineCampaignDialog
-          open={campaignOpen}
-          onOpenChange={setCampaignOpen}
-          filteredLeads={pipelineLeads}
-          niches={filterNiches}
-          cities={filterCities}
-          onDone={refresh}
-        />
-      )}
+      <ExportLeadsDialog
+        open={campaignOpen}
+        onOpenChange={setCampaignOpen}
+        filteredLeads={pipelineLeads}
+        niches={filterNiches}
+        cities={filterCities}
+        showAttemptFilter={pipeline === "cold_call"}
+      />
+
 
 
       <BulkActionsBar
