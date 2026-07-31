@@ -133,6 +133,33 @@ export default function MissaoDoDia() {
         }
       />
 
+      {/* TEMPORÁRIO — teste da integração Matteline */}
+      <Card className="border-dashed">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Testar Matteline (temporário)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={testPhone}
+              onChange={(ev) => setTestPhone(ev.target.value)}
+              placeholder="55DDDNÚMERO"
+              className="h-9 max-w-[220px]"
+            />
+            <Button size="sm" onClick={runMattelineTest} disabled={testLoading}>
+              {testLoading ? "Enviando..." : "Testar Matteline"}
+            </Button>
+          </div>
+          {testResult && (
+            <pre className="text-[11px] bg-muted/50 rounded-md p-3 overflow-auto max-h-72 whitespace-pre-wrap">
+              {testResult}
+            </pre>
+          )}
+        </CardContent>
+      </Card>
+
+
+
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-foreground">Objetivos do Dia</h2>
         <ColdCallOpsPanel refreshKey={tick} />
