@@ -8,19 +8,34 @@ import { normalizePhoneBR } from "@/shared/services/userStorage";
 export type ExportFormat = "crm" | "dialer";
 
 export const ATTEMPT_FILTER_OPTIONS = [
-  { value: "all", label: "Todas as tentativas", short: "" },
   { value: "0", label: "Novos Leads", short: "Novos" },
   { value: "1", label: "Tentativa 1", short: "T1" },
   { value: "2", label: "Tentativa 2", short: "T2" },
   { value: "3", label: "Tentativa 3", short: "T3" },
   { value: "4", label: "Tentativa 4", short: "T4" },
   { value: "5", label: "Tentativa 5", short: "T5" },
+  { value: "6", label: "Tentativa 6", short: "T6" },
+  { value: "7", label: "Tentativa 7", short: "T7" },
+  { value: "8", label: "Tentativa 8", short: "T8" },
+  { value: "9", label: "Tentativa 9", short: "T9" },
+  { value: "10", label: "Tentativa 10", short: "T10" },
+  { value: "all", label: "Todas as tentativas", short: "Todas" },
 ] as const;
 
 export type AttemptFilter = (typeof ATTEMPT_FILTER_OPTIONS)[number]["value"];
 
 export function attemptShort(v: AttemptFilter): string {
   return ATTEMPT_FILTER_OPTIONS.find((o) => o.value === v)?.short ?? "";
+}
+
+/** Referência oficial: a coluna atual do pipeline (stage), não dialAttempts. */
+export function stageAttemptNumber(stage?: string): number | null {
+  const s = (stage || "").trim();
+  if (!s) return null;
+  if (/^novo\s+lead/i.test(s)) return 0;
+  const m = s.match(/tentativa\s*(\d+)/i);
+  if (m) return parseInt(m[1], 10);
+  return null;
 }
 
 export function isValidExportPhone(raw?: string): boolean {
