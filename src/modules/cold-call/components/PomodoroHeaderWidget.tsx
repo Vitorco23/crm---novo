@@ -49,7 +49,7 @@ export function PomodoroHeaderWidget() {
   const tally = state.tally ?? { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0 };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Link
         to="/pomodoro"
         className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
