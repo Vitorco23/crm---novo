@@ -938,7 +938,31 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             </Badge>
           </>
         )}
+
+        {pipeline === "cold_call" && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs ml-auto"
+            disabled={pipelineLeads.length === 0}
+            onClick={() => setCampaignOpen(true)}
+          >
+            📞 Criar Campanha Matteline
+          </Button>
+        )}
       </div>
+
+      {pipeline === "cold_call" && (
+        <MattelineCampaignDialog
+          open={campaignOpen}
+          onOpenChange={setCampaignOpen}
+          filteredLeads={pipelineLeads}
+          niches={filterNiches}
+          cities={filterCities}
+          onDone={refresh}
+        />
+      )}
+
 
       <BulkActionsBar
         count={selectedIds.size}
