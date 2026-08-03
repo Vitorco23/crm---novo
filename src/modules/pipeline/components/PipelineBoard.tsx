@@ -461,17 +461,13 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     [allPipelineLeads, filterNicheSet]
   );
   const pipelineLeads = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    const qDigits = q.replace(/\D+/g, "");
+    const q = searchQuery.trim();
     return allPipelineLeads.filter((l) => {
       const matchesNiche = filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche));
       const matchesCity = filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city));
       if (!matchesNiche || !matchesCity) return false;
       if (!q) return true;
-      if (l.company.toLowerCase().includes(q)) return true;
-      const phoneDigits = (l.phone || "").replace(/\D+/g, "");
-      if (qDigits && phoneDigits.includes(qDigits)) return true;
-      return false;
+      return leadMatchesQuery(l, q);
     });
   }, [allPipelineLeads, filterNicheSet, filterCitySet, searchQuery]);
   const leadsByStage = useMemo(() => {
