@@ -84,11 +84,13 @@ export function buildDialerRows(leads: Lead[]): { rows: DialerRow[]; stats: Expo
     }
     seen.add(phone);
     const email = ((l as Lead & { email?: string }).email || "").trim();
+    const company = (l.company || "").trim();
     rows.push({
       Telefone: phone,
-      Nome: (l.contact || "").trim(),
+      // Matteline exige Nome preenchido e usa esse campo na discagem -> sempre a empresa.
+      Nome: company,
       "E-mail": email,
-      Empresa: (l.company || "").trim(),
+      Empresa: company,
     });
   }
 
