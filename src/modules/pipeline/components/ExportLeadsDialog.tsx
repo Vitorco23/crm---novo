@@ -144,7 +144,7 @@ export default function ExportLeadsDialog({
                   </div>
                 )}
                 <div className="text-muted-foreground text-xs pt-1">
-                  Colunas: Telefone, Nome, E-mail, Empresa.
+                  Colunas: Telefone, Nome, E-mail, Empresa. O campo Nome recebe o nome da empresa (exigência do Matteline).
                 </div>
               </>
             ) : (
