@@ -40,6 +40,7 @@ import { computeLeadTemperature, lastInteractionLabel, nextActionLabel } from "@
 import { getStepForLead, executionMoment } from "@/modules/leads/services/cadence";
 import { LeadIntelligenceRepository } from "@/modules/leads/services/LeadIntelligenceRepository";
 import { Sparkles as SparklesIcon } from "lucide-react";
+import { leadMatchesQuery } from "@/modules/pipeline/services/leadSearch";
 
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
