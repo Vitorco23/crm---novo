@@ -40,6 +40,7 @@ import { computeLeadTemperature, lastInteractionLabel, nextActionLabel } from "@
 import { getStepForLead, executionMoment } from "@/modules/leads/services/cadence";
 import { LeadIntelligenceRepository } from "@/modules/leads/services/LeadIntelligenceRepository";
 import { Sparkles as SparklesIcon } from "lucide-react";
+import { leadMatchesQuery } from "@/modules/pipeline/services/leadSearch";
 
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -461,17 +462,13 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     [allPipelineLeads, filterNicheSet]
   );
   const pipelineLeads = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    const qDigits = q.replace(/\D+/g, "");
+    const q = searchQuery.trim();
     return allPipelineLeads.filter((l) => {
       const matchesNiche = filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche));
       const matchesCity = filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city));
       if (!matchesNiche || !matchesCity) return false;
       if (!q) return true;
-      if (l.company.toLowerCase().includes(q)) return true;
-      const phoneDigits = (l.phone || "").replace(/\D+/g, "");
-      if (qDigits && phoneDigits.includes(qDigits)) return true;
-      return false;
+      return leadMatchesQuery(l, q);
     });
   }, [allPipelineLeads, filterNicheSet, filterCitySet, searchQuery]);
   const leadsByStage = useMemo(() => {
@@ -860,7 +857,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Pesquisar por nome ou número..."
+            placeholder="Pesquisar nome, número ou conteúdo..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 text-xs pl-8 w-64"
