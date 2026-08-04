@@ -40,6 +40,12 @@ export default function MissaoDoDia() {
     return () => window.removeEventListener(OPEN_LEAD_EVENT, handler);
   }, [tick]);
 
+  useEffect(() => {
+    const handler = () => handleComplete();
+    window.addEventListener("p21:complete-mission", handler);
+    return () => window.removeEventListener("p21:complete-mission", handler);
+  }, [tick, handleComplete]);
+
   // Metas e Progresso (SPRINT 5)
   const g = useMemo(() => getGoalsSettings(), [tick]);
   const progressData = useMemo(() => {
@@ -125,9 +131,16 @@ export default function MissaoDoDia() {
     resetMissionDay();
     localStorage.removeItem("p21_priority_leads_cache");
     setShowCompletion(true);
-    setDrawerOpen(false); // Fecha o modal ao concluir a missão
+    setDrawerOpen(false); 
     toast({ title: "Missão Concluída", description: "Operação atualizada." });
-    bump();
+    
+    // Pequeno delay para a animação de fechar o drawer terminar
+    setTimeout(() => {
+      setDrawerLead(null);
+      setDrawerTab(undefined);
+      setDrawerAction(undefined);
+      bump();
+    }, 300);
   };
 
   const lead = useMemo(() => {
@@ -279,7 +292,7 @@ export default function MissaoDoDia() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <Button 
                     className="h-14 bg-accent text-accent-foreground hover:bg-accent/90 rounded-xl font-black uppercase tracking-tighter gap-2 text-sm shadow-md"
-                    onClick={() => openLead(activeMission.leadId, { tab: "interacoes" })}
+                    onClick={() => openLead(activeMission.leadId, { tab: "interacoes", action: "new-interaction" })}
                   >
                     <Phone className="h-4 w-4" /> Ligar
                   </Button>
