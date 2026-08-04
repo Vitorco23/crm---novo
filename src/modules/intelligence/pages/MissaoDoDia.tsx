@@ -290,7 +290,7 @@ export default function MissaoDoDia() {
                   <h4 className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">🎯 SUA PRÓXIMA MISSÃO</h4>
                   <div className="flex items-center gap-1.5 bg-accent/10 text-accent px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
                     <Flame className="h-2.5 w-2.5 fill-current" />
-                    Prioridade {activeMission.impacto === "critico" ? "Crítica" : "Alta"}
+                    Prioridade {activeMission.score || (activeMission.impacto === "critico" ? 90 : 70)}
                   </div>
                 </div>
                 <h3 className="text-3xl font-black tracking-tighter text-foreground uppercase italic leading-none">

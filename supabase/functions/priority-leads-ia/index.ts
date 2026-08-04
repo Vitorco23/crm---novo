@@ -179,11 +179,13 @@ Deno.serve(async (req) => {
           callNotesCount: cand.reunioesMarcadas ?? 0,
           hasPendingPromise: (cand.followupsVencidos ?? 0) > 0 || (cand.tarefasVencidas ?? 0) > 0,
         }, String(x.leadId));
+        const rankedItem = rankedLeads.find(r => r?.leadId === String(x.leadId));
         return {
           leadId: String(x.leadId),
           motivo: String(x.motivo || "").slice(0, 220),
           proximaAcao: String(x.proximaAcao || nba.title || "").slice(0, 200),
           impacto: ["critico", "alto", "medio"].includes(x.impacto) ? x.impacto : "medio",
+          score: rankedItem?.score ?? 0,
           nextBestAction: nba,
         };
       });
