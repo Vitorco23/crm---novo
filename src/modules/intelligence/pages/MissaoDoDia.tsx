@@ -11,6 +11,7 @@ import { resetMissionDay } from "@/modules/intelligence/services/missionStore";
 
 export default function MissaoDoDia() {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showCompletion, setShowCompletion] = useState(false);
   const [tick, setTick] = useState(0);
 
   const bump = () => setTick(t => t + 1);
@@ -29,11 +30,14 @@ export default function MissaoDoDia() {
   }, [tick]);
 
   const missionCache = useMemo(() => getCache(), [tick]);
-  const activeMission = missionCache?.leads?.[0] || null;
+  const activeMission = !showCompletion ? (missionCache?.leads?.[0] || null) : null;
 
   const handleGenerateMission = async () => {
     setIsUpdating(true);
+    setShowCompletion(false);
     try {
+      // SPRINT 5: Recalcula toda a operação do zero limpando cache primeiro
+      localStorage.removeItem("p21_priority_leads_cache");
       const result = await computePriorityLeads(true);
       if (!result.leads || result.leads.length === 0) {
         toast({ 
@@ -55,16 +59,16 @@ export default function MissaoDoDia() {
   };
 
   const handleComplete = () => {
+    // SPRINT 5: Mostra tela de conclusão em vez de buscar próxima automaticamente
     resetMissionDay();
-    const CACHE_KEY = "p21_priority_leads_cache";
-    localStorage.removeItem(CACHE_KEY);
-    toast({ title: "Missão Concluída", description: "Buscando próxima melhor ação..." });
+    localStorage.removeItem("p21_priority_leads_cache");
+    setShowCompletion(true);
+    toast({ title: "Missão Concluída", description: "Operação atualizada." });
     bump();
   };
 
   const handleSkip = () => {
     handleGenerateMission();
-    toast({ title: "Missão Recalculada", description: "Buscando outra oportunidade..." });
   };
 
   const lead = useMemo(() => {
@@ -125,25 +129,39 @@ export default function MissaoDoDia() {
           )}
         </div>
 
-        {/* CARD CENTRAL */}
+        {/* CARD CENTRAL OU CONCLUSÃO */}
         {!activeMission ? (
           <Card className="border-none bg-card/30 rounded-[2rem] shadow-xl overflow-hidden border border-white/5">
             <CardContent className="p-10 text-center space-y-8">
               <div className="space-y-3">
                 <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Brain className="h-8 w-8 text-accent" />
+                  {showCompletion ? <Check className="h-8 w-8 text-accent" /> : <Brain className="h-8 w-8 text-accent" />}
                 </div>
-                <h2 className="text-2xl font-black text-foreground tracking-tighter italic uppercase">
-                  🧠 Diretor Comercial IA
-                </h2>
-                <div className="space-y-1 max-w-sm mx-auto">
-                  <p className="text-lg font-bold text-foreground/90 leading-tight">
-                    Sua operação está pronta para análise.
-                  </p>
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Clique abaixo para que a IA analise toda a operação e escolha qual deve ser sua próxima ação.
-                  </p>
-                </div>
+                
+                {showCompletion ? (
+                  <div className="space-y-4">
+                    <h2 className="text-3xl font-black text-foreground tracking-tighter italic uppercase">
+                      ✅ Missão concluída.
+                    </h2>
+                    <p className="text-lg font-bold text-accent leading-tight uppercase tracking-widest">
+                      Operação atualizada.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-2xl font-black text-foreground tracking-tighter italic uppercase">
+                      🧠 Diretor Comercial IA
+                    </h2>
+                    <div className="space-y-1 max-w-sm mx-auto">
+                      <p className="text-lg font-bold text-foreground/90 leading-tight">
+                        Sua operação está pronta para análise.
+                      </p>
+                      <p className="text-sm text-muted-foreground font-medium">
+                        Clique abaixo para que a IA analise toda a operação e escolha qual deve ser sua próxima ação.
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
 
               <Button 
@@ -157,7 +175,7 @@ export default function MissaoDoDia() {
                 ) : (
                   <Target className="h-6 w-6" />
                 )}
-                Gerar Missão Inteligente
+                {showCompletion ? "Gerar Próxima Missão Inteligente" : "Gerar Missão Inteligente"}
               </Button>
             </CardContent>
           </Card>
