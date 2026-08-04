@@ -210,14 +210,36 @@ export default function MissaoDoDia() {
                   </div>
 
                   <div className="p-10 space-y-10">
-                    <div className="space-y-4">
-                      <h4 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
-                        <FileText className="h-3 w-3" /> Motivo
-                      </h4>
-                      <p className="text-xl font-medium leading-relaxed text-foreground/90">
-                        {currentMission.motivo}
-                      </p>
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
+                          <FileText className="h-3 w-3" /> Por que este lead?
+                        </h4>
+                        <p className="text-xl font-medium leading-relaxed text-foreground/90">
+                          {currentMission.motivo}
+                        </p>
+                      </div>
+
+                      {/* Explicabilidade Detalhada (Sinais) */}
+                      {currentMission.impacto && (
+                        <div className="flex flex-wrap gap-2">
+                          {getLeads().find(l => l.id === currentMission.leadId)?.temperature === 'Quente' && (
+                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[10px] font-bold text-orange-500 uppercase tracking-wider">
+                              <Flame className="h-3 w-3" /> Temperatura Alta
+                            </div>
+                          )}
+                          {(getLeads().find(l => l.id === currentMission.leadId)?.contractValue || 0) > 5000 && (
+                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-500 uppercase tracking-wider">
+                              <Target className="h-3 w-3" /> Ticket Elevado
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-[10px] font-bold text-accent uppercase tracking-wider">
+                            <Check className="h-3 w-3" /> Prioridade {currentMission.impacto}
+                          </div>
+                        </div>
+                      )}
                     </div>
+
 
                     <div className="grid grid-cols-3 gap-4">
                       <Button 
