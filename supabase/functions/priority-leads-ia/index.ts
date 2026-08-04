@@ -4,13 +4,11 @@
 
 import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
-import { createMemoryEngine } from "../_shared/ai-core/index.ts";
+import { startAIExecution } from "../_shared/ai-core/index.ts";
 import { NBA_PROMPT_BLOCK, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
-  wrapUntrusted,
-  sanitizeExternal,
 } from "../_shared/untrusted-input.ts";
 
 
@@ -80,26 +78,46 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const auth = await requireUser(req, corsHeaders);
   if (!auth.ok) return auth.response;
+
+  const authHeaderRaw = req.headers.get("Authorization") ?? req.headers.get("authorization");
+  const telemetry = startAIExecution({
+    task: "priority_leads",
+    userId: auth.userId,
+    authHeader: authHeaderRaw,
+  });
+
+  console.log(`[PriorityLeads] Início da execução para usuário: ${auth.userId}`);
+
   try {
     const body = await req.json().catch(() => ({}));
     const candidates = body?.candidates;
+    
     if (!Array.isArray(candidates) || candidates.length === 0) {
+      console.log(`[PriorityLeads] Nenhum candidato recebido.`);
+      await telemetry.success({ inputChars: 0, outputChars: 2 });
       return new Response(
         JSON.stringify({ leads: [] }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
+    console.log(`[PriorityLeads] Recebidos ${candidates.length} candidatos.`);
+    telemetry.addSource("crm");
+
     // PASSO 1: Gemini analisa individualmente para gerar Scores (em paralelo)
-    // Limitamos a 15 para performance e tokens, já que buildCandidates já traz o topo.
     const topCandidates = candidates.slice(0, 15);
+    console.log(`[PriorityLeads] Pontuando top ${topCandidates.length} candidatos...`);
     
+    let totalInputCharsScoring = 0;
     const scoringResults = await Promise.all(topCandidates.map(async (cand) => {
+      const userPayload = `Analise este lead: ${JSON.stringify(cand)}`;
+      totalInputCharsScoring += userPayload.length;
+      
       try {
         const res = await callAI({
           task: "priority_scoring",
           system: SCORING_SYSTEM_PROMPT,
-          user: `Analise este lead: ${JSON.stringify(cand)}`,
+          user: userPayload,
           json: true,
           temperature: 0.1,
           maxTokens: 200,
@@ -113,7 +131,7 @@ Deno.serve(async (req) => {
           original: cand
         };
       } catch (e) {
-        console.error(`Erro ao pontuar lead ${cand.id}:`, e);
+        console.error(`[PriorityLeads] Erro ao pontuar lead ${cand.id}:`, e);
         return null;
       }
     }));
@@ -122,15 +140,23 @@ Deno.serve(async (req) => {
       .filter(Boolean)
       .sort((a, b) => (b?.score || 0) - (a?.score || 0));
 
+    console.log(`[PriorityLeads] Ranking concluído. Melhor score: ${rankedLeads[0]?.score || 0}`);
+
     // PASSO 2: GPT recebe o ranking e define a Missão
+    const finalUserPrompt = `Data/hora atual: ${new Date().toISOString()}\nRanking de Oportunidades:\n${JSON.stringify(rankedLeads.map(r => ({ id: r?.leadId, empresa: r?.empresa, score: r?.score, motivo: r?.motivo })))}`;
+    
+    console.log(`[PriorityLeads] Enviando ranking para decisão final. Tamanho prompt: ${finalUserPrompt.length} chars.`);
+
     const finalResult = await callAI({
       task: "priority_leads",
       system: FINAL_DECISION_SYSTEM_PROMPT + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE + "\n\n" + NBA_PROMPT_BLOCK,
-      user: `Data/hora atual: ${new Date().toISOString()}\nRanking de Oportunidades:\n${JSON.stringify(rankedLeads.map(r => ({ id: r?.leadId, empresa: r?.empresa, score: r?.score, motivo: r?.motivo })))}`,
+      user: finalUserPrompt,
       json: true,
       temperature: 0.2,
       maxTokens: 800,
     });
+
+    console.log(`[PriorityLeads] Decisão final recebida. Modelo: ${finalResult.modelUsed}. Latência: ${finalResult.latencyMs}ms`);
 
     let parsed: any = null;
     try { parsed = JSON.parse(finalResult.content); }
@@ -163,15 +189,31 @@ Deno.serve(async (req) => {
         };
       });
 
+    await telemetry.success({
+      model: finalResult.modelUsed,
+      inputChars: totalInputCharsScoring + finalUserPrompt.length,
+      outputChars: finalResult.content.length,
+      inputTokens: finalResult.promptTokens,
+      outputTokens: finalResult.completionTokens,
+    });
+
     return new Response(
       JSON.stringify({ leads, model: finalResult.modelUsed, generatedAt: new Date().toISOString() }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
-    console.error(JSON.stringify({ evt: "priority_leads_error", msg: (e as Error).message }));
+    console.error(`[PriorityLeads] ERRO CRÍTICO:`, e);
+    await telemetry.failure(e);
+    const errInfo = telemetry.formatError(e);
+    
     return new Response(
-      JSON.stringify({ error: "internal_error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ 
+        error: errInfo.error, 
+        message: errInfo.message,
+        code: errInfo.code,
+        stack: (e as Error).stack 
+      }),
+      { status: errInfo.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 
