@@ -123,24 +123,29 @@ export function buildCandidates(): Candidate[] {
     const tHoje = tasks.filter((t) => t.status === "pendente" && t.dueAt.slice(0, 10) === todayStr).length;
 
     // Heurística de pré-score para filtragem inicial
+    // SPRINT - Correção do Motor: Não descarta nenhum lead que tenha ações pendentes ou seja quente.
     let pre = 0;
-    const sinais: string[] = [];
-
-    if (fVencidos > 0) pre += 40 + fVencidos * 10;
-    if (fHoje > 0) pre += 30;
-    if (tVencidas > 0) pre += 25;
-    if (tHoje > 0) pre += 15;
+    
+    if (fVencidos > 0) pre += 100 + fVencidos * 10;
+    if (fHoje > 0) pre += 80;
+    if (tVencidas > 0) pre += 60;
+    if (tHoje > 0) pre += 40;
+    if (diasSemInteracao > 7) pre += 30; // Lead parado
 
     if (audit) {
       if (typeof audit.scoreComercial === "number") pre += audit.scoreComercial / 2;
-      if (audit.prioridade === "Alta") pre += 25;
-      if (audit.temperatura === "Quente") pre += 20;
+      if (audit.prioridade === "Alta") pre += 40;
+      if (audit.temperatura === "Quente") pre += 50;
     }
 
-    if (l.stage === "Proposta Enviada") pre += 25 + Math.min(diasNaEtapa, 10);
-    if ((l.contractValue || 0) > 0) pre += Math.min(20, (l.contractValue! / 1000));
+    if (l.stage === "Proposta Enviada") pre += 30;
+    if ((l.contractValue || 0) > 0) pre += Math.min(30, (l.contractValue! / 500));
 
-    if (pre < 5) continue; 
+    // Força a inclusão se houver sinais críticos, mesmo que a pontuação base seja baixa
+    const hasCriticalSignal = fVencidos > 0 || fHoje > 0 || tVencidas > 0 || (audit?.temperatura === "Quente" && diasSemInteracao > 2);
+    
+    if (pre < 5 && !hasCriticalSignal) continue; 
+
 
     const lastInt = interactions[interactions.length - 1] || null;
 
@@ -167,7 +172,7 @@ export function buildCandidates(): Candidate[] {
       notasVendedor: (l.notes || "").slice(0, 1000),
       diagnosticoHistorico: (l.diagnosisHistory || []).map(h => h.diagnosis.summary).join(" | ").slice(0, 1000),
       interacoesRecentes: interactions.slice(-3).map(i => `${i.type}: ${i.summary}`).join(" | "),
-      sinaisIA: sinais,
+      sinaisIA: [],
       _prescore: pre,
     } as any);
   }

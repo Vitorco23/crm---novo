@@ -150,17 +150,17 @@ export default function MissaoDoDia() {
   }, [activeMission, tick]);
 
   const prioritySinais = useMemo(() => {
-    if (!lead) return [];
-    const signs: string[] = [];
-    if (lead.stage === "Novo Lead") signs.push("Novo Lead aguardando contato");
-    if (lead.stage.includes("Proposta")) signs.push("Proposta enviada sem retorno");
-    if (lead.temperature === "Quente") signs.push("Lead altamente aquecido");
-    if (lead.contractValue && lead.contractValue > 5000) signs.push("Alto potencial financeiro");
-    if (signs.length === 0 && activeMission?.motivo) {
-      return activeMission.motivo.split(/[.;]|\n/).filter(s => s.trim().length > 5).slice(0, 3);
+    if (!activeMission) return [];
+    if (activeMission.motivo) {
+      // Divide o motivo em sentenças para mostrar como bullets
+      return activeMission.motivo
+        .split(/[.;]|\n/)
+        .map(s => s.trim())
+        .filter(s => s.length > 5);
     }
-    return signs.slice(0, 3);
-  }, [lead, activeMission]);
+    return [];
+  }, [activeMission]);
+
 
   return (
     <PageContainer>
