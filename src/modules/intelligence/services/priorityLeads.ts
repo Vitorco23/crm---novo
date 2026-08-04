@@ -172,7 +172,7 @@ export function buildCandidates(): Candidate[] {
       notasVendedor: (l.notes || "").slice(0, 1000),
       diagnosticoHistorico: (l.diagnosisHistory || []).map(h => h.diagnosis.summary).join(" | ").slice(0, 1000),
       interacoesRecentes: interactions.slice(-3).map(i => `${i.type}: ${i.summary}`).join(" | "),
-      sinaisIA: sinais,
+      sinaisIA: [],
       _prescore: pre,
     } as any);
   }
