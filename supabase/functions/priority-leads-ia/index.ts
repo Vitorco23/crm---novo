@@ -22,13 +22,14 @@ const corsHeaders = {
 };
 
 const SYSTEM_PROMPT = `Você é o Diretor Comercial da Performance21 analisando a carteira do dia.
-Sua tarefa: escolher entre 0 e 5 leads que REALMENTE merecem atenção imediata AGORA.
+Sua tarefa: escolher entre 0 e 8 leads que REALMENTE merecem atenção imediata AGORA.
 
 Regras absolutas:
-- Priorize IMPACTO COMERCIAL esperado, não apenas o Score.
-- Um lead com score menor pode ter prioridade máxima se: prometeu retorno, está prestes a fechar, está esfriando após avanço, ou tem follow-up vencido crítico.
+- Priorize IMPACTO COMERCIAL esperado e URGÊNCIA (promessa de retorno, proposta vencida, risco de perda, lead quente esfriando).
+- Analise todo o histórico, temperatura, estágio do pipeline e data do último contato.
+- Calcule um Score Comercial interno (invisível ao usuário) para ordenar os leads.
 - NUNCA invente informações. Use apenas o contexto fornecido de cada lead.
-- Se nenhum lead for realmente prioritário, devolva lista vazia. Não force 5.
+- Se nenhum lead for realmente prioritário, devolva lista vazia.
 - Motivo deve ser 1 frase concreta (≤ 140 caracteres), citando o fato que torna esse lead urgente.
 - Próxima ação deve ser 1 verbo no infinitivo + o quê + prazo (≤ 120 caracteres). Ex: "Ligar até 16h para confirmar interesse na proposta".
 
@@ -47,7 +48,7 @@ RESPONDA EXCLUSIVAMENTE COM JSON VÁLIDO no formato:
   ]
 }
 
-Ordene do mais urgente para o menos urgente. Máximo 5 itens.`;
+Ordene do mais urgente para o menos urgente. Máximo 8 itens.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -83,7 +84,7 @@ Deno.serve(async (req) => {
       buildBusinessCalendarBlock() + "\n\n" +
       (memoryBlock ? memoryBlock + "\n\n" : "") +
       wrapUntrusted(candidatesSafe, { maxChars: 60000, label: "CANDIDATOS (JSON)" }) + "\n\n" +
-      `Selecione até 5 leads prioritários no formato JSON descrito.`;
+      `Selecione até 8 leads prioritários no formato JSON descrito.`;
 
     let result;
     try {
@@ -121,7 +122,7 @@ Deno.serve(async (req) => {
     const raw = Array.isArray(parsed?.leads) ? parsed.leads : [];
     const leads = raw
       .filter((x: any) => x && candMap.has(String(x.leadId)))
-      .slice(0, 5)
+      .slice(0, 8)
       .map((x: any) => {
         const cand = candMap.get(String(x.leadId)) || {};
         const nba = sanitizeNBA(x.next_best_action ?? x.nextBestAction ?? null, {

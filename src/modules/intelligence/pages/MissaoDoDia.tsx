@@ -15,6 +15,7 @@ import {
   MISSION_UPDATED_EVENT, type MissionEntry,
 } from "@/modules/intelligence/services/missionStore";
 import { buildMissionPlan, addFollowupTask } from "@/modules/intelligence/services/missionPlanner";
+import { computePriorityLeads } from "@/modules/intelligence/services/priorityLeads";
 import { openLead } from "@/modules/leads/services/openLead";
 import { on } from "@/shared/services/eventBus";
 import { getLeads } from "@/shared/services/store";
@@ -63,23 +64,38 @@ export default function MissaoDoDia() {
     return getLeads().filter(l => /proposta/i.test(l.stage)).length;
   }, [tick]);
 
-  const handleUpdatePriorities = () => {
+  const handleUpdatePriorities = async () => {
     setIsUpdating(true);
-    // Simula processamento da IA para "gerar o lote"
-    setTimeout(() => {
-      // Adiciona o primeiro lote de follow-ups sugeridos à missão
-      const batchSize = 8;
-      const batch = followupSuggestions.slice(0, batchSize);
+    try {
+      // SPRINT 2: Chama a IA de Priorização para calcular o cenário comercial atual
+      const result = await computePriorityLeads(true); // true força recálculo total (ignore cache)
       
-      if (batch.length === 0) {
-        toast({ title: "Tudo atualizado", description: "Não há novos follow-ups recomendados no momento." });
+      // Mapeia os picks da IA para tarefas na missão
+      if (!result.leads || result.leads.length === 0) {
+        toast({ title: "Tudo atualizado", description: "O Diretor Comercial IA não identificou novas urgências no momento." });
       } else {
-        batch.forEach(f => addFollowupTask(f));
-        toast({ title: "Prioridades atualizadas", description: `${batch.length} novos itens adicionados.` });
+        // O missionPlanner/missionStore já lida com a persistência e deduplicação via ref
+        result.leads.forEach(pick => {
+          // Busca o pick correspondente nas sugestões do plano para manter consistência de dados
+          const suggestion = plan.followups.find(f => f.leadId === pick.leadId);
+          if (suggestion) {
+            addFollowupTask(suggestion);
+          }
+        });
+        
+        toast({ title: "Missão Atualizada", description: `O Diretor Comercial IA selecionou os ${result.leads.length} leads mais prioritários.` });
         bump();
       }
+    } catch (error) {
+      console.error("Erro na priorização IA:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Erro na priorização", 
+        description: "Não foi possível conectar com o Diretor Comercial IA agora." 
+      });
+    } finally {
       setIsUpdating(false);
-    }, 800);
+    }
   };
 
   const handleComplete = (e: MissionEntry) => {
