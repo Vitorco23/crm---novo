@@ -21,45 +21,42 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_PROMPT = `Você é o Diretor Comercial da Performance21.
-Sua missão: Calcular o Score Comercial de cada lead e selecionar a prioridade absoluta (#1).
+const SCORING_SYSTEM_PROMPT = `Você é o Analista Estratégico da Performance21.
+Sua missão: Analisar o contexto profundo de um lead e calcular seu Score de Prioridade (0-100).
 
-REGRAS OBRIGATÓRIAS DE ANÁLISE (SPRINT - Otimização da Análise):
-1. FOCO EM QUALIDADE: Você deve priorizar leads que já possuem histórico comercial (Tentativas 1-10, Follow-up, Diagnóstico, Reunião, Proposta, Negociação).
-2. ETAPA "NOVOS LEADS" E "IMPORTADOS": Estas etapas devem ser ignorADAS na análise de impacto. Elas contêm registros sem histórico. O Diretor IA trabalha apenas com oportunidades ativas.
-3. FILTRAGEM PRÉVIA: O sistema cliente já filtra os leads, então se você recebeu um lead, ele é tecnicamente um candidato ativo, mas você deve validar se ele realmente exige ação (ex: follow-up vencido, proposta parada).
+CRITÉRIOS DE SCORE:
++ Follow-up vencido / Retorno prometido para hoje: +40 pts
++ Decisor identificado / Reunião realizada: +30 pts
++ Proposta enviada / Negociação ativa: +20 pts
++ Lead Quente (temperatura): +10 pts
+- Lead Frio / Sem interação > 15 dias: -20 pts
+- Oportunidade parada há meses: -40 pts
 
+CONSIDERE: Observações, memória comercial, anexos (análise prévia), histórico, diagnóstico comercial e temperatura.
 
-4. CRITÉRIOS DE PRIORIDADE:
-   - Proposta/Negociação: Leads em etapas finais de venda são prioridade máxima.
-   - Follow-up Vencido: Se houver compromisso de retorno atrasado, é crítico.
-   - Retorno Prometido: Compromissos para hoje.
-   - Lead Quente Parado: Leads com temperatura "Quente" sem contato há mais de 48h.
-   - Alto Valor: Critério de desempate.
+OUTPUT (JSON):
+{
+  "score": number,
+  "resumo_prioridade": "string curta com o motivo técnico do score"
+}`;
 
-5. PROIBIÇÃO DO "TUDO EM DIA": 
-   - Jamais retorne uma lista vazia se houver pelo menos uma ação possível sugerida pelos dados.
-   - Somente responda vazio se ABSOLUTAMENTE todos os leads estiverem com o próximo passo no futuro distante.
+const FINAL_DECISION_SYSTEM_PROMPT = `Você é o Diretor Comercial da Performance21.
+Sua missão: Receber um ranking de leads já pontuados e definir a PRIORIDADE ABSOLUTA (#1) para a Missão do Dia.
 
-6. TRANSPARÊNCIA DA DECISÃO:
-   - No campo "motivo", você deve ser específico.
-   - Comece citando o volume analisado.
-   - Exemplo: "Entre [X] oportunidades analisadas, esta foi considerada a ação de maior impacto porque possui follow-up vencido e está em etapa de Proposta."
+REGRAS:
+1. Você recebe apenas o ranking resumido (Top Oportunidades).
+2. Se houver pelo menos um lead com score > 10, você DEVE selecionar o melhor.
+3. Se não houver NENHUMA oportunidade prioritária (scores baixos ou lista vazia), sugira "Prospectar novos leads".
 
-7. OUTPUT (JSON):
-   - motivo: 1-2 frases detalhando a razão da escolha técnica (seja executivo e preciso).
-   - proximaAcao: Verbo + Ação + Contexto (ex: "Ligar para o sócio para validar a proposta de R$ 15k").
-   - impacto: "critico", "alto" ou "medio".
-
-REGRAS DE PONTUAÇÃO INTERNA:
-- Proposta/Negociação: +70 pts
-- Reunião Agendada/Realizada: +60 pts
-- Follow-up vencido: +60 pts
-- Retorno hoje: +50 pts
-- Diagnóstico: +40 pts
-- Temperatura Quente: +40 pts
-- Valor > 5k: +25 pts
-- Sem contato > 3 dias: +20 pts`;
+OUTPUT (JSON):
+{
+  "leads": [{
+    "leadId": "string",
+    "motivo": "frase executiva citando o volume analisado e a razão da escolha",
+    "proximaAcao": "Verbo + Ação + Contexto",
+    "impacto": "critico|alto|medio"
+  }]
+}`;
 
 
 Deno.serve(async (req) => {
@@ -76,65 +73,62 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Injeta memória comercial + padrões estatísticos como contexto extra.
-    const niches = Array.from(new Set(
-      (candidates as Array<{ niche?: string }>).map((c) => c?.niche).filter(Boolean),
-    )).slice(0, 3).join(", ");
-    const memory = createMemoryEngine();
-    const { block: memoryBlock } = await memory.get({
-      scope: "global",
-      queryText: `Priorização diária. Nichos dos candidatos: ${niches || "diversos"}.`,
-      matchCount: 4,
-      minSimilarity: 0.45,
-      includePatterns: true,
+    // PASSO 1: Gemini analisa individualmente para gerar Scores (em paralelo)
+    // Limitamos a 15 para performance e tokens, já que buildCandidates já traz o topo.
+    const topCandidates = candidates.slice(0, 15);
+    
+    const scoringResults = await Promise.all(topCandidates.map(async (cand) => {
+      try {
+        const res = await callAI({
+          task: "priority_scoring",
+          system: SCORING_SYSTEM_PROMPT,
+          user: `Analise este lead: ${JSON.stringify(cand)}`,
+          json: true,
+          temperature: 0.1,
+          maxTokens: 200,
+        });
+        const parsed = JSON.parse(res.content);
+        return { 
+          leadId: cand.id, 
+          empresa: cand.empresa, 
+          score: parsed.score || 0, 
+          motivo: parsed.resumo_prioridade || "",
+          original: cand
+        };
+      } catch (e) {
+        console.error(`Erro ao pontuar lead ${cand.id}:`, e);
+        return null;
+      }
+    }));
+
+    const rankedLeads = scoringResults
+      .filter(Boolean)
+      .sort((a, b) => (b?.score || 0) - (a?.score || 0));
+
+    // PASSO 2: GPT recebe o ranking e define a Missão
+    const finalResult = await callAI({
+      task: "priority_leads",
+      system: FINAL_DECISION_SYSTEM_PROMPT + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE + "\n\n" + NBA_PROMPT_BLOCK,
+      user: `Data/hora atual: ${new Date().toISOString()}\nRanking de Oportunidades:\n${JSON.stringify(rankedLeads.map(r => ({ id: r?.leadId, empresa: r?.empresa, score: r?.score, motivo: r?.motivo })))}`,
+      json: true,
+      temperature: 0.2,
+      maxTokens: 800,
     });
 
-    const candidatesSafe = sanitizeExternal(JSON.stringify(candidates), 60000);
-    const userPrompt =
-      `Data/hora atual: ${new Date().toISOString()}\n` +
-      `Total de candidatos: ${candidates.length}\n\n` +
-      buildBusinessCalendarBlock() + "\n\n" +
-      (memoryBlock ? memoryBlock + "\n\n" : "") +
-      wrapUntrusted(candidatesSafe, { maxChars: 60000, label: "CANDIDATOS (JSON)" }) + "\n\n" +
-      `Selecione até 8 leads prioritários no formato JSON descrito.`;
-
-    let result;
-    try {
-      result = await callAI({
-        task: "priority_leads",
-        system: SYSTEM_PROMPT + "\n\n" + UNTRUSTED_INPUT_SYSTEM_CLAUSE + "\n\n" + NBA_PROMPT_BLOCK,
-
-        user: userPrompt,
-        json: true,
-        temperature: 0.2,
-        maxTokens: 1600,
-      });
-    } catch (e) {
-      const err = e as Error & { status?: number };
-      const status = err.status ?? 502;
-      const friendly =
-        status === 429 ? "Limite de requisições atingido. Tente em instantes."
-        : status === 402 ? "Créditos de IA esgotados."
-        : "Não foi possível calcular prioridades agora.";
-      return new Response(
-        JSON.stringify({ error: friendly }),
-        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
     let parsed: any = null;
-    try { parsed = JSON.parse(result.content); }
+    try { parsed = JSON.parse(finalResult.content); }
     catch {
-      const m = String(result.content).match(/\{[\s\S]*\}/);
+      const m = String(finalResult.content).match(/\{[\s\S]*\}/);
       if (m) { try { parsed = JSON.parse(m[0]); } catch { /* noop */ } }
     }
 
     const candMap = new Map<string, any>();
-    for (const c of candidates) candMap.set(String((c as any).id), c);
+    for (const c of topCandidates) candMap.set(String(c.id), c);
+    
     const raw = Array.isArray(parsed?.leads) ? parsed.leads : [];
     const leads = raw
       .filter((x: any) => x && candMap.has(String(x.leadId)))
-      .slice(0, 8)
+      .slice(0, 1) // Interface exibe apenas a maior prioridade
       .map((x: any) => {
         const cand = candMap.get(String(x.leadId)) || {};
         const nba = sanitizeNBA(x.next_best_action ?? x.nextBestAction ?? null, {
@@ -153,7 +147,7 @@ Deno.serve(async (req) => {
       });
 
     return new Response(
-      JSON.stringify({ leads, model: result.modelUsed, generatedAt: new Date().toISOString() }),
+      JSON.stringify({ leads, model: finalResult.modelUsed, generatedAt: new Date().toISOString() }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
