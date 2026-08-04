@@ -11,8 +11,9 @@ import {
 import { PageContainer, PageHeader } from "@/shared/components/shell";
 import {
   getMissionEntries, getMissionProgress, completeMissionEntry,
-  resetMissionDay, runOneTimeMissionReset,
+  resetMissionDay, runOneTimeMissionReset, saveMissionMemory,
   MISSION_UPDATED_EVENT, type MissionEntry,
+
 } from "@/modules/intelligence/services/missionStore";
 import { buildMissionPlan } from "@/modules/intelligence/services/missionPlanner";
 import { computePriorityLeads, getCache } from "@/modules/intelligence/services/priorityLeads";
@@ -71,16 +72,33 @@ export default function MissaoDoDia() {
   };
 
   const handleSkip = () => {
+    if (currentMission) {
+      saveMissionMemory({
+        leadId: currentMission.leadId,
+        timestamp: new Date().toISOString(),
+        actionTaken: currentMission.proximaAcao,
+        outcome: "Pulado pelo usuário"
+      });
+    }
     handleUpdatePriorities();
     toast({ title: "Missão pulada", description: "Buscando a próxima melhor ação..." });
   };
 
   const handleComplete = () => {
+    if (currentMission) {
+      saveMissionMemory({
+        leadId: currentMission.leadId,
+        timestamp: new Date().toISOString(),
+        actionTaken: currentMission.proximaAcao,
+        outcome: "Concluído"
+      });
+    }
     resetMissionDay();
     localStorage.removeItem("p21_priority_leads_cache");
     toast({ title: "Ação registrada", description: "Missão concluída com sucesso." });
     bump();
   };
+
 
   const handleReset = () => {
     resetMissionDay();
