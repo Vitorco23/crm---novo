@@ -80,7 +80,7 @@ export default function MissaoDoDia() {
     // O usuário registra a ação no card do lead (ligação, nota, etc)
     resetMissionDay();
     // Limpamos o cache local para forçar o estado de "Gerar"
-    const { CACHE_KEY } = require("@/modules/intelligence/services/priorityLeads");
+    const CACHE_KEY = "p21_priority_leads_v1";
     localStorage.removeItem(CACHE_KEY);
     toast({ title: "Ação registrada", description: "Missão concluída com sucesso." });
     bump();
@@ -88,7 +88,7 @@ export default function MissaoDoDia() {
 
   const handleReset = () => {
     resetMissionDay();
-    const { CACHE_KEY } = require("@/modules/intelligence/services/priorityLeads");
+    const CACHE_KEY = "p21_priority_leads_v1";
     localStorage.removeItem(CACHE_KEY);
     toast({ title: "Missão do dia reiniciada", description: "Nenhum dado comercial foi alterado." });
     bump();
