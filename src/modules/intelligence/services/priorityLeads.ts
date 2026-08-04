@@ -16,6 +16,7 @@ export interface PriorityLeadPick {
   motivo: string;
   proximaAcao: string;
   impacto: "critico" | "alto" | "medio";
+  score?: number;
   nextBestAction?: import("@/modules/intelligence/services/nextBestAction").NextBestAction;
 }
 
@@ -79,6 +80,7 @@ interface Candidate {
   ultimaInteracao?: { tipo: string; resumo: string; data: string };
   sinais: string[];
   _prescore: number; // heurística usada só para pré-filtrar
+  scoreComercial?: number;
 }
 
 // Constrói candidatos com contexto ultra-detalhado para análise da IA.
@@ -186,10 +188,57 @@ export function buildCandidates(): Candidate[] {
       interacoesRecentes: interactions.slice(-3).map(i => `${i.type}: ${i.summary}`).join(" | "),
       sinaisIA: [],
       _prescore: pre,
+      scoreComercial: 0 // Será calculado via heurística
     } as any);
   }
 
-  cands.sort((a, b) => b._prescore - a._prescore);
+  // SPRINT 3: Cálculo do Score Comercial via Heurística Configurável
+  for (const c of cands) {
+    let s = 0;
+    const l = leads.find(lead => lead.id === c.id)!;
+    
+    // 1. Tempo parado / Follow-up / Reuniões
+    if (c.followupsVencidos > 0) s += 20;
+    if (c.tarefasHoje > 0) s += 30; // "Reunião hoje" simplificada
+    if (c.tarefasVencidas > 0) s += 35; // "Reunião atrasada" simplificada
+
+    // 2. Etapa do Funil
+    const stages: Record<string, number> = {
+      "Tentativa 1": 5, "Tentativa 2": 10, "Tentativa 3": 15, "Tentativa 4": 20,
+      "Follow-up": 25, "Reunião Marcada": 35, "Reunião Realizada": 40,
+      "Proposta": 50, "Negociação": 60
+    };
+    s += stages[c.etapa] || 0;
+
+    // 3. Inteligência Comercial (Audit)
+    const audit = latestAudit(l);
+    if (audit) {
+      if (audit.temperatura === "Quente") s += 15;
+      if (audit.temperatura === "Frio") s -= 20;
+      // Adicionais do audit poderiam ser mapeados aqui
+    }
+
+    // 4. Memória Comercial (Mock para estrutura configurável)
+    const memory = (l as any).strategicMemory || "";
+    if (memory.includes("urgência")) s += 25;
+    if (memory.includes("decidir")) s += 30;
+
+    // 5. Atividade
+    if (c.tarefasHoje > 0) s += 30;
+    if (c.followupsVencidos > 0) s += 25;
+    if (c.interacoes === 0) s -= 15;
+
+    // 6. Tempo sem interação
+    if (c.diasDesdeUltimaInteracao <= 3) s += 5;
+    else if (c.diasDesdeUltimaInteracao <= 7) s += 15;
+    else if (c.diasDesdeUltimaInteracao <= 15) s += 25;
+    else if (c.diasDesdeUltimaInteracao <= 30) s += 35;
+    else if (c.diasDesdeUltimaInteracao > 60) s -= 10;
+
+    c.scoreComercial = Math.max(0, Math.min(100, s));
+  }
+
+  cands.sort((a, b) => (b as any).scoreComercial - (a as any).scoreComercial);
   return cands.slice(0, 40);
 }
 
