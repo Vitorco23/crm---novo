@@ -130,45 +130,45 @@ export default function MissaoDoDia() {
 
       <div className="max-w-2xl mx-auto space-y-8 py-4">
         {/* 1. MISSÃO DO DIA (Resumo Drástico) */}
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
+        <div className="text-center space-y-6">
+          <h2 className="text-3xl font-black tracking-tighter text-foreground flex items-center justify-center gap-2 italic">
             🎯 MISSÃO DO DIA
           </h2>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-xl bg-card border border-border shadow-sm">
-              <p className="text-2xl font-bold text-accent">{plan.callsGoal}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">novas ligações</p>
+            <div className="p-6 rounded-2xl bg-card/50 border border-border shadow-sm">
+              <p className="text-3xl font-black text-accent">{plan.callsGoal + (plan.items.find(i => i.kind === 'calls')?.estimatedMinutes ? 0 : 0)}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">novas ligações</p>
             </div>
-            <div className="p-4 rounded-xl bg-card border border-border shadow-sm">
-              <p className="text-2xl font-bold text-accent">{plan.followupTarget}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">follow-ups</p>
+            <div className="p-6 rounded-2xl bg-card/50 border border-border shadow-sm">
+              <p className="text-3xl font-black text-accent">{plan.followupTarget}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">follow-ups</p>
             </div>
-            <div className="p-4 rounded-xl bg-card border border-border shadow-sm">
-              <p className="text-2xl font-bold text-accent">{plan.meetingsGoal}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">reuniões</p>
+            <div className="p-6 rounded-2xl bg-card/50 border border-border shadow-sm">
+              <p className="text-3xl font-black text-accent">{plan.meetingsGoal}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">reuniões</p>
             </div>
-            <div className="p-4 rounded-xl bg-card border border-border shadow-sm">
-              <p className="text-2xl font-bold text-accent">{proposalCount}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">propostas</p>
+            <div className="p-6 rounded-2xl bg-card/50 border border-border shadow-sm">
+              <p className="text-3xl font-black text-accent">{proposalCount}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">propostas</p>
             </div>
           </div>
         </div>
 
         {/* 4. BOTÃO PRINCIPAL (CTA) */}
-        {!isMissionComplete && pending.length === 0 && (
-          <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {pending.length === 0 && (
+          <div className="flex flex-col items-center gap-6 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Button 
               size="lg" 
-              className="h-16 px-10 text-lg gap-2 bg-accent text-accent-foreground hover:bg-accent/90 shadow-xl shadow-accent/20"
+              className="h-20 px-12 text-xl gap-3 bg-accent text-accent-foreground hover:bg-accent/90 shadow-2xl shadow-accent/30 rounded-full font-black uppercase tracking-tighter transition-all hover:scale-105 active:scale-95"
               onClick={handleUpdatePriorities}
               disabled={isUpdating}
             >
-              <RotateCcw className={`h-5 w-5 ${isUpdating ? 'animate-spin' : ''}`} />
+              <RotateCcw className={`h-6 w-6 ${isUpdating ? 'animate-spin' : ''}`} />
               🧠 Atualizar Prioridades
             </Button>
-            <p className="text-sm text-muted-foreground text-center max-w-xs">
-              O sistema irá analisar sua base e gerar as melhores ações para este momento.
+            <p className="text-xs text-muted-foreground text-center max-w-sm leading-relaxed uppercase tracking-widest font-medium opacity-70">
+              O Diretor Comercial IA irá analisar todo o CRM e selecionar os 8 leads mais prioritários para este momento.
             </p>
           </div>
         )}
@@ -224,27 +224,18 @@ export default function MissaoDoDia() {
         )}
 
         {/* 6. CONCLUSÃO DA MISSÃO */}
-        {isMissionComplete && (
+        {isMissionComplete && pending.length === 0 && (
           <div className="text-center space-y-6 animate-in zoom-in duration-500 py-10">
-            <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-emerald-500/10 text-emerald-500 mb-2">
-              <Check className="h-10 w-10" />
+            <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-accent/10 text-accent mb-2">
+              <Check className="h-12 w-12" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-2xl font-bold text-foreground">✅ Missão concluída.</h3>
-              <p className="text-muted-foreground">
-                Restam {followupSuggestions.length} follow-ups disponíveis na base.
+              <h3 className="text-3xl font-black text-foreground tracking-tighter italic">✅ Missão concluída.</h3>
+              <p className="text-muted-foreground uppercase text-xs tracking-widest font-bold">
+                Ainda existem {followupSuggestions.length} follow-ups disponíveis na base.
               </p>
             </div>
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="gap-2 border-accent text-accent hover:bg-accent/10"
-              onClick={handleUpdatePriorities}
-              disabled={isUpdating}
-            >
-              <RotateCcw className={`h-4 w-4 ${isUpdating ? 'animate-spin' : ''}`} />
-              🧠 Atualizar Prioridades
-            </Button>
+            {/* O botão de atualização já aparece no bloco CTA acima porque pending.length === 0 */}
           </div>
         )}
       </div>
