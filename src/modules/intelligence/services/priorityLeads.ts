@@ -7,6 +7,8 @@ import { uload, usave } from "@/shared/services/userStorage";
 import { getLeads, type Lead, type CallAuditData } from "@/shared/services/store";
 import { getReminders } from "@/modules/agenda/services/reminders";
 import { getTasksByLead } from "@/modules/leads/services/leadTasks";
+import { getInteractionMemories } from "./missionStore";
+
 
 export const CACHE_KEY = "p21_priority_leads_cache";
 const TTL_MS = 30 * 60_000; // 30 min
@@ -77,9 +79,11 @@ interface Candidate {
   tarefasVencidas: number;
   tarefasHoje: number;
   ultimaInteracao?: { tipo: string; resumo: string; data: string };
+  memoriaMissao?: string[]; // SPRINT 4: Memória de missões anteriores
   sinais: string[];
   _prescore: number; // heurística usada só para pré-filtrar
 }
+
 
 // Constrói até 25 candidatos com maior "atenção potencial".
 export function buildCandidates(): Candidate[] {
@@ -180,9 +184,11 @@ export function buildCandidates(): Candidate[] {
       ultimaInteracao: lastInt
         ? { tipo: lastInt.type, resumo: (lastInt.summary || "").slice(0, 180), data: lastInt.date }
         : undefined,
+      memoriaMissao: getInteractionMemories(l.id),
       sinais: sinais.slice(0, 6),
       _prescore: pre,
     });
+
   }
 
   cands.sort((a, b) => b._prescore - a._prescore);
