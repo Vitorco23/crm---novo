@@ -245,10 +245,13 @@ export async function computePriorityLeads(force = false): Promise<PriorityLeads
   }
 
   const leads: PriorityLeadPick[] = Array.isArray((data as any)?.leads) ? (data as any).leads : [];
+  
+  // SPRINT - Interface exibe apenas a maior prioridade. 
+  // O backend já retorna 1, mas garantimos aqui no cliente também.
   const result: PriorityLeadsCache = {
     generatedAt: new Date().toISOString(),
     model: (data as any)?.model,
-    leads: leads.slice(0, 1), // SPRINT 2: Agora retorna apenas 1 missão por vez para foco total
+    leads: leads.slice(0, 1), 
     fingerprint: fp,
   };
   saveCache(result);
