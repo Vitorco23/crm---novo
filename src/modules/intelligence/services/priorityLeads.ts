@@ -82,12 +82,13 @@ interface Candidate {
 }
 
 // Constrói candidatos com contexto ultra-detalhado para análise da IA.
-// SPRINT 4: Foco total na profundidade dos dados para que a IA possa calcular o Score Comercial interno.
+// SPRINT - Otimização da Análise: Ignora a etapa "Novos Leads" a menos que não existam outras oportunidades.
 export function buildCandidates(): Candidate[] {
   const now = Date.now();
   const leads = getLeads();
   const reminders = getReminders();
   const CLOSED = new Set(["Ganho", "Perdido"]);
+  const NEW_LEADS_STAGE = "Novos Leads";
 
   const remByLead = new Map<string, typeof reminders>();
   for (const r of reminders) {
@@ -95,10 +96,17 @@ export function buildCandidates(): Candidate[] {
     remByLead.get(r.leadId)!.push(r);
   }
 
+  // Primeiro tenta buscar leads que NÃO estão na etapa inicial de prospecção fria
+  let candidatesLeads = leads.filter(l => !CLOSED.has(l.stage) && l.stage !== NEW_LEADS_STAGE);
+
+  // Caso especial: se não houver NENHUM lead nas etapas avançadas, recorre aos "Novos Leads"
+  if (candidatesLeads.length === 0) {
+    candidatesLeads = leads.filter(l => !CLOSED.has(l.stage));
+  }
+
   const cands: Candidate[] = [];
 
-  for (const l of leads) {
-    if (CLOSED.has(l.stage)) continue;
+  for (const l of candidatesLeads) {
 
     const audit = latestAudit(l);
     const interactions = l.interactions || [];
@@ -138,7 +146,9 @@ export function buildCandidates(): Candidate[] {
       if (audit.temperatura === "Quente") pre += 50;
     }
 
-    if (l.stage === "Proposta Enviada") pre += 30;
+    if (l.stage === "Proposta" || l.stage === "Negociação") pre += 50;
+    if (l.stage === "Reunião Agendada" || l.stage === "Reunião Realizada") pre += 40;
+    if (l.stage === "Diagnóstico") pre += 30;
     if ((l.contractValue || 0) > 0) pre += Math.min(30, (l.contractValue! / 500));
 
     // Força a inclusão se houver sinais críticos, mesmo que a pontuação base seja baixa
