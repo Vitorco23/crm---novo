@@ -26,8 +26,6 @@ import { openLead } from "@/modules/leads/services/openLead";
 import { on } from "@/shared/services/eventBus";
 import { PRIORITY_CLASSES, PRIORITY_LABEL } from "@/modules/leads/services/leadTasks";
 import { formatMinutes } from "@/modules/intelligence/services/priorityEngine";
-import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
 
 const KIND_ICON: Record<MissionEntry["kind"], JSX.Element> = {
   calls: <Phone className="h-4 w-4" />,
@@ -43,37 +41,6 @@ export default function MissaoDoDia() {
   const bump = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => { runOneTimeMissionReset(); }, []);
-
-  // TEMPORÁRIO — teste da Edge Function matteline-create-contact
-  const [testPhone, setTestPhone] = useState("55");
-  const [testLoading, setTestLoading] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
-
-  const runMattelineTest = async () => {
-    setTestLoading(true);
-    setTestResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("matteline-create-contact", {
-        body: { name: "Teste P21", phone: testPhone },
-      });
-      let httpStatus: number | string = error?.context?.status ?? (error ? "erro" : 200);
-      let errorBody: unknown = null;
-      if (error?.context && typeof error.context.text === "function") {
-        try { errorBody = await error.context.clone().json(); }
-        catch { try { errorBody = await error.context.clone().text(); } catch { /* ignore */ } }
-      }
-      setTestResult(JSON.stringify({
-        statusHTTP: httpStatus,
-        resposta: data ?? errorBody,
-        erro: error ? error.message : null,
-      }, null, 2));
-    } catch (e) {
-      setTestResult(JSON.stringify({ statusHTTP: "exception", resposta: null, erro: String(e) }, null, 2));
-    } finally {
-      setTestLoading(false);
-    }
-  };
-
 
   useEffect(() => {
     const offs = [
@@ -133,30 +100,6 @@ export default function MissaoDoDia() {
         }
       />
 
-      {/* TEMPORÁRIO — teste da integração Matteline */}
-      <Card className="border-dashed">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Testar Matteline (temporário)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              value={testPhone}
-              onChange={(ev) => setTestPhone(ev.target.value)}
-              placeholder="55DDDNÚMERO"
-              className="h-9 max-w-[220px]"
-            />
-            <Button size="sm" onClick={runMattelineTest} disabled={testLoading}>
-              {testLoading ? "Enviando..." : "Testar Matteline"}
-            </Button>
-          </div>
-          {testResult && (
-            <pre className="text-[11px] bg-muted/50 rounded-md p-3 overflow-auto max-h-72 whitespace-pre-wrap">
-              {testResult}
-            </pre>
-          )}
-        </CardContent>
-      </Card>
 
 
 
