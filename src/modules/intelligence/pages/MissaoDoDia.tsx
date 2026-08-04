@@ -134,8 +134,12 @@ export default function MissaoDoDia() {
     };
   }, [tick]);
 
+  // Memoiza o cache para evitar cálculos desnecessários a cada render
   const missionCache = useMemo(() => getCache(), [tick]);
-  const activeMission = !showCompletion ? (missionCache?.leads?.[0] || null) : null;
+  const activeMission = useMemo(() => {
+    if (showCompletion) return null;
+    return missionCache?.leads?.[0] || null;
+  }, [missionCache, showCompletion]);
 
   const handleGenerateMission = async () => {
     if (isUpdating) return;
