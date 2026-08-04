@@ -229,9 +229,8 @@ export async function computePriorityLeads(force = false): Promise<PriorityLeads
   // Remove o campo interno _prescore antes de enviar.
   const payload = cands.map(({ _prescore, ...rest }) => rest);
   
-  // SPRINT 2: Limpa a missão atual antes de processar a nova priorização para garantir fluxo de lote
-  const { resetMissionDay } = await import("./missionStore");
-  resetMissionDay();
+  // Removemos o resetMissionDay() daqui para evitar loops e comportamentos instáveis.
+  // A conclusão de missão deve ser controlada explicitamente pelo usuário.
 
   const { data, error } = await supabase.functions.invoke("priority-leads-ia", {
     body: { candidates: payload },
