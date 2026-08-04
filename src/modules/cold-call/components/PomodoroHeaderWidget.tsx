@@ -140,6 +140,11 @@ export function PomodoroHeaderWidget() {
           <span className="text-xs font-bold tabular-nums text-foreground">{tally.meetings}</span>
         </button>
       </div>
+      <div className="flex items-center gap-1 pl-2 border-l border-border ml-2">
+        <span className="text-[10px] uppercase tracking-tighter text-muted-foreground/60 font-bold whitespace-nowrap">
+          Add agent integrations (MCP) to this app
+        </span>
+      </div>
     </div>
   );
 }
