@@ -327,7 +327,6 @@ export default function MissaoDoDia() {
           initialAction={drawerAction}
           onRefresh={() => {
             bump();
-            // Se o lead no drawer mudou, atualiza a referência local
             if (drawerLead) {
               const updated = getLeads().find(l => l.id === drawerLead.id);
               if (updated) setDrawerLead(updated);
@@ -338,4 +337,3 @@ export default function MissaoDoDia() {
     </PageContainer>
   );
 }
-
