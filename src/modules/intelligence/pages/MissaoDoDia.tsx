@@ -187,7 +187,7 @@ export default function MissaoDoDia() {
 
             <div className="space-y-3">
               {pending.map((e) => (
-                <div key={e.id} className="group rounded-xl border border-border/60 bg-card/40 p-4 flex items-center justify-between gap-4 hover:border-accent/50 transition-colors shadow-sm">
+                <div key={e.id} className="group rounded-2xl border border-border/40 bg-card/30 p-5 flex items-center justify-between gap-4 hover:border-accent/40 transition-all shadow-sm hover:shadow-md">
                   <div className="flex items-center gap-4 min-w-0">
                     <span className="text-xl shrink-0">
                       {e.priority === 'urgente' || e.priority === 'alta' ? '🔥' : e.priority === 'media' ? '🟠' : '🟡'}
