@@ -170,7 +170,7 @@ export default function MissaoDoDia() {
                 <div key={e.id} className="group rounded-xl border border-border/60 bg-card/40 p-4 flex items-center justify-between gap-4 hover:border-accent/50 transition-colors shadow-sm">
                   <div className="flex items-center gap-4 min-w-0">
                     <span className="text-xl shrink-0">
-                      {e.priority === 'critica' || e.priority === 'alta' ? '🔥' : e.priority === 'media' ? '🟠' : '🟡'}
+                      {e.priority === 'urgente' || e.priority === 'alta' ? '🔥' : e.priority === 'media' ? '🟠' : '🟡'}
                     </span>
                     <div className="min-w-0">
                       <p className="font-bold text-foreground truncate group-hover:text-accent transition-colors">
