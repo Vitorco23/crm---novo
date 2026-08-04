@@ -43,7 +43,7 @@ export interface MissionEntry {
 }
 
 const KEY = "p21_mission_items";
-const RESET_KEY = "p21_mission_reset_v1";
+const RESET_KEY = "p21_mission_reset_v2";
 
 export const MISSION_UPDATED_EVENT = "p21:mission-updated";
 
