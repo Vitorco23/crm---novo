@@ -76,20 +76,15 @@ export default function MissaoDoDia() {
   };
 
   const handleComplete = () => {
-    // Para simplificar na V2, completar a missão apenas limpa o cache atual
-    // O usuário registra a ação no card do lead (ligação, nota, etc)
     resetMissionDay();
-    // Limpamos o cache local para forçar o estado de "Gerar"
-    const { CACHE_KEY } = require("@/modules/intelligence/services/priorityLeads");
-    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem("p21_priority_leads_cache");
     toast({ title: "Ação registrada", description: "Missão concluída com sucesso." });
     bump();
   };
 
   const handleReset = () => {
     resetMissionDay();
-    const { CACHE_KEY } = require("@/modules/intelligence/services/priorityLeads");
-    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem("p21_priority_leads_cache");
     toast({ title: "Missão do dia reiniciada", description: "Nenhum dado comercial foi alterado." });
     bump();
   };
