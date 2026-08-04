@@ -17,6 +17,7 @@ import {
 import { buildMissionPlan, addFollowupTask } from "@/modules/intelligence/services/missionPlanner";
 import { openLead } from "@/modules/leads/services/openLead";
 import { on } from "@/shared/services/eventBus";
+import { getLeads } from "@/shared/services/store";
 
 const KIND_ICON: Record<MissionEntry["kind"], JSX.Element> = {
   calls: <Phone className="h-4 w-4" />,
