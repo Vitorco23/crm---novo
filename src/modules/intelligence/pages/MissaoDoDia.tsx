@@ -128,118 +128,72 @@ export default function MissaoDoDia() {
         }
       />
 
-      <div className="max-w-2xl mx-auto space-y-8 py-4">
-        {/* 1. MISSÃO DO DIA (Resumo Drástico) */}
-        <div className="text-center space-y-6">
-          <h2 className="text-3xl font-black tracking-tighter text-foreground flex items-center justify-center gap-2 italic">
+      <div className="max-w-2xl mx-auto space-y-12 py-8">
+        {/* 1. MISSÃO DO DIA (Indicadores Estáticos) */}
+        <div className="text-center space-y-8">
+          <h2 className="text-4xl font-black tracking-tighter text-foreground flex items-center justify-center gap-3 italic">
             🎯 MISSÃO DO DIA
           </h2>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-6 rounded-2xl bg-card/50 border border-border shadow-sm">
-              <p className="text-3xl font-black text-accent">{plan.callsGoal + (plan.items.find(i => i.kind === 'calls')?.estimatedMinutes ? 0 : 0)}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">novas ligações</p>
+            <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
+              <p className="text-4xl font-black text-accent">112</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Ligações</p>
             </div>
-            <div className="p-6 rounded-2xl bg-card/50 border border-border shadow-sm">
-              <p className="text-3xl font-black text-accent">{plan.followupTarget}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">follow-ups</p>
+            <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
+              <p className="text-4xl font-black text-accent">24</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Follow-ups pendentes</p>
             </div>
-            <div className="p-6 rounded-2xl bg-card/50 border border-border shadow-sm">
-              <p className="text-3xl font-black text-accent">{plan.meetingsGoal}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">reuniões</p>
+            <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
+              <p className="text-4xl font-black text-accent">4</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Reuniões</p>
             </div>
-            <div className="p-6 rounded-2xl bg-card/50 border border-border shadow-sm">
-              <p className="text-3xl font-black text-accent">{proposalCount}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">propostas</p>
+            <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
+              <p className="text-4xl font-black text-accent">0</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Propostas</p>
             </div>
           </div>
         </div>
 
-        {/* 4. BOTÃO PRINCIPAL (CTA) — Só aparece se a missão não começou ou se foi concluída */}
-        {pending.length === 0 && (
-          <div className="flex flex-col items-center gap-6 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {isMissionComplete && (
-              <div className="text-center space-y-6 mb-4">
-                <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-accent/10 text-accent mb-2">
-                  <Check className="h-10 w-10" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-3xl font-black text-foreground tracking-tighter italic uppercase">✅ Missão concluída.</h3>
-                  <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold opacity-70">
-                    Ainda existem {followupSuggestions.length} follow-ups disponíveis na base.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <Button 
-              size="lg" 
-              className="h-20 px-12 text-xl gap-3 bg-accent text-accent-foreground hover:bg-accent/90 shadow-2xl shadow-accent/30 rounded-full font-black uppercase tracking-tighter transition-all hover:scale-105 active:scale-95"
-              onClick={handleUpdatePriorities}
-              disabled={isUpdating}
-            >
-              <RotateCcw className={`h-6 w-6 ${isUpdating ? 'animate-spin' : ''}`} />
-              🧠 {isMissionComplete ? 'Recalcular Prioridades' : 'Atualizar Prioridades'}
-            </Button>
-            
-            <p className="text-xs text-muted-foreground text-center max-w-sm leading-relaxed uppercase tracking-widest font-medium opacity-70">
-              O Diretor Comercial IA irá analisar todo o CRM e selecionar os 8 leads mais prioritários para este momento.
+        {/* 2. DIRETOR COMERCIAL IA (CTA Único) */}
+        <div className="flex flex-col items-center gap-8 py-4">
+          <div className="space-y-2 text-center">
+            <h3 className="text-2xl font-black text-foreground tracking-tighter italic uppercase flex items-center justify-center gap-2">
+              🧠 DIRETOR COMERCIAL IA
+            </h3>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium opacity-60">
+              Próxima Melhor Ação Baseada em Dados Reais
             </p>
           </div>
-        )}
 
-        {/* 5. EXIBIÇÃO DE AÇÕES (Somente após clique/quando houver pendentes) */}
-        {pending.length > 0 && (
-          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
-                FOLLOW-UPS PRIORITÁRIOS ({pending.length})
-              </h3>
-              <div className="w-32">
-                <Progress value={progress.pct} className="h-1" />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {pending.map((e) => (
-                <div key={e.id} className="group rounded-2xl border border-border/40 bg-card/30 p-5 flex items-center justify-between gap-4 hover:border-accent/40 transition-all shadow-sm hover:shadow-md">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <span className="text-xl shrink-0">
-                      {e.priority === 'urgente' || e.priority === 'alta' ? '🔥' : e.priority === 'media' ? '🟠' : '🟡'}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="font-bold text-foreground truncate group-hover:text-accent transition-colors">
-                        {e.company || e.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {e.reason || e.title}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {e.leadId && (
-                      <Button size="sm" variant="ghost" className="h-9 w-9 p-0 rounded-full"
-                        onClick={() => openLead(e.leadId!, { tab: "interacoes" })}>
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button 
-                      size="sm" 
-                      className="h-9 px-4 gap-2 bg-foreground text-background hover:bg-foreground/90 rounded-full font-bold"
-                      onClick={() => handleComplete(e)}
-                    >
-                      <Check className="h-4 w-4" /> Concluir
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <Button 
+            size="lg" 
+            className="h-24 px-16 text-2xl gap-4 bg-accent text-accent-foreground hover:bg-accent/90 shadow-[0_20px_50px_rgba(154,189,51,0.2)] rounded-3xl font-black uppercase tracking-tighter transition-all hover:scale-[1.02] active:scale-95 border-b-4 border-black/20"
+            onClick={handleUpdatePriorities}
+            disabled={isUpdating}
+          >
+            {isUpdating ? (
+              <RotateCcw className="h-8 w-8 animate-spin" />
+            ) : (
+              <Target className="h-8 w-8" />
+            )}
+            Gerar Próxima Missão
+          </Button>
+          
+          <div className="flex items-center gap-2 text-muted-foreground/40">
+            <div className="h-px w-8 bg-current" />
+            <p className="text-[9px] uppercase tracking-widest font-bold">A tela termina aqui</p>
+            <div className="h-px w-8 bg-current" />
           </div>
-        )}
+        </div>
 
-        {/* 6. CONCLUSÃO DA MISSÃO — Removido daqui e integrado ao bloco CTA acima para evitar duplicidade */}
+        {/* 
+          As listas de pendentes e ações detalhadas foram removidas seguindo a nova filosofia 2.0.
+          A missão agora é um processo de "pull" onde o usuário solicita o próximo lote
+          através do Diretor Comercial IA, evitando fadiga de decisão por excesso de listas.
+        */}
       </div>
     </PageContainer>
+
   );
 }
