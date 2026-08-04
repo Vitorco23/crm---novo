@@ -39,11 +39,8 @@ Regras absolutas:
 - Motivo deve ser focado no PORQUÊ essa missão é a melhor agora.
 - Próxima ação deve ser clara e executável.
 - NUNCA invente informações. Use apenas o contexto fornecido.
-- RESPONDA EXCLUSIVAMENTE COM JSON VÁLIDO.`;
+- RESPONDA EXCLUSIVAMENTE COM JSON VÁLIDO no formato:
 
-Para CADA lead escolhido, inclua obrigatoriamente um bloco \`next_best_action\` com a Próxima Melhor Ação (uma única ação, a de maior impacto), no formato descrito abaixo.
-
-RESPONDA EXCLUSIVAMENTE COM JSON VÁLIDO no formato:
 {
   "leads": [
     {
