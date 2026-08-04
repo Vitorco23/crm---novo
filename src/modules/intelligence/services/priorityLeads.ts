@@ -81,7 +81,8 @@ interface Candidate {
   _prescore: number; // heurística usada só para pré-filtrar
 }
 
-// Constrói até 25 candidatos com maior "atenção potencial".
+// Constrói até 40 candidatos com maior "atenção potencial".
+// SPRINT 2: Envia contexto ultra-detalhado para que a IA decida com base em tudo.
 export function buildCandidates(): Candidate[] {
   const now = Date.now();
   const leads = getLeads();
@@ -153,7 +154,7 @@ export function buildCandidates(): Candidate[] {
     // Valor de contrato dá peso quando há oportunidade real
     if ((l.contractValue || 0) > 0) pre += Math.min(15, Math.log10(l.contractValue!) * 3);
 
-    if (pre < 15) continue; // ignora leads sem sinal significativo
+    if (pre < 10) continue; // sprint 2: mais permissivo para deixar a IA decidir
 
     const lastInt = interactions[interactions.length - 1] || null;
 
@@ -178,15 +179,19 @@ export function buildCandidates(): Candidate[] {
       tarefasVencidas: tVencidas,
       tarefasHoje: tHoje,
       ultimaInteracao: lastInt
-        ? { tipo: lastInt.type, resumo: (lastInt.summary || "").slice(0, 180), data: lastInt.date }
+        ? { tipo: lastInt.type, resumo: (lastInt.summary || "").slice(0, 300), data: lastInt.date }
         : undefined,
-      sinais: sinais.slice(0, 6),
+      sinais: sinais.slice(0, 8),
+      // SPRINT 2: Campos adicionais para análise profunda
+      observacoes: (l.notes || "").slice(0, 500),
+      diagnosticoIA: audit?.resumoExecutivo || (l.autoDiagnosis?.summary || "").slice(0, 500),
+      anexosCount: (l.attachments || []).length,
       _prescore: pre,
-    });
+    } as any);
   }
 
   cands.sort((a, b) => b._prescore - a._prescore);
-  return cands.slice(0, 25);
+  return cands.slice(0, 40);
 }
 
 export function getCache(): PriorityLeadsCache | null {
