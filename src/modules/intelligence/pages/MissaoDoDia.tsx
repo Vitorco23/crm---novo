@@ -24,6 +24,22 @@ export default function MissaoDoDia() {
 
   const bump = () => setTick(t => t + 1);
 
+  const handleComplete = () => {
+    resetMissionDay();
+    localStorage.removeItem("p21_priority_leads_cache");
+    setShowCompletion(true);
+    setDrawerOpen(false); 
+    toast({ title: "Missão Concluída", description: "Operação atualizada." });
+    
+    // Pequeno delay para a animação de fechar o drawer terminar
+    setTimeout(() => {
+      setDrawerLead(null);
+      setDrawerTab(undefined);
+      setDrawerAction(undefined);
+      bump();
+    }, 300);
+  };
+
   // Escuta evento global de abertura de lead para interceptar na Missão do Dia
   useEffect(() => {
     const handler = (e: any) => {
@@ -44,7 +60,7 @@ export default function MissaoDoDia() {
     const handler = () => handleComplete();
     window.addEventListener("p21:complete-mission", handler);
     return () => window.removeEventListener("p21:complete-mission", handler);
-  }, [tick, handleComplete]);
+  }, [tick]);
 
   // Metas e Progresso (SPRINT 5)
   const g = useMemo(() => getGoalsSettings(), [tick]);
@@ -127,21 +143,6 @@ export default function MissaoDoDia() {
     }
   };
 
-  const handleComplete = () => {
-    resetMissionDay();
-    localStorage.removeItem("p21_priority_leads_cache");
-    setShowCompletion(true);
-    setDrawerOpen(false); 
-    toast({ title: "Missão Concluída", description: "Operação atualizada." });
-    
-    // Pequeno delay para a animação de fechar o drawer terminar
-    setTimeout(() => {
-      setDrawerLead(null);
-      setDrawerTab(undefined);
-      setDrawerAction(undefined);
-      bump();
-    }, 300);
-  };
 
   const lead = useMemo(() => {
     if (!activeMission) return null;
