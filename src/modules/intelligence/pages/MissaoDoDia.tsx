@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import {
   Check, Compass, ExternalLink, Phone, Users, Target, FileText,
-  Flame, ListChecks, RotateCcw,
+  Flame, ListChecks, RotateCcw, ArrowRight, SkipForward
 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/shared/components/shell";
 import {
@@ -14,20 +14,11 @@ import {
   resetMissionDay, runOneTimeMissionReset,
   MISSION_UPDATED_EVENT, type MissionEntry,
 } from "@/modules/intelligence/services/missionStore";
-import { buildMissionPlan, addFollowupTask } from "@/modules/intelligence/services/missionPlanner";
-import { computePriorityLeads } from "@/modules/intelligence/services/priorityLeads";
+import { buildMissionPlan } from "@/modules/intelligence/services/missionPlanner";
+import { computePriorityLeads, getCache } from "@/modules/intelligence/services/priorityLeads";
 import { openLead } from "@/modules/leads/services/openLead";
 import { on } from "@/shared/services/eventBus";
 import { getLeads } from "@/shared/services/store";
-
-const KIND_ICON: Record<MissionEntry["kind"], JSX.Element> = {
-  calls: <Phone className="h-4 w-4" />,
-  followups: <ListChecks className="h-4 w-4" />,
-  meetings: <Users className="h-4 w-4" />,
-  prospect: <Target className="h-4 w-4" />,
-  script: <FileText className="h-4 w-4" />,
-  lead: <Flame className="h-4 w-4" />,
-};
 
 export default function MissaoDoDia() {
   const [tick, setTick] = useState(0);
@@ -49,16 +40,9 @@ export default function MissaoDoDia() {
     };
   }, [bump]);
 
-  const entries = useMemo(() => getMissionEntries(), [tick]);
-  const progress = useMemo(() => getMissionProgress(), [tick]);
   const plan = useMemo(() => buildMissionPlan(), [tick]);
-
-  const inMission = useMemo(() => new Set(entries.map((e) => e.ref)), [entries]);
-  const pending = entries.filter((e) => e.status === "pendente");
-  
-  const followupSuggestions = plan.followups.filter(
-    (f) => !inMission.has(`${plan.generatedAt.slice(0, 10)}:followup:${f.leadId}`),
-  );
+  const cache = useMemo(() => getCache(), [tick]);
+  const currentMission = cache?.leads?.[0] || null;
 
   const proposalCount = useMemo(() => {
     return getLeads().filter(l => /proposta/i.test(l.stage)).length;
@@ -67,25 +51,13 @@ export default function MissaoDoDia() {
   const handleUpdatePriorities = async () => {
     setIsUpdating(true);
     try {
-      // SPRINT 2: Chama a IA de Priorização para calcular o cenário comercial atual
-      const result = await computePriorityLeads(true); // true força recálculo total (ignore cache)
-      
-      // Mapeia os picks da IA para tarefas na missão
+      const result = await computePriorityLeads(true);
       if (!result.leads || result.leads.length === 0) {
         toast({ title: "Tudo atualizado", description: "O Diretor Comercial IA não identificou novas urgências no momento." });
       } else {
-        // O missionPlanner/missionStore já lida com a persistência e deduplicação via ref
-        result.leads.forEach(pick => {
-          // Busca o pick correspondente nas sugestões do plano para manter consistência de dados
-          const suggestion = plan.followups.find(f => f.leadId === pick.leadId);
-          if (suggestion) {
-            addFollowupTask(suggestion);
-          }
-        });
-        
-        toast({ title: "Missão Atualizada", description: `O Diretor Comercial IA selecionou os ${result.leads.length} leads mais prioritários.` });
-        bump();
+        toast({ title: "Missão Gerada", description: "Foco total nesta oportunidade." });
       }
+      bump();
     } catch (error) {
       console.error("Erro na priorização IA:", error);
       toast({ 
@@ -98,19 +70,29 @@ export default function MissaoDoDia() {
     }
   };
 
-  const handleComplete = (e: MissionEntry) => {
-    completeMissionEntry(e.id);
-    toast({ title: "Atividade concluída", description: e.title });
+  const handleSkip = () => {
+    handleUpdatePriorities();
+    toast({ title: "Missão pulada", description: "Buscando a próxima melhor ação..." });
+  };
+
+  const handleComplete = () => {
+    // Para simplificar na V2, completar a missão apenas limpa o cache atual
+    // O usuário registra a ação no card do lead (ligação, nota, etc)
+    resetMissionDay();
+    // Limpamos o cache local para forçar o estado de "Gerar"
+    const { CACHE_KEY } = require("@/modules/intelligence/services/priorityLeads");
+    localStorage.removeItem(CACHE_KEY);
+    toast({ title: "Ação registrada", description: "Missão concluída com sucesso." });
     bump();
   };
 
   const handleReset = () => {
     resetMissionDay();
+    const { CACHE_KEY } = require("@/modules/intelligence/services/priorityLeads");
+    localStorage.removeItem(CACHE_KEY);
     toast({ title: "Missão do dia reiniciada", description: "Nenhum dado comercial foi alterado." });
     bump();
   };
-
-  const isMissionComplete = pending.length === 0 && progress.total > 0;
 
   return (
     <PageContainer>
@@ -130,70 +112,144 @@ export default function MissaoDoDia() {
 
       <div className="max-w-2xl mx-auto space-y-12 py-8">
         {/* 1. MISSÃO DO DIA (Indicadores Estáticos) */}
-        <div className="text-center space-y-8">
-          <h2 className="text-4xl font-black tracking-tighter text-foreground flex items-center justify-center gap-3 italic">
-            🎯 MISSÃO DO DIA
-          </h2>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
-              <p className="text-4xl font-black text-accent">112</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Ligações</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
-              <p className="text-4xl font-black text-accent">24</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Follow-ups pendentes</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
-              <p className="text-4xl font-black text-accent">4</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Reuniões</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
-              <p className="text-4xl font-black text-accent">0</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Propostas</p>
+        {!currentMission && (
+          <div className="text-center space-y-8 animate-in fade-in duration-500">
+            <h2 className="text-4xl font-black tracking-tighter text-foreground flex items-center justify-center gap-3 italic">
+              🎯 MISSÃO DO DIA
+            </h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
+                <p className="text-4xl font-black text-accent">112</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Ligações</p>
+              </div>
+              <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
+                <p className="text-4xl font-black text-accent">24</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Follow-ups pendentes</p>
+              </div>
+              <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
+                <p className="text-4xl font-black text-accent">4</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Reuniões</p>
+              </div>
+              <div className="p-6 rounded-2xl bg-card/40 border border-border/60 shadow-sm transition-all">
+                <p className="text-4xl font-black text-accent">0</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mt-1">Propostas</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* 2. DIRETOR COMERCIAL IA (CTA Único) */}
+        {/* 2. DIRETOR COMERCIAL IA (Estado: Gerar ou Missão Atual) */}
         <div className="flex flex-col items-center gap-8 py-4">
-          <div className="space-y-2 text-center">
-            <h3 className="text-2xl font-black text-foreground tracking-tighter italic uppercase flex items-center justify-center gap-2">
-              🧠 DIRETOR COMERCIAL IA
-            </h3>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium opacity-60">
-              Próxima Melhor Ação Baseada em Dados Reais
-            </p>
-          </div>
+          {!currentMission ? (
+            <>
+              <div className="space-y-2 text-center">
+                <h3 className="text-2xl font-black text-foreground tracking-tighter italic uppercase flex items-center justify-center gap-2">
+                  🧠 DIRETOR COMERCIAL IA
+                </h3>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium opacity-60">
+                  Próxima Melhor Ação Baseada em Dados Reais
+                </p>
+              </div>
 
-          <Button 
-            size="lg" 
-            className="h-24 px-16 text-2xl gap-4 bg-accent text-accent-foreground hover:bg-accent/90 shadow-[0_20px_50px_rgba(154,189,51,0.2)] rounded-3xl font-black uppercase tracking-tighter transition-all hover:scale-[1.02] active:scale-95 border-b-4 border-black/20"
-            onClick={handleUpdatePriorities}
-            disabled={isUpdating}
-          >
-            {isUpdating ? (
-              <RotateCcw className="h-8 w-8 animate-spin" />
-            ) : (
-              <Target className="h-8 w-8" />
-            )}
-            Gerar Próxima Missão
-          </Button>
-          
-          <div className="flex items-center gap-2 text-muted-foreground/40">
-            <div className="h-px w-8 bg-current" />
-            <p className="text-[9px] uppercase tracking-widest font-bold">A tela termina aqui</p>
-            <div className="h-px w-8 bg-current" />
-          </div>
+              <Button 
+                size="lg" 
+                className="h-24 px-16 text-2xl gap-4 bg-accent text-accent-foreground hover:bg-accent/90 shadow-[0_20px_50px_rgba(154,189,51,0.2)] rounded-3xl font-black uppercase tracking-tighter transition-all hover:scale-[1.02] active:scale-95 border-b-4 border-black/20"
+                onClick={handleUpdatePriorities}
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <RotateCcw className="h-8 w-8 animate-spin" />
+                ) : (
+                  <Target className="h-8 w-8" />
+                )}
+                Gerar Próxima Missão
+              </Button>
+              
+              <div className="flex items-center gap-2 text-muted-foreground/40">
+                <div className="h-px w-8 bg-current" />
+                <p className="text-[9px] uppercase tracking-widest font-bold">A tela termina aqui</p>
+                <div className="h-px w-8 bg-current" />
+              </div>
+            </>
+          ) : (
+            <div className="w-full animate-in zoom-in-95 fade-in duration-500">
+              <Card className="border-none bg-card/30 overflow-hidden rounded-[2.5rem] shadow-2xl">
+                <CardContent className="p-0">
+                  <div className="bg-accent/10 p-8 border-b border-accent/20">
+                    <div className="flex justify-between items-start mb-6">
+                      <h2 className="text-4xl font-black tracking-tighter text-foreground italic">
+                        🎯 MISSÃO #1
+                      </h2>
+                      <div className="bg-accent text-accent-foreground px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                        Foco Total
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-accent uppercase tracking-widest opacity-80">
+                        {currentMission.proximaAcao}
+                      </p>
+                      <h3 className="text-5xl font-black tracking-tighter text-foreground uppercase">
+                        {getLeads().find(l => l.id === currentMission.leadId)?.company || "Lead Selecionado"}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="p-10 space-y-10">
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
+                        <FileText className="h-3 w-3" /> Motivo
+                      </h4>
+                      <p className="text-xl font-medium leading-relaxed text-foreground/90">
+                        {currentMission.motivo}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <Button 
+                        size="lg" 
+                        className="h-20 bg-foreground text-background hover:bg-foreground/90 rounded-2xl font-black uppercase tracking-tighter gap-2 transition-transform hover:scale-[1.03]"
+                        onClick={() => openLead(currentMission.leadId, { tab: "interacoes" })}
+                      >
+                        <Phone className="h-5 w-5" /> Ligar
+                      </Button>
+                      
+                      <Button 
+                        size="lg" 
+                        variant="outline"
+                        className="h-20 border-2 rounded-2xl font-black uppercase tracking-tighter gap-2 hover:bg-accent/5 transition-transform hover:scale-[1.03]"
+                        onClick={() => openLead(currentMission.leadId)}
+                      >
+                        <ExternalLink className="h-5 w-5" /> Abrir Card
+                      </Button>
+
+                      <Button 
+                        size="lg" 
+                        variant="ghost"
+                        className="h-20 rounded-2xl font-black uppercase tracking-tighter gap-2 text-muted-foreground hover:text-foreground transition-all"
+                        onClick={handleSkip}
+                      >
+                        <SkipForward className="h-5 w-5" /> Pular
+                      </Button>
+                    </div>
+
+                    <div className="pt-4 flex justify-center">
+                      <Button 
+                        variant="link" 
+                        className="text-accent font-black uppercase tracking-widest text-[10px] gap-2 h-auto p-0"
+                        onClick={handleComplete}
+                      >
+                        <Check className="h-3 w-3" /> Marcar como concluída e buscar próxima
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
-
-        {/* 
-          As listas de pendentes e ações detalhadas foram removidas seguindo a nova filosofia 2.0.
-          A missão agora é um processo de "pull" onde o usuário solicita o próximo lote
-          através do Diretor Comercial IA, evitando fadiga de decisão por excesso de listas.
-        */}
       </div>
     </PageContainer>
-
   );
 }
