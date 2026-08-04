@@ -29,7 +29,30 @@ export async function deleteConversation(id: string): Promise<void> {
 
 export async function askIntelRouter(payload: IntelRouterRequest): Promise<IntelRouterResponse> {
   const { data, error } = await supabase.functions.invoke("intel-router", { body: payload });
-  if (error) throw new Error(error.message);
+  
+  if (error) {
+    let details = error.message;
+    let code = "UNKNOWN";
+    let status = 500;
+    
+    try {
+      // @ts-ignore
+      if (error.context) {
+        status = error.context.status || 500;
+        const text = await error.context.text();
+        try {
+          const parsed = JSON.parse(text);
+          details = parsed.message || parsed.error || details;
+          code = parsed.code || code;
+        } catch {
+          details = text || details;
+        }
+      }
+    } catch { /* noop */ }
+
+    throw new Error(`[Edge Function: intel-router] ${status}: ${details} (${code})`);
+  }
+  
   return (data ?? {}) as IntelRouterResponse;
 }
 

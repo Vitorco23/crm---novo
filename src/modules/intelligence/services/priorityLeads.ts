@@ -238,10 +238,31 @@ export async function computePriorityLeads(force = false): Promise<PriorityLeads
   });
   if (error) {
     let details = error.message;
-    try { // @ts-ignore
-      if (error.context?.text) details = await error.context.text();
+    let code = "UNKNOWN";
+    let status = 500;
+    
+    try {
+      // @ts-ignore - Extraindo detalhes do erro da Edge Function do Supabase
+      if (error.context) {
+        status = error.context.status || 500;
+        const text = await error.context.text();
+        try {
+          const parsed = JSON.parse(text);
+          details = parsed.message || parsed.error || details;
+          code = parsed.code || code;
+        } catch {
+          details = text || details;
+        }
+      }
     } catch { /* noop */ }
-    throw new Error(details || "Falha ao calcular prioridades");
+
+    const diagnostic = `[Edge Function: priority-leads-ia]
+Código HTTP: ${status}
+Erro: ${details}
+Código Técnico: ${code}
+Etapa Provável: Chamada da API / Gateway de IA`;
+
+    throw new Error(diagnostic);
   }
 
   const leads: PriorityLeadPick[] = Array.isArray((data as any)?.leads) ? (data as any).leads : [];
