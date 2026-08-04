@@ -81,8 +81,8 @@ interface Candidate {
   _prescore: number; // heurística usada só para pré-filtrar
 }
 
-// Constrói até 40 candidatos com maior "atenção potencial".
-// SPRINT 2: Envia contexto ultra-detalhado para que a IA decida com base em tudo.
+// Constrói candidatos com contexto ultra-detalhado para análise da IA.
+// SPRINT 4: Foco total na profundidade dos dados para que a IA possa calcular o Score Comercial interno.
 export function buildCandidates(): Candidate[] {
   const now = Date.now();
   const leads = getLeads();
@@ -115,46 +115,32 @@ export function buildCandidates(): Candidate[] {
     const rems = remByLead.get(l.id) || [];
     const fVencidos = rems.filter((r) => r.status === "pending" && new Date(r.scheduledFor).getTime() < now).length;
     const fPendentes = rems.filter((r) => r.status === "pending" && new Date(r.scheduledFor).getTime() >= now).length;
+    const fHoje = rems.filter((r) => r.status === "pending" && new Date(r.scheduledFor).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
 
     const tasks = getTasksByLead(l.id);
     const tVencidas = tasks.filter((t) => t.status === "pendente" && new Date(t.dueAt).getTime() < now).length;
     const todayStr = new Date().toISOString().slice(0, 10);
     const tHoje = tasks.filter((t) => t.status === "pendente" && t.dueAt.slice(0, 10) === todayStr).length;
 
-    // Heurística de pré-score (só decide QUEM vai pra IA)
+    // Heurística de pré-score para filtragem inicial
     let pre = 0;
     const sinais: string[] = [];
 
-    if (fVencidos > 0) { pre += 40 + fVencidos * 10; sinais.push(`${fVencidos} follow-up(s) vencido(s)`); }
-    if (tVencidas > 0) { pre += 25 + tVencidas * 5; sinais.push(`${tVencidas} tarefa(s) vencida(s)`); }
-    if (tHoje > 0) { pre += 15; sinais.push(`${tHoje} tarefa(s) para hoje`); }
+    if (fVencidos > 0) pre += 40 + fVencidos * 10;
+    if (fHoje > 0) pre += 30;
+    if (tVencidas > 0) pre += 25;
+    if (tHoje > 0) pre += 15;
 
     if (audit) {
-      if (typeof audit.scoreComercial === "number") pre += Math.min(30, audit.scoreComercial / 3);
-      if (audit.prioridade === "Alta") { pre += 25; sinais.push("prioridade Alta na última análise"); }
-      if (audit.probabilidadeAvanco === "Alta") { pre += 15; sinais.push("alta probabilidade de avanço"); }
-      if (audit.tendencia === "Esfriando") { pre += 30; sinais.push("tendência: esfriando"); }
-      if (audit.tendencia === "Evoluindo") { pre += 10; sinais.push("tendência: evoluindo"); }
-      if (audit.temperatura === "Quente") { pre += 20; sinais.push("lead quente"); }
-      if (audit.dataProximoContato) {
-        const dd = daysSince(audit.dataProximoContato);
-        if (dd >= 0) { pre += 20 + dd * 5; sinais.push(`próximo contato agendado atrasado ${dd}d`); }
-      }
-    } else if (l.temperature === "Quente") {
-      pre += 12; sinais.push("marcado como quente");
+      if (typeof audit.scoreComercial === "number") pre += audit.scoreComercial / 2;
+      if (audit.prioridade === "Alta") pre += 25;
+      if (audit.temperatura === "Quente") pre += 20;
     }
 
-    // Etapas críticas
-    if (l.stage === "Proposta Enviada" && diasNaEtapa >= 2) { pre += 20 + diasNaEtapa * 2; sinais.push(`proposta parada ${diasNaEtapa}d`); }
-    if (l.stage === "Documento de Guerra") { pre += 18; sinais.push("aguardando diagnóstico"); }
-    if (l.stage === "Reunião Marcada") { pre += 8; }
-    if (l.stage === "Reunião Realizada" && diasNaEtapa >= 3) { pre += 15 + diasNaEtapa; sinais.push(`sem follow-up pós-reunião há ${diasNaEtapa}d`); }
-    if (diasSemInteracao >= 7 && (l.contractValue || 0) > 0) { pre += 10 + Math.min(20, diasSemInteracao); sinais.push(`${diasSemInteracao}d sem interação`); }
+    if (l.stage === "Proposta Enviada") pre += 25 + Math.min(diasNaEtapa, 10);
+    if ((l.contractValue || 0) > 0) pre += Math.min(20, (l.contractValue! / 1000));
 
-    // Valor de contrato dá peso quando há oportunidade real
-    if ((l.contractValue || 0) > 0) pre += Math.min(15, Math.log10(l.contractValue!) * 3);
-
-    if (pre < 10) continue; // sprint 2: mais permissivo para deixar a IA decidir
+    if (pre < 5) continue; 
 
     const lastInt = interactions[interactions.length - 1] || null;
 
@@ -168,24 +154,20 @@ export function buildCandidates(): Candidate[] {
       score: audit?.scoreComercial,
       tendencia: audit?.tendencia,
       probabilidade: audit?.probabilidadeAvanco,
-      prioridadeAudit: audit?.prioridade,
-      proximaAcaoAudit: audit?.proximaAcao,
-      principalObjecao: audit?.principalObjecao,
       contractValue: l.contractValue,
-      reunioesMarcadas: interactions.filter((i) => /reuni/i.test(i.type)).length,
       interacoes: interactions.length + callNotes.length,
       followupsVencidos: fVencidos,
-      followupsPendentes: fPendentes,
+      followupsHoje: fHoje,
       tarefasVencidas: tVencidas,
       tarefasHoje: tHoje,
       ultimaInteracao: lastInt
-        ? { tipo: lastInt.type, resumo: (lastInt.summary || "").slice(0, 300), data: lastInt.date }
+        ? { tipo: lastInt.type, resumo: (lastInt.summary || "").slice(0, 400), data: lastInt.date }
         : undefined,
-      sinais: sinais.slice(0, 8),
-      // SPRINT 2: Campos adicionais para análise profunda
-      observacoes: (l.notes || "").slice(0, 500),
-      diagnosticoIA: audit?.resumoExecutivo || (l.autoDiagnosis?.summary || "").slice(0, 500),
-      anexosCount: (l.attachments || []).length,
+      // SPRINT 4: Envio de contexto bruto para que a IA processe a semântica
+      notasVendedor: (l.notes || "").slice(0, 1000),
+      diagnosticoHistorico: (l.diagnosisHistory || []).map(h => h.diagnosis.summary).join(" | ").slice(0, 1000),
+      interacoesRecentes: interactions.slice(-3).map(i => `${i.type}: ${i.summary}`).join(" | "),
+      sinaisIA: sinais,
       _prescore: pre,
     } as any);
   }
