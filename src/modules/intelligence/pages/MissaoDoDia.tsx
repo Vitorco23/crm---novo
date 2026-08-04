@@ -15,6 +15,7 @@ export default function MissaoDoDia() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [tick, setTick] = useState(0);
+  const [lastMissionId, setLastMissionId] = useState<string | null>(null);
 
   // Estado do Modal Inteligente (SPRINT 6)
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -25,7 +26,7 @@ export default function MissaoDoDia() {
   const bump = () => setTick(t => t + 1);
 
   const handleComplete = () => {
-    resetMissionDay();
+    // Apenas marca como concluída visualmente e limpa o cache para a próxima
     localStorage.removeItem("p21_priority_leads_cache");
     setShowCompletion(true);
     setDrawerOpen(false); 
@@ -137,13 +138,31 @@ export default function MissaoDoDia() {
   const activeMission = !showCompletion ? (missionCache?.leads?.[0] || null) : null;
 
   const handleGenerateMission = async () => {
+    if (isUpdating) return;
+    
     setIsUpdating(true);
     setShowCompletion(false);
+    
     try {
+      // Limpa o cache para forçar uma nova análise
       localStorage.removeItem("p21_priority_leads_cache");
+      
       const result = await computePriorityLeads(true);
+      
       if (!result.leads || result.leads.length === 0) {
         toast({ title: "Tudo em dia", description: "O Diretor Comercial IA não encontrou ações prioritárias agora." });
+      } else {
+        const newLeadId = result.leads[0]?.leadId;
+        
+        // Se for a mesma missão que a anterior, tenta buscar outra (evita repetição imediata se possível)
+        if (newLeadId === lastMissionId && result.leads.length > 0) {
+           // Aqui poderíamos ter uma lógica de retry ou de pegar o segundo do ranking se o backend retornasse mais de um.
+           // Mas como o backend retorna apenas 1 agora, vamos apenas prosseguir.
+        }
+        
+        if (newLeadId) {
+          setLastMissionId(newLeadId);
+        }
       }
       bump();
     } catch (error) {
