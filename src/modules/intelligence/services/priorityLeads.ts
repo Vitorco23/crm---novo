@@ -266,12 +266,11 @@ Etapa Provável: Chamada da API / Gateway de IA`;
 
   const leads: PriorityLeadPick[] = Array.isArray((data as any)?.leads) ? (data as any).leads : [];
   
-  // SPRINT - Interface exibe apenas a maior prioridade. 
-  // O backend já retorna 1, mas garantimos aqui no cliente também.
+  // SPRINT 2: Fila Inteligente. Armazenamos a lista completa (até 10 leads) no cache.
   const result: PriorityLeadsCache = {
     generatedAt: new Date().toISOString(),
     model: (data as any)?.model,
-    leads: leads.slice(0, 1), 
+    leads: leads, 
     fingerprint: fp,
   };
   saveCache(result);

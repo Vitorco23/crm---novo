@@ -59,9 +59,9 @@ REGRA DE OURO: Enquanto existir uma oportunidade ativa recuperável ou com poten
 
 REGRAS:
 1. Você recebe apenas o ranking resumido (Top Oportunidades).
-2. Se houver pelo menos um lead com score > 10, você DEVE selecionar o melhor.
-3. Se não houver ABSOLUTAMENTE NENHUMA oportunidade prioritária ativa em etapas avançadas, sugira "Prospectar novos leads".
-
+2. Selecione as 10 melhores ações comerciais do momento, ordenadas pela maior prioridade.
+3. Se houver menos de 10 leads com score relevante, retorne apenas os que fizerem sentido.
+4. Se não houver ABSOLUTAMENTE NENHUMA oportunidade prioritária ativa em etapas avançadas, sugira "Prospectar novos leads".
 
 OUTPUT (JSON):
 {
@@ -171,7 +171,6 @@ Deno.serve(async (req) => {
     const raw = Array.isArray(parsed?.leads) ? parsed.leads : [];
     const leads = raw
       .filter((x: any) => x && candMap.has(String(x.leadId)))
-      .slice(0, 1) // Interface exibe apenas a maior prioridade
       .map((x: any) => {
         const cand = candMap.get(String(x.leadId)) || {};
         const nba = sanitizeNBA(x.next_best_action ?? x.nextBestAction ?? null, {
