@@ -190,8 +190,6 @@ export interface AIExecutionRecorder {
   success(args?: FinishArgs): Promise<void>;
   /** Registra falha com código normalizado. Nunca lança. */
   failure(err: unknown, args?: FinishArgs): Promise<void>;
-  /** Retorna a mensagem de erro formatada para o cliente. */
-  formatError(err: unknown): { error: string; message: string; code: string; status: number };
 }
 
 /**
@@ -260,30 +258,5 @@ export function startAIExecution(
         errorCode: normalizeErrorCode(err),
       });
     },
-    formatError(err: unknown) {
-      const code = normalizeErrorCode(err);
-      const anyErr = err as any;
-      const status = anyErr?.status || 500;
-      const message = anyErr?.message || "Erro desconhecido na execução da IA";
-
-      const mapping: Record<string, { error: string; message: string }> = {
-        unauthorized: { error: "Acesso Negado", message: "Sessão expirada ou API Key inválida (401/403)." },
-        credits_exhausted: { error: "Limite de Créditos", message: "Créditos da API esgotados (402)." },
-        payload_too_large: { error: "Payload Excedido", message: "O contexto enviado é muito grande para o modelo (413)." },
-        rate_limited: { error: "Limite de Requisições", message: "Muitas solicitações em pouco tempo. Tente novamente em instantes (429)." },
-        upstream_error: { error: "Erro na IA", message: "O provedor de IA retornou um erro interno (500+)." },
-        timeout: { error: "Tempo Esgotado", message: "A IA demorou muito para responder (504/Timeout)." },
-        invalid_format: { error: "Resposta Inválida", message: "A IA gerou um conteúdo que não pôde ser processado." },
-      };
-
-      const info = mapping[code] || { error: "Erro de Execução", message: `Falha técnica: ${code}. ${message}` };
-      
-      return {
-        error: info.error,
-        message: info.message,
-        code,
-        status
-      };
-    }
   };
 }

@@ -36,38 +36,30 @@ function pipelineRoute(p: PipelineName): string {
 
 export function openLead(
   leadId: string,
-  opts: { tab?: LeadTabHint; action?: LeadActionHint; forceInPlace?: boolean } = {},
+  opts: { tab?: LeadTabHint; action?: LeadActionHint } = {},
 ) {
   if (!leadId) return;
   // Busca apenas pelo ID; nunca depende de filtros/listas visíveis.
   const lead = getLeads().find((l) => l.id === leadId);
-  
+
   const payload: PendingOpenLead = {
     leadId,
     tab: opts.tab,
     action: opts.action,
     ts: Date.now(),
   };
-
-  // Se for solicitado explicitamente (ou detectado que estamos na Missão do Dia e queremos evitar navegação),
-  // disparamos o evento sem tentar navegar.
-  if (opts.forceInPlace) {
-    window.dispatchEvent(new CustomEvent(OPEN_LEAD_EVENT, { detail: payload }));
-    return;
-  }
-
   try {
     sessionStorage.setItem(PENDING_OPEN_LEAD_KEY, JSON.stringify(payload));
   } catch { /* ignore */ }
 
+  // Se a base ainda não estiver carregada, assume o pipeline padrão; o board
+  // reprocessa o pedido pendente assim que os leads chegarem.
   const route = lead ? pipelineRoute(getPipelineForStage(lead.stage)) : "/";
   const current = typeof window !== "undefined" ? window.location.pathname : "";
-  
-  // Se já estamos na rota correta ou se estamos na Missão do Dia (/missao) e queremos abrir o drawer nela mesma
-  if (current === route || current === "/missao") {
-    window.dispatchEvent(new CustomEvent(OPEN_LEAD_EVENT, { detail: payload }));
-  } else {
+  if (current !== route) {
     window.location.assign(route);
+  } else {
+    window.dispatchEvent(new CustomEvent(OPEN_LEAD_EVENT, { detail: payload }));
   }
 }
 

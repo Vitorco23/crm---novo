@@ -8,7 +8,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment" | "extract_memory" | "priority_leads" | "priority_scoring" | "auto_diagnosis" | "intel_router" | "consultor_leads" | "mentor_p21";
+export type AITask = "diretor_comercial" | "auditor_ligacao" | "audit_transcript" | "analyze_attachment" | "extract_memory" | "priority_leads" | "auto_diagnosis" | "intel_router" | "consultor_leads" | "mentor_p21";
 
 export interface AIRouterOptions {
   task: AITask;
@@ -37,8 +37,6 @@ export interface AIRouterResult {
   modelUsed: string;
   attempts: number;
   latencyMs: number;
-  promptTokens?: number;
-  completionTokens?: number;
 }
 
 interface ModelSpec {
@@ -120,17 +118,6 @@ const REGISTRY: Record<AITask, { tiers: ModelSpec[][]; fallback: ModelSpec[] }> 
     fallback: [
       { id: "openai/gpt-5.4-nano", supportsJsonSchema: true },
       { id: "google/gemini-2.5-flash", supportsJsonSchema: false },
-    ],
-  },
-  // Gemini Scoring — analisa individualmente o contexto do lead e gera Score (0-100).
-  priority_scoring: {
-    tiers: [
-      [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
-      [{ id: "google/gemini-2.5-flash", supportsJsonSchema: false }],
-      [{ id: "google/gemini-3.6-flash", supportsJsonSchema: false }],
-    ],
-    fallback: [
-      { id: "openai/gpt-5.4-mini", supportsJsonSchema: true },
     ],
   },
   // Diagnóstico Automático (V1.1) — leitura leve pós-ligação Matteline.
@@ -301,8 +288,6 @@ export async function callAI(opts: AIRouterOptions): Promise<AIRouterResult> {
 
       const data = await res.json();
       const content: string = data?.choices?.[0]?.message?.content ?? "";
-      const usage = data?.usage;
-
       await logAttempt({
         task: opts.task,
         model: model.id,
@@ -311,14 +296,11 @@ export async function callAI(opts: AIRouterOptions): Promise<AIRouterResult> {
         latency_ms: Date.now() - started,
         success: true,
       });
-
       return {
         content,
         modelUsed: model.id,
         attempts: i + 1,
         latencyMs: Date.now() - startedAll,
-        promptTokens: usage?.prompt_tokens,
-        completionTokens: usage?.completion_tokens,
       };
     } catch (e) {
       clearTimeout(timer);

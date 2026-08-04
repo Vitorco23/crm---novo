@@ -16,7 +16,6 @@ export interface PriorityLeadPick {
   motivo: string;
   proximaAcao: string;
   impacto: "critico" | "alto" | "medio";
-  score?: number;
   nextBestAction?: import("@/modules/intelligence/services/nextBestAction").NextBestAction;
 }
 
@@ -80,19 +79,14 @@ interface Candidate {
   ultimaInteracao?: { tipo: string; resumo: string; data: string };
   sinais: string[];
   _prescore: number; // heurística usada só para pré-filtrar
-  scoreComercial?: number;
 }
 
-// Constrói candidatos com contexto ultra-detalhado para análise da IA.
-// SPRINT - Otimização da Análise: Ignora etapas sem interação comercial inicial
+// Constrói até 25 candidatos com maior "atenção potencial".
 export function buildCandidates(): Candidate[] {
   const now = Date.now();
   const leads = getLeads();
   const reminders = getReminders();
   const CLOSED = new Set(["Ganho", "Perdido"]);
-  
-  // Etapas a serem ignoradas (sem histórico comercial relevante para priorização de Missão)
-  const IGNORE_STAGES = new Set(["Novos Leads", "Importados"]);
 
   const remByLead = new Map<string, typeof reminders>();
   for (const r of reminders) {
@@ -100,17 +94,10 @@ export function buildCandidates(): Candidate[] {
     remByLead.get(r.leadId)!.push(r);
   }
 
-  // ETAPA 1 — Buscar apenas oportunidades ativas (que não estejam em IGNORE_STAGES)
-  let candidatesLeads = leads.filter(l => !CLOSED.has(l.stage) && !IGNORE_STAGES.has(l.stage));
-
-  // Caso especial: se não houver NENHUM lead nas etapas avançadas, recorre aos leads ativos gerais (fallback)
-  if (candidatesLeads.length === 0) {
-    candidatesLeads = leads.filter(l => !CLOSED.has(l.stage));
-  }
-
   const cands: Candidate[] = [];
 
-  for (const l of candidatesLeads) {
+  for (const l of leads) {
+    if (CLOSED.has(l.stage)) continue;
 
     const audit = latestAudit(l);
     const interactions = l.interactions || [];
@@ -127,39 +114,46 @@ export function buildCandidates(): Candidate[] {
     const rems = remByLead.get(l.id) || [];
     const fVencidos = rems.filter((r) => r.status === "pending" && new Date(r.scheduledFor).getTime() < now).length;
     const fPendentes = rems.filter((r) => r.status === "pending" && new Date(r.scheduledFor).getTime() >= now).length;
-    const fHoje = rems.filter((r) => r.status === "pending" && new Date(r.scheduledFor).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
 
     const tasks = getTasksByLead(l.id);
     const tVencidas = tasks.filter((t) => t.status === "pendente" && new Date(t.dueAt).getTime() < now).length;
     const todayStr = new Date().toISOString().slice(0, 10);
     const tHoje = tasks.filter((t) => t.status === "pendente" && t.dueAt.slice(0, 10) === todayStr).length;
 
-    // Heurística de pré-score para filtragem inicial
-    // SPRINT - Correção do Motor: Não descarta nenhum lead que tenha ações pendentes ou seja quente.
+    // Heurística de pré-score (só decide QUEM vai pra IA)
     let pre = 0;
-    
-    if (fVencidos > 0) pre += 100 + fVencidos * 10;
-    if (fHoje > 0) pre += 80;
-    if (tVencidas > 0) pre += 60;
-    if (tHoje > 0) pre += 40;
-    if (diasSemInteracao > 7) pre += 30; // Lead parado
+    const sinais: string[] = [];
+
+    if (fVencidos > 0) { pre += 40 + fVencidos * 10; sinais.push(`${fVencidos} follow-up(s) vencido(s)`); }
+    if (tVencidas > 0) { pre += 25 + tVencidas * 5; sinais.push(`${tVencidas} tarefa(s) vencida(s)`); }
+    if (tHoje > 0) { pre += 15; sinais.push(`${tHoje} tarefa(s) para hoje`); }
 
     if (audit) {
-      if (typeof audit.scoreComercial === "number") pre += audit.scoreComercial / 2;
-      if (audit.prioridade === "Alta") pre += 40;
-      if (audit.temperatura === "Quente") pre += 50;
+      if (typeof audit.scoreComercial === "number") pre += Math.min(30, audit.scoreComercial / 3);
+      if (audit.prioridade === "Alta") { pre += 25; sinais.push("prioridade Alta na última análise"); }
+      if (audit.probabilidadeAvanco === "Alta") { pre += 15; sinais.push("alta probabilidade de avanço"); }
+      if (audit.tendencia === "Esfriando") { pre += 30; sinais.push("tendência: esfriando"); }
+      if (audit.tendencia === "Evoluindo") { pre += 10; sinais.push("tendência: evoluindo"); }
+      if (audit.temperatura === "Quente") { pre += 20; sinais.push("lead quente"); }
+      if (audit.dataProximoContato) {
+        const dd = daysSince(audit.dataProximoContato);
+        if (dd >= 0) { pre += 20 + dd * 5; sinais.push(`próximo contato agendado atrasado ${dd}d`); }
+      }
+    } else if (l.temperature === "Quente") {
+      pre += 12; sinais.push("marcado como quente");
     }
 
-    if (l.stage === "Proposta" || l.stage === "Negociação") pre += 50;
-    if (l.stage === "Reunião Agendada" || l.stage === "Reunião Realizada") pre += 40;
-    if (l.stage === "Diagnóstico") pre += 30;
-    if ((l.contractValue || 0) > 0) pre += Math.min(30, (l.contractValue! / 500));
+    // Etapas críticas
+    if (l.stage === "Proposta Enviada" && diasNaEtapa >= 2) { pre += 20 + diasNaEtapa * 2; sinais.push(`proposta parada ${diasNaEtapa}d`); }
+    if (l.stage === "Documento de Guerra") { pre += 18; sinais.push("aguardando diagnóstico"); }
+    if (l.stage === "Reunião Marcada") { pre += 8; }
+    if (l.stage === "Reunião Realizada" && diasNaEtapa >= 3) { pre += 15 + diasNaEtapa; sinais.push(`sem follow-up pós-reunião há ${diasNaEtapa}d`); }
+    if (diasSemInteracao >= 7 && (l.contractValue || 0) > 0) { pre += 10 + Math.min(20, diasSemInteracao); sinais.push(`${diasSemInteracao}d sem interação`); }
 
-    // Força a inclusão se houver sinais críticos, mesmo que a pontuação base seja baixa
-    const hasCriticalSignal = fVencidos > 0 || fHoje > 0 || tVencidas > 0 || (audit?.temperatura === "Quente" && diasSemInteracao > 2);
-    
-    if (pre < 5 && !hasCriticalSignal) continue; 
+    // Valor de contrato dá peso quando há oportunidade real
+    if ((l.contractValue || 0) > 0) pre += Math.min(15, Math.log10(l.contractValue!) * 3);
 
+    if (pre < 15) continue; // ignora leads sem sinal significativo
 
     const lastInt = interactions[interactions.length - 1] || null;
 
@@ -173,73 +167,26 @@ export function buildCandidates(): Candidate[] {
       score: audit?.scoreComercial,
       tendencia: audit?.tendencia,
       probabilidade: audit?.probabilidadeAvanco,
+      prioridadeAudit: audit?.prioridade,
+      proximaAcaoAudit: audit?.proximaAcao,
+      principalObjecao: audit?.principalObjecao,
       contractValue: l.contractValue,
+      reunioesMarcadas: interactions.filter((i) => /reuni/i.test(i.type)).length,
       interacoes: interactions.length + callNotes.length,
       followupsVencidos: fVencidos,
-      followupsHoje: fHoje,
+      followupsPendentes: fPendentes,
       tarefasVencidas: tVencidas,
       tarefasHoje: tHoje,
       ultimaInteracao: lastInt
-        ? { tipo: lastInt.type, resumo: (lastInt.summary || "").slice(0, 400), data: lastInt.date }
+        ? { tipo: lastInt.type, resumo: (lastInt.summary || "").slice(0, 180), data: lastInt.date }
         : undefined,
-      // SPRINT 4: Envio de contexto bruto para que a IA processe a semântica
-      notasVendedor: (l.notes || "").slice(0, 1000),
-      diagnosticoHistorico: (l.diagnosisHistory || []).map(h => h.diagnosis.summary).join(" | ").slice(0, 1000),
-      interacoesRecentes: interactions.slice(-3).map(i => `${i.type}: ${i.summary}`).join(" | "),
-      sinaisIA: [],
+      sinais: sinais.slice(0, 6),
       _prescore: pre,
-      scoreComercial: 0 // Será calculado via heurística
-    } as any);
+    });
   }
 
-  // SPRINT 3: Cálculo do Score Comercial via Heurística Configurável
-  for (const c of cands) {
-    let s = 0;
-    const l = leads.find(lead => lead.id === c.id)!;
-    
-    // 1. Tempo parado / Follow-up / Reuniões
-    if (c.followupsVencidos > 0) s += 20;
-    if (c.tarefasHoje > 0) s += 30; // "Reunião hoje" simplificada
-    if (c.tarefasVencidas > 0) s += 35; // "Reunião atrasada" simplificada
-
-    // 2. Etapa do Funil
-    const stages: Record<string, number> = {
-      "Tentativa 1": 5, "Tentativa 2": 10, "Tentativa 3": 15, "Tentativa 4": 20,
-      "Follow-up": 25, "Reunião Marcada": 35, "Reunião Realizada": 40,
-      "Proposta": 50, "Negociação": 60
-    };
-    s += stages[c.etapa] || 0;
-
-    // 3. Inteligência Comercial (Audit)
-    const audit = latestAudit(l);
-    if (audit) {
-      if (audit.temperatura === "Quente") s += 15;
-      if (audit.temperatura === "Frio") s -= 20;
-      // Adicionais do audit poderiam ser mapeados aqui
-    }
-
-    // 4. Memória Comercial (Mock para estrutura configurável)
-    const memory = (l as any).strategicMemory || "";
-    if (memory.includes("urgência")) s += 25;
-    if (memory.includes("decidir")) s += 30;
-
-    // 5. Atividade
-    if (c.tarefasHoje > 0) s += 30;
-    if (c.followupsVencidos > 0) s += 25;
-    if (c.interacoes === 0) s -= 15;
-
-    // 6. Tempo sem interação
-    if (c.diasDesdeUltimaInteracao <= 3) s += 5;
-    else if (c.diasDesdeUltimaInteracao <= 7) s += 15;
-    else if (c.diasDesdeUltimaInteracao <= 15) s += 25;
-    else if (c.diasDesdeUltimaInteracao <= 30) s += 35;
-    else if (c.diasDesdeUltimaInteracao > 60) s -= 10;
-
-    c.scoreComercial = Math.max(0, Math.min(100, s));
-  }
-
-  cands.sort((a, b) => (b as any).scoreComercial - (a as any).scoreComercial);
-  return cands.slice(0, 40);
+  cands.sort((a, b) => b._prescore - a._prescore);
+  return cands.slice(0, 25);
 }
 
 export function getCache(): PriorityLeadsCache | null {
@@ -277,49 +224,22 @@ export async function computePriorityLeads(force = false): Promise<PriorityLeads
 
   // Remove o campo interno _prescore antes de enviar.
   const payload = cands.map(({ _prescore, ...rest }) => rest);
-  
-  // Removemos o resetMissionDay() daqui para evitar loops e comportamentos instáveis.
-  // A conclusão de missão deve ser controlada explicitamente pelo usuário.
-
   const { data, error } = await supabase.functions.invoke("priority-leads-ia", {
     body: { candidates: payload },
   });
   if (error) {
     let details = error.message;
-    let code = "UNKNOWN";
-    let status = 500;
-    
-    try {
-      // @ts-ignore - Extraindo detalhes do erro da Edge Function do Supabase
-      if (error.context) {
-        status = error.context.status || 500;
-        const text = await error.context.text();
-        try {
-          const parsed = JSON.parse(text);
-          details = parsed.message || parsed.error || details;
-          code = parsed.code || code;
-        } catch {
-          details = text || details;
-        }
-      }
+    try { // @ts-ignore
+      if (error.context?.text) details = await error.context.text();
     } catch { /* noop */ }
-
-    const diagnostic = `[Edge Function: priority-leads-ia]
-Código HTTP: ${status}
-Erro: ${details}
-Código Técnico: ${code}
-Etapa Provável: Chamada da API / Gateway de IA`;
-
-    throw new Error(diagnostic);
+    throw new Error(details || "Falha ao calcular prioridades");
   }
 
   const leads: PriorityLeadPick[] = Array.isArray((data as any)?.leads) ? (data as any).leads : [];
-  
-  // SPRINT 2: Fila Inteligente. Armazenamos a lista completa (até 10 leads) no cache.
   const result: PriorityLeadsCache = {
     generatedAt: new Date().toISOString(),
     model: (data as any)?.model,
-    leads: leads, 
+    leads,
     fingerprint: fp,
   };
   saveCache(result);
