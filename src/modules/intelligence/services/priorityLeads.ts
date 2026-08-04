@@ -80,6 +80,7 @@ interface Candidate {
   ultimaInteracao?: { tipo: string; resumo: string; data: string };
   sinais: string[];
   _prescore: number; // heurística usada só para pré-filtrar
+  scoreComercial?: number;
 }
 
 // Constrói candidatos com contexto ultra-detalhado para análise da IA.
