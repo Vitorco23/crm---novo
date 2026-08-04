@@ -146,7 +146,9 @@ export function buildCandidates(): Candidate[] {
       if (audit.temperatura === "Quente") pre += 50;
     }
 
-    if (l.stage === "Proposta Enviada") pre += 30;
+    if (l.stage === "Proposta" || l.stage === "Negociação") pre += 50;
+    if (l.stage === "Reunião Agendada" || l.stage === "Reunião Realizada") pre += 40;
+    if (l.stage === "Diagnóstico") pre += 30;
     if ((l.contractValue || 0) > 0) pre += Math.min(30, (l.contractValue! / 500));
 
     // Força a inclusão se houver sinais críticos, mesmo que a pontuação base seja baixa
