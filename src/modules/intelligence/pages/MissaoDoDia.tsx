@@ -133,7 +133,7 @@ export default function MissaoDoDia() {
               <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">reuniões</p>
             </div>
             <div className="p-4 rounded-xl bg-card border border-border shadow-sm">
-              <p className="text-2xl font-bold text-accent">3</p>
+              <p className="text-2xl font-bold text-accent">{proposalCount}</p>
               <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">propostas</p>
             </div>
           </div>
