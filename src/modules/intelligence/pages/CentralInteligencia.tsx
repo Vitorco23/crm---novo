@@ -135,9 +135,15 @@ export default function CentralInteligencia() {
   }, [activeId]);
 
   useEffect(() => {
+    if (sending || loading) return;
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, sending]);
+    if (el) {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: messages.length <= 1 ? "auto" : "smooth"
+      });
+    }
+  }, [messages, sending, loading]);
 
   const newConversation = useCallback(async () => {
     let data: Conversation;
