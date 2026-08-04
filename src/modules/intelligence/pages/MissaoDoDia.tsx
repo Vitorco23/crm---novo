@@ -1,21 +1,66 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { Target, RotateCcw, Brain, Phone, ExternalLink, Check, Flame, Activity, UserCheck, CalendarCheck, FileText } from "lucide-react";
+import { Target, RotateCcw, Brain, Phone, ExternalLink, Check, Flame, Activity, UserCheck, CalendarCheck, FileText, Pencil, Sparkles, AlertCircle } from "lucide-react";
 import { PageContainer } from "@/shared/components/shell";
-import { getLeads, getSessions, getGoalsSettings } from "@/shared/services/store";
+import { getLeads, getSessions, getGoalsSettings, type Lead } from "@/shared/services/store";
 import { computePriorityLeads, getCache } from "@/modules/intelligence/services/priorityLeads";
-import { openLead } from "@/modules/leads/services/openLead";
+import { openLead, OPEN_LEAD_EVENT, type PendingOpenLead } from "@/modules/leads/services/openLead";
 import { resetMissionDay } from "@/modules/intelligence/services/missionStore";
 import { isToday } from "date-fns";
+import LeadDetailDrawer from "@/modules/leads/components/LeadDetailDrawer";
 
 export default function MissaoDoDia() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [tick, setTick] = useState(0);
 
+  // Estado do Modal Inteligente (SPRINT 6)
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
+  const [drawerTab, setDrawerTab] = useState<any>(undefined);
+  const [drawerAction, setDrawerAction] = useState<any>(undefined);
+
   const bump = () => setTick(t => t + 1);
+
+  const handleComplete = () => {
+    resetMissionDay();
+    localStorage.removeItem("p21_priority_leads_cache");
+    setShowCompletion(true);
+    setDrawerOpen(false); 
+    toast({ title: "Missão Concluída", description: "Operação atualizada." });
+    
+    // Pequeno delay para a animação de fechar o drawer terminar
+    setTimeout(() => {
+      setDrawerLead(null);
+      setDrawerTab(undefined);
+      setDrawerAction(undefined);
+      bump();
+    }, 300);
+  };
+
+  // Escuta evento global de abertura de lead para interceptar na Missão do Dia
+  useEffect(() => {
+    const handler = (e: any) => {
+      const payload = e.detail as PendingOpenLead;
+      const targetLead = getLeads().find(l => l.id === payload.leadId);
+      if (targetLead) {
+        setDrawerLead(targetLead);
+        setDrawerTab(payload.tab);
+        setDrawerAction(payload.action);
+        setDrawerOpen(true);
+      }
+    };
+    window.addEventListener(OPEN_LEAD_EVENT, handler);
+    return () => window.removeEventListener(OPEN_LEAD_EVENT, handler);
+  }, [tick]);
+
+  useEffect(() => {
+    const handler = () => handleComplete();
+    window.addEventListener("p21:complete-mission", handler);
+    return () => window.removeEventListener("p21:complete-mission", handler);
+  }, [tick]);
 
   // Metas e Progresso (SPRINT 5)
   const g = useMemo(() => getGoalsSettings(), [tick]);
@@ -98,13 +143,6 @@ export default function MissaoDoDia() {
     }
   };
 
-  const handleComplete = () => {
-    resetMissionDay();
-    localStorage.removeItem("p21_priority_leads_cache");
-    setShowCompletion(true);
-    toast({ title: "Missão Concluída", description: "Operação atualizada." });
-    bump();
-  };
 
   const lead = useMemo(() => {
     if (!activeMission) return null;
@@ -255,7 +293,7 @@ export default function MissaoDoDia() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <Button 
                     className="h-14 bg-accent text-accent-foreground hover:bg-accent/90 rounded-xl font-black uppercase tracking-tighter gap-2 text-sm shadow-md"
-                    onClick={() => openLead(activeMission.leadId, { tab: "interacoes" })}
+                    onClick={() => openLead(activeMission.leadId, { tab: "interacoes", action: "new-interaction" })}
                   >
                     <Phone className="h-4 w-4" /> Ligar
                   </Button>
@@ -293,8 +331,23 @@ export default function MissaoDoDia() {
           <div className="h-px w-12 bg-muted-foreground" />
           <p className="text-[7px] uppercase tracking-[0.3em] font-black">Interface Executiva SOC</p>
         </div>
+
+        {/* Modal Inteligente do Lead (SPRINT 6) */}
+        <LeadDetailDrawer 
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          lead={drawerLead}
+          initialTab={drawerTab}
+          initialAction={drawerAction}
+          onRefresh={() => {
+            bump();
+            if (drawerLead) {
+              const updated = getLeads().find(l => l.id === drawerLead.id);
+              if (updated) setDrawerLead(updated);
+            }
+          }}
+        />
       </div>
     </PageContainer>
   );
 }
-
