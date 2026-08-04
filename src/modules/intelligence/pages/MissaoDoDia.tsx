@@ -15,7 +15,7 @@ export default function MissaoDoDia() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [tick, setTick] = useState(0);
-  const [lastMissionId, setLastMissionId] = useState<string | null>(null);
+  const [missionIndex, setMissionIndex] = useState(0);
 
   // Estado do Modal Inteligente (SPRINT 6)
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -25,10 +25,18 @@ export default function MissaoDoDia() {
 
   const bump = () => setTick(t => t + 1);
 
+  const handleNextInQueue = () => {
+    const cache = getCache();
+    if (cache && cache.leads && missionIndex < cache.leads.length - 1) {
+      setMissionIndex(prev => prev + 1);
+    } else {
+      setShowCompletion(true);
+    }
+  };
+
   const handleComplete = () => {
-    // Apenas marca como concluída visualmente e limpa o cache para a próxima
-    localStorage.removeItem("p21_priority_leads_cache");
-    setShowCompletion(true);
+    // Ao concluir, avançamos automaticamente na fila
+    handleNextInQueue();
     setDrawerOpen(false); 
     toast({ title: "Missão Concluída", description: "Operação atualizada." });
     
@@ -138,14 +146,15 @@ export default function MissaoDoDia() {
   const missionCache = useMemo(() => getCache(), [tick]);
   const activeMission = useMemo(() => {
     if (showCompletion) return null;
-    return missionCache?.leads?.[0] || null;
-  }, [missionCache, showCompletion]);
+    return missionCache?.leads?.[missionIndex] || null;
+  }, [missionCache, showCompletion, missionIndex]);
 
   const handleGenerateMission = async () => {
     if (isUpdating) return;
     
     setIsUpdating(true);
     setShowCompletion(false);
+    setMissionIndex(0);
     
     try {
       // Limpa o cache para forçar uma nova análise
@@ -155,18 +164,6 @@ export default function MissaoDoDia() {
       
       if (!result.leads || result.leads.length === 0) {
         toast({ title: "Tudo em dia", description: "O Diretor Comercial IA não encontrou ações prioritárias agora." });
-      } else {
-        const newLeadId = result.leads[0]?.leadId;
-        
-        // Se for a mesma missão que a anterior, tenta buscar outra (evita repetição imediata se possível)
-        if (newLeadId === lastMissionId && result.leads.length > 0) {
-           // Aqui poderíamos ter uma lógica de retry ou de pegar o segundo do ranking se o backend retornasse mais de um.
-           // Mas como o backend retorna apenas 1 agora, vamos apenas prosseguir.
-        }
-        
-        if (newLeadId) {
-          setLastMissionId(newLeadId);
-        }
       }
       bump();
     } catch (error) {
@@ -264,7 +261,7 @@ export default function MissaoDoDia() {
               
               {showCompletion ? (
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-black text-foreground tracking-tighter italic uppercase">✅ Missão concluída.</h2>
+                  <h2 className="text-2xl font-black text-foreground tracking-tighter italic uppercase">✅ Todas as prioridades deste ciclo foram concluídas.</h2>
                   <p className="text-sm font-bold text-accent uppercase tracking-widest">Operação atualizada.</p>
                 </div>
               ) : (
@@ -341,7 +338,7 @@ export default function MissaoDoDia() {
                   <Button 
                     variant="ghost"
                     className="h-14 rounded-xl font-black uppercase tracking-tighter gap-2 text-muted-foreground text-sm"
-                    onClick={handleGenerateMission}
+                    onClick={handleNextInQueue}
                   >
                     <RotateCcw className="h-4 w-4" /> Outra Missão
                   </Button>
