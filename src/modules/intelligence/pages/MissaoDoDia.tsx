@@ -42,37 +42,6 @@ export default function MissaoDoDia() {
 
   useEffect(() => { runOneTimeMissionReset(); }, []);
 
-  // TEMPORÁRIO — teste da Edge Function matteline-create-contact
-  const [testPhone, setTestPhone] = useState("55");
-  const [testLoading, setTestLoading] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
-
-  const runMattelineTest = async () => {
-    setTestLoading(true);
-    setTestResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("matteline-create-contact", {
-        body: { name: "Teste P21", phone: testPhone },
-      });
-      let httpStatus: number | string = error?.context?.status ?? (error ? "erro" : 200);
-      let errorBody: unknown = null;
-      if (error?.context && typeof error.context.text === "function") {
-        try { errorBody = await error.context.clone().json(); }
-        catch { try { errorBody = await error.context.clone().text(); } catch { /* ignore */ } }
-      }
-      setTestResult(JSON.stringify({
-        statusHTTP: httpStatus,
-        resposta: data ?? errorBody,
-        erro: error ? error.message : null,
-      }, null, 2));
-    } catch (e) {
-      setTestResult(JSON.stringify({ statusHTTP: "exception", resposta: null, erro: String(e) }, null, 2));
-    } finally {
-      setTestLoading(false);
-    }
-  };
-
-
   useEffect(() => {
     const offs = [
       on("TarefaCriada", bump), on("TarefaConcluida", bump), on("TarefaAtualizada", bump),
