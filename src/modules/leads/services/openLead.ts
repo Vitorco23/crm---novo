@@ -40,7 +40,7 @@ export function openLead(
 ) {
   if (!leadId) return;
   // Busca apenas pelo ID; nunca depende de filtros/listas visíveis.
-  const lead = getLeads().find((l) => l.id === id); // Fix: use 'leadId' instead of 'id' which might be from outer scope if I'm not careful, but here I'll use leadId
+  const lead = getLeads().find((l) => l.id === leadId);
   
   const payload: PendingOpenLead = {
     leadId,
