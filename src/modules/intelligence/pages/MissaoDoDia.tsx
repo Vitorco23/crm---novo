@@ -26,8 +26,6 @@ import { openLead } from "@/modules/leads/services/openLead";
 import { on } from "@/shared/services/eventBus";
 import { PRIORITY_CLASSES, PRIORITY_LABEL } from "@/modules/leads/services/leadTasks";
 import { formatMinutes } from "@/modules/intelligence/services/priorityEngine";
-import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
 
 const KIND_ICON: Record<MissionEntry["kind"], JSX.Element> = {
   calls: <Phone className="h-4 w-4" />,
