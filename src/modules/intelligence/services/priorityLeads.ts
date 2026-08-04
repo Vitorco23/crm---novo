@@ -82,13 +82,15 @@ interface Candidate {
 }
 
 // Constrói candidatos com contexto ultra-detalhado para análise da IA.
-// SPRINT - Otimização da Análise: Ignora a etapa "Novos Leads" a menos que não existam outras oportunidades.
+// SPRINT - Otimização da Análise: Ignora etapas sem interação comercial inicial
 export function buildCandidates(): Candidate[] {
   const now = Date.now();
   const leads = getLeads();
   const reminders = getReminders();
   const CLOSED = new Set(["Ganho", "Perdido"]);
-  const NEW_LEADS_STAGE = "Novos Leads";
+  
+  // Etapas a serem ignoradas (sem histórico comercial relevante para priorização de Missão)
+  const IGNORE_STAGES = new Set(["Novos Leads", "Importados"]);
 
   const remByLead = new Map<string, typeof reminders>();
   for (const r of reminders) {
@@ -96,10 +98,10 @@ export function buildCandidates(): Candidate[] {
     remByLead.get(r.leadId)!.push(r);
   }
 
-  // Primeiro tenta buscar leads que NÃO estão na etapa inicial de prospecção fria
-  let candidatesLeads = leads.filter(l => !CLOSED.has(l.stage) && l.stage !== NEW_LEADS_STAGE);
+  // ETAPA 1 — Buscar apenas oportunidades ativas (que não estejam em IGNORE_STAGES)
+  let candidatesLeads = leads.filter(l => !CLOSED.has(l.stage) && !IGNORE_STAGES.has(l.stage));
 
-  // Caso especial: se não houver NENHUM lead nas etapas avançadas, recorre aos "Novos Leads"
+  // Caso especial: se não houver NENHUM lead nas etapas avançadas, recorre aos leads ativos gerais (fallback)
   if (candidatesLeads.length === 0) {
     candidatesLeads = leads.filter(l => !CLOSED.has(l.stage));
   }
