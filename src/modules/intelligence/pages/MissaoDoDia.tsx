@@ -154,6 +154,7 @@ export default function MissaoDoDia() {
     
     setIsUpdating(true);
     setShowCompletion(false);
+    setMissionIndex(0);
     
     try {
       // Limpa o cache para forçar uma nova análise
@@ -163,18 +164,6 @@ export default function MissaoDoDia() {
       
       if (!result.leads || result.leads.length === 0) {
         toast({ title: "Tudo em dia", description: "O Diretor Comercial IA não encontrou ações prioritárias agora." });
-      } else {
-        const newLeadId = result.leads[0]?.leadId;
-        
-        // Se for a mesma missão que a anterior, tenta buscar outra (evita repetição imediata se possível)
-        if (newLeadId === lastMissionId && result.leads.length > 0) {
-           // Aqui poderíamos ter uma lógica de retry ou de pegar o segundo do ranking se o backend retornasse mais de um.
-           // Mas como o backend retorna apenas 1 agora, vamos apenas prosseguir.
-        }
-        
-        if (newLeadId) {
-          setLastMissionId(newLeadId);
-        }
       }
       bump();
     } catch (error) {
