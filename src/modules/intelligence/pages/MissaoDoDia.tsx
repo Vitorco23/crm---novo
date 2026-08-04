@@ -192,7 +192,7 @@ export default function MissaoDoDia() {
                   <div className="bg-accent/10 p-8 border-b border-accent/20">
                     <div className="flex justify-between items-start mb-6">
                       <h2 className="text-4xl font-black tracking-tighter text-foreground italic">
-                        🎯 MISSÃO #1
+                        🎯 PRÓXIMA MISSÃO
                       </h2>
                       <div className="bg-accent text-accent-foreground px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
                         Foco Total
