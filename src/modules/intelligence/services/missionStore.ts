@@ -8,7 +8,6 @@
 // Persistência em user_storage (sync cross-device), chave `p21_mission_items`.
 // ============================================================================
 
-
 import { uload, usave } from "@/shared/services/userStorage";
 import { emit } from "@/shared/services/eventBus";
 import type { TaskPriority } from "@/modules/leads/services/leadTasks";
@@ -45,8 +44,6 @@ export interface MissionEntry {
 
 const KEY = "p21_mission_items";
 const RESET_KEY = "p21_mission_reset_v2";
-const MEMORY_KEY = "p21_mission_execution_memory";
-
 
 export const MISSION_UPDATED_EVENT = "p21:mission-updated";
 
@@ -172,30 +169,3 @@ export function runOneTimeMissionReset() {
 
   try { localStorage.setItem(RESET_KEY, new Date().toISOString()); } catch { /* ignore */ }
 }
-
-/** 
- * SPRINT 4: Memória de execução da missão.
- * Armazena o desfecho de missões unitárias para alimentar a próxima priorização.
- */
-export interface MissionMemory {
-  leadId: string;
-  timestamp: string;
-  actionTaken: string;
-  outcome?: string;
-}
-
-export function saveMissionMemory(entry: MissionMemory) {
-  const all = uload<MissionMemory[]>(MEMORY_KEY, []);
-  // Mantemos apenas as últimas 100 interações de memória de missão para não sobrecarregar o payload
-  const next = [entry, ...all].slice(0, 100);
-  usave(MEMORY_KEY, next);
-}
-
-export function getInteractionMemories(leadId: string): string[] {
-  const all = uload<MissionMemory[]>(MEMORY_KEY, []);
-  return all
-    .filter(m => m.leadId === leadId)
-    .slice(0, 5) // Pega as 5 mais recentes
-    .map(m => `${m.timestamp.slice(0, 10)}: ${m.actionTaken}${m.outcome ? ` -> ${m.outcome}` : ''}`);
-}
-

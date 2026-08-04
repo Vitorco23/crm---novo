@@ -11,9 +11,8 @@ import {
 import { PageContainer, PageHeader } from "@/shared/components/shell";
 import {
   getMissionEntries, getMissionProgress, completeMissionEntry,
-  resetMissionDay, runOneTimeMissionReset, saveMissionMemory,
+  resetMissionDay, runOneTimeMissionReset,
   MISSION_UPDATED_EVENT, type MissionEntry,
-
 } from "@/modules/intelligence/services/missionStore";
 import { buildMissionPlan } from "@/modules/intelligence/services/missionPlanner";
 import { computePriorityLeads, getCache } from "@/modules/intelligence/services/priorityLeads";
@@ -72,37 +71,25 @@ export default function MissaoDoDia() {
   };
 
   const handleSkip = () => {
-    if (currentMission) {
-      saveMissionMemory({
-        leadId: currentMission.leadId,
-        timestamp: new Date().toISOString(),
-        actionTaken: currentMission.proximaAcao,
-        outcome: "Pulado pelo usuário"
-      });
-    }
     handleUpdatePriorities();
     toast({ title: "Missão pulada", description: "Buscando a próxima melhor ação..." });
   };
 
   const handleComplete = () => {
-    if (currentMission) {
-      saveMissionMemory({
-        leadId: currentMission.leadId,
-        timestamp: new Date().toISOString(),
-        actionTaken: currentMission.proximaAcao,
-        outcome: "Concluído"
-      });
-    }
+    // Para simplificar na V2, completar a missão apenas limpa o cache atual
+    // O usuário registra a ação no card do lead (ligação, nota, etc)
     resetMissionDay();
-    localStorage.removeItem("p21_priority_leads_cache");
+    // Limpamos o cache local para forçar o estado de "Gerar"
+    const { CACHE_KEY } = require("@/modules/intelligence/services/priorityLeads");
+    localStorage.removeItem(CACHE_KEY);
     toast({ title: "Ação registrada", description: "Missão concluída com sucesso." });
     bump();
   };
 
-
   const handleReset = () => {
     resetMissionDay();
-    localStorage.removeItem("p21_priority_leads_cache");
+    const { CACHE_KEY } = require("@/modules/intelligence/services/priorityLeads");
+    localStorage.removeItem(CACHE_KEY);
     toast({ title: "Missão do dia reiniciada", description: "Nenhum dado comercial foi alterado." });
     bump();
   };
@@ -192,7 +179,7 @@ export default function MissaoDoDia() {
                   <div className="bg-accent/10 p-8 border-b border-accent/20">
                     <div className="flex justify-between items-start mb-6">
                       <h2 className="text-4xl font-black tracking-tighter text-foreground italic">
-                        🎯 PRÓXIMA MISSÃO
+                        🎯 MISSÃO #1
                       </h2>
                       <div className="bg-accent text-accent-foreground px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
                         Foco Total
@@ -210,36 +197,14 @@ export default function MissaoDoDia() {
                   </div>
 
                   <div className="p-10 space-y-10">
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <h4 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
-                          <FileText className="h-3 w-3" /> Por que este lead?
-                        </h4>
-                        <p className="text-xl font-medium leading-relaxed text-foreground/90">
-                          {currentMission.motivo}
-                        </p>
-                      </div>
-
-                      {/* Explicabilidade Detalhada (Sinais) */}
-                      {currentMission.impacto && (
-                        <div className="flex flex-wrap gap-2">
-                          {getLeads().find(l => l.id === currentMission.leadId)?.temperature === 'Quente' && (
-                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[10px] font-bold text-orange-500 uppercase tracking-wider">
-                              <Flame className="h-3 w-3" /> Temperatura Alta
-                            </div>
-                          )}
-                          {(getLeads().find(l => l.id === currentMission.leadId)?.contractValue || 0) > 5000 && (
-                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-500 uppercase tracking-wider">
-                              <Target className="h-3 w-3" /> Ticket Elevado
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-[10px] font-bold text-accent uppercase tracking-wider">
-                            <Check className="h-3 w-3" /> Prioridade {currentMission.impacto}
-                          </div>
-                        </div>
-                      )}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
+                        <FileText className="h-3 w-3" /> Motivo
+                      </h4>
+                      <p className="text-xl font-medium leading-relaxed text-foreground/90">
+                        {currentMission.motivo}
+                      </p>
                     </div>
-
 
                     <div className="grid grid-cols-3 gap-4">
                       <Button 
