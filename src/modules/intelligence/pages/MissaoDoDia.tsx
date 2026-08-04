@@ -1,14 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { Target, RotateCcw, Brain, Phone, ExternalLink, Check, Flame, Activity, UserCheck, CalendarCheck, FileText } from "lucide-react";
+import { Target, RotateCcw, Brain, Phone, ExternalLink, Check, Flame, Activity, UserCheck, CalendarCheck, FileText, Pencil, Sparkles, AlertCircle } from "lucide-react";
 import { PageContainer } from "@/shared/components/shell";
-import { getLeads, getSessions, getGoalsSettings } from "@/shared/services/store";
+import { getLeads, getSessions, getGoalsSettings, type Lead } from "@/shared/services/store";
 import { computePriorityLeads, getCache } from "@/modules/intelligence/services/priorityLeads";
-import { openLead } from "@/modules/leads/services/openLead";
+import { openLead, OPEN_LEAD_EVENT, type PendingOpenLead } from "@/modules/leads/services/openLead";
 import { resetMissionDay } from "@/modules/intelligence/services/missionStore";
 import { isToday } from "date-fns";
+import LeadDetailDrawer from "@/modules/leads/components/LeadDetailDrawer";
 
 export default function MissaoDoDia() {
   const [isUpdating, setIsUpdating] = useState(false);
