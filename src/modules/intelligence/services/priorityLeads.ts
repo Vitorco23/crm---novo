@@ -244,7 +244,7 @@ export async function computePriorityLeads(force = false): Promise<PriorityLeads
   const result: PriorityLeadsCache = {
     generatedAt: new Date().toISOString(),
     model: (data as any)?.model,
-    leads: leads.slice(0, 8), // Garante o limite de 8 leads por lote
+    leads: leads.slice(0, 1), // SPRINT 2: Agora retorna apenas 1 missão por vez para foco total
     fingerprint: fp,
   };
   saveCache(result);
