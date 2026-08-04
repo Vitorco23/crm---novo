@@ -112,14 +112,25 @@ export default function MissaoDoDia() {
 
   const stats = useMemo(() => {
     const allLeads = getLeads();
-    const newCalls = allLeads.filter(l => l.stage === "Novo Lead").length;
+    const IGNORE_STAGES = new Set(["Novos Leads", "Importados"]);
+    const CLOSED = new Set(["Ganho", "Perdido"]);
+    
+    // Oportunidades ativas: não fechadas e não ignoradas
+    const activeLeads = allLeads.filter(l => !CLOSED.has(l.stage) && !IGNORE_STAGES.has(l.stage));
+    
     const followups = allLeads.filter(l => l.stage.startsWith("Tentativa")).length;
     const meetings = allLeads.filter(l => 
       l.stage.includes("Reunião Marcada") || 
       l.stage.includes("Reunião Realizada")
     ).length;
     const proposals = allLeads.filter(l => l.stage.includes("Proposta")).length;
-    return { newCalls, followups, meetings, proposals };
+    
+    return { 
+      totalActive: activeLeads.length, 
+      followups, 
+      meetings, 
+      proposals 
+    };
   }, [tick]);
 
   const missionCache = useMemo(() => getCache(), [tick]);
@@ -209,7 +220,7 @@ export default function MissaoDoDia() {
           <div className="bg-accent/5 border border-accent/10 rounded-2xl p-4 space-y-3">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Operação analisada</p>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
-              <span className="text-[10px] font-black text-foreground">✔ {stats.newCalls + stats.followups + stats.meetings + stats.proposals} OPORTUNIDADES</span>
+              <span className="text-[10px] font-black text-foreground">✔ {stats.totalActive} OPORTUNIDADES ATIVAS</span>
               <span className="text-[10px] font-black text-foreground">✔ {stats.followups} FOLLOW-UPS</span>
               <span className="text-[10px] font-black text-foreground">✔ {stats.meetings} REUNIÕES</span>
               <span className="text-[10px] font-black text-foreground">✔ {stats.proposals} PROPOSTAS</span>
