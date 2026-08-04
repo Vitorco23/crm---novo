@@ -155,9 +155,23 @@ export default function MissaoDoDia() {
           </div>
         </div>
 
-        {/* 4. BOTÃO PRINCIPAL (CTA) */}
+        {/* 4. BOTÃO PRINCIPAL (CTA) — Só aparece se a missão não começou ou se foi concluída */}
         {pending.length === 0 && (
           <div className="flex flex-col items-center gap-6 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {isMissionComplete && (
+              <div className="text-center space-y-6 mb-4">
+                <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-accent/10 text-accent mb-2">
+                  <Check className="h-10 w-10" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-3xl font-black text-foreground tracking-tighter italic uppercase">✅ Missão concluída.</h3>
+                  <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold opacity-70">
+                    Ainda existem {followupSuggestions.length} follow-ups disponíveis na base.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <Button 
               size="lg" 
               className="h-20 px-12 text-xl gap-3 bg-accent text-accent-foreground hover:bg-accent/90 shadow-2xl shadow-accent/30 rounded-full font-black uppercase tracking-tighter transition-all hover:scale-105 active:scale-95"
@@ -165,8 +179,9 @@ export default function MissaoDoDia() {
               disabled={isUpdating}
             >
               <RotateCcw className={`h-6 w-6 ${isUpdating ? 'animate-spin' : ''}`} />
-              🧠 Atualizar Prioridades
+              🧠 {isMissionComplete ? 'Recalcular Prioridades' : 'Atualizar Prioridades'}
             </Button>
+            
             <p className="text-xs text-muted-foreground text-center max-w-sm leading-relaxed uppercase tracking-widest font-medium opacity-70">
               O Diretor Comercial IA irá analisar todo o CRM e selecionar os 8 leads mais prioritários para este momento.
             </p>
@@ -223,21 +238,7 @@ export default function MissaoDoDia() {
           </div>
         )}
 
-        {/* 6. CONCLUSÃO DA MISSÃO */}
-        {isMissionComplete && pending.length === 0 && (
-          <div className="text-center space-y-6 animate-in zoom-in duration-500 py-10">
-            <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-accent/10 text-accent mb-2">
-              <Check className="h-12 w-12" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-3xl font-black text-foreground tracking-tighter italic">✅ Missão concluída.</h3>
-              <p className="text-muted-foreground uppercase text-xs tracking-widest font-bold">
-                Ainda existem {followupSuggestions.length} follow-ups disponíveis na base.
-              </p>
-            </div>
-            {/* O botão de atualização já aparece no bloco CTA acima porque pending.length === 0 */}
-          </div>
-        )}
+        {/* 6. CONCLUSÃO DA MISSÃO — Removido daqui e integrado ao bloco CTA acima para evitar duplicidade */}
       </div>
     </PageContainer>
   );
