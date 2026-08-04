@@ -42,7 +42,85 @@ export default function MissaoDoDia() {
 
   // Metas e Progresso (SPRINT 5)
   const g = useMemo(() => getGoalsSettings(), [tick]);
-...
+  const progressData = useMemo(() => {
+    const sessions = getSessions().filter((s) => isToday(new Date(s.startTime)));
+    
+    // Engenharia reversa das metas (mesma lógica de Metas.tsx)
+    const workingDaysPerMonth = g.workingDaysPerWeek * 4.33;
+    const closes = g.averageTicket > 0 ? g.monthlyRevenueGoal / g.averageTicket : 0;
+    const r = (n: number) => Math.max(n, 0.0001) / 100;
+    const meetingsHeld = closes / r(g.meetingHeldToClose);
+    const meetingsScheduled = meetingsHeld / r(g.meetingScheduledToHeld);
+    const decisionMakers = meetingsScheduled / r(g.decisionMakerToMeetingScheduled);
+    const connections = decisionMakers / r(g.connectionToDecisionMaker);
+    const calls = connections / r(g.callToConnection);
+    
+    const callsGoal = workingDaysPerMonth > 0 ? calls / workingDaysPerMonth : 0;
+    const decisionMakersGoal = workingDaysPerMonth > 0 ? decisionMakers / workingDaysPerMonth : 0;
+    const meetingsGoal = workingDaysPerMonth > 0 ? meetingsScheduled / workingDaysPerMonth : 0;
+    const proposalsGoal = meetingsGoal * 0.7; // Estimativa para propostas
+
+    return [
+      { 
+        label: "Ligações", 
+        real: sessions.reduce((a, s) => a + (s.calls || 0), 0), 
+        goal: Math.ceil(callsGoal),
+        icon: Phone 
+      },
+      { 
+        label: "Follow-ups", 
+        real: sessions.reduce((a, s) => a + (s.decisionMakers || 0), 0), 
+        goal: Math.ceil(decisionMakersGoal),
+        icon: UserCheck 
+      },
+      { 
+        label: "Reuniões", 
+        real: sessions.reduce((a, s) => a + (s.meetings || 0), 0), 
+        goal: Math.ceil(meetingsGoal),
+        icon: CalendarCheck 
+      },
+      { 
+        label: "Propostas", 
+        real: sessions.reduce((a, s) => a + ((s as any).proposals || 0), 0), 
+        goal: Math.ceil(proposalsGoal),
+        icon: FileText 
+      },
+    ];
+  }, [g, tick]);
+
+  const stats = useMemo(() => {
+    const allLeads = getLeads();
+    const newCalls = allLeads.filter(l => l.stage === "Novo Lead").length;
+    const followups = allLeads.filter(l => l.stage.startsWith("Tentativa")).length;
+    const meetings = allLeads.filter(l => 
+      l.stage.includes("Reunião Marcada") || 
+      l.stage.includes("Reunião Realizada")
+    ).length;
+    const proposals = allLeads.filter(l => l.stage.includes("Proposta")).length;
+    return { newCalls, followups, meetings, proposals };
+  }, [tick]);
+
+  const missionCache = useMemo(() => getCache(), [tick]);
+  const activeMission = !showCompletion ? (missionCache?.leads?.[0] || null) : null;
+
+  const handleGenerateMission = async () => {
+    setIsUpdating(true);
+    setShowCompletion(false);
+    try {
+      localStorage.removeItem("p21_priority_leads_cache");
+      const result = await computePriorityLeads(true);
+      if (!result.leads || result.leads.length === 0) {
+        toast({ title: "Tudo em dia", description: "O Diretor Comercial IA não encontrou ações prioritárias agora." });
+      }
+      bump();
+    } catch (error) {
+      console.error("Erro IA:", error);
+      toast({ variant: "destructive", title: "Erro na análise", description: "Não foi possível conectar com a Inteligência no momento." });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleComplete = () => {
     resetMissionDay();
     localStorage.removeItem("p21_priority_leads_cache");
