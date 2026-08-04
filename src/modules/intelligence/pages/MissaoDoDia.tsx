@@ -59,6 +59,10 @@ export default function MissaoDoDia() {
     (f) => !inMission.has(`${plan.generatedAt.slice(0, 10)}:followup:${f.leadId}`),
   );
 
+  const proposalCount = useMemo(() => {
+    return getLeads().filter(l => /proposta/i.test(l.stage)).length;
+  }, [tick]);
+
   const handleUpdatePriorities = () => {
     setIsUpdating(true);
     // Simula processamento da IA para "gerar o lote"
