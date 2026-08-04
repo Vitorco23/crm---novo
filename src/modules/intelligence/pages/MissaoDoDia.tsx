@@ -253,7 +253,3 @@ export default function MissaoDoDia() {
     </PageContainer>
   );
 }
-
-
-  );
-}
