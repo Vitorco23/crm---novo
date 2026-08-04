@@ -37,6 +37,8 @@ export interface AIRouterResult {
   modelUsed: string;
   attempts: number;
   latencyMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 interface ModelSpec {
@@ -299,6 +301,8 @@ export async function callAI(opts: AIRouterOptions): Promise<AIRouterResult> {
 
       const data = await res.json();
       const content: string = data?.choices?.[0]?.message?.content ?? "";
+      const usage = data?.usage;
+
       await logAttempt({
         task: opts.task,
         model: model.id,
@@ -307,11 +311,14 @@ export async function callAI(opts: AIRouterOptions): Promise<AIRouterResult> {
         latency_ms: Date.now() - started,
         success: true,
       });
+
       return {
         content,
         modelUsed: model.id,
         attempts: i + 1,
         latencyMs: Date.now() - startedAll,
+        promptTokens: usage?.prompt_tokens,
+        completionTokens: usage?.completion_tokens,
       };
     } catch (e) {
       clearTimeout(timer);

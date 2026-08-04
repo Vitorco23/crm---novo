@@ -67,7 +67,7 @@ async function runDiretor(question: string, ctx: CrmContext, history?: Conversat
     maxTokens: 1800,
     inputChars: built.inputChars,
   });
-  return { content: r.content, model: r.modelUsed };
+  return r;
 }
 
 async function runConsultor(question: string, ctx: CrmContext, history?: ConversationTurn[]) {
@@ -81,11 +81,11 @@ async function runConsultor(question: string, ctx: CrmContext, history?: Convers
     maxTokens: 1800,
     inputChars: built.inputChars,
   });
-  return { content: r.content, model: r.modelUsed };
+  return r;
 }
 
 async function runMentor(question: string, ctx: CrmContext, authHeader: string, history?: ConversationTurn[]):
-  Promise<{ content: string; model: string; citations: KnowledgeCitation[] }>
+  Promise<{ content: string; modelUsed: string; citations: KnowledgeCitation[]; promptTokens?: number; completionTokens?: number }>
 {
   // Ferramenta autorizada pelo Tool Registry. Best-effort: falha não bloqueia a resposta.
   // Fase 3C: engine com cache por execução + governança da Knowledge Platform.
@@ -108,7 +108,7 @@ async function runMentor(question: string, ctx: CrmContext, authHeader: string, 
     maxTokens: 1800,
     inputChars: built.inputChars,
   });
-  return { content: r.content, model: r.modelUsed, citations };
+  return { ...r, citations };
 }
 
 
@@ -123,6 +123,8 @@ Deno.serve(async (req) => {
     userId: auth.userId,
     authHeader: authHeaderRaw,
   });
+
+  console.log(`[IntelRouter] Pergunta recebida do usuário: ${auth.userId}`);
 
   try {
     const body = (await req.json().catch(() => ({}))) as IntelRequest;
@@ -139,8 +141,11 @@ Deno.serve(async (req) => {
     }
 
     const ctx: CrmContext = body.context ?? {};
+    console.log(`[IntelRouter] Classificando especialista para pergunta de ${question.length} chars...`);
     const specialist: SpecialistId = body.specialistOverride
       ?? await classify(question, ctx);
+
+    console.log(`[IntelRouter] Especialista selecionado: ${specialist}`);
 
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization")!;
     const history = normalizeHistory(body.history);
@@ -155,25 +160,33 @@ Deno.serve(async (req) => {
     let content = "";
     let model = "";
     let citations: unknown = null;
+    let tokensIn = 0;
+    let tokensOut = 0;
 
     if (specialist === "diretor_comercial") {
       const r = await runDiretor(question, ctx, history);
-      content = r.content; model = r.model;
+      content = r.content; model = r.modelUsed;
+      tokensIn = r.promptTokens ?? 0; tokensOut = r.completionTokens ?? 0;
     } else if (specialist === "consultor_leads") {
       if (!ctx.leadContext) {
         // Sem lead aberto: não bloqueia — responde como Diretor Comercial com o contexto disponível.
         const r = await runDiretor(question, ctx, history);
-        content = r.content; model = r.model;
+        content = r.content; model = r.modelUsed;
+        tokensIn = r.promptTokens ?? 0; tokensOut = r.completionTokens ?? 0;
       } else {
         const r = await runConsultor(question, ctx, history);
-        content = r.content; model = r.model;
+        content = r.content; model = r.modelUsed;
+        tokensIn = r.promptTokens ?? 0; tokensOut = r.completionTokens ?? 0;
       }
     } else {
       const r = await runMentor(question, ctx, authHeader, history);
-      content = r.content; model = r.model; citations = r.citations;
+      content = r.content; model = r.modelUsed; citations = r.citations;
+      tokensIn = r.promptTokens ?? 0; tokensOut = r.completionTokens ?? 0;
       telemetry.addSource("knowledge");
       telemetry.addTool("knowledge.search");
     }
+
+    console.log(`[IntelRouter] Resposta gerada. Modelo: ${model}. Chars: ${content.length}`);
 
     // Persiste user + assistant se houver conversationId
     if (body.conversationId) {
@@ -205,20 +218,23 @@ Deno.serve(async (req) => {
       model: model || null,
       inputChars: question.length,
       outputChars: content.length,
+      inputTokens: tokensIn,
+      outputTokens: tokensOut,
     });
 
     return new Response(JSON.stringify({
       specialist, content, model, citations,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    const err = e as Error & { status?: number };
-    const status = err.status ?? 500;
-    console.error(JSON.stringify({ evt: "intel_router_error", msg: err.message }));
-    await telemetry.failure(err);
+    console.error(`[IntelRouter] ERRO:`, e);
+    await telemetry.failure(e);
+    const errInfo = telemetry.formatError(e);
+    
     return new Response(JSON.stringify({
-      error: status === 429 ? "rate_limited"
-           : status === 402 ? "credits_exhausted"
-           : "internal_error",
-    }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      error: errInfo.error,
+      message: errInfo.message,
+      code: errInfo.code,
+      stack: (e as Error).stack
+    }), { status: errInfo.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
