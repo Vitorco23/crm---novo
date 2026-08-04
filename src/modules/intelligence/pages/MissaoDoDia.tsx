@@ -58,7 +58,7 @@ export default function MissaoDoDia() {
       },
       { 
         label: "Propostas", 
-        real: sessions.reduce((a, s) => a + (s.proposals || 0), 0), 
+        real: sessions.reduce((a, s) => a + ((s as any).proposals || 0), 0), 
         goal: Math.ceil(proposalsGoal),
         icon: FileText 
       },
