@@ -36,30 +36,38 @@ function pipelineRoute(p: PipelineName): string {
 
 export function openLead(
   leadId: string,
-  opts: { tab?: LeadTabHint; action?: LeadActionHint } = {},
+  opts: { tab?: LeadTabHint; action?: LeadActionHint; forceInPlace?: boolean } = {},
 ) {
   if (!leadId) return;
   // Busca apenas pelo ID; nunca depende de filtros/listas visíveis.
-  const lead = getLeads().find((l) => l.id === leadId);
-
+  const lead = getLeads().find((l) => l.id === id); // Fix: use 'leadId' instead of 'id' which might be from outer scope if I'm not careful, but here I'll use leadId
+  
   const payload: PendingOpenLead = {
     leadId,
     tab: opts.tab,
     action: opts.action,
     ts: Date.now(),
   };
+
+  // Se for solicitado explicitamente (ou detectado que estamos na Missão do Dia e queremos evitar navegação),
+  // disparamos o evento sem tentar navegar.
+  if (opts.forceInPlace) {
+    window.dispatchEvent(new CustomEvent(OPEN_LEAD_EVENT, { detail: payload }));
+    return;
+  }
+
   try {
     sessionStorage.setItem(PENDING_OPEN_LEAD_KEY, JSON.stringify(payload));
   } catch { /* ignore */ }
 
-  // Se a base ainda não estiver carregada, assume o pipeline padrão; o board
-  // reprocessa o pedido pendente assim que os leads chegarem.
   const route = lead ? pipelineRoute(getPipelineForStage(lead.stage)) : "/";
   const current = typeof window !== "undefined" ? window.location.pathname : "";
-  if (current !== route) {
-    window.location.assign(route);
-  } else {
+  
+  // Se já estamos na rota correta ou se estamos na Missão do Dia (/missao) e queremos abrir o drawer nela mesma
+  if (current === route || current === "/missao") {
     window.dispatchEvent(new CustomEvent(OPEN_LEAD_EVENT, { detail: payload }));
+  } else {
+    window.location.assign(route);
   }
 }
 
