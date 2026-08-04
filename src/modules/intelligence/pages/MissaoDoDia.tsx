@@ -16,93 +16,38 @@ export default function MissaoDoDia() {
   const [showCompletion, setShowCompletion] = useState(false);
   const [tick, setTick] = useState(0);
 
+  // Estado do Modal Inteligente (SPRINT 6)
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
+  const [drawerTab, setDrawerTab] = useState<any>(undefined);
+  const [drawerAction, setDrawerAction] = useState<any>(undefined);
+
   const bump = () => setTick(t => t + 1);
+
+  // Escuta evento global de abertura de lead para interceptar na Missão do Dia
+  useEffect(() => {
+    const handler = (e: any) => {
+      const payload = e.detail as PendingOpenLead;
+      const targetLead = getLeads().find(l => l.id === payload.leadId);
+      if (targetLead) {
+        setDrawerLead(targetLead);
+        setDrawerTab(payload.tab);
+        setDrawerAction(payload.action);
+        setDrawerOpen(true);
+      }
+    };
+    window.addEventListener(OPEN_LEAD_EVENT, handler);
+    return () => window.removeEventListener(OPEN_LEAD_EVENT, handler);
+  }, [tick]);
 
   // Metas e Progresso (SPRINT 5)
   const g = useMemo(() => getGoalsSettings(), [tick]);
-  const progressData = useMemo(() => {
-    const sessions = getSessions().filter((s) => isToday(new Date(s.startTime)));
-    
-    // Engenharia reversa das metas (mesma lógica de Metas.tsx)
-    const workingDaysPerMonth = g.workingDaysPerWeek * 4.33;
-    const closes = g.averageTicket > 0 ? g.monthlyRevenueGoal / g.averageTicket : 0;
-    const r = (n: number) => Math.max(n, 0.0001) / 100;
-    const meetingsHeld = closes / r(g.meetingHeldToClose);
-    const meetingsScheduled = meetingsHeld / r(g.meetingScheduledToHeld);
-    const decisionMakers = meetingsScheduled / r(g.decisionMakerToMeetingScheduled);
-    const connections = decisionMakers / r(g.connectionToDecisionMaker);
-    const calls = connections / r(g.callToConnection);
-    
-    const callsGoal = workingDaysPerMonth > 0 ? calls / workingDaysPerMonth : 0;
-    const decisionMakersGoal = workingDaysPerMonth > 0 ? decisionMakers / workingDaysPerMonth : 0;
-    const meetingsGoal = workingDaysPerMonth > 0 ? meetingsScheduled / workingDaysPerMonth : 0;
-    const proposalsGoal = meetingsGoal * 0.7; // Estimativa para propostas
-
-    return [
-      { 
-        label: "Ligações", 
-        real: sessions.reduce((a, s) => a + (s.calls || 0), 0), 
-        goal: Math.ceil(callsGoal),
-        icon: Phone 
-      },
-      { 
-        label: "Follow-ups", 
-        real: sessions.reduce((a, s) => a + (s.decisionMakers || 0), 0), 
-        goal: Math.ceil(decisionMakersGoal),
-        icon: UserCheck 
-      },
-      { 
-        label: "Reuniões", 
-        real: sessions.reduce((a, s) => a + (s.meetings || 0), 0), 
-        goal: Math.ceil(meetingsGoal),
-        icon: CalendarCheck 
-      },
-      { 
-        label: "Propostas", 
-        real: sessions.reduce((a, s) => a + ((s as any).proposals || 0), 0), 
-        goal: Math.ceil(proposalsGoal),
-        icon: FileText 
-      },
-    ];
-  }, [g, tick]);
-
-  const stats = useMemo(() => {
-    const allLeads = getLeads();
-    const newCalls = allLeads.filter(l => l.stage === "Novo Lead").length;
-    const followups = allLeads.filter(l => l.stage.startsWith("Tentativa")).length;
-    const meetings = allLeads.filter(l => 
-      l.stage.includes("Reunião Marcada") || 
-      l.stage.includes("Reunião Realizada")
-    ).length;
-    const proposals = allLeads.filter(l => l.stage.includes("Proposta")).length;
-    return { newCalls, followups, meetings, proposals };
-  }, [tick]);
-
-  const missionCache = useMemo(() => getCache(), [tick]);
-  const activeMission = !showCompletion ? (missionCache?.leads?.[0] || null) : null;
-
-  const handleGenerateMission = async () => {
-    setIsUpdating(true);
-    setShowCompletion(false);
-    try {
-      localStorage.removeItem("p21_priority_leads_cache");
-      const result = await computePriorityLeads(true);
-      if (!result.leads || result.leads.length === 0) {
-        toast({ title: "Tudo em dia", description: "O Diretor Comercial IA não encontrou ações prioritárias agora." });
-      }
-      bump();
-    } catch (error) {
-      console.error("Erro IA:", error);
-      toast({ variant: "destructive", title: "Erro na análise", description: "Não foi possível conectar com a Inteligência no momento." });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
+...
   const handleComplete = () => {
     resetMissionDay();
     localStorage.removeItem("p21_priority_leads_cache");
     setShowCompletion(true);
+    setDrawerOpen(false); // Fecha o modal ao concluir a missão
     toast({ title: "Missão Concluída", description: "Operação atualizada." });
     bump();
   };
@@ -294,6 +239,23 @@ export default function MissaoDoDia() {
           <div className="h-px w-12 bg-muted-foreground" />
           <p className="text-[7px] uppercase tracking-[0.3em] font-black">Interface Executiva SOC</p>
         </div>
+
+        {/* Modal Inteligente do Lead (SPRINT 6) */}
+        <LeadDetailDrawer 
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          lead={drawerLead}
+          initialTab={drawerTab}
+          initialAction={drawerAction}
+          onRefresh={() => {
+            bump();
+            // Se o lead no drawer mudou, atualiza a referência local
+            if (drawerLead) {
+              const updated = getLeads().find(l => l.id === drawerLead.id);
+              if (updated) setDrawerLead(updated);
+            }
+          }}
+        />
       </div>
     </PageContainer>
   );
