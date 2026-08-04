@@ -94,14 +94,13 @@ export default function MissaoDoDia() {
   return (
     <PageContainer>
       <PageHeader
-        title="SPRINT 1 — Redesign da Missão do Dia (UX)"
-        description="Execução operacional extremamente simples e focada."
+        title="Missão do Dia"
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm" className="gap-1">
+            <Button asChild variant="ghost" size="sm" className="gap-1">
               <Link to="/central"><Compass className="h-4 w-4" /> Central de Decisão</Link>
             </Button>
-            <Button variant="ghost" size="sm" className="gap-1" onClick={handleReset}>
+            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={handleReset}>
               <RotateCcw className="h-4 w-4" /> Reiniciar
             </Button>
           </div>
