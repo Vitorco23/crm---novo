@@ -910,9 +910,34 @@ export default function LeadDetailDrawer({
             )}
           </TabsContent>
 
+          </TabsList>
+          
+          {/* Rodapé — Mantido para ações de fechamento */}
+          <div className="px-6 py-4 border-t border-border/60 bg-muted/20 flex items-center justify-end gap-3 shrink-0">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold">Fechar</Button>
+            <Button 
+              className="bg-accent text-accent-foreground hover:bg-accent/90 font-black uppercase tracking-tight"
+              onClick={() => {
+                const missionCache = JSON.parse(localStorage.getItem("p21_priority_leads_cache") || "{}");
+                const activeMission = missionCache?.leads?.[0];
+                
+                if (activeMission && activeMission.leadId === lead.id) {
+                  window.dispatchEvent(new CustomEvent("p21:complete-mission"));
+                } else {
+                  onOpenChange(false);
+                }
+              }}
+            >
+              {(() => {
+                const missionCache = JSON.parse(localStorage.getItem("p21_priority_leads_cache") || "{}");
+                const activeMission = missionCache?.leads?.[0];
+                return (activeMission && activeMission.leadId === lead.id) ? "✅ Concluir Missão" : "Salvar e Fechar";
+              })()}
+            </Button>
+          </div>
         </Tabs>
-
       </DialogContent>
+
 
       {/* Script viewer secundário */}
       <Dialog open={scriptOpen} onOpenChange={setScriptOpen}>
