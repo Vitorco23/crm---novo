@@ -59,6 +59,8 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Filter as FilterIcon, ChevronDown } from "lucide-react";
+import LostReasonDialog from "./LostReasonDialog";
+import { addInteraction } from "@/shared/services/store";
 
 function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
@@ -333,6 +335,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [editingValue, setEditingValue] = useState("");
   const [newStageName, setNewStageName] = useState("");
   const [showAddStage, setShowAddStage] = useState(false);
+  const [lostReasonLead, setLostReasonLead] = useState<{ id: string; stage: string } | null>(null);
   const [form, setForm] = useState({
     company: "", contact: "", phone: "", notes: "",
     niche: "", city: "", gmnLink: "", instagramLink: "",
@@ -747,6 +750,13 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     const id = e.dataTransfer.getData("text/plain");
     const lead = leads.find((l) => l.id === id);
     if (!lead || lead.stage === stage) return;
+    
+    const isLost = stage.toLowerCase().includes("não quer") || stage.toLowerCase().includes("nao quer") || stage === "Perdido";
+    if (isLost) {
+      setLostReasonLead({ id, stage });
+      return;
+    }
+
     const result = moveLeadToStage(id, stage);
     refresh();
     if (result.missingContractValue) {
@@ -991,6 +1001,12 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           }}
           onRowClick={handleCardClick}
           onChangeStage={(id, stage) => {
+            const isLost = stage.toLowerCase().includes("não quer") || stage.toLowerCase().includes("nao quer") || stage === "Perdido";
+            if (isLost) {
+              setLostReasonLead({ id, stage });
+              return;
+            }
+
             const result = moveLeadToStage(id, stage);
             refresh();
             if (result.missingContractValue) {
@@ -1181,6 +1197,24 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         onOpenChange={(o) => { if (!o) setAlignmentLead(null); }}
         onScheduled={() => { setAlignmentLead(null); refresh(); }}
         kind="alinhamento"
+      />
+      <LostReasonDialog
+        open={!!lostReasonLead}
+        onOpenChange={(open) => !open && setLostReasonLead(null)}
+        pipeline={pipeline === "cold_call" ? "cold_call" : "oportunidades"}
+        onConfirm={(reason) => {
+          if (!lostReasonLead) return;
+          moveLeadToStage(lostReasonLead.id, lostReasonLead.stage);
+          addInteraction(lostReasonLead.id, {
+            type: "Outro",
+            date: new Date().toISOString(),
+            title: "Lead Perdido / Sem Interesse",
+            summary: `Motivo da perda: ${reason}`,
+          });
+          refresh();
+          toast.success("Lead movido e motivo registrado.");
+          setLostReasonLead(null);
+        }}
       />
     </div>
   );
