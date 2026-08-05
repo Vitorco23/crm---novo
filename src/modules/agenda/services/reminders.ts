@@ -140,7 +140,36 @@ function renderTemplate(text: string, lead: Lead, meeting?: Meeting) {
     "[protocolo]": protocolFor(lead),
     "[decisor]": decisor,
   };
-  return text.replace(/\[(nome|empresa|data da reunião|hora da reunião|link|protocolo|decisor)\]/g, (m) => map[m] ?? "");
+  
+  // Create a regex that escapes the brackets for matching
+  // We need to match the literal strings [nome], [empresa], etc.
+  return text.replace(/\[(nome|empresa|data da reunião|hora da reunião|link|protocolo|decisor)\]/g, (m) => map[m] ?? m);
+}
+
+/**
+ * Force-refreshes all pending reminders for a lead by re-rendering their messages
+ * from the latest lead data. Useful after a lead is edited.
+ */
+export function refreshPendingRemindersForLead(lead: Lead) {
+  const all = getReminders();
+  const meetings = getMeetingsForLead(lead.id);
+  const meeting = meetings[0];
+  
+  const updated = all.map((r) => {
+    if (r.leadId !== lead.id || r.status !== "pending" || !r.templateId) return r;
+    
+    const templates = getReminderTemplates();
+    const t = templates.find(tpl => tpl.id === r.templateId);
+    if (!t) return r;
+
+    return {
+      ...r,
+      title: renderTemplate(t.title, lead, meeting),
+      message: renderTemplate(t.message, lead, meeting),
+    };
+  });
+  
+  saveReminders(updated);
 }
 
 function unitToMs(unit: ReminderUnit) {
