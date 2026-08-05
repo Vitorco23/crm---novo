@@ -262,9 +262,11 @@ function EditSessionDialog({
     <Dialog open={!!session} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Editar Sessão de Pomodoro</DialogTitle>
+          <DialogTitle>{session.id === "new" ? "Adicionar Log de Pomodoro" : "Editar Sessão de Pomodoro"}</DialogTitle>
           <DialogDescription className="text-xs">
-            {format(new Date(session.startTime), "dd/MM/yyyy HH:mm", { locale: ptBR })} · alterações refletem em Metas, Dashboard, Cold Call e IA.
+            {session.id === "new" 
+              ? "Registre manualmente uma sessão realizada anteriormente."
+              : `${format(new Date(session.startTime), "dd/MM/yyyy HH:mm", { locale: ptBR })} · alterações refletem em Metas, Dashboard, Cold Call e IA.`}
           </DialogDescription>
         </DialogHeader>
 
