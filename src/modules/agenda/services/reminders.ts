@@ -30,7 +30,7 @@ export interface ReminderTemplate {
   id: string;
   stage: string; // pipeline stage name this template fires on
   title: string;
-  message: string; // supports placeholders {nome} {empresa} {data} {hora} {link} {protocolo}
+  message: string; // supports placeholders {nome} {empresa} {data} {hora} {link} {protocolo} {decisor}
   anchor: ReminderAnchor; // "stage_change" = when the lead enters this stage; "meeting" = relative to the lead's most recent meeting
   direction: ReminderDirection; // before | after the anchor (ignored for stage_change unless meeting has passed)
   offsetValue: number; // magnitude
@@ -129,6 +129,7 @@ function fmtTime(d: Date) {
 function renderTemplate(text: string, lead: Lead, meeting?: Meeting) {
   const nome = firstName(meeting?.contactName || lead.contact || lead.company);
   const empresa = lead.company;
+  const decisor = lead.contact || lead.company;
   const meetingAt = meeting ? new Date(`${meeting.date}T${meeting.time}:00`) : null;
   const map: Record<string, string> = {
     "{nome}": nome,
@@ -137,8 +138,9 @@ function renderTemplate(text: string, lead: Lead, meeting?: Meeting) {
     "{hora}": meetingAt ? fmtTime(meetingAt) : "",
     "{link}": meeting?.meetLink || meeting?.link || "",
     "{protocolo}": protocolFor(lead),
+    "{decisor}": decisor,
   };
-  return text.replace(/\{(nome|empresa|data|hora|link|protocolo)\}/g, (m) => map[m] ?? "");
+  return text.replace(/\{(nome|empresa|data|hora|link|protocolo|decisor)\}/g, (m) => map[m] ?? "");
 }
 
 function unitToMs(unit: ReminderUnit) {

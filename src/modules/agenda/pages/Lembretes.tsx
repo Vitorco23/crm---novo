@@ -322,6 +322,7 @@ function TemplatesConfig() {
             <code className="bg-muted px-1 rounded">{"{data}"}</code>,{" "}
             <code className="bg-muted px-1 rounded">{"{hora}"}</code>,{" "}
             <code className="bg-muted px-1 rounded">{"{link}"}</code>,{" "}
+            <code className="bg-muted px-1 rounded">{"{decisor}"}</code>,{" "}
             <code className="bg-muted px-1 rounded">{"{protocolo}"}</code>{" "}
             para preencher automaticamente. Templates com âncora "reunião" só
             disparam se o lead tiver uma reunião marcada.
@@ -378,7 +379,7 @@ function TemplateEditor({
 
         <Textarea
           value={draft.message}
-          placeholder="Mensagem — use {nome} {empresa} {data} {hora} {link} {protocolo}"
+          placeholder="Mensagem — use {nome} {empresa} {data} {hora} {link} {protocolo} {decisor}"
           rows={4}
           onChange={(e) => setDraft({ ...draft, message: e.target.value })}
           onBlur={() => onSave(draft)}
