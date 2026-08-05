@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePomodoro } from "@/contexts/PomodoroContext";
-import { getSessions, updateSession, deleteSession, type PomodoroSession } from "@/shared/services/store";
+import { getSessions, updateSession, deleteSession, addSession, type PomodoroSession } from "@/shared/services/store";
 import { getScripts } from "@/modules/knowledge/services/scripts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
