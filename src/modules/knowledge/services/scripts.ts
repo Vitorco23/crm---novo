@@ -31,11 +31,13 @@ function emitChanged() {
 export function getScripts(): string[] {
   const list = loadFromStorage<string[]>(SCRIPTS_KEY, []);
   if (!Array.isArray(list) || list.length === 0) {
-    saveToStorage(SCRIPTS_KEY, DEFAULT_SCRIPTS);
+    // Retornamos o padrão mas NÃO salvamos imediatamente para evitar sobrescrever
+    // a nuvem com dados vazios durante a hidratação inicial.
     return [...DEFAULT_SCRIPTS];
   }
   return list;
 }
+
 
 export function addScript(name: string): { ok: boolean; error?: string } {
   const trimmed = (name || "").trim();

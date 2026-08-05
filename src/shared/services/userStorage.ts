@@ -42,7 +42,9 @@ const SCOPED_KEYS = [
   "p21_lead_tasks",
   "p21_diretor_ia_last_run",
   "p21_diretor_ia_history",
+  "p21_scripts",
 ];
+
 
 
 // Big / write-heavy keys — moved to IndexedDB to avoid the ~5MB localStorage
