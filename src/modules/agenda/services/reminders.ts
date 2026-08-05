@@ -1,7 +1,7 @@
 // User-configurable reminder templates per pipeline stage.
 // When a lead moves to a stage that has templates, reminders are generated
 // according to each template's offset (relative to stage change OR meeting time).
-import { uload as loadFromStorage, usave as saveToStorage } from "@/shared/services/userStorage";
+import { uload as loadFromStorage, usave as saveToStorage, uexist as existsInStorage } from "@/shared/services/userStorage";
 import type { Lead, Meeting } from "@/shared/services/store";
 import { getMeetingsForLead } from "@/shared/services/store";
 
