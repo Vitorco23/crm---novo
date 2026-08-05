@@ -286,6 +286,12 @@ function TemplatesConfig() {
             toast.loading("Sincronizando templates...", { id: "sync-reminders" });
             try {
               await syncFromCloud();
+              // After sync, we should also try to re-render pending reminders 
+              // for all leads to ensure they use the latest data if anything changed.
+              const allLeads = getLeads();
+              const { refreshPendingRemindersForLead } = await import("@/modules/agenda/services/reminders");
+              allLeads.forEach(l => refreshPendingRemindersForLead(l));
+              
               refresh();
               toast.success("Sincronizado com sucesso", { id: "sync-reminders" });
             } catch (err) {

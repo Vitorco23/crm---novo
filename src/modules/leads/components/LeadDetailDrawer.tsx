@@ -71,7 +71,7 @@ function StarRating({
 const browserTZ = () =>
   Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
 
-function MeetingRow({ meeting, onChanged }: { meeting: ReturnType<typeof getMeetingsForLead>[number]; onChanged: () => void }) {
+function MeetingRow({ lead, draft, meeting, onChanged }: { lead: Lead; draft: Lead; meeting: ReturnType<typeof getMeetingsForLead>[number]; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
   const [date, setDate] = useState(meeting.date);
   const [time, setTime] = useState(meeting.time);
@@ -93,6 +93,11 @@ function MeetingRow({ meeting, onChanged }: { meeting: ReturnType<typeof getMeet
         else toast.success("Google Agenda atualizado");
       }
       updateMeetingDateTime(meeting.id, date, time);
+      
+      // Update pending reminders to use the new meeting time
+      const { refreshPendingRemindersForLead } = await import("@/modules/agenda/services/reminders");
+      refreshPendingRemindersForLead({ ...lead, ...draft });
+
       toast.success("Reunião reagendada");
       setEditing(false);
       onChanged();
@@ -366,7 +371,17 @@ export default function LeadDetailDrawer({
 
   const commitOnBlur = (patch: Partial<Lead>) => {
     const next = { ...draft, ...patch };
-    updateLead(lead.id, patch); syncFinance(next); onRefresh();
+    updateLead(lead.id, patch); 
+    syncFinance(next); 
+    
+    // Se o nome do contato ou da empresa mudou, precisamos atualizar os lembretes pendentes
+    if (patch.contact !== undefined || patch.company !== undefined) {
+      import("@/modules/agenda/services/reminders").then(({ refreshPendingRemindersForLead }) => {
+        refreshPendingRemindersForLead(next);
+      });
+    }
+    
+    onRefresh();
   };
 
   const handleAddCallNote = () => {
@@ -456,6 +471,13 @@ export default function LeadDetailDrawer({
               <Sparkles className="h-3.5 w-3.5" /> 🧠 Atualizar Inteligência
             </Button>
           </div>
+          {meetings.length > 0 && (
+            <div className="flex flex-col gap-1.5 mt-2">
+              {meetings.map((m) => (
+                <MeetingRow key={m.id} lead={lead} draft={draft} meeting={m} onChanged={onRefresh} />
+              ))}
+            </div>
+          )}
 
           {/* Prioridade operacional + próxima melhor ação (Priority Engine) */}
           <LeadPriorityStrip lead={lead} />
