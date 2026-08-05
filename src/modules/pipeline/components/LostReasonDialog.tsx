@@ -51,6 +51,7 @@ export default function LostReasonDialog({
 
   const [reasons, setReasons] = useState<string[]>(() => uload(storageKey, defaultReasons));
   const [selectedReason, setSelectedReason] = useState<string>("");
+  const [customReason, setCustomReason] = useState("");
   const [newReason, setNewReason] = useState("");
   const [isEditing, setIsEditing] = useState(false);
 
@@ -58,6 +59,7 @@ export default function LostReasonDialog({
     if (open) {
       setReasons(uload(storageKey, defaultReasons));
       setSelectedReason("");
+      setCustomReason("");
       setIsEditing(false);
     }
   }, [open, storageKey, defaultReasons]);
@@ -86,7 +88,12 @@ export default function LostReasonDialog({
       toast.error("Por favor, selecione um motivo");
       return;
     }
-    onConfirm(selectedReason);
+    if (selectedReason === "Outro" && !customReason.trim()) {
+      toast.error("Por favor, descreva o motivo");
+      return;
+    }
+    const finalReason = selectedReason === "Outro" ? customReason.trim() : selectedReason;
+    onConfirm(finalReason);
     onOpenChange(false);
   };
 
@@ -146,6 +153,28 @@ export default function LostReasonDialog({
                 )}
               </div>
             ))}
+
+            {/* Opção fixa "Outro" */}
+            <div
+              className="flex items-center space-x-3 rounded-lg border border-white/5 bg-white/5 p-3 hover:bg-white/10 transition-colors"
+            >
+              <RadioGroupItem value="Outro" id="outro-fixed" className="border-accent text-accent" />
+              <Label htmlFor="outro-fixed" className="flex-1 cursor-pointer text-sm font-medium">
+                Outro
+              </Label>
+            </div>
+
+            {selectedReason === "Outro" && (
+              <div className="pt-1 animate-in fade-in slide-in-from-top-1">
+                <Input
+                  autoFocus
+                  placeholder="Descreva o motivo..."
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  className="bg-white/5 border-white/10 text-sm h-10 focus:ring-accent"
+                />
+              </div>
+            )}
           </RadioGroup>
 
           {isEditing && (

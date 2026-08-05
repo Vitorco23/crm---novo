@@ -516,6 +516,20 @@ export default function LeadDetailDrawer({
                   value={lead.stage}
                   onValueChange={(toStage) => {
                     if (toStage === lead.stage) return;
+                    
+                    const isLost = toStage.toLowerCase().includes("não quer") || 
+                                 toStage.toLowerCase().includes("nao quer") || 
+                                 toStage === "Perdido";
+                    
+                    if (isLost) {
+                      // Dispara evento para o PipelineBoard capturar e abrir o LostReasonDialog
+                      window.dispatchEvent(new CustomEvent("p21:trigger-lost-reason", { 
+                        detail: { id: lead.id, stage: toStage } 
+                      }));
+                      onOpenChange(false);
+                      return;
+                    }
+
                     const result = moveLeadToStage(lead.id, toStage);
                     const labels: Record<PipelineName, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
                     if (result.missingContractValue) toast.warning("Lead movido para Ganho sem valor de contrato definido");

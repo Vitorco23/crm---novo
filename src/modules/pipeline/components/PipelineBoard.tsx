@@ -62,6 +62,8 @@ import { Filter as FilterIcon, ChevronDown } from "lucide-react";
 import LostReasonDialog from "./LostReasonDialog";
 import { addInteraction } from "@/shared/services/store";
 
+export const LOST_REASON_EVENT = "p21:trigger-lost-reason";
+
 function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
 }
@@ -384,6 +386,15 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     };
   }, [pipeline]);
 
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      const { id, stage } = e.detail;
+      setLostReasonLead({ id, stage });
+    };
+    window.addEventListener(LOST_REASON_EVENT, handler);
+    return () => window.removeEventListener(LOST_REASON_EVENT, handler);
+  }, []);
 
   const refresh = useCallback(() => {
     setLeads(getLeads());
