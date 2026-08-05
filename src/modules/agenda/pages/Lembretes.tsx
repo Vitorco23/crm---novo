@@ -20,7 +20,7 @@ import {
   type ReminderTemplate, type ReminderAnchor, type ReminderDirection, type ReminderUnit,
 } from "@/modules/agenda/services/reminders";
 import { requestNotificationPermission } from "@/modules/agenda/hooks/useReminderNotifications";
-import { getLeads, getStagesForPipeline } from "@/shared/services/store";
+import { getLeads, getStagesForPipeline, getMeetingsForLead } from "@/shared/services/store";
 import { pullKeysFromCloud, syncFromCloud } from "@/shared/services/userStorage";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
@@ -96,7 +96,6 @@ export default function Lembretes() {
     const lead = leadsMap.get(r.leadId);
     let text = r.message;
     if (lead) {
-      const { getMeetingsForLead } = require("@/shared/services/store");
       const meetings = getMeetingsForLead(lead.id);
       text = renderReminderTemplate(r.message, lead, meetings[0]);
     }
