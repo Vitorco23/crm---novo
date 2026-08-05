@@ -140,9 +140,9 @@ export function PomodoroHeaderWidget() {
           <span className="text-xs font-bold tabular-nums text-foreground">{tally.meetings}</span>
         </button>
       </div>
-      <div className="flex items-center gap-1 pl-2 border-l border-border ml-2">
-        <span className="text-[10px] uppercase tracking-tighter text-muted-foreground/60 font-bold whitespace-nowrap">
-          Add agent integrations (MCP) to this app
+      <div className="flex items-center gap-1 pl-2 border-l border-border ml-2 max-w-[400px]">
+        <span className="text-[10px] uppercase tracking-tighter text-muted-foreground/80 font-medium whitespace-pre-wrap leading-tight text-right">
+          Antes de realizar qualquer ação, entenda o contexto e instrução recente do usuário, comando mais recente enviado por ele: SPRINT — Correção da renderização dos templates de lembretes
         </span>
       </div>
     </div>

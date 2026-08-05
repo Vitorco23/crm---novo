@@ -126,7 +126,7 @@ function fmtTime(d: Date) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function renderTemplate(text: string, lead: Lead, meeting?: Meeting) {
+export function renderReminderTemplate(text: string, lead: Lead, meeting?: Meeting) {
   const nome = firstName(meeting?.contactName || lead.contact || lead.company);
   const empresa = lead.company;
   const decisor = lead.contact || lead.company;
@@ -142,7 +142,6 @@ function renderTemplate(text: string, lead: Lead, meeting?: Meeting) {
   };
   
   // Create a regex that escapes the brackets for matching
-  // We need to match the literal strings [nome], [empresa], etc.
   return text.replace(/\[(nome|empresa|data da reunião|hora da reunião|link|protocolo|decisor)\]/g, (m) => map[m] ?? m);
 }
 
@@ -164,8 +163,8 @@ export function refreshPendingRemindersForLead(lead: Lead) {
 
     return {
       ...r,
-      title: renderTemplate(t.title, lead, meeting),
-      message: renderTemplate(t.message, lead, meeting),
+      title: renderReminderTemplate(t.title, lead, meeting),
+      message: renderReminderTemplate(t.message, lead, meeting),
     };
   });
   
@@ -217,8 +216,8 @@ export function createRemindersForStageChange(lead: Lead, stage: string) {
       stage,
       meetingId: meeting?.id,
       kind: `tpl:${t.id}`,
-      title: renderTemplate(t.title, lead, meeting),
-      message: renderTemplate(t.message, lead, meeting),
+      title: renderReminderTemplate(t.title, lead, meeting),
+      message: renderReminderTemplate(t.message, lead, meeting),
       scheduledFor: scheduled.toISOString(),
       status: "pending",
       createdAt: now.toISOString(),
