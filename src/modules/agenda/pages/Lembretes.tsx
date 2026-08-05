@@ -151,23 +151,23 @@ export default function Lembretes() {
           ) : (
             <div className="space-y-3">
               {filtered.map((r) => {
+                const lead = leadsMap.get(r.leadId);
                 const when = new Date(r.scheduledFor);
                 const overdue = r.status === "pending" && when.getTime() < Date.now();
+                const meetings = lead ? getMeetingsForLead(lead.id) : [];
+                const meeting = meetings[0];
+                
+                const renderedTitle = lead ? renderReminderTemplate(r.title, lead, meeting) : r.title;
+                const renderedMessage = lead ? renderReminderTemplate(r.message, lead, meeting) : r.message;
+
                 return (
                   <Card key={r.id} className={overdue ? "border-destructive/40" : ""}>
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <CardTitle className="text-sm">
-                            {(() => {
-                              const lead = leadsMap.get(r.leadId);
-                              if (!lead) return r.title;
-                              const meetings = getMeetingsForLead(lead.id);
-                              return renderReminderTemplate(r.title, lead, meetings[0]);
-                            })()}
-                          </CardTitle>
+                          <CardTitle className="text-sm">{renderedTitle}</CardTitle>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {leadsMap.get(r.leadId)?.company || "Lead removido"}{r.stage ? ` · ${r.stage}` : ""}
+                            {lead?.company || "Lead removido"}{r.stage ? ` · ${r.stage}` : ""}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -186,12 +186,7 @@ export default function Lembretes() {
                     </CardHeader>
                     <CardContent className="pt-0">
                       <pre className="whitespace-pre-wrap text-xs font-sans bg-muted/40 rounded p-2 max-h-64 overflow-auto">
-                        {(() => {
-                          const lead = leadsMap.get(r.leadId);
-                          if (!lead) return r.message;
-                          const meetings = getMeetingsForLead(lead.id);
-                          return renderReminderTemplate(r.message, lead, meetings[0]);
-                        })()}
+                        {renderedMessage}
                       </pre>
                       <div className="flex items-center gap-2 mt-2">
                         <Button size="sm" variant="outline" onClick={() => copy(r)}><Copy className="h-3.5 w-3.5 mr-1" /> Copiar</Button>
