@@ -2,17 +2,34 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FlaskConical, Pencil, Trash2, Plus, Check, X } from "lucide-react";
+import { FlaskConical, Pencil, Trash2, Plus, Check, X, RefreshCw } from "lucide-react";
 import { getScripts, addScript, renameScript, removeScript } from "@/modules/knowledge/services/scripts";
 import { toast } from "@/hooks/use-toast";
+import { syncFromCloud } from "@/shared/services/userStorage";
+
 
 export default function ScriptManager() {
   const [scripts, setScripts] = useState<string[]>([]);
   const [newName, setNewName] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [syncing, setSyncing] = useState(false);
 
   const refresh = () => setScripts(getScripts());
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await syncFromCloud();
+      refresh();
+      toast({ title: "Scripts sincronizados", description: "Os dados foram atualizados com a nuvem." });
+    } catch (error) {
+      toast({ title: "Erro na sincronização", variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
 
   useEffect(() => {
     refresh();
@@ -57,7 +74,18 @@ export default function ScriptManager() {
             </CardDescription>
           </div>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleSync} 
+          disabled={syncing}
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+          Sincronizar
+        </Button>
       </CardHeader>
+
       <CardContent className="space-y-3">
         <div className="space-y-2">
           {scripts.map((s) => (
