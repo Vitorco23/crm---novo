@@ -124,7 +124,7 @@ function LeadCard({
       draggable
       onDragStart={(e) => onDragStart(e, lead.id)}
       onClick={() => onClick(lead)}
-      className={`group rounded-md border p-3 shadow-sm cursor-pointer active:cursor-grabbing animate-slide-in hover:shadow-md transition-all ${
+      className={`group rounded-md border p-3 shadow-sm cursor-pointer active:cursor-grabbing hover:shadow-md transition-all ${
         selected ? "bg-accent/10 border-accent/50 ring-1 ring-accent/30" : "bg-card"
       }`}
     >
@@ -369,18 +369,21 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   useEffect(() => { usave(viewKey, view); }, [viewKey, view]);
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
     const onSync = () => {
-      const fresh = getLeads();
-      setLeads(fresh);
-      setStages(getStagesForPipeline(pipeline));
-      // Se um Lead está aberto no drawer, atualiza sua referência para que
-      // interações recém-chegadas (ex.: pullInboundInteractions) apareçam
-      // instantaneamente sem precisar reabrir o card.
-      setSelectedLead((cur) => (cur ? fresh.find((l) => l.id === cur.id) ?? cur : cur));
+      // Debounce refreshes to prevent "flashing" during rapid storage writes or sync bursts
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        const fresh = getLeads();
+        setLeads(fresh);
+        setStages(getStagesForPipeline(pipeline));
+        setSelectedLead((cur) => (cur ? fresh.find((l) => l.id === cur.id) ?? cur : cur));
+      }, 100);
     };
     window.addEventListener("p21:storage-synced", onSync);
     window.addEventListener("p21:leads-changed", onSync);
     return () => {
+      clearTimeout(timeoutId);
       window.removeEventListener("p21:storage-synced", onSync);
       window.removeEventListener("p21:leads-changed", onSync);
     };
@@ -1133,11 +1136,17 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                       .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </p>
                 )}
-                <div className="flex-1 space-y-2 overflow-y-auto scrollbar-thin min-h-[100px]">
+                <div className="flex-1 space-y-2 overflow-y-auto scrollbar-thin min-h-[100px] content-visibility-auto">
                   {stageLeads.map((lead) => (
                     <LeadCard
-                      key={lead.id} lead={lead} pipeline={pipeline} onDragStart={onDragStart} onDelete={handleDelete}
-                      onRefresh={refresh} onClick={handleCardClick} selected={selectedIds.has(lead.id)}
+                      key={lead.id} 
+                      lead={lead} 
+                      pipeline={pipeline} 
+                      onDragStart={onDragStart} 
+                      onDelete={handleDelete}
+                      onRefresh={refresh} 
+                      onClick={handleCardClick} 
+                      selected={selectedIds.has(lead.id)}
                       onToggleSelect={handleToggleSelect}
                     />
                   ))}
