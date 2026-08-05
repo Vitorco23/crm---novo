@@ -191,6 +191,9 @@ export function refreshAllPendingReminders() {
   const pending = allReminders.filter(r => r.status === "pending");
   if (pending.length === 0) return;
 
+  const MIGRATED_KEY = "p21_reminders_v2_migrated";
+  if (localStorage.getItem(MIGRATED_KEY)) return;
+
   const leads = loadFromStorage<Lead[]>("p21_leads", []);
   const templates = getReminderTemplates();
 
@@ -203,7 +206,8 @@ export function refreshAllPendingReminders() {
     const tpl = templates.find(t => t.id === r.templateId);
     if (!tpl) return r;
 
-    const meeting = getMeetingsForLead(lead.id).find(m => m.id === r.meetingId) || getMeetingsForLead(lead.id)[0];
+    const leadMeetings = getMeetingsForLead(lead.id);
+    const meeting = leadMeetings.find(m => m.id === r.meetingId) || leadMeetings[0];
 
     return {
       ...r,
@@ -213,6 +217,7 @@ export function refreshAllPendingReminders() {
   });
 
   saveReminders(updatedReminders);
+  localStorage.setItem(MIGRATED_KEY, "true");
 }
 
 function unitToMs(unit: ReminderUnit) {
