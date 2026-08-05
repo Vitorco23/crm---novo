@@ -182,6 +182,39 @@ export function refreshPendingRemindersForLead(lead: Lead) {
   saveReminders(updated);
 }
 
+/**
+ * Global update for all pending reminders.
+ * Reprocesses templates for all reminders in "pending" status across all leads.
+ */
+export function refreshAllPendingReminders() {
+  const allReminders = getReminders();
+  const pending = allReminders.filter(r => r.status === "pending");
+  if (pending.length === 0) return;
+
+  const leads = loadFromStorage<Lead[]>("p21_leads", []);
+  const templates = getReminderTemplates();
+
+  const updatedReminders = allReminders.map(r => {
+    if (r.status !== "pending" || !r.templateId) return r;
+
+    const lead = leads.find(l => l.id === r.leadId);
+    if (!lead) return r;
+
+    const tpl = templates.find(t => t.id === r.templateId);
+    if (!tpl) return r;
+
+    const meeting = getMeetingsForLead(lead.id).find(m => m.id === r.meetingId) || getMeetingsForLead(lead.id)[0];
+
+    return {
+      ...r,
+      title: renderReminderTemplate(tpl.title, lead, meeting),
+      message: renderReminderTemplate(tpl.message, lead, meeting),
+    };
+  });
+
+  saveReminders(updatedReminders);
+}
+
 function unitToMs(unit: ReminderUnit) {
   return unit === "minutes" ? 60_000 : unit === "hours" ? 3_600_000 : 86_400_000;
 }
