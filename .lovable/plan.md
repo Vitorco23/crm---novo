@@ -1,32 +1,27 @@
-# Segunda reunião ao entrar em "Reunião Realizada"
+# Plan - Automatic Template Placeholders Expansion
 
-Quando um lead entra na etapa **Reunião Realizada** (pipeline Oportunidades), abrir automaticamente o diálogo de agendamento pré-configurado para uma segunda reunião ("Reunião de Alinhamento"), que também sincroniza com o Google Agenda.
+Incorporate the `{decisor}` placeholder into the reminder template system and ensure the "Copy" functionality in the Reminders UI correctly replaces all placeholders with actual lead and meeting data.
 
-## Comportamento
+## User Requirements
+- Automatically replace `{nome}`, `{empresa}`, `{data}`, `{hora}`, `{link}`, `{protocolo}`, and `{decisor}` in reminder messages.
+- Ensure the "Copy" button in the Reminders UI provides the final rendered text, not the raw template.
+- Sychronization across devices (already implemented via the "Sincronizar" button, but I'll ensure the UI reflects the new placeholders).
 
-- Gatilho: qualquer movimentação de um lead para a etapa `Reunião Realizada` no pipeline Oportunidades — via drag-and-drop no Kanban, via mudança de etapa no List View, ou via seletor "Mover lead para..." no Lead Detail Drawer.
-- Ao mover, abre o `ScheduleMeetingDialog` em um novo modo `"alinhamento"`:
-  - Título do evento: `Reunião de Alinhamento: {empresa} - P21` (ao invés de "Reunião de diagnóstico - {empresa}").
-  - Descrição padrão: "Apresentação do planejamento / projeto P21" + dados do lead.
-  - Canal padrão: Google Meet, sincronização com Google Agenda ligada.
-  - Botão de confirmação: "Confirmar Reunião de Alinhamento".
-  - Botão secundário "Pular" para o usuário fechar sem agendar (o lead permanece em Reunião Realizada normalmente).
-- A reunião é salva como um novo `Meeting` para o lead (não substitui a de diagnóstico) e aparece no histórico do drawer e no bloco "Próximas Reuniões" do Dashboard.
-- Não abrir o diálogo se o lead já tem uma reunião com título começando com "Reunião de Alinhamento" (evita reabrir toda vez que o lead volta para essa etapa).
+## Technical Tasks
 
-## Alterações técnicas
+### 1. Logic Layer (`src/modules/agenda/services/reminders.ts`)
+- Update `renderTemplate` function to include `{decisor}` (mapping to `lead.contact`).
+- Ensure all existing placeholders (`{nome}`, `{empresa}`, `{data}`, `{hora}`, `{link}`, `{protocolo}`) are correctly extracted from both `Lead` and its latest `Meeting`.
 
-- `src/components/ScheduleMeetingDialog.tsx`
-  - Aceitar prop `kind?: "diagnostico" | "alinhamento"` (default `"diagnostico"`).
-  - Usar o `kind` para: título do evento enviado ao Google, texto do header do diálogo, texto do botão de confirmar e descrição padrão.
-  - Não mover o lead para "Reunião Marcada" quando `kind === "alinhamento"` (o lead já está em Reunião Realizada) — pular a chamada que faz o auto-transfer no `scheduleMeeting`, ou adicionar um flag em `scheduleMeeting` para desabilitar o auto-move.
-- `src/lib/store.ts`
-  - Adicionar parâmetro opcional em `scheduleMeeting` (`{ skipAutoMove?: boolean }`) para reunião de alinhamento não mudar a etapa.
-- `src/components/PipelineBoard.tsx`
-  - Após qualquer movimentação para `Reunião Realizada` no pipeline `oportunidades`, verificar se o lead já tem meeting de alinhamento; se não, setar estado `alignmentLead` e abrir o `ScheduleMeetingDialog` com `kind="alinhamento"`.
-- `src/components/PipelineListView.tsx`
-  - Mesmo gatilho quando o usuário troca a etapa via o select inline.
-- `src/components/LeadDetailDrawer.tsx`
-  - Mesmo gatilho quando o usuário usa "Mover lead para..." para `Reunião Realizada`.
+### 2. UI Layer (`src/modules/agenda/pages/Lembretes.tsx`)
+- Update the descriptive text in `TemplatesConfig` and `TemplateEditor` to include `{decisor}` in the list of available markers.
+- Modify the `copy` function in the `Lembretes` component. Currently, it copies `r.message` directly. If `r.message` is already rendered (which it should be if generated via `createRemindersForStageChange`), we just need to ensure the generation logic is robust.
+- **Self-Correction**: The `createRemindersForStageChange` function already calls `renderTemplate`. I will double-check if there's any case where the user might want to copy a *template* directly or if the *generated reminder* needs re-rendering. Based on the request, it seems the user wants the *reminders* generated from templates to be accurate.
 
-Componente reutilizado é o mesmo `ScheduleMeetingDialog`, só com título/descrição/label alterados pelo `kind`.
+### 3. Verification
+- Test generation of reminders when moving a lead.
+- Click "Copy" on a generated reminder and verify the clipboard content.
+
+## Dependencies
+- `src/shared/services/store.ts` for Lead and Meeting types.
+- `src/modules/agenda/services/reminders.ts` as the engine.
