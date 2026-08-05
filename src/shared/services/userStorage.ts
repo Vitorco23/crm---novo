@@ -140,7 +140,9 @@ const PROTECTED_CONFIG_KEYS = new Set([
   "p21_reminder_templates",
   "p21_diretor_ia_history",
   "p21_diretor_ia_last_run",
+  "p21_scripts",
 ]);
+
 
 function isEmptyValue(v: unknown): boolean {
   return (
