@@ -93,6 +93,11 @@ function MeetingRow({ meeting, onChanged }: { meeting: ReturnType<typeof getMeet
         else toast.success("Google Agenda atualizado");
       }
       updateMeetingDateTime(meeting.id, date, time);
+      
+      // Update pending reminders to use the new meeting time
+      const { refreshPendingRemindersForLead } = await import("@/modules/agenda/services/reminders");
+      refreshPendingRemindersForLead({ ...lead, ...draft });
+
       toast.success("Reunião reagendada");
       setEditing(false);
       onChanged();
