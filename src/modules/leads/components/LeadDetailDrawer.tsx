@@ -71,7 +71,7 @@ function StarRating({
 const browserTZ = () =>
   Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
 
-function MeetingRow({ meeting, onChanged }: { meeting: ReturnType<typeof getMeetingsForLead>[number]; onChanged: () => void }) {
+function MeetingRow({ lead, draft, meeting, onChanged }: { lead: Lead; draft: Lead; meeting: ReturnType<typeof getMeetingsForLead>[number]; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
   const [date, setDate] = useState(meeting.date);
   const [time, setTime] = useState(meeting.time);
