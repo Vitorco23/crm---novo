@@ -127,22 +127,33 @@ function fmtTime(d: Date) {
 }
 
 export function renderReminderTemplate(text: string, lead: Lead, meeting?: Meeting) {
+  if (!text) return "";
+  
   const nome = firstName(meeting?.contactName || lead.contact || lead.company);
   const empresa = lead.company;
   const decisor = lead.contact || lead.company;
   const meetingAt = meeting ? new Date(`${meeting.date}T${meeting.time}:00`) : null;
+  
+  // Data map with lowercased keys for normalization
   const map: Record<string, string> = {
-    "[nome]": nome,
-    "[empresa]": empresa,
-    "[data da reunião]": meetingAt ? fmtDate(meetingAt) : "",
-    "[hora da reunião]": meetingAt ? fmtTime(meetingAt) : "",
-    "[link]": meeting?.meetLink || meeting?.link || "",
-    "[protocolo]": protocolFor(lead),
-    "[decisor]": decisor,
+    "nome": nome,
+    "empresa": empresa,
+    "data da reunião": meetingAt ? fmtDate(meetingAt) : "",
+    "hora da reunião": meetingAt ? fmtTime(meetingAt) : "",
+    "data": meetingAt ? fmtDate(meetingAt) : "", // alias
+    "hora": meetingAt ? fmtTime(meetingAt) : "", // alias
+    "link": meeting?.meetLink || meeting?.link || "",
+    "protocolo": protocolFor(lead),
+    "decisor": decisor,
+    "responsavel": decisor, // alias
   };
   
-  // Create a regex that escapes the brackets for matching
-  return text.replace(/\[(nome|empresa|data da reunião|hora da reunião|link|protocolo|decisor)\]/g, (m) => map[m] ?? m);
+  // Regex that captures content inside brackets, case-insensitive
+  return text.replace(/\[([^\]]+)\]/gi, (match, p1) => {
+    const key = p1.toLowerCase().trim();
+    // Return mapped value or the original match if key not found
+    return map[key] ?? match;
+  });
 }
 
 /**
