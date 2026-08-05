@@ -366,7 +366,17 @@ export default function LeadDetailDrawer({
 
   const commitOnBlur = (patch: Partial<Lead>) => {
     const next = { ...draft, ...patch };
-    updateLead(lead.id, patch); syncFinance(next); onRefresh();
+    updateLead(lead.id, patch); 
+    syncFinance(next); 
+    
+    // Se o nome do contato ou da empresa mudou, precisamos atualizar os lembretes pendentes
+    if (patch.contact !== undefined || patch.company !== undefined) {
+      import("@/modules/agenda/services/reminders").then(({ refreshPendingRemindersForLead }) => {
+        refreshPendingRemindersForLead(next);
+      });
+    }
+    
+    onRefresh();
   };
 
   const handleAddCallNote = () => {
