@@ -234,7 +234,7 @@ function EditSessionDialog({
   if (!session || !form) return null;
 
   const save = () => {
-    updateSession(session.id, {
+    const data = {
       calls: Math.max(0, form.calls || 0),
       connections: Math.max(0, form.connections || 0),
       decisionMakers: Math.max(0, form.decisionMakers || 0),
@@ -242,8 +242,19 @@ function EditSessionDialog({
       durationMinutes: Math.max(1, form.durationMinutes || 1),
       niche: form.niche?.trim() || undefined,
       scriptUsed: form.scriptUsed || undefined,
-    });
-    toast({ title: "Sessão atualizada", description: "As métricas foram recalculadas em todo o sistema." });
+    };
+
+    if (session.id === "new") {
+      addSession({
+        ...data,
+        startTime: form.startTime || new Date().toISOString(),
+        endTime: form.endTime || new Date().toISOString(),
+      });
+      toast({ title: "Sessão registrada", description: "O log manual foi adicionado com sucesso." });
+    } else {
+      updateSession(session.id, data);
+      toast({ title: "Sessão atualizada", description: "As métricas foram recalculadas em todo o sistema." });
+    }
     onSaved();
   };
 
