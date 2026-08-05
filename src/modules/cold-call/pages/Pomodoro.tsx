@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePomodoro } from "@/contexts/PomodoroContext";
-import { getSessions, updateSession, deleteSession, type PomodoroSession } from "@/shared/services/store";
+import { getSessions, updateSession, deleteSession, addSession, type PomodoroSession } from "@/shared/services/store";
 import { getScripts } from "@/modules/knowledge/services/scripts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,7 +134,26 @@ export default function Pomodoro() {
             <CardTitle className="text-sm flex items-center gap-2">
               <Clock className="h-4 w-4" /> Log de Sessões
             </CardTitle>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={refresh}>Atualizar</Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                onClick={() => setEditing({
+                  id: "new",
+                  startTime: new Date().toISOString(),
+                  endTime: new Date().toISOString(),
+                  durationMinutes: 50,
+                  calls: 0,
+                  connections: 0,
+                  decisionMakers: 0,
+                  meetings: 0
+                } as any)}
+              >
+                + Adicionar Log
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={refresh}>Atualizar</Button>
+            </div>
           </CardHeader>
           <CardContent>
             {sessions.length === 0 ? (
@@ -215,7 +234,7 @@ function EditSessionDialog({
   if (!session || !form) return null;
 
   const save = () => {
-    updateSession(session.id, {
+    const data = {
       calls: Math.max(0, form.calls || 0),
       connections: Math.max(0, form.connections || 0),
       decisionMakers: Math.max(0, form.decisionMakers || 0),
@@ -223,8 +242,19 @@ function EditSessionDialog({
       durationMinutes: Math.max(1, form.durationMinutes || 1),
       niche: form.niche?.trim() || undefined,
       scriptUsed: form.scriptUsed || undefined,
-    });
-    toast({ title: "Sessão atualizada", description: "As métricas foram recalculadas em todo o sistema." });
+    };
+
+    if (session.id === "new") {
+      addSession({
+        ...data,
+        startTime: form.startTime || new Date().toISOString(),
+        endTime: form.endTime || new Date().toISOString(),
+      });
+      toast({ title: "Sessão registrada", description: "O log manual foi adicionado com sucesso." });
+    } else {
+      updateSession(session.id, data);
+      toast({ title: "Sessão atualizada", description: "As métricas foram recalculadas em todo o sistema." });
+    }
     onSaved();
   };
 
@@ -232,9 +262,11 @@ function EditSessionDialog({
     <Dialog open={!!session} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Editar Sessão de Pomodoro</DialogTitle>
+          <DialogTitle>{session.id === "new" ? "Adicionar Log de Pomodoro" : "Editar Sessão de Pomodoro"}</DialogTitle>
           <DialogDescription className="text-xs">
-            {format(new Date(session.startTime), "dd/MM/yyyy HH:mm", { locale: ptBR })} · alterações refletem em Metas, Dashboard, Cold Call e IA.
+            {session.id === "new" 
+              ? "Registre manualmente uma sessão realizada anteriormente."
+              : `${format(new Date(session.startTime), "dd/MM/yyyy HH:mm", { locale: ptBR })} · alterações refletem em Metas, Dashboard, Cold Call e IA.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -287,7 +319,9 @@ function EditSessionDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={save} className="bg-accent text-accent-foreground hover:bg-accent/90">Salvar alterações</Button>
+          <Button onClick={save} className="bg-accent text-accent-foreground hover:bg-accent/90">
+            {session.id === "new" ? "Adicionar Log" : "Salvar alterações"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
