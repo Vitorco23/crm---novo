@@ -30,7 +30,7 @@ export interface ReminderTemplate {
   id: string;
   stage: string; // pipeline stage name this template fires on
   title: string;
-  message: string; // supports placeholders {nome} {empresa} {data} {hora} {link} {protocolo} {decisor}
+  message: string; // supports placeholders [nome] [empresa] [data da reunião] [hora da reunião] [link] [protocolo] [decisor]
   anchor: ReminderAnchor; // "stage_change" = when the lead enters this stage; "meeting" = relative to the lead's most recent meeting
   direction: ReminderDirection; // before | after the anchor (ignored for stage_change unless meeting has passed)
   offsetValue: number; // magnitude
@@ -132,15 +132,15 @@ function renderTemplate(text: string, lead: Lead, meeting?: Meeting) {
   const decisor = lead.contact || lead.company;
   const meetingAt = meeting ? new Date(`${meeting.date}T${meeting.time}:00`) : null;
   const map: Record<string, string> = {
-    "{nome}": nome,
-    "{empresa}": empresa,
-    "{data}": meetingAt ? fmtDate(meetingAt) : "",
-    "{hora}": meetingAt ? fmtTime(meetingAt) : "",
-    "{link}": meeting?.meetLink || meeting?.link || "",
-    "{protocolo}": protocolFor(lead),
-    "{decisor}": decisor,
+    "[nome]": nome,
+    "[empresa]": empresa,
+    "[data da reunião]": meetingAt ? fmtDate(meetingAt) : "",
+    "[hora da reunião]": meetingAt ? fmtTime(meetingAt) : "",
+    "[link]": meeting?.meetLink || meeting?.link || "",
+    "[protocolo]": protocolFor(lead),
+    "[decisor]": decisor,
   };
-  return text.replace(/\{(nome|empresa|data|hora|link|protocolo|decisor)\}/g, (m) => map[m] ?? "");
+  return text.replace(/\[(nome|empresa|data da reunião|hora da reunião|link|protocolo|decisor)\]/g, (m) => map[m] ?? "");
 }
 
 function unitToMs(unit: ReminderUnit) {
@@ -213,9 +213,9 @@ function defaultSeedTemplates(): ReminderTemplate[] {
   return [
     tpl({
       stage: "Reunião Marcada",
-      title: "Confirmação — {empresa}",
+      title: "Confirmação — [empresa]",
       message:
-        "Olá {nome}! Confirmando nossa reunião no dia {data} às {hora}. " +
+        "Olá [nome]! Confirmando nossa reunião no dia [data da reunião] às [hora da reunião]. " +
         "Qualquer dúvida antes, é só chamar aqui.",
       anchor: "meeting",
       direction: "before",
@@ -225,7 +225,7 @@ function defaultSeedTemplates(): ReminderTemplate[] {
     tpl({
       stage: "Reunião Marcada",
       title: "Sala aberta — {empresa}",
-      message: "{link}\n\nEstamos na sala aguardando. Qualquer dificuldade me chama.",
+      message: "[link]\n\nEstamos na sala aguardando. Qualquer dificuldade me chama.",
       anchor: "meeting",
       direction: "before",
       offsetValue: 10,
