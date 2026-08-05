@@ -1198,6 +1198,24 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         onScheduled={() => { setAlignmentLead(null); refresh(); }}
         kind="alinhamento"
       />
+      <LostReasonDialog
+        open={!!lostReasonLead}
+        onOpenChange={(open) => !open && setLostReasonLead(null)}
+        pipeline={pipeline === "cold_call" ? "cold_call" : "oportunidades"}
+        onConfirm={(reason) => {
+          if (!lostReasonLead) return;
+          moveLeadToStage(lostReasonLead.id, lostReasonLead.stage);
+          addInteraction(lostReasonLead.id, {
+            type: "Outro",
+            date: new Date().toISOString(),
+            title: "Lead Perdido / Sem Interesse",
+            summary: `Motivo da perda: ${reason}`,
+          });
+          refresh();
+          toast.success("Lead movido e motivo registrado.");
+          setLostReasonLead(null);
+        }}
+      />
     </div>
   );
 }
