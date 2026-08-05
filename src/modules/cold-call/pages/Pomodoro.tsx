@@ -319,7 +319,9 @@ function EditSessionDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={save} className="bg-accent text-accent-foreground hover:bg-accent/90">Salvar alterações</Button>
+          <Button onClick={save} className="bg-accent text-accent-foreground hover:bg-accent/90">
+            {session.id === "new" ? "Adicionar Log" : "Salvar alterações"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
