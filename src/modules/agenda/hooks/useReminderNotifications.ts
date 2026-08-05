@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { getReminders, markReminderNotified } from "@/modules/agenda/services/reminders";
+import { getReminders, markReminderNotified, refreshAllPendingReminders } from "@/modules/agenda/services/reminders";
 
 export function requestNotificationPermission(): Promise<NotificationPermission> {
   if (!("Notification" in window)) return Promise.resolve("denied" as NotificationPermission);
@@ -13,6 +13,9 @@ export function useReminderNotifications() {
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Retroactive update once on load to normalize old placeholders
+    refreshAllPendingReminders();
+
     const check = () => {
       if (!("Notification" in window) || Notification.permission !== "granted") return;
       const now = Date.now();
