@@ -471,6 +471,13 @@ export default function LeadDetailDrawer({
               <Sparkles className="h-3.5 w-3.5" /> 🧠 Atualizar Inteligência
             </Button>
           </div>
+          {meetings.length > 0 && (
+            <div className="flex flex-col gap-1.5 mt-2">
+              {meetings.map((m) => (
+                <MeetingRow key={m.id} lead={lead} draft={draft} meeting={m} onChanged={onRefresh} />
+              ))}
+            </div>
+          )}
 
           {/* Prioridade operacional + próxima melhor ação (Priority Engine) */}
           <LeadPriorityStrip lead={lead} />
