@@ -59,6 +59,8 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Filter as FilterIcon, ChevronDown } from "lucide-react";
+import LostReasonDialog from "./LostReasonDialog";
+import { addInteraction } from "@/shared/services/store";
 
 function timeInStage(stageChangedAt: string) {
   return formatDistanceToNow(new Date(stageChangedAt), { locale: ptBR, addSuffix: false });
