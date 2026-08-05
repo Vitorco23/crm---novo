@@ -127,22 +127,33 @@ function fmtTime(d: Date) {
 }
 
 export function renderReminderTemplate(text: string, lead: Lead, meeting?: Meeting) {
+  if (!text) return "";
+  
   const nome = firstName(meeting?.contactName || lead.contact || lead.company);
   const empresa = lead.company;
   const decisor = lead.contact || lead.company;
   const meetingAt = meeting ? new Date(`${meeting.date}T${meeting.time}:00`) : null;
+  
+  // Data map with lowercased keys for normalization
   const map: Record<string, string> = {
-    "[nome]": nome,
-    "[empresa]": empresa,
-    "[data da reunião]": meetingAt ? fmtDate(meetingAt) : "",
-    "[hora da reunião]": meetingAt ? fmtTime(meetingAt) : "",
-    "[link]": meeting?.meetLink || meeting?.link || "",
-    "[protocolo]": protocolFor(lead),
-    "[decisor]": decisor,
+    "nome": nome,
+    "empresa": empresa,
+    "data da reunião": meetingAt ? fmtDate(meetingAt) : "",
+    "hora da reunião": meetingAt ? fmtTime(meetingAt) : "",
+    "data": meetingAt ? fmtDate(meetingAt) : "", // alias
+    "hora": meetingAt ? fmtTime(meetingAt) : "", // alias
+    "link": meeting?.meetLink || meeting?.link || "",
+    "protocolo": protocolFor(lead),
+    "decisor": decisor,
+    "responsavel": decisor, // alias
   };
   
-  // Create a regex that escapes the brackets for matching
-  return text.replace(/\[(nome|empresa|data da reunião|hora da reunião|link|protocolo|decisor)\]/g, (m) => map[m] ?? m);
+  // Regex that captures content inside brackets, case-insensitive
+  return text.replace(/\[([^\]]+)\]/gi, (match, p1) => {
+    const key = p1.toLowerCase().trim();
+    // Return mapped value or the original match if key not found
+    return map[key] ?? match;
+  });
 }
 
 /**
@@ -169,6 +180,44 @@ export function refreshPendingRemindersForLead(lead: Lead) {
   });
   
   saveReminders(updated);
+}
+
+/**
+ * Global update for all pending reminders.
+ * Reprocesses templates for all reminders in "pending" status across all leads.
+ */
+export function refreshAllPendingReminders() {
+  const allReminders = getReminders();
+  const pending = allReminders.filter(r => r.status === "pending");
+  if (pending.length === 0) return;
+
+  const MIGRATED_KEY = "p21_reminders_v2_migrated";
+  if (localStorage.getItem(MIGRATED_KEY)) return;
+
+  const leads = loadFromStorage<Lead[]>("p21_leads", []);
+  const templates = getReminderTemplates();
+
+  const updatedReminders = allReminders.map(r => {
+    if (r.status !== "pending" || !r.templateId) return r;
+
+    const lead = leads.find(l => l.id === r.leadId);
+    if (!lead) return r;
+
+    const tpl = templates.find(t => t.id === r.templateId);
+    if (!tpl) return r;
+
+    const leadMeetings = getMeetingsForLead(lead.id);
+    const meeting = leadMeetings.find(m => m.id === r.meetingId) || leadMeetings[0];
+
+    return {
+      ...r,
+      title: renderReminderTemplate(tpl.title, lead, meeting),
+      message: renderReminderTemplate(tpl.message, lead, meeting),
+    };
+  });
+
+  saveReminders(updatedReminders);
+  localStorage.setItem(MIGRATED_KEY, "true");
 }
 
 function unitToMs(unit: ReminderUnit) {
