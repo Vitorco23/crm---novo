@@ -16,6 +16,7 @@ import {
 import {
   getReminders, markReminderStatus, deleteReminder, type Reminder,
   getReminderTemplates, upsertReminderTemplate, deleteReminderTemplate,
+  renderReminderTemplate,
   type ReminderTemplate, type ReminderAnchor, type ReminderDirection, type ReminderUnit,
 } from "@/modules/agenda/services/reminders";
 import { requestNotificationPermission } from "@/modules/agenda/hooks/useReminderNotifications";
@@ -45,9 +46,9 @@ export default function Lembretes() {
     return () => window.clearInterval(i);
   }, []);
 
-  const leads = useMemo(() => {
-    const map = new Map<string, string>();
-    getLeads().forEach((l) => map.set(l.id, l.company));
+  const leadsMap = useMemo(() => {
+    const map = new Map<string, any>();
+    getLeads().forEach((l) => map.set(l.id, l));
     return map;
   }, [reminders]);
 
@@ -92,8 +93,15 @@ export default function Lembretes() {
   };
 
   const copy = (r: Reminder) => {
-    navigator.clipboard.writeText(r.message);
-    toast.success("Mensagem copiada");
+    const lead = leadsMap.get(r.leadId);
+    let text = r.message;
+    if (lead) {
+      const { getMeetingsForLead } = require("@/shared/services/store");
+      const meetings = getMeetingsForLead(lead.id);
+      text = renderReminderTemplate(r.message, lead, meetings[0]);
+    }
+    navigator.clipboard.writeText(text);
+    toast.success("Mensagem renderizada e copiada");
   };
   const markSent = (r: Reminder) => { markReminderStatus(r.id, "sent"); refresh(); toast.success("Marcado como enviado"); };
   const remove = (r: Reminder) => { deleteReminder(r.id); refresh(); };
@@ -151,9 +159,16 @@ export default function Lembretes() {
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <CardTitle className="text-sm">{r.title}</CardTitle>
+                          <CardTitle className="text-sm">
+                            {(() => {
+                              const lead = leadsMap.get(r.leadId);
+                              if (!lead) return r.title;
+                              const meetings = getMeetingsForLead(lead.id);
+                              return renderReminderTemplate(r.title, lead, meetings[0]);
+                            })()}
+                          </CardTitle>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {leads.get(r.leadId) || "Lead removido"}{r.stage ? ` · ${r.stage}` : ""}
+                            {leadsMap.get(r.leadId)?.company || "Lead removido"}{r.stage ? ` · ${r.stage}` : ""}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -171,7 +186,14 @@ export default function Lembretes() {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <pre className="whitespace-pre-wrap text-xs font-sans bg-muted/40 rounded p-2 max-h-64 overflow-auto">{r.message}</pre>
+                      <pre className="whitespace-pre-wrap text-xs font-sans bg-muted/40 rounded p-2 max-h-64 overflow-auto">
+                        {(() => {
+                          const lead = leadsMap.get(r.leadId);
+                          if (!lead) return r.message;
+                          const meetings = getMeetingsForLead(lead.id);
+                          return renderReminderTemplate(r.message, lead, meetings[0]);
+                        })()}
+                      </pre>
                       <div className="flex items-center gap-2 mt-2">
                         <Button size="sm" variant="outline" onClick={() => copy(r)}><Copy className="h-3.5 w-3.5 mr-1" /> Copiar</Button>
                         {r.status === "pending" && (
