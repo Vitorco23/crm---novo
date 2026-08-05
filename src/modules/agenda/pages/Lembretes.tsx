@@ -20,8 +20,9 @@ import {
 } from "@/modules/agenda/services/reminders";
 import { requestNotificationPermission } from "@/modules/agenda/hooks/useReminderNotifications";
 import { getLeads, getStagesForPipeline } from "@/shared/services/store";
-import { pullKeysFromCloud } from "@/shared/services/userStorage";
+import { pullKeysFromCloud, syncFromCloud } from "@/shared/services/userStorage";
 import { toast } from "sonner";
+import { RefreshCw } from "lucide-react";
 
 
 type Filter = "today" | "upcoming" | "overdue" | "sent" | "all";
@@ -277,6 +278,25 @@ function TemplatesConfig() {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={async () => {
+            toast.loading("Sincronizando templates...", { id: "sync-reminders" });
+            try {
+              await syncFromCloud();
+              refresh();
+              toast.success("Sincronizado com sucesso", { id: "sync-reminders" });
+            } catch (err) {
+              toast.error("Erro ao sincronizar", { id: "sync-reminders" });
+            }
+          }}
+          className="text-xs h-8"
+        >
+          <RefreshCw className="h-3.5 w-3.5 mr-1" /> Sincronizar com dispositivos
+        </Button>
+      </div>
       <Card>
         <CardContent className="p-3 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
