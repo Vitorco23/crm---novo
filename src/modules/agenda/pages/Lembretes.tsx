@@ -211,7 +211,96 @@ export default function Lembretes() {
         <TabsContent value="config" className="mt-3">
           <TemplatesConfig />
         </TabsContent>
+        <TabsContent value="placeholders" className="mt-3">
+          <PlaceholdersDoc />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+const PLACEHOLDERS = [
+  { 
+    name: "[nome]", 
+    desc: "Nome do decisor da empresa.", 
+    example: "Olá [nome], tudo bem?",
+    result: "Olá João, tudo bem?"
+  },
+  { 
+    name: "[empresa]", 
+    desc: "Nome da empresa do lead.", 
+    example: "Obrigado pelo tempo reservado para a [empresa].",
+    result: "Obrigado pelo tempo reservado para a Souza Imóveis."
+  },
+  { 
+    name: "[decisor]", 
+    desc: "Nome completo do responsável.", 
+    example: "Falo com [decisor]?",
+    result: "Falo com João da Silva?"
+  },
+  { 
+    name: "[protocolo]", 
+    desc: "Código único de identificação do lead.", 
+    example: "Protocolo: [protocolo]",
+    result: "Protocolo: #A1B2C3"
+  },
+  { 
+    name: "[data da reunião]", 
+    desc: "Data agendada da reunião.", 
+    example: "Nos vemos dia [data da reunião].",
+    result: "Nos vemos dia 06/08/2026."
+  },
+  { 
+    name: "[hora da reunião]", 
+    desc: "Horário agendado da reunião.", 
+    example: "Nossa conversa começa às [hora da reunião].",
+    result: "Nossa conversa começa às 15:00."
+  },
+  { 
+    name: "[link]", 
+    desc: "Link da reunião (Google Meet, etc).", 
+    example: "Segue o acesso: [link]",
+    result: "Segue o acesso: https://meet.google.com/abc-defg-hij"
+  },
+];
+
+function PlaceholdersDoc() {
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${text} copiado`);
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {PLACEHOLDERS.map((p) => (
+        <Card key={p.name} className="overflow-hidden">
+          <CardHeader className="pb-2 bg-muted/30">
+            <div className="flex items-center justify-between">
+              <code className="text-accent font-bold text-base">{p.name}</code>
+              <Button size="sm" variant="ghost" onClick={() => copyToClipboard(p.name)} className="h-8 gap-1.5">
+                <Copy className="h-3.5 w-3.5" /> Copiar marcador
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-3 space-y-3">
+            <div>
+              <Label className="text-[10px] uppercase text-muted-foreground font-bold">O que é</Label>
+              <p className="text-xs text-foreground mt-0.5">{p.desc}</p>
+            </div>
+            
+            <div className="bg-muted/40 rounded-md p-2 space-y-2">
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground font-bold">Exemplo de uso no template</Label>
+                <p className="text-[11px] font-mono mt-0.5 text-muted-foreground italic">{p.example}</p>
+              </div>
+              <div className="pt-2 border-t border-border/50">
+                <Label className="text-[10px] uppercase text-accent font-bold">Resultado final (exemplo)</Label>
+                <p className="text-[11px] font-medium mt-0.5 text-foreground">{p.result}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
