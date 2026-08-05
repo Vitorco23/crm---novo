@@ -134,7 +134,26 @@ export default function Pomodoro() {
             <CardTitle className="text-sm flex items-center gap-2">
               <Clock className="h-4 w-4" /> Log de Sessões
             </CardTitle>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={refresh}>Atualizar</Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                onClick={() => setEditing({
+                  id: "new",
+                  startTime: new Date().toISOString(),
+                  endTime: new Date().toISOString(),
+                  durationMinutes: 50,
+                  calls: 0,
+                  connections: 0,
+                  decisionMakers: 0,
+                  meetings: 0
+                } as any)}
+              >
+                + Adicionar Log
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={refresh}>Atualizar</Button>
+            </div>
           </CardHeader>
           <CardContent>
             {sessions.length === 0 ? (
