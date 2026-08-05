@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Bell, BellRing, Check, Copy, Trash2, Clock, AlertCircle, Plus, Settings,
+  Bell, BellRing, Check, Copy, Trash2, Clock, AlertCircle, Plus, Settings, BookOpen,
 } from "lucide-react";
 import {
   getReminders, markReminderStatus, deleteReminder, type Reminder,
@@ -133,6 +133,7 @@ export default function Lembretes() {
         <TabsList>
           <TabsTrigger value="lista"><Bell className="h-3.5 w-3.5 mr-1" /> Lembretes</TabsTrigger>
           <TabsTrigger value="config"><Settings className="h-3.5 w-3.5 mr-1" /> Configurar templates</TabsTrigger>
+          <TabsTrigger value="placeholders"><BookOpen className="h-3.5 w-3.5 mr-1" /> Placeholders</TabsTrigger>
         </TabsList>
 
         <TabsContent value="lista" className="space-y-3 mt-3">
