@@ -317,13 +317,13 @@ function TemplatesConfig() {
           <p className="text-[11px] text-muted-foreground">
             Ao mover um lead para esta etapa, todos os templates ativos abaixo geram
             lembretes automaticamente. Use os marcadores{" "}
-            <code className="bg-muted px-1 rounded">{"{nome}"}</code>,{" "}
-            <code className="bg-muted px-1 rounded">{"{empresa}"}</code>,{" "}
-            <code className="bg-muted px-1 rounded">{"{data}"}</code>,{" "}
-            <code className="bg-muted px-1 rounded">{"{hora}"}</code>,{" "}
-            <code className="bg-muted px-1 rounded">{"{link}"}</code>,{" "}
-            <code className="bg-muted px-1 rounded">{"{decisor}"}</code>,{" "}
-            <code className="bg-muted px-1 rounded">{"{protocolo}"}</code>{" "}
+            <code className="bg-muted px-1 rounded">{"[nome]"}</code>,{" "}
+            <code className="bg-muted px-1 rounded">{"[empresa]"}</code>,{" "}
+            <code className="bg-muted px-1 rounded">{"[data da reunião]"}</code>,{" "}
+            <code className="bg-muted px-1 rounded">{"[hora da reunião]"}</code>,{" "}
+            <code className="bg-muted px-1 rounded">{"[link]"}</code>,{" "}
+            <code className="bg-muted px-1 rounded">{"[decisor]"}</code>,{" "}
+            <code className="bg-muted px-1 rounded">{"[protocolo]"}</code>{" "}
             para preencher automaticamente. Templates com âncora "reunião" só
             disparam se o lead tiver uma reunião marcada.
           </p>
@@ -379,7 +379,7 @@ function TemplateEditor({
 
         <Textarea
           value={draft.message}
-          placeholder="Mensagem — use {nome} {empresa} {data} {hora} {link} {protocolo} {decisor}"
+          placeholder="Mensagem — use [nome] [empresa] [data da reunião] [hora da reunião] [link] [protocolo] [decisor]"
           rows={4}
           onChange={(e) => setDraft({ ...draft, message: e.target.value })}
           onBlur={() => onSave(draft)}
