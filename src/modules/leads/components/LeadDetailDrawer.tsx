@@ -491,6 +491,29 @@ export default function LeadDetailDrawer({
             <TabsTrigger value="interacoes">💬 Interações Comerciais</TabsTrigger>
             <TabsTrigger value="observacoes">📝 Observações</TabsTrigger>
             <TabsTrigger value="anexos">📎 Anexos</TabsTrigger>
+            <div className="ml-auto pr-6 flex items-center gap-3">
+              {lead.googleRating !== undefined && (
+                <div className="flex items-center gap-1.5" title={`${lead.googleRating} estrelas no Google`}>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`h-3 w-3 ${s <= Math.round(lead.googleRating!) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold text-foreground">{lead.googleRating.toFixed(1)}</span>
+                </div>
+              )}
+              {lead.googleReviews !== undefined && (
+                <div className="text-[11px] text-muted-foreground">
+                  Avaliações ({lead.googleReviews})
+                </div>
+              )}
+              {!lead.googleRating && !lead.googleReviews && (
+                <span className="text-[11px] text-muted-foreground/50">—</span>
+              )}
+            </div>
           </TabsList>
 
 
