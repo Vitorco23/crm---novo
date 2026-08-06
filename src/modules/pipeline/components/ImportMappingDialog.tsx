@@ -16,7 +16,9 @@ export type LeadFieldKey =
   | "city"
   | "gmnLink"
   | "instagramLink"
-  | "notes";
+  | "notes"
+  | "googleRating"
+  | "googleReviews";
 
 export interface LeadFieldDef {
   key: LeadFieldKey;
@@ -34,6 +36,8 @@ export const LEAD_FIELDS: LeadFieldDef[] = [
   { key: "niche", label: "Nicho", hints: ["nicho", "niche", "segmento", "categoria"] },
   { key: "city", label: "Cidade", hints: ["cidade", "city", "municipio", "município"] },
   { key: "notes", label: "Informações Adicionais", hints: ["observ", "notes", "nota", "info", "adicional", "descricao", "descrição"] },
+  { key: "googleRating", label: "Nota Google", hints: ["nota", "rating", "estrelas", "google rating", "google score"] },
+  { key: "googleReviews", label: "Quantidade de Avaliações", hints: ["avaliações", "avaliacoes", "reviews", "total reviews", "google reviews", "número de avaliações", "numero de avaliacoes"] },
 ];
 
 const NONE = "__none__";
