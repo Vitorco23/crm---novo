@@ -160,6 +160,11 @@ function LeadCard({
         )}
         <StarRating value={lead.icpStars} />
         {lead.runsAds && <Badge className="text-[9px] px-1 py-0 bg-accent text-accent-foreground">Ads ✓</Badge>}
+        {lead.googleRating !== undefined && (
+          <Badge variant="outline" className="text-[9px] px-1 py-0 gap-0.5 border-yellow-500/30 text-yellow-500">
+            <Star className="h-2 w-2 fill-yellow-500" /> {lead.googleRating.toFixed(1)}
+          </Badge>
+        )}
       </div>
 
       <div className="flex gap-1 mt-2">
