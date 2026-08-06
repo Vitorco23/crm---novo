@@ -171,6 +171,8 @@ export interface Lead {
   lastDialCampaignId?: string;
   lastDialContactId?: string;
   dialStatus?: "enviado" | "erro" | "pendente";
+  googleRating?: number;
+  googleReviews?: number;
 }
 
 

@@ -160,6 +160,11 @@ function LeadCard({
         )}
         <StarRating value={lead.icpStars} />
         {lead.runsAds && <Badge className="text-[9px] px-1 py-0 bg-accent text-accent-foreground">Ads ✓</Badge>}
+        {lead.googleRating !== undefined && (
+          <Badge variant="outline" className="text-[9px] px-1 py-0 gap-0.5 border-yellow-500/30 text-yellow-500">
+            <Star className="h-2 w-2 fill-yellow-500" /> {lead.googleRating.toFixed(1)}
+          </Badge>
+        )}
       </div>
 
       <div className="flex gap-1 mt-2">
@@ -345,6 +350,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   });
   const csvRef = useRef<HTMLInputElement>(null);
   const [mappingOpen, setMappingOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<string>(() => uload<string>(`p21_sort_${pipeline}`, "default"));
   const [importHeaders, setImportHeaders] = useState<string[]>([]);
   const [importRows, setImportRows] = useState<Record<string, string>[]>([]);
   const filtersKey = `p21_filters_${pipeline}`;
@@ -360,7 +366,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
   useEffect(() => {
     usave(filtersKey, { niches: filterNiches, cities: filterCities, search: searchQuery });
-  }, [filtersKey, filterNiches, filterCities, searchQuery]);
+    usave(`p21_sort_${pipeline}`, sortBy);
+  }, [filtersKey, filterNiches, filterCities, searchQuery, sortBy, pipeline]);
 
   const viewKey = `p21_view_${pipeline}`;
   const [view, setView] = useState<"kanban" | "list">(
@@ -480,14 +487,34 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   );
   const pipelineLeads = useMemo(() => {
     const q = searchQuery.trim();
-    return allPipelineLeads.filter((l) => {
+    let filtered = allPipelineLeads.filter((l) => {
       const matchesNiche = filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche));
       const matchesCity = filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city));
       if (!matchesNiche || !matchesCity) return false;
       if (!q) return true;
       return leadMatchesQuery(l, q);
     });
-  }, [allPipelineLeads, filterNicheSet, filterCitySet, searchQuery]);
+
+    if (sortBy === "name_asc") filtered.sort((a, b) => a.company.localeCompare(b.company));
+    else if (sortBy === "name_desc") filtered.sort((a, b) => b.company.localeCompare(a.company));
+    else if (sortBy === "rating_desc") filtered.sort((a, b) => (b.googleRating || 0) - (a.googleRating || 0));
+    else if (sortBy === "rating_asc") filtered.sort((a, b) => (a.googleRating || 0) - (b.googleRating || 0));
+    else if (sortBy === "reviews_desc") filtered.sort((a, b) => (b.googleReviews || 0) - (a.googleReviews || 0));
+    else if (sortBy === "reviews_asc") filtered.sort((a, b) => (a.googleReviews || 0) - (b.googleReviews || 0));
+    else if (sortBy === "reputation") {
+      filtered.sort((a, b) => {
+        const score = (l: Lead) => {
+          const r = l.googleRating || 0;
+          const v = l.googleReviews || 0;
+          // Algoritmo simples de reputação: Peso 70% nota, 30% volume (logarítmico para não explodir com reviews)
+          return r * 0.7 + (Math.log10(v + 1)) * 0.3;
+        };
+        return score(b) - score(a);
+      });
+    }
+
+    return filtered;
+  }, [allPipelineLeads, filterNicheSet, filterCitySet, searchQuery, sortBy]);
   const leadsByStage = useMemo(() => {
     const map = new Map<string, Lead[]>();
     for (const s of stages) map.set(s, []);
@@ -693,6 +720,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           gmnLink,
           instagramLink: get("instagramLink"),
           notes: get("notes"),
+          googleRating: parseFloat(get("googleRating").replace(",", ".")) || undefined,
+          googleReviews: parseInt(get("googleReviews").replace(/\D/g, ""), 10) || undefined,
           icpStars: 2 as ICPStars,
           runsAds: false,
         });
@@ -949,6 +978,22 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             </div>
           </PopoverContent>
         </Popover>
+
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="h-8 text-xs w-[180px]">
+            <SelectValue placeholder="Ordenar por..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Ordenação padrão</SelectItem>
+            <SelectItem value="name_asc">A → Z</SelectItem>
+            <SelectItem value="name_desc">Z → A</SelectItem>
+            <SelectItem value="rating_desc">Nota (Maior → Menor)</SelectItem>
+            <SelectItem value="rating_asc">Nota (Menor → Maior)</SelectItem>
+            <SelectItem value="reviews_desc">Avaliações (Maior → Menor)</SelectItem>
+            <SelectItem value="reviews_asc">Avaliações (Menor → Maior)</SelectItem>
+            <SelectItem value="reputation">Melhor reputação</SelectItem>
+          </SelectContent>
+        </Select>
 
         {(filterNiches.length > 0 || filterCities.length > 0 || searchQuery) && (
           <>
