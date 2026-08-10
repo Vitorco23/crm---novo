@@ -145,10 +145,28 @@ export function leadBadges(lead: Lead, meetings: Array<{ id: string; date: strin
   const temp = displayTemperature(lead);
   if (temp.key === "quente") b.push({ key: "hot", label: "🔥 Quente", cls: "bg-orange-500/15 text-orange-500 border-orange-500/30" });
 
-  const summary = executiveSummary(lead);
-  if (summary.decisor) b.push({ key: "dm", label: "👤 Decisor identificado", cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" });
-  else if (/sem contato|sem decisor|gatekeeper/i.test((lead.notes || "") + " " + (lead.autoDiagnosis?.attention || ""))) {
-    b.push({ key: "no-dm", label: "⚠ Sem contato com decisor", cls: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30" });
+  // Pega a classificação mais recente da IA (Projeto Phoenix 3B)
+  const latestClassification = (lead.interactions || [])
+    .filter(i => i.classification)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.classification;
+
+  if (latestClassification?.decision_maker_identified) {
+    b.push({ key: "dm", label: "👤 Decisor ID", cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" });
+  } else {
+    const summary = executiveSummary(lead);
+    if (summary.decisor) b.push({ key: "dm", label: "👤 Decisor ID", cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" });
+    else if (/sem contato|sem decisor|gatekeeper/i.test((lead.notes || "") + " " + (lead.autoDiagnosis?.attention || ""))) {
+      b.push({ key: "no-dm", label: "⚠ Sem contato com decisor", cls: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30" });
+    }
+  }
+
+  // Novo badge de status de acesso via IA
+  if (latestClassification?.access_status && latestClassification.access_status !== "SEM_CONTATO") {
+    b.push({ 
+      key: "access", 
+      label: `⚡ ${latestClassification.access_status.replace(/_/g, " ")}`, 
+      cls: "bg-accent/15 text-accent border-accent/30" 
+    });
   }
 
   const today = new Date(); today.setHours(0, 0, 0, 0);

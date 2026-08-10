@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   type Lead,
   type AutoDiagnosis,
+  type Interaction,
   computeDiagnosisInputHash,
   setLeadAutoDiagnosis,
   updateLead,
@@ -148,6 +149,14 @@ export async function runAutoDiagnosis(leadId: string): Promise<AutoDiagnosis | 
       inputHash: computeDiagnosisInputHash(lead),
     };
     setLeadAutoDiagnosis(lead.id, diagnosis);
+
+    // Se houver classificação fina de outreach, aplica à última interação (Projeto Phoenix 3B)
+    if (data.data.classification && latest) {
+      const updatedInteractions = (lead.interactions || []).map((i) =>
+        i.id === latest.id ? { ...i, classification: data.data.classification } : i
+      );
+      updateLead(lead.id, { interactions: updatedInteractions as Interaction[] });
+    }
 
     // Memória permanente — apenas se realmente for aprendizado novo.
     const mem = (diagnosis.updated_memory || "").trim();
