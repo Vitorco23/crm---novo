@@ -386,10 +386,38 @@ function OutreachFunnelBlock({ leads, filterLabel }: { leads: Lead[], filterLabe
             {stages.map((s, i) => {
               const w = maxVal > 0 ? Math.round((s.count / maxVal) * 100) : 0;
               const rate = s.rate;
-              const hue = 78 + (i * 12);
+              const hue = 78 + (i * 10);
+              const Icon = i === 0 ? Phone : i === 1 ? Zap : i === 2 ? ShieldCheck : i === 3 ? BrainCircuit : i === 4 ? Target : i === 5 ? UserCheck : CalendarCheck;
+
               
               return (
                 <div key={s.key} className="group relative">
+                  <div className="flex items-center justify-between mb-0.5 px-1">
+                    <div className="flex items-center gap-1.5">
+                      <Icon className="h-3 w-3 text-muted-foreground group-hover:text-accent transition-colors" />
+                      <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-wider">{s.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {rate !== null && (
+                        <span className="text-[9px] font-bold text-accent bg-accent/10 px-1 rounded">
+                          {rate}%
+                        </span>
+                      )}
+                      <span className="text-[10px] font-bold tabular-nums">{s.count}</span>
+                    </div>
+                  </div>
+                  <div className="h-2 w-full bg-muted/30 rounded-full overflow-hidden border border-border/5">
+                    <div 
+                      className="h-full transition-all duration-700 ease-out" 
+                      style={{ 
+                        width: `${w}%`,
+                        backgroundColor: `hsl(${hue}, 57%, 47%)`,
+                        boxShadow: `0 0 10px hsl(${hue}, 57%, 47%, 0.3)`
+                      }}
+                    />
+                  </div>
+                </div>
+
                   <div className="flex items-center gap-2 text-[11px] py-0.5">
                     <span className="w-36 truncate text-muted-foreground group-hover:text-foreground transition-colors">
                       {s.label}
