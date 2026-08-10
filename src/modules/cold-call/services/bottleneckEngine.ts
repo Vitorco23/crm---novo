@@ -176,7 +176,18 @@ export function analyzeBottleneck(period: Period, opts: AnalyzeOptions = {}): Bo
   // Agregações do funil
   const calls        = sessions.reduce((a, s) => a + (s.calls || 0), 0);
   const connections  = sessions.reduce((a, s) => a + (s.connections || 0), 0);
-  const dms          = sessions.reduce((a, s) => a + (s.decisionMakers || 0), 0);
+  
+  // Projeto Phoenix 3B: Uso da classificação estruturada para Gatekeepers e Decisores
+  // Para manter compatibilidade com o histórico manual das sessões, fazemos um merge.
+  const interactionsWithClassification = leads.flatMap(l => l.interactions || [])
+    .filter(i => inRange(i.date, period) && i.classification);
+
+  const gatekeepersIdentified = interactionsWithClassification.filter(i => i.classification?.gatekeeper_contact).length;
+  const dmsIdentified = Math.max(
+    interactionsWithClassification.filter(i => i.classification?.decision_maker_identified).length,
+    sessions.reduce((a, s) => a + (s.decisionMakers || 0), 0)
+  );
+
   // Reuniões marcadas no período: agenda oficial + registro rápido em sessão
   const meetingsScheduled = Math.max(
     meetings.filter((m) => (m.source || "Ligação") === "Ligação").length,
@@ -206,11 +217,12 @@ export function analyzeBottleneck(period: Period, opts: AnalyzeOptions = {}): Bo
   };
 
   const allStages: StageMetric[] = [
-    build("call_to_conn",  connections,      calls,       goals.callToConnection),
-    build("conn_to_dm",    dms,              connections, goals.connectionToDecisionMaker),
-    build("dm_to_meet",    meetingsScheduled, dms,        goals.decisionMakerToMeetingScheduled),
-    build("meet_to_held",  meetingsHeld,     meetingsScheduled, goals.meetingScheduledToHeld),
-    build("held_to_close", closes,           meetingsHeld, goals.meetingHeldToClose),
+    build("call_to_conn",       connections,           calls,       goals.callToConnection),
+    build("conn_to_gatekeeper", gatekeepersIdentified, connections, 70), // Meta sugerida: 70% das conexões viram gatekeepers ID
+    build("gatekeeper_to_dm",   dmsIdentified,         Math.max(gatekeepersIdentified, 1), goals.connectionToDecisionMaker),
+    build("dm_to_meet",         meetingsScheduled,     dmsIdentified, goals.decisionMakerToMeetingScheduled),
+    build("meet_to_held",       meetingsHeld,          meetingsScheduled, goals.meetingScheduledToHeld),
+    build("held_to_close",      closes,                meetingsHeld, goals.meetingHeldToClose),
   ];
 
   // Base estatística mínima: ao menos uma etapa com denom >= 5.
