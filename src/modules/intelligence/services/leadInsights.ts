@@ -33,8 +33,8 @@ export function displayNextAction(lead: Lead): string {
 
 /** Resumo da última interação em 1 linha (empresa vê "o que houve por último"). */
 export function lastInteractionSnippet(lead: Lead, maxChars = 90): { source: string; text: string; at: string } | null {
-  const inter = [...(lead.interactions || [])].filter(Boolean).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-  const note  = [...(lead.callNotes || [])].filter(Boolean).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  const inter = [...(lead.interactions || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+  const note  = [...(lead.callNotes || [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
   const interAt = inter ? new Date(inter.date).getTime() : 0;
   const noteAt  = note  ? new Date(note.createdAt).getTime() : 0;
@@ -63,14 +63,8 @@ export interface TrailItem { kind: TrailItemKind; at: string; label: string; }
 
 export function commercialTrail(lead: Lead, meetings: Array<{ id: string; date: string; time: string; title?: string }>): TrailItem[] {
   const out: TrailItem[] = [];
-  for (const i of lead.interactions || []) {
-    if (!i) continue;
-    out.push({ kind: kindFromType(i.type), at: i.date, label: i.type });
-  }
-  for (const n of lead.callNotes || []) {
-    if (!n) continue;
-    out.push({ kind: "call", at: n.createdAt, label: "Ligação" });
-  }
+  for (const i of lead.interactions || []) out.push({ kind: kindFromType(i.type), at: i.date, label: i.type });
+  for (const n of lead.callNotes || []) out.push({ kind: "call", at: n.createdAt, label: "Ligação" });
   for (const m of meetings) out.push({ kind: "meeting", at: `${m.date}T${m.time}:00`, label: m.title || "Reunião" });
   // Venda: heurística barata sem alterar regras — apenas detecta pela etapa.
   if (/ganho|venda/i.test(lead.stage)) out.push({ kind: "sale", at: lead.stageChangedAt, label: "Venda" });
@@ -123,10 +117,9 @@ export function executiveSummary(lead: Lead): ExecutiveSummary {
   const diag = lead.autoDiagnosis;
 
   const interLast = [...(lead.interactions || [])]
-    .filter((i) => i && /ligação|ligacao|call/i.test(i.type))
+    .filter((i) => /ligação|ligacao|call/i.test(i.type))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
   const noteLast  = [...(lead.callNotes || [])]
-    .filter(Boolean)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
   const ultimaLigacao =
@@ -152,28 +145,10 @@ export function leadBadges(lead: Lead, meetings: Array<{ id: string; date: strin
   const temp = displayTemperature(lead);
   if (temp.key === "quente") b.push({ key: "hot", label: "🔥 Quente", cls: "bg-orange-500/15 text-orange-500 border-orange-500/30" });
 
-  // Pega a classificação mais recente da IA (Projeto Phoenix 3B)
-  const latestClassification = (lead.interactions || [])
-    .filter(i => i?.classification)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.classification;
-
-  if (latestClassification?.decision_maker_identified) {
-    b.push({ key: "dm", label: "👤 Decisor ID", cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" });
-  } else {
-    const summary = executiveSummary(lead);
-    if (summary.decisor) b.push({ key: "dm", label: "👤 Decisor ID", cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" });
-    else if (/sem contato|sem decisor|gatekeeper/i.test((lead.notes || "") + " " + (lead.autoDiagnosis?.attention || ""))) {
-      b.push({ key: "no-dm", label: "⚠ Sem contato com decisor", cls: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30" });
-    }
-  }
-
-  // Novo badge de status de acesso via IA
-  if (latestClassification?.access_status && latestClassification.access_status !== "SEM_CONTATO") {
-    b.push({ 
-      key: "access", 
-      label: `⚡ ${latestClassification.access_status.replace(/_/g, " ")}`, 
-      cls: "bg-accent/15 text-accent border-accent/30" 
-    });
+  const summary = executiveSummary(lead);
+  if (summary.decisor) b.push({ key: "dm", label: "👤 Decisor identificado", cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30" });
+  else if (/sem contato|sem decisor|gatekeeper/i.test((lead.notes || "") + " " + (lead.autoDiagnosis?.attention || ""))) {
+    b.push({ key: "no-dm", label: "⚠ Sem contato com decisor", cls: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30" });
   }
 
   const today = new Date(); today.setHours(0, 0, 0, 0);

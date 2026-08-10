@@ -3,10 +3,9 @@ import {
   getLeads, getSessions, getMovementEvents, getMeetings,
   COLD_CALL_STAGES, OPORTUNIDADES_STAGES,
   getGoalsSettings, getLeadsForPipeline,
-  type Lead
 } from "@/shared/services/store";
 import { getTransactions, formatBRL, monthKey } from "@/modules/financeiro/services/finance";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,7 +14,7 @@ import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign,
   Handshake, Trophy as TrophyIcon, Send, Instagram, Mail, Activity, Layers, Crown,
-  Calendar as CalendarIcon, Sparkles, BrainCircuit, Zap, ShieldCheck, Target, Clock, CheckCircle2, FileText, Copy, ArrowRightLeft, Briefcase, ArrowRight
+  Calendar as CalendarIcon, Sparkles,
 } from "lucide-react";
 import StrategicIntelligencePanel, { type PeriodKey } from "@/modules/dashboard/components/StrategicIntelligencePanel";
 
@@ -24,7 +23,6 @@ import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/modules/pipeline/services/exportBuilders";
 import { resolvePeriod } from "@/modules/pipeline/services/exportEngine";
 import { computeEfficiencyRatio, countOutcomes, type EfficiencyRatio } from "@/modules/dashboard/services/efficiency";
-import { useOutreachIntelligence } from "../services/outreachIntelligence";
 import { cn } from "@/shared/utils/utils";
 
 type Filter = "day" | "week" | "month" | "custom";
@@ -173,12 +171,6 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
   const movements = getMovementEvents();
   const meetings = getMeetings();
 
-  const filteredLeads = useMemo(() => getLeads().filter((l) => {
-    // Para leads, filtramos pela data de criação ou última movimentação significativa no período
-    const date = l.stageChangedAt || l.createdAt;
-    return filterByDate(date, filter, custom);
-  }), [filter, custom]);
-
   const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter, custom)), [sessions, filter, custom]);
   const filteredMeetings = useMemo(
     () => meetings.filter((m) => filterByDate(`${m.date}T${m.time || "00:00"}`, filter, custom)),
@@ -266,7 +258,47 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
 
 
       {/* Funil de Outreach do período */}
-      <OutreachFunnelBlock leads={filteredLeads} filterLabel={filterLabels[filter]} />
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Funil de Outreach — {filterLabels[filter]}</CardTitle></CardHeader>
+        <CardContent>
+          {(() => {
+            const meetingsFromCalls = Math.max(callMeetings, sessionMeetings);
+            const stages = [
+              { name: "Ligações", value: sessionCalls },
+              { name: "Conexões", value: sessionConnections },
+              { name: "Decisores", value: sessionDecisionMakers },
+              { name: "Reuniões (Ligação)", value: meetingsFromCalls },
+            ];
+            const maxVal = stages[0].value || 1;
+            if (stages.every((s) => s.value === 0)) {
+              return <p className="text-sm text-muted-foreground py-6 text-center">Sem atividade de outreach no período.</p>;
+            }
+            return (
+              <div className="space-y-1.5">
+                {stages.map((s, i) => {
+                  const w = maxVal > 0 ? Math.round((s.value / maxVal) * 100) : 0;
+                  const prev = i > 0 ? stages[i - 1].value : 0;
+                  const rate = i > 0 && prev > 0 ? Math.round((s.value / prev) * 100) : null;
+                  const hue = 78 + i * 20;
+                  return (
+                    <div key={s.name} className="flex items-center gap-2 text-xs">
+                      <span className="w-40 truncate text-muted-foreground">{s.name}</span>
+                      <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
+                        <div className="h-full rounded-sm transition-all duration-500"
+                          style={{ width: `${w}%`, backgroundColor: `hsl(${hue} 50% ${47 - i * 2}%)` }} />
+                      </div>
+                      <span className="w-10 text-right font-medium text-foreground tabular-nums">{s.value}</span>
+                      <span className="w-20 text-[10px] text-right tabular-nums text-muted-foreground/70">
+                        {rate != null ? `${rate}% conv.` : "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
 
       {/* Reuniões por canal alternativo */}
       {otherChannelsMeetings > 0 && (
@@ -355,96 +387,6 @@ function EfficiencyCard({
   );
 }
 
-
-function OutreachFunnelBlock({ leads, filterLabel }: { leads: Lead[], filterLabel: string }) {
-  const { stages } = useOutreachIntelligence(leads);
-  const maxVal = stages[0].count || 1;
-
-  return (
-    <Card className="border-accent/20 bg-muted/10">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <BrainCircuit className="h-4 w-4 text-accent" />
-            Inteligência de Outreach · {filterLabel}
-          </CardTitle>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-[10px] text-accent font-medium">
-            <Zap className="h-2.5 w-2.5" /> IA Ativa
-          </div>
-        </div>
-        <CardDescription className="text-[10px]">
-          Classificação automática baseada no comportamento real das interações.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2 pt-2">
-        {stages.every(s => s.count === 0) ? (
-          <p className="text-sm text-muted-foreground py-6 text-center italic">
-            Sem atividade de outreach processada no período.
-          </p>
-        ) : (
-          <div className="space-y-1">
-            {stages.map((s, i) => {
-              if (!s) return null;
-              const w = maxVal > 0 ? Math.round((s.count / maxVal) * 100) : 0;
-              const rate = s.rate;
-              const hue = 78 + (i * 10);
-              const Icon = i === 0 ? Phone : i === 1 ? Zap : i === 2 ? ShieldCheck : i === 3 ? BrainCircuit : i === 4 ? Target : i === 5 ? UserCheck : CalendarCheck;
-
-              
-              return (
-                <div key={s.key} className="group relative">
-                  <div className="flex items-center justify-between mb-0.5 px-1">
-                    <div className="flex items-center gap-1.5">
-                      <Icon className="h-3 w-3 text-muted-foreground group-hover:text-accent transition-colors" />
-                      <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-wider">{s.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {rate !== null && (
-                        <span className="text-[9px] font-bold text-accent bg-accent/10 px-1 rounded">
-                          {rate}%
-                        </span>
-                      )}
-                      <span className="text-[10px] font-bold tabular-nums">{s.count}</span>
-                    </div>
-                  </div>
-                  <div className="h-2 w-full bg-muted/30 rounded-full overflow-hidden border border-border/5">
-                    <div 
-                      className="h-full transition-all duration-700 ease-out" 
-                      style={{ 
-                        width: `${w}%`,
-                        backgroundColor: `hsl(${hue}, 57%, 47%)`,
-                        boxShadow: `0 0 10px hsl(${hue}, 57%, 47%, 0.3)`
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        
-        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border/40 pt-3">
-          <div className="rounded border border-border/40 bg-muted/20 p-2">
-            <div className="text-[9px] uppercase text-muted-foreground mb-1">Status de Acesso</div>
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="h-3 w-3 text-emerald-500" />
-              <span className="text-xs font-medium">Governança Phoenix</span>
-            </div>
-          </div>
-          <div className="rounded border border-border/40 bg-muted/20 p-2">
-            <div className="text-[9px] uppercase text-muted-foreground mb-1">Precisão da IA</div>
-            <div className="flex items-center gap-1.5">
-              <div className="flex gap-0.5">
-                {[1,2,3,4,5].map(x => <div key={x} className="h-1.5 w-1.5 rounded-full bg-accent" />)}
-              </div>
-              <span className="text-[10px] font-medium text-accent">98.4%</span>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function MetricCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: number; sub?: string }) {
   return (

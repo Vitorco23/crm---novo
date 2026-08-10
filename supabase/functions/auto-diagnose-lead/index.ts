@@ -35,32 +35,6 @@ interface DiagnosisPayload {
   next_action: string;
   attention: string;
   updated_memory: string;
-  /** Classificação fina do outreach (Projeto Phoenix 3B) */
-  classification: {
-    connected: boolean;
-    gatekeeper_contact: boolean;
-    gatekeeper_name?: string | null;
-    decision_maker_identified: boolean;
-    decision_maker_name?: string | null;
-    decision_maker_contacted: boolean;
-    decision_maker_contact_obtained: boolean;
-    decision_maker_phone?: string | null;
-    message_forwarding_promised: boolean;
-    callback_requested: boolean;
-    callback_datetime?: string | null; // ISO format
-    follow_up_required: boolean;
-    follow_up_datetime?: string | null; // ISO format
-    access_status: 
-      | "SEM_CONTATO" 
-      | "GATEKEEPER" 
-      | "DECISOR_IDENTIFICADO" 
-      | "CONTATO_OBTIDO" 
-      | "ENCAMINHAMENTO_PROMETIDO" 
-      | "RETORNO_COMBINADO" 
-      | "DECISOR_CONTATADO" 
-      | "REUNIAO_MARCADA";
-    classification_confidence: "high" | "medium" | "low";
-  };
 }
 
 const SYSTEM = [
@@ -75,24 +49,7 @@ const SYSTEM = [
   '  "summary": "",',
   '  "next_action": "",',
   '  "attention": "",',
-  '  "updated_memory": "",',
-  '  "classification": {',
-  '    "connected": true,',
-  '    "gatekeeper_contact": false,',
-  '    "gatekeeper_name": null,',
-  '    "decision_maker_identified": false,',
-  '    "decision_maker_name": null,',
-  '    "decision_maker_contacted": false,',
-  '    "decision_maker_contact_obtained": false,',
-  '    "decision_maker_phone": null,',
-  '    "message_forwarding_promised": false,',
-  '    "callback_requested": false,',
-  '    "callback_datetime": null,',
-  '    "follow_up_required": false,',
-  '    "follow_up_datetime": null,',
-  '    "access_status": "SEM_CONTATO|GATEKEEPER|DECISOR_IDENTIFICADO|CONTATO_OBTIDO|ENCAMINHAMENTO_PROMETIDO|RETORNO_COMBINADO|DECISOR_CONTATADO|REUNIAO_MARCADA",',
-  '    "classification_confidence": "high|medium|low"',
-  '  }',
+  '  "updated_memory": ""',
   "}",
   "",
   "Regras dos campos:",
@@ -113,26 +70,6 @@ const SCHEMA = {
   next_action: { type: "string", maxLength: 240 },
   attention: { type: "string", maxLength: 240, optional: true },
   updated_memory: { type: "string", maxLength: 240, optional: true },
-  classification: {
-    type: "object",
-    schema: {
-      connected: { type: "boolean" },
-      gatekeeper_contact: { type: "boolean" },
-      gatekeeper_name: { type: "string", optional: true, nullable: true },
-      decision_maker_identified: { type: "boolean" },
-      decision_maker_name: { type: "string", optional: true, nullable: true },
-      decision_maker_contacted: { type: "boolean" },
-      decision_maker_contact_obtained: { type: "boolean" },
-      decision_maker_phone: { type: "string", optional: true, nullable: true },
-      message_forwarding_promised: { type: "boolean" },
-      callback_requested: { type: "boolean" },
-      callback_datetime: { type: "string", optional: true, nullable: true },
-      follow_up_required: { type: "boolean" },
-      follow_up_datetime: { type: "string", optional: true, nullable: true },
-      access_status: { type: "enum", values: ["SEM_CONTATO", "GATEKEEPER", "DECISOR_IDENTIFICADO", "CONTATO_OBTIDO", "ENCAMINHAMENTO_PROMETIDO", "RETORNO_COMBINADO", "DECISOR_CONTATADO", "REUNIAO_MARCADA"] as const },
-      classification_confidence: { type: "enum", values: ["high", "medium", "low"] as const },
-    }
-  }
 } as const;
 
 function json(status: number, body: unknown) {

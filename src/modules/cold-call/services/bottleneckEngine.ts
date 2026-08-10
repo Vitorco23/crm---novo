@@ -60,8 +60,7 @@ const inRange = (iso: string | undefined, p: Period) => {
 // --------- Modelo ---------
 export type StageKey =
   | "call_to_conn"
-  | "conn_to_gatekeeper"   // Projeto Phoenix 3B
-  | "gatekeeper_to_dm"    // Projeto Phoenix 3B
+  | "conn_to_dm"
   | "dm_to_meet"
   | "meet_to_held"
   | "held_to_close";
@@ -124,12 +123,11 @@ export interface AnalyzeOptions {
 
 function stageLabel(key: StageKey): { label: string; from: string; to: string } {
   switch (key) {
-    case "call_to_conn":        return { label: "Abordagem inicial", from: "Ligações",   to: "Conexões" };
-    case "conn_to_gatekeeper":  return { label: "Acesso ao Filtro",  from: "Conexões",   to: "Gatekeepers" };
-    case "gatekeeper_to_dm":    return { label: "Qualificação",      from: "Gatekeepers", to: "Decisores" };
-    case "dm_to_meet":          return { label: "Agendamento",       from: "Decisores",  to: "Reuniões Marcadas" };
-    case "meet_to_held":        return { label: "Presença",          from: "Reuniões Marcadas", to: "Reuniões Realizadas" };
-    case "held_to_close":       return { label: "Fechamento",        from: "Reuniões Realizadas", to: "Vendas (Ganho)" };
+    case "call_to_conn": return { label: "Abordagem inicial", from: "Ligações",   to: "Conexões" };
+    case "conn_to_dm":   return { label: "Qualificação",       from: "Conexões",   to: "Decisores" };
+    case "dm_to_meet":   return { label: "Agendamento",        from: "Decisores",  to: "Reuniões Marcadas" };
+    case "meet_to_held": return { label: "Presença",           from: "Reuniões Marcadas", to: "Reuniões Realizadas" };
+    case "held_to_close":return { label: "Fechamento",         from: "Reuniões Realizadas", to: "Vendas (Ganho)" };
   }
 }
 
@@ -176,18 +174,7 @@ export function analyzeBottleneck(period: Period, opts: AnalyzeOptions = {}): Bo
   // Agregações do funil
   const calls        = sessions.reduce((a, s) => a + (s.calls || 0), 0);
   const connections  = sessions.reduce((a, s) => a + (s.connections || 0), 0);
-  
-  // Projeto Phoenix 3B: Uso da classificação estruturada para Gatekeepers e Decisores
-  // Para manter compatibilidade com o histórico manual das sessões, fazemos um merge.
-  const interactionsWithClassification = leads.flatMap(l => l.interactions || [])
-    .filter(i => i && inRange(i.date, period) && i.classification);
-
-  const gatekeepersIdentified = interactionsWithClassification.filter(i => i.classification?.gatekeeper_contact).length;
-  const dmsIdentified = Math.max(
-    interactionsWithClassification.filter(i => i.classification?.decision_maker_identified).length,
-    sessions.reduce((a, s) => a + (s.decisionMakers || 0), 0)
-  );
-
+  const dms          = sessions.reduce((a, s) => a + (s.decisionMakers || 0), 0);
   // Reuniões marcadas no período: agenda oficial + registro rápido em sessão
   const meetingsScheduled = Math.max(
     meetings.filter((m) => (m.source || "Ligação") === "Ligação").length,
@@ -217,17 +204,16 @@ export function analyzeBottleneck(period: Period, opts: AnalyzeOptions = {}): Bo
   };
 
   const allStages: StageMetric[] = [
-    build("call_to_conn",       connections,           calls,       goals.callToConnection),
-    build("conn_to_gatekeeper", gatekeepersIdentified, connections, 70), // Meta sugerida: 70% das conexões viram gatekeepers ID
-    build("gatekeeper_to_dm",   dmsIdentified,         Math.max(gatekeepersIdentified, 1), goals.connectionToDecisionMaker),
-    build("dm_to_meet",         meetingsScheduled,     dmsIdentified, goals.decisionMakerToMeetingScheduled),
-    build("meet_to_held",       meetingsHeld,          meetingsScheduled, goals.meetingScheduledToHeld),
-    build("held_to_close",      closes,                meetingsHeld, goals.meetingHeldToClose),
+    build("call_to_conn",  connections,      calls,       goals.callToConnection),
+    build("conn_to_dm",    dms,              connections, goals.connectionToDecisionMaker),
+    build("dm_to_meet",    meetingsScheduled, dms,        goals.decisionMakerToMeetingScheduled),
+    build("meet_to_held",  meetingsHeld,     meetingsScheduled, goals.meetingScheduledToHeld),
+    build("held_to_close", closes,           meetingsHeld, goals.meetingHeldToClose),
   ];
 
   // Base estatística mínima: ao menos uma etapa com denom >= 5.
   const anyBase = allStages.some((s) => s.denominator >= 5);
-  const hasEnoughData = anyBase && (calls + connections + dmsIdentified) >= 10;
+  const hasEnoughData = anyBase && (calls + connections + dms) >= 10;
 
   // Escolhe o gargalo principal: severidade > confiança > gap absoluto > oportunidades perdidas.
   const severityRank: Record<Severity, number> = { critico: 4, alto: 3, medio: 2, controlado: 1 };
@@ -314,17 +300,11 @@ const RECOMMENDATIONS: Record<StageKey, string[]> = {
     "Validar qualidade da base: cidade, nicho e canal — leads frios derrubam a conexão.",
     "Aumentar volume de tentativas por lead antes de descartar.",
   ],
-  conn_to_gatekeeper: [
-    "Identificar o nome do gatekeeper e usá-lo na próxima tentativa.",
-    "Mudar a abordagem de 'venda' para 'ajuda' — o filtro não quer ser vendido.",
-    "Validar se o telefone é direto ou recepção — se recepção, o filtro é mais forte.",
-    "Testar horários de troca de turno ou almoço (filtro costuma ser mais permissivo).",
-  ],
-  gatekeeper_to_dm: [
+  conn_to_dm: [
     "Melhorar a pergunta de qualificação inicial para identificar o decisor mais cedo.",
     "Confirmar cargo/decisor via LinkedIn ou Instagram antes de ligar.",
-    "Treinar contorno de objeções de secretária (ex: 'ele está em reunião', 'mande e-mail').",
-    "Registrar o nome do decisor para na próxima vez pedir para falar diretamente com ele.",
+    "Ajustar abordagem para não ser filtrado por gatekeeper.",
+    "Registrar objeções mais comuns e treinar respostas objetivas.",
   ],
   dm_to_meet: [
     "Revisar a oferta da reunião — está clara a promessa de valor em 20 segundos?",
@@ -384,20 +364,18 @@ function computeDimensionInsights(main: StageMetric, period: Period, opts: Analy
 
   const num = (s: PomodoroSession) => {
     switch (main.key) {
-      case "call_to_conn":        return s.connections || 0;
-      case "conn_to_gatekeeper":  return Math.round((s.connections || 0) * 0.7); // Heurística para dados legados
-      case "gatekeeper_to_dm":    return s.decisionMakers || 0;
-      case "dm_to_meet":          return s.meetings || 0;
-      default:                    return s.meetings || 0;
+      case "call_to_conn":  return s.connections || 0;
+      case "conn_to_dm":    return s.decisionMakers || 0;
+      case "dm_to_meet":    return s.meetings || 0;
+      default:              return s.meetings || 0;
     }
   };
   const den = (s: PomodoroSession) => {
     switch (main.key) {
-      case "call_to_conn":        return s.calls || 0;
-      case "conn_to_gatekeeper":  return s.connections || 0;
-      case "gatekeeper_to_dm":    return Math.max(s.connections || 0, 1);
-      case "dm_to_meet":          return s.decisionMakers || 0;
-      default:                    return s.calls || 0;
+      case "call_to_conn":  return s.calls || 0;
+      case "conn_to_dm":    return s.connections || 0;
+      case "dm_to_meet":    return s.decisionMakers || 0;
+      default:              return s.calls || 0;
     }
   };
 

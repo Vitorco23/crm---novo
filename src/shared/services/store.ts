@@ -127,8 +127,6 @@ export interface Interaction {
   summary: string;       // resumo (Matteline / IA / manual) — principal fonte para IA
   sellerNotes?: string;  // anotações extras do vendedor (contexto que não está no resumo)
   createdAt: string;     // ISO de quando foi registrada
-  /** Dados estruturados da classificação IA (Projeto Phoenix 3B) */
-  classification?: import("@/modules/intelligence/services/InteractionClassification").InteractionClassification;
 }
 
 export interface Lead {

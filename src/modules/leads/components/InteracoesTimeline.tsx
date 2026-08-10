@@ -4,7 +4,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Phone, Users, MessageCircle, Mail, FileText, MapPin, Handshake,
   Video, Sparkles, Plus, Pencil, Trash2, ExternalLink, Loader2, CalendarCheck,
-  Calendar as CalendarIcon, BrainCircuit, ShieldCheck, Zap, User as UserIcon
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -572,30 +572,6 @@ export default function InteracoesTimeline({
                         <div className="mt-2 rounded bg-background/50 border border-border/40 p-2">
                           <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Anotações do vendedor</p>
                           <SellerNotesView notes={i.sellerNotes} />
-                        </div>
-                      )}
-                      {i.classification && (
-                        <div className="mt-2 rounded bg-accent/5 border border-accent/20 p-2">
-                          <p className="text-[10px] uppercase tracking-wider text-accent font-semibold flex items-center gap-1 mb-1">
-                            <BrainCircuit className="h-3 w-3" /> Classificação Estruturada IA
-                          </p>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px]">
-                            <div className="flex items-center gap-1">
-                              <ShieldCheck className={`h-3 w-3 ${i.classification?.decision_maker_identified ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-                              <span>Decisor: {i.classification?.decision_maker_identified ? "Identificado" : "N/D"}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Zap className={`h-3 w-3 ${i.classification?.connected ? "text-amber-500" : "text-muted-foreground/40"}`} />
-                              <span>Conexão: {i.classification?.connected ? "Sim" : "Não"}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <UserIcon className={`h-3 w-3 ${i.classification?.decision_maker_contacted ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-                              <span>Falaram: {i.classification?.decision_maker_contacted ? "Sim" : "Não"}</span>
-                            </div>
-                          </div>
-                          <div className="mt-1.5 text-[10px] text-accent/80 font-medium">
-                            Status: {i.classification?.access_status?.replace(/_/g, " ") || "CLASSIFICANDO..."}
-                          </div>
                         </div>
                       )}
                       <div className="mt-2 flex items-center gap-2">
