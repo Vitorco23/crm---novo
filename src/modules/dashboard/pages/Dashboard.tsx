@@ -419,7 +419,6 @@ function OutreachFunnelBlock({ leads, filterLabel }: { leads: Lead[], filterLabe
                 </div>
               );
             })}
-            })}
           </div>
         )}
         
