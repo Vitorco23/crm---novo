@@ -594,7 +594,7 @@ export default function InteracoesTimeline({
                             </div>
                           </div>
                           <div className="mt-1.5 text-[10px] text-accent/80 font-medium">
-                            Status: {i.classification.access_status.replace(/_/g, " ")}
+                            Status: {i.classification?.access_status?.replace(/_/g, " ") || "CLASSIFICANDO..."}
                           </div>
                         </div>
                       )}
