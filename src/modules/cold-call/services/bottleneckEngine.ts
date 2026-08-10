@@ -314,11 +314,17 @@ const RECOMMENDATIONS: Record<StageKey, string[]> = {
     "Validar qualidade da base: cidade, nicho e canal — leads frios derrubam a conexão.",
     "Aumentar volume de tentativas por lead antes de descartar.",
   ],
-  conn_to_dm: [
+  conn_to_gatekeeper: [
+    "Identificar o nome do gatekeeper e usá-lo na próxima tentativa.",
+    "Mudar a abordagem de 'venda' para 'ajuda' — o filtro não quer ser vendido.",
+    "Validar se o telefone é direto ou recepção — se recepção, o filtro é mais forte.",
+    "Testar horários de troca de turno ou almoço (filtro costuma ser mais permissivo).",
+  ],
+  gatekeeper_to_dm: [
     "Melhorar a pergunta de qualificação inicial para identificar o decisor mais cedo.",
     "Confirmar cargo/decisor via LinkedIn ou Instagram antes de ligar.",
-    "Ajustar abordagem para não ser filtrado por gatekeeper.",
-    "Registrar objeções mais comuns e treinar respostas objetivas.",
+    "Treinar contorno de objeções de secretária (ex: 'ele está em reunião', 'mande e-mail').",
+    "Registrar o nome do decisor para na próxima vez pedir para falar diretamente com ele.",
   ],
   dm_to_meet: [
     "Revisar a oferta da reunião — está clara a promessa de valor em 20 segundos?",
