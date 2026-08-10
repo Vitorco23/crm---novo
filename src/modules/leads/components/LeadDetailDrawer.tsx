@@ -501,12 +501,12 @@ export default function LeadDetailDrawer({
               
               <div className="flex gap-2 text-muted-foreground bg-muted/20 px-2 py-0.5 rounded">
                 <span className="flex items-center gap-1">
-                  <ShieldCheck className={`h-2.5 w-2.5 ${latestClassification.decision_maker_identified ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-                  Decisor {latestClassification.decision_maker_identified ? "ID" : "N/D"}
+                  <ShieldCheck className={`h-2.5 w-2.5 ${latestClassification?.decision_maker_identified ? "text-emerald-500" : "text-muted-foreground/40"}`} />
+                  Decisor {latestClassification?.decision_maker_identified ? "ID" : "N/D"}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Zap className={`h-2.5 w-2.5 ${latestClassification.connected ? "text-amber-500" : "text-muted-foreground/40"}`} />
-                  Conexão {latestClassification.connected ? "OK" : "KO"}
+                  <Zap className={`h-2.5 w-2.5 ${latestClassification?.connected ? "text-amber-500" : "text-muted-foreground/40"}`} />
+                  Conexão {latestClassification?.connected ? "OK" : "KO"}
                 </span>
                 {latestClassification.decision_maker_name && (
                   <span className="text-foreground italic">"{latestClassification.decision_maker_name}"</span>
