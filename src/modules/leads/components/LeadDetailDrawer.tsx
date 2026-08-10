@@ -10,7 +10,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { AgendaRepository } from "@/modules/agenda/services/AgendaRepository";
 import { IntelligenceRepository } from "@/modules/intelligence/services/IntelligenceRepository";
 import { parseISO } from "date-fns";
-import { CalendarIcon, Loader2, Pencil, Copy, FileText, Building2, Flame, Thermometer, Snowflake, MapPin, Globe, MessageCircle, User as UserIcon } from "lucide-react";
+import { 
+  CalendarIcon, Loader2, Pencil, Copy, FileText, Building2, Flame, Thermometer, Snowflake, 
+  MapPin, Globe, MessageCircle, User as UserIcon, BrainCircuit, ShieldCheck, Zap
+} from "lucide-react";
 import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/modules/financeiro/services/finance";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
