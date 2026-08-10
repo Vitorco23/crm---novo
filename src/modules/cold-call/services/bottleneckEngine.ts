@@ -60,7 +60,8 @@ const inRange = (iso: string | undefined, p: Period) => {
 // --------- Modelo ---------
 export type StageKey =
   | "call_to_conn"
-  | "conn_to_dm"
+  | "conn_to_gatekeeper"   // Projeto Phoenix 3B
+  | "gatekeeper_to_dm"    // Projeto Phoenix 3B
   | "dm_to_meet"
   | "meet_to_held"
   | "held_to_close";
