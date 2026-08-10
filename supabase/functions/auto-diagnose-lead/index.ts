@@ -35,6 +35,32 @@ interface DiagnosisPayload {
   next_action: string;
   attention: string;
   updated_memory: string;
+  /** Classificação fina do outreach (Projeto Phoenix 3B) */
+  classification: {
+    connected: boolean;
+    gatekeeper_contact: boolean;
+    gatekeeper_name?: string | null;
+    decision_maker_identified: boolean;
+    decision_maker_name?: string | null;
+    decision_maker_contacted: boolean;
+    decision_maker_contact_obtained: boolean;
+    decision_maker_phone?: string | null;
+    message_forwarding_promised: boolean;
+    callback_requested: boolean;
+    callback_datetime?: string | null; // ISO format
+    follow_up_required: boolean;
+    follow_up_datetime?: string | null; // ISO format
+    access_status: 
+      | "SEM_CONTATO" 
+      | "GATEKEEPER" 
+      | "DECISOR_IDENTIFICADO" 
+      | "CONTATO_OBTIDO" 
+      | "ENCAMINHAMENTO_PROMETIDO" 
+      | "RETORNO_COMBINADO" 
+      | "DECISOR_CONTATADO" 
+      | "REUNIAO_MARCADA";
+    classification_confidence: "high" | "medium" | "low";
+  };
 }
 
 const SYSTEM = [
