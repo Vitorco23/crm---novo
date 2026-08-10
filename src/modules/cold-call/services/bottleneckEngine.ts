@@ -124,11 +124,12 @@ export interface AnalyzeOptions {
 
 function stageLabel(key: StageKey): { label: string; from: string; to: string } {
   switch (key) {
-    case "call_to_conn": return { label: "Abordagem inicial", from: "Ligações",   to: "Conexões" };
-    case "conn_to_dm":   return { label: "Qualificação",       from: "Conexões",   to: "Decisores" };
-    case "dm_to_meet":   return { label: "Agendamento",        from: "Decisores",  to: "Reuniões Marcadas" };
-    case "meet_to_held": return { label: "Presença",           from: "Reuniões Marcadas", to: "Reuniões Realizadas" };
-    case "held_to_close":return { label: "Fechamento",         from: "Reuniões Realizadas", to: "Vendas (Ganho)" };
+    case "call_to_conn":        return { label: "Abordagem inicial", from: "Ligações",   to: "Conexões" };
+    case "conn_to_gatekeeper":  return { label: "Acesso ao Filtro",  from: "Conexões",   to: "Gatekeepers" };
+    case "gatekeeper_to_dm":    return { label: "Qualificação",      from: "Gatekeepers", to: "Decisores" };
+    case "dm_to_meet":          return { label: "Agendamento",       from: "Decisores",  to: "Reuniões Marcadas" };
+    case "meet_to_held":        return { label: "Presença",          from: "Reuniões Marcadas", to: "Reuniões Realizadas" };
+    case "held_to_close":       return { label: "Fechamento",        from: "Reuniões Realizadas", to: "Vendas (Ganho)" };
   }
 }
 
