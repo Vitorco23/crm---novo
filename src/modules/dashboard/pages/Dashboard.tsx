@@ -417,36 +417,8 @@ function OutreachFunnelBlock({ leads, filterLabel }: { leads: Lead[], filterLabe
                     />
                   </div>
                 </div>
-
-                  <div className="flex items-center gap-2 text-[11px] py-0.5">
-                    <span className="w-36 truncate text-muted-foreground group-hover:text-foreground transition-colors">
-                      {s.label}
-                    </span>
-                    <div className="flex-1 h-5 bg-muted/40 rounded-sm overflow-hidden relative">
-                      <div 
-                        className="h-full rounded-sm transition-all duration-700 ease-out"
-                        style={{ 
-                          width: `${w}%`, 
-                          backgroundColor: `hsl(${hue} 55% ${47 - i * 1.5}%)`,
-                          opacity: 0.85
-                        }} 
-                      />
-                    </div>
-                    <span className="w-10 text-right font-semibold text-foreground tabular-nums">
-                      {s.count}
-                    </span>
-                    <div className="w-16 text-[10px] text-right tabular-nums">
-                      {rate != null ? (
-                        <span className={rate > 60 ? "text-emerald-500" : rate < 20 ? "text-rose-400" : "text-muted-foreground/70"}>
-                          {rate}% <span className="text-[8px] opacity-60">conv.</span>
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground/30">—</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
               );
+            })}
             })}
           </div>
         )}
