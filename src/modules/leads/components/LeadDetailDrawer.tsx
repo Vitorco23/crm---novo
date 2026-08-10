@@ -353,6 +353,12 @@ export default function LeadDetailDrawer({
     }
   };
 
+  const latestClassification = useMemo(() => {
+    return (lead.interactions || [])
+      .filter(i => i.classification)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.classification;
+  }, [lead.interactions]);
+
 
   const persist = (patch: Partial<Lead>) => {
     const next = { ...draft, ...patch };
