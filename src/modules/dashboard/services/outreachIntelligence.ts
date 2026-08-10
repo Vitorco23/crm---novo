@@ -24,7 +24,7 @@ export function useOutreachIntelligence(filterLeads: Lead[]) {
     // Helper para extrair a classificação estruturada mais recente de um lead
     const getLatestClassification = (l: Lead) => {
       const classified = (l.interactions || [])
-        .filter(i => i.classification)
+        .filter(i => i?.classification)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
       return classified?.classification;
     };
