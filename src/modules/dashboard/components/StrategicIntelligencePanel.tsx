@@ -570,12 +570,90 @@ export default function StrategicIntelligencePanel({ period = "thisMonth" }: { p
 
   return (
     <div className="space-y-4">
-      <ExecutiveSummary data={data} tick={tick} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <OpportunitiesBlock tick={tick} />
-        <ChangesBlock data={data} tick={tick} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <OutreachIntelligenceBlock data={data} tick={tick} />
+        <div className="space-y-4 lg:col-span-2">
+          <ExecutiveSummary data={data} tick={tick} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <OpportunitiesBlock tick={tick} />
+            <ChangesBlock data={data} tick={tick} />
+          </div>
+        </div>
       </div>
       <PipelineBlock data={data} />
     </div>
+  );
+}
+
+// ============================================================
+// BLOCO EXTRA: INTELIGÊNCIA DE OUTREACH (PHOENIX 3B)
+// ============================================================
+
+function OutreachIntelligenceBlock({ data, tick }: { data: CentralDataset; tick: number }) {
+  const stats = useMemo(() => {
+    const interactions = data.leads.flatMap(l => l.interactions || [])
+      .filter(i => inRange(i.date, data.range));
+
+    const withClass = interactions.filter(i => i.classification);
+    
+    return {
+      total: interactions.length,
+      connected: withClass.filter(i => i.classification?.connected).length,
+      gatekeepers: withClass.filter(i => i.classification?.gatekeeper_contact).length,
+      dms_identified: withClass.filter(i => i.classification?.decision_maker_identified).length,
+      dms_contacted: withClass.filter(i => i.classification?.decision_maker_contacted).length,
+      meetings: data.meetings.length
+    };
+  }, [data, tick]);
+
+  const items = [
+    { label: "Conexões Reais", value: stats.connected, icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" },
+    { label: "Filtros Vencidos", value: stats.gatekeepers, icon: ShieldCheck, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { label: "Decisores Identificados", value: stats.dms_identified, icon: BrainCircuit, color: "text-accent", bg: "bg-accent/10" },
+    { label: "Acesso Direto", value: stats.dms_contacted, icon: Sparkles, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  ];
+
+  return (
+    <Card className="h-full">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <BrainCircuit className="h-4 w-4 text-accent" />
+          Inteligência de Outreach
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-3">
+          {items.map((it, idx) => (
+            <div key={idx} className="flex items-center justify-between p-3 rounded-md border bg-card/50">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${it.bg}`}>
+                  <it.icon className={`h-4 w-4 ${it.color}`} />
+                </div>
+                <span className="text-xs font-medium text-muted-foreground">{it.label}</span>
+              </div>
+              <span className="text-lg font-bold tabular-nums">{it.value}</span>
+            </div>
+          ))}
+        </div>
+        
+        <div className="pt-2 border-t border-border/40">
+          <div className="flex justify-between items-end mb-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Eficiência de Acesso</span>
+            <span className="text-sm font-bold text-accent">
+              {stats.connected > 0 ? Math.round((stats.dms_contacted / stats.connected) * 100) : 0}%
+            </span>
+          </div>
+          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-accent transition-all duration-500" 
+              style={{ width: `${stats.connected > 0 ? (stats.dms_contacted / stats.connected) * 100 : 0}%` }}
+            />
+          </div>
+          <p className="text-[9px] text-muted-foreground mt-2 leading-relaxed">
+            * Dados baseados na classificação IA Phoenix 3B das interações Matteline e anotações manuais.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
