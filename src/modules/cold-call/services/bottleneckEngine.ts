@@ -384,18 +384,20 @@ function computeDimensionInsights(main: StageMetric, period: Period, opts: Analy
 
   const num = (s: PomodoroSession) => {
     switch (main.key) {
-      case "call_to_conn":  return s.connections || 0;
-      case "conn_to_dm":    return s.decisionMakers || 0;
-      case "dm_to_meet":    return s.meetings || 0;
-      default:              return s.meetings || 0;
+      case "call_to_conn":        return s.connections || 0;
+      case "conn_to_gatekeeper":  return Math.round((s.connections || 0) * 0.7); // Heurística para dados legados
+      case "gatekeeper_to_dm":    return s.decisionMakers || 0;
+      case "dm_to_meet":          return s.meetings || 0;
+      default:                    return s.meetings || 0;
     }
   };
   const den = (s: PomodoroSession) => {
     switch (main.key) {
-      case "call_to_conn":  return s.calls || 0;
-      case "conn_to_dm":    return s.connections || 0;
-      case "dm_to_meet":    return s.decisionMakers || 0;
-      default:              return s.calls || 0;
+      case "call_to_conn":        return s.calls || 0;
+      case "conn_to_gatekeeper":  return s.connections || 0;
+      case "gatekeeper_to_dm":    return Math.max(s.connections || 0, 1);
+      case "dm_to_meet":          return s.decisionMakers || 0;
+      default:                    return s.calls || 0;
     }
   };
 
