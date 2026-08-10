@@ -180,7 +180,7 @@ export function analyzeBottleneck(period: Period, opts: AnalyzeOptions = {}): Bo
   // Projeto Phoenix 3B: Uso da classificação estruturada para Gatekeepers e Decisores
   // Para manter compatibilidade com o histórico manual das sessões, fazemos um merge.
   const interactionsWithClassification = leads.flatMap(l => l.interactions || [])
-    .filter(i => inRange(i.date, period) && i.classification);
+    .filter(i => i && inRange(i.date, period) && i.classification);
 
   const gatekeepersIdentified = interactionsWithClassification.filter(i => i.classification?.gatekeeper_contact).length;
   const dmsIdentified = Math.max(
