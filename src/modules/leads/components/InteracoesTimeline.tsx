@@ -581,16 +581,16 @@ export default function InteracoesTimeline({
                           </p>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px]">
                             <div className="flex items-center gap-1">
-                              <ShieldCheck className={`h-3 w-3 ${i.classification.decision_maker_identified ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-                              <span>Decisor: {i.classification.decision_maker_identified ? "Identificado" : "N/D"}</span>
+                              <ShieldCheck className={`h-3 w-3 ${i.classification?.decision_maker_identified ? "text-emerald-500" : "text-muted-foreground/40"}`} />
+                              <span>Decisor: {i.classification?.decision_maker_identified ? "Identificado" : "N/D"}</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Zap className={`h-3 w-3 ${i.classification.connected ? "text-amber-500" : "text-muted-foreground/40"}`} />
-                              <span>Conexão: {i.classification.connected ? "Sim" : "Não"}</span>
+                              <Zap className={`h-3 w-3 ${i.classification?.connected ? "text-amber-500" : "text-muted-foreground/40"}`} />
+                              <span>Conexão: {i.classification?.connected ? "Sim" : "Não"}</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <UserIcon className={`h-3 w-3 ${i.classification.decision_maker_contacted ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-                              <span>Falaram: {i.classification.decision_maker_contacted ? "Sim" : "Não"}</span>
+                              <UserIcon className={`h-3 w-3 ${i.classification?.decision_maker_contacted ? "text-emerald-500" : "text-muted-foreground/40"}`} />
+                              <span>Falaram: {i.classification?.decision_maker_contacted ? "Sim" : "Não"}</span>
                             </div>
                           </div>
                           <div className="mt-1.5 text-[10px] text-accent/80 font-medium">
