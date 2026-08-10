@@ -592,9 +592,9 @@ export default function StrategicIntelligencePanel({ period = "thisMonth" }: { p
 function OutreachIntelligenceBlock({ data, tick }: { data: CentralDataset; tick: number }) {
   const stats = useMemo(() => {
     const interactions = data.leads.flatMap(l => l.interactions || [])
-      .filter(i => inRange(i.date, data.range));
+      .filter(i => i && inRange(i.date, data.range));
 
-    const withClass = interactions.filter(i => i.classification);
+    const withClass = interactions.filter(i => i?.classification);
     
     return {
       total: interactions.length,

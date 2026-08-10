@@ -384,6 +384,7 @@ function OutreachFunnelBlock({ leads, filterLabel }: { leads: Lead[], filterLabe
         ) : (
           <div className="space-y-1">
             {stages.map((s, i) => {
+              if (!s) return null;
               const w = maxVal > 0 ? Math.round((s.count / maxVal) * 100) : 0;
               const rate = s.rate;
               const hue = 78 + (i * 10);

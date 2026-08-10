@@ -354,8 +354,9 @@ export default function LeadDetailDrawer({
   };
 
   const latestClassification = useMemo(() => {
-    return (lead.interactions || [])
-      .filter(i => i.classification)
+    if (!lead.interactions) return null;
+    return lead.interactions
+      .filter(i => i?.classification)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.classification;
   }, [lead.interactions]);
 
@@ -495,17 +496,17 @@ export default function LeadDetailDrawer({
           {latestClassification && (
             <div className="mt-3 flex flex-wrap gap-2 items-center text-[10px]">
               <div className="flex items-center gap-1 text-accent font-semibold px-2 py-0.5 rounded bg-accent/10 border border-accent/20">
-                <BrainCircuit className="h-3 w-3" /> Outreach Inteligente: {latestClassification.access_status.replace(/_/g, " ")}
+                <BrainCircuit className="h-3 w-3" /> Outreach Inteligente: {latestClassification?.access_status?.replace(/_/g, " ") || "CLASSIFICANDO..."}
               </div>
               
               <div className="flex gap-2 text-muted-foreground bg-muted/20 px-2 py-0.5 rounded">
                 <span className="flex items-center gap-1">
-                  <ShieldCheck className={`h-2.5 w-2.5 ${latestClassification.decision_maker_identified ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-                  Decisor {latestClassification.decision_maker_identified ? "ID" : "N/D"}
+                  <ShieldCheck className={`h-2.5 w-2.5 ${latestClassification?.decision_maker_identified ? "text-emerald-500" : "text-muted-foreground/40"}`} />
+                  Decisor {latestClassification?.decision_maker_identified ? "ID" : "N/D"}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Zap className={`h-2.5 w-2.5 ${latestClassification.connected ? "text-amber-500" : "text-muted-foreground/40"}`} />
-                  Conexão {latestClassification.connected ? "OK" : "KO"}
+                  <Zap className={`h-2.5 w-2.5 ${latestClassification?.connected ? "text-amber-500" : "text-muted-foreground/40"}`} />
+                  Conexão {latestClassification?.connected ? "OK" : "KO"}
                 </span>
                 {latestClassification.decision_maker_name && (
                   <span className="text-foreground italic">"{latestClassification.decision_maker_name}"</span>
