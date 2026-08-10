@@ -227,7 +227,7 @@ export function analyzeBottleneck(period: Period, opts: AnalyzeOptions = {}): Bo
 
   // Base estatística mínima: ao menos uma etapa com denom >= 5.
   const anyBase = allStages.some((s) => s.denominator >= 5);
-  const hasEnoughData = anyBase && (calls + connections + dms) >= 10;
+  const hasEnoughData = anyBase && (calls + connections + dmsIdentified) >= 10;
 
   // Escolhe o gargalo principal: severidade > confiança > gap absoluto > oportunidades perdidas.
   const severityRank: Record<Severity, number> = { critico: 4, alto: 3, medio: 2, controlado: 1 };
