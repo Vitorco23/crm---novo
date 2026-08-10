@@ -113,6 +113,26 @@ const SCHEMA = {
   next_action: { type: "string", maxLength: 240 },
   attention: { type: "string", maxLength: 240, optional: true },
   updated_memory: { type: "string", maxLength: 240, optional: true },
+  classification: {
+    type: "object",
+    schema: {
+      connected: { type: "boolean" },
+      gatekeeper_contact: { type: "boolean" },
+      gatekeeper_name: { type: "string", optional: true, nullable: true },
+      decision_maker_identified: { type: "boolean" },
+      decision_maker_name: { type: "string", optional: true, nullable: true },
+      decision_maker_contacted: { type: "boolean" },
+      decision_maker_contact_obtained: { type: "boolean" },
+      decision_maker_phone: { type: "string", optional: true, nullable: true },
+      message_forwarding_promised: { type: "boolean" },
+      callback_requested: { type: "boolean" },
+      callback_datetime: { type: "string", optional: true, nullable: true },
+      follow_up_required: { type: "boolean" },
+      follow_up_datetime: { type: "string", optional: true, nullable: true },
+      access_status: { type: "enum", values: ["SEM_CONTATO", "GATEKEEPER", "DECISOR_IDENTIFICADO", "CONTATO_OBTIDO", "ENCAMINHAMENTO_PROMETIDO", "RETORNO_COMBINADO", "DECISOR_CONTATADO", "REUNIAO_MARCADA"] as const },
+      classification_confidence: { type: "enum", values: ["high", "medium", "low"] as const },
+    }
+  }
 } as const;
 
 function json(status: number, body: unknown) {
