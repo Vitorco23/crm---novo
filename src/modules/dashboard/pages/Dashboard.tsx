@@ -173,6 +173,12 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
   const movements = getMovementEvents();
   const meetings = getMeetings();
 
+  const filteredLeads = useMemo(() => getLeads().filter((l) => {
+    // Para leads, filtramos pela data de criação ou última movimentação significativa no período
+    const date = l.stageChangedAt || l.createdAt;
+    return filterByDate(date, filter, custom);
+  }), [filter, custom]);
+
   const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter, custom)), [sessions, filter, custom]);
   const filteredMeetings = useMemo(
     () => meetings.filter((m) => filterByDate(`${m.date}T${m.time || "00:00"}`, filter, custom)),
