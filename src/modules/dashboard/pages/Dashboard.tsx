@@ -3,9 +3,10 @@ import {
   getLeads, getSessions, getMovementEvents, getMeetings,
   COLD_CALL_STAGES, OPORTUNIDADES_STAGES,
   getGoalsSettings, getLeadsForPipeline,
+  type Lead
 } from "@/shared/services/store";
 import { getTransactions, formatBRL, monthKey } from "@/modules/financeiro/services/finance";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -14,7 +15,7 @@ import { ptBR } from "date-fns/locale";
 import {
   TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign,
   Handshake, Trophy as TrophyIcon, Send, Instagram, Mail, Activity, Layers, Crown,
-  Calendar as CalendarIcon, Sparkles,
+  Calendar as CalendarIcon, Sparkles, BrainCircuit, Zap, ShieldCheck, Target, Clock, CheckCircle2, FileText, Copy, ArrowRightLeft, Briefcase, ArrowRight
 } from "lucide-react";
 import StrategicIntelligencePanel, { type PeriodKey } from "@/modules/dashboard/components/StrategicIntelligencePanel";
 
@@ -23,6 +24,7 @@ import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/modules/pipeline/services/exportBuilders";
 import { resolvePeriod } from "@/modules/pipeline/services/exportEngine";
 import { computeEfficiencyRatio, countOutcomes, type EfficiencyRatio } from "@/modules/dashboard/services/efficiency";
+import { useOutreachIntelligence } from "../services/outreachIntelligence";
 import { cn } from "@/shared/utils/utils";
 
 type Filter = "day" | "week" | "month" | "custom";
