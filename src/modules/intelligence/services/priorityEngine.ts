@@ -165,7 +165,10 @@ function daysSince(iso?: string): number {
 
 function lastTouchISO(lead: Lead): string | undefined {
   const dates: string[] = [];
-  for (const i of lead.interactions || []) dates.push(i.date || i.createdAt || "");
+  for (const i of lead.interactions || []) {
+    if (!i) continue;
+    dates.push(i.date || i.createdAt || "");
+  }
   for (const c of lead.callNotes || []) dates.push(c.createdAt);
   dates.sort();
   return dates.filter(Boolean).pop() || lead.stageChangedAt;
@@ -274,7 +277,7 @@ function deriveAction(
   if (ctx.daysSinceInteraction >= 5) {
     return { action: "call", reason: `${ctx.daysSinceInteraction} dias sem nenhuma interação registrada.` };
   }
-  if ((lead.interactions || []).length + (lead.callNotes || []).length === 0) {
+  if (((lead.interactions || []).filter(Boolean).length) + ((lead.callNotes || []).filter(Boolean).length) === 0) {
     return { action: "call", reason: "Lead ainda não foi trabalhado — primeira abordagem pendente." };
   }
   return { action: "follow_up", reason: "Manter cadência para não perder tração comercial." };
