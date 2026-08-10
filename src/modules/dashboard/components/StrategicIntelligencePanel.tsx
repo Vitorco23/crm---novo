@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Sparkles, TrendingUp, TrendingDown, Activity, ChevronRight,
-  Layers, ArrowRight,
+  Layers, ArrowRight, BrainCircuit, ShieldCheck, Zap
 } from "lucide-react";
 
 import {
