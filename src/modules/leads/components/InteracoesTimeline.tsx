@@ -4,7 +4,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Phone, Users, MessageCircle, Mail, FileText, MapPin, Handshake,
   Video, Sparkles, Plus, Pencil, Trash2, ExternalLink, Loader2, CalendarCheck,
-  Calendar as CalendarIcon,
+  Calendar as CalendarIcon, BrainCircuit, ShieldCheck, Zap, User as UserIcon
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
