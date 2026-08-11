@@ -6,7 +6,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-landing-signature",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-landing-signature, x-webhook-secret",
 };
 
 const OWNER_EMAIL = "vitor@performance21.com.br";
@@ -125,6 +125,8 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 function extractLandingSecret(req: Request): string | null {
+  const hook = req.headers.get("x-webhook-secret");
+  if (hook && hook.trim()) return hook.trim();
   const sig = req.headers.get("x-landing-signature");
   if (sig && sig.trim()) return sig.trim();
   const auth = req.headers.get("authorization");
