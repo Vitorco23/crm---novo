@@ -165,7 +165,8 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
       toast.success("Resposta registrada. Lead permanece na etapa.");
     } else if (outcome === "sem_interesse") {
       note(labelFor(outcome));
-      updateLeadStage(lead.id, "Não Quer");
+      const oppStages = new Set(getStagesForPipeline("oportunidades"));
+      const lostStage = oppStages.has(lead.stage) ? "Perdido" : "Não Quer";
       if (reminderDays !== "none") {
         const when = new Date();
         when.setDate(when.getDate() + parseInt(reminderDays, 10));
@@ -175,10 +176,13 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
           `Follow-up após ${reminderDays} dias (lead havia recusado).`,
           when.toISOString(),
         );
-        toast.success(`Movido para "Não Quer" · lembrete em ${reminderDays} dias`);
-      } else {
-        toast.success('Movido para "Não Quer"');
+        toast.info(`Lembrete criado para daqui ${reminderDays} dias`);
       }
+      // O movimento é feito pelo LostReasonDialog após o motivo ser informado.
+      window.dispatchEvent(
+        new CustomEvent("p21:trigger-lost-reason", { detail: { id: lead.id, stage: lostStage } }),
+      );
+
     } else if (outcome === "pediu_retorno") {
       if (!returnDate || !returnTime) { toast.error("Informe data e hora do retorno"); return; }
       const when = new Date(`${returnDate}T${returnTime}:00`);
