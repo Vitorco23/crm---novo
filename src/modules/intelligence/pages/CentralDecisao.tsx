@@ -59,7 +59,7 @@ interface CentralFilters {
 }
 
 const DEFAULT_FILTERS: CentralFilters = {
-  period: "thisMonth",
+  period: "today",
   city: "all",
   niche: "all",
   campaign: "all",
