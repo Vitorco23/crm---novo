@@ -714,6 +714,18 @@ export async function syncInboundInteractions(): Promise<number> {
     usave<Lead[]>("p21_leads", leads);
   }
 
+  // Ledger de atividade estimada — import dinâmico evita ciclo de módulos.
+  if (ledgerEntries.length > 0) {
+    try {
+      const { recordActivity } = await import("@/shared/services/activityLedger");
+      for (const e of ledgerEntries) {
+        recordActivity({ leadId: e.leadId, channel: "call", source: "callface", at: e.at, externalKey: e.externalKey });
+      }
+    } catch (e) {
+      console.warn("[activityLedger] inbound record failed", e);
+    }
+  }
+
   if (okIds.length > 0) {
     const { error: upErr } = await supabase
       .from("interactions_inbound")
