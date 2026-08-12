@@ -24,6 +24,14 @@ export interface NicheCadence {
 // Cadência genérica (10 passos) — usada quando o nicho não tem cadência própria.
 export const DEFAULT_CADENCE: CadenceStep[] = [
   {
+    day: 0, attempt: 0, channel: "Ligação",
+    objective: "Primeiro contato",
+    nextAction: "Contato inicial (D0)",
+    script:
+      "Oi, {nome}? Aqui é {vendedor} da Performance21. Primeiro contato: quero entender rapidamente como está o comercial do {empresa} hoje. Você tem 2 minutos?",
+    estimatedMinutes: 5,
+  },
+  {
     day: 1, attempt: 1, channel: "Ligação",
     objective: "Gerar reflexão",
     nextAction: "Ligação de apresentação",
@@ -31,6 +39,7 @@ export const DEFAULT_CADENCE: CadenceStep[] = [
       "Oi, {nome}? Aqui é {vendedor} da Performance21. Estou ligando porque acompanhei rapidamente o {empresa} e percebi um ponto específico que provavelmente está travando crescimento de vocês. Você tem 2 minutos pra eu compartilhar?",
     estimatedMinutes: 5,
   },
+
   {
     day: 2, attempt: 2, channel: "WhatsApp",
     objective: "Reforço com contexto",
