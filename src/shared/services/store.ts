@@ -635,8 +635,8 @@ export function moveLeadsToStageBatch(
       `move:${l.id}:${effectiveStage}:${now2}`
     );
     const kind = classifyStage(effectiveStage);
-    if (kind === "call") emit("LigacaoRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage });
-    if (kind === "message") emit("MensagemRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage });
+    if (kind === "call") emit("LigacaoRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage, activitySource: "movement" });
+    if (kind === "message") emit("MensagemRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage, activitySource: "movement" });
   }
 
   if (onboardingTriggers.length > 0) {
