@@ -9,6 +9,7 @@
 
 import { onAny, on } from "@/shared/services/eventBus";
 import { appendHistory } from "@/shared/services/history";
+import { recordActivity, channelFromLabel, type ActivitySource } from "@/shared/services/activityLedger";
 import { extractMemoryFromLead } from "@/modules/intelligence/services/commercialMemory";
 import { getLeads } from "@/shared/services/store";
 
