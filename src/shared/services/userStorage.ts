@@ -673,6 +673,7 @@ export async function syncInboundInteractions(): Promise<number> {
   const okIds: string[] = [];
   const affectedLeadIds = new Set<string>();
   const failed: Array<{ id: string; error: string; dados: any }> = [];
+  const ledgerEntries: Array<{ leadId: string; at: string; externalKey: string }> = [];
 
   for (const row of rows) {
     try {
