@@ -15,27 +15,79 @@ import {
   getStagesForPipeline,
 } from "@/shared/services/store";
 import { upsertReminders, type Reminder } from "@/modules/agenda/services/reminders";
-import { getStepForLead } from "@/modules/leads/services/cadence";
-import { recordActivity } from "@/shared/services/activityLedger";
+import { getStepForLead, type CadenceChannel } from "@/modules/leads/services/cadence";
+import { recordActivity, type ActivityChannel } from "@/shared/services/activityLedger";
 
+// Desfechos canônicos — o rótulo muda por canal, a semântica não.
 type Outcome =
-  | "nao_atendeu"
-  | "caixa_postal"
+  | "sem_resposta"       // não atendeu / mensagem enviada sem resposta / interação feita
+  | "caixa_postal"       // só ligação
+  | "respondeu_interesse"
   | "sem_interesse"
   | "pediu_retorno"
   | "agendou"
-  | "numero_invalido"
+  | "contato_invalido"
   | "outro";
 
-const OPTIONS: { value: Outcome; label: string }[] = [
-  { value: "nao_atendeu", label: "Não atendeu" },
-  { value: "caixa_postal", label: "Caixa postal" },
-  { value: "sem_interesse", label: "Conversou mas não houve interesse" },
-  { value: "pediu_retorno", label: "Pediu retorno" },
-  { value: "agendou", label: "Agendou reunião" },
-  { value: "numero_invalido", label: "Número inválido" },
-  { value: "outro", label: "Outro" },
-];
+interface OutcomeOption { value: Outcome; label: string }
+
+const OPTIONS_BY_CHANNEL: Record<CadenceChannel, OutcomeOption[]> = {
+  "Ligação": [
+    { value: "sem_resposta", label: "Não atendeu" },
+    { value: "caixa_postal", label: "Caixa postal" },
+    { value: "sem_interesse", label: "Conversou mas não houve interesse" },
+    { value: "pediu_retorno", label: "Pediu retorno" },
+    { value: "agendou", label: "Agendou reunião" },
+    { value: "contato_invalido", label: "Número inválido" },
+    { value: "outro", label: "Outro" },
+  ],
+  "WhatsApp": [
+    { value: "sem_resposta", label: "Mensagem enviada (sem resposta ainda)" },
+    { value: "respondeu_interesse", label: "Respondeu com interesse" },
+    { value: "sem_interesse", label: "Respondeu sem interesse" },
+    { value: "pediu_retorno", label: "Pediu retorno" },
+    { value: "agendou", label: "Agendou reunião" },
+    { value: "contato_invalido", label: "Número não tem WhatsApp / inválido" },
+    { value: "outro", label: "Outro" },
+  ],
+  "Instagram": [
+    { value: "sem_resposta", label: "Interação feita (curtida/comentário)" },
+    { value: "respondeu_interesse", label: "Respondeu Story / DM" },
+    { value: "sem_interesse", label: "Sem retorno" },
+    { value: "agendou", label: "Agendou reunião" },
+    { value: "contato_invalido", label: "Perfil inativo ou inexistente" },
+    { value: "outro", label: "Outro" },
+  ],
+  "E-mail": [
+    { value: "sem_resposta", label: "E-mail enviado" },
+    { value: "respondeu_interesse", label: "Respondeu com interesse" },
+    { value: "sem_interesse", label: "Respondeu sem interesse" },
+    { value: "contato_invalido", label: "E-mail inválido / bounce" },
+    { value: "agendou", label: "Agendou reunião" },
+    { value: "outro", label: "Outro" },
+  ],
+};
+
+const CONTENT_LABEL: Record<CadenceChannel, string | null> = {
+  "Ligação": null,
+  "WhatsApp": "O que você enviou? (opcional)",
+  "Instagram": "O que você fez/enviou? (opcional)",
+  "E-mail": "Assunto/conteúdo enviado (opcional)",
+};
+
+const ACTIVITY_CHANNEL: Record<CadenceChannel, ActivityChannel> = {
+  "Ligação": "call",
+  "WhatsApp": "message",
+  "Instagram": "message",
+  "E-mail": "email",
+};
+
+const TITLE_BY_CHANNEL: Record<CadenceChannel, string> = {
+  "Ligação": "Como terminou essa tentativa?",
+  "WhatsApp": "Como terminou esse contato no WhatsApp?",
+  "Instagram": "Como terminou essa interação no Instagram?",
+  "E-mail": "Como terminou esse e-mail?",
+};
 
 function nextAttemptStage(currentStage: string): string {
   const m = currentStage.match(/tentativa\s*(\d+)/i);
@@ -60,13 +112,19 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
   const [returnDate, setReturnDate] = useState("");
   const [returnTime, setReturnTime] = useState("10:00");
   const [freeText, setFreeText] = useState("");
+  const [sentContent, setSentContent] = useState("");
 
   if (!lead) return null;
   const step = getStepForLead(lead);
+  const channel: CadenceChannel = step?.channel || "Ligação";
+  const options = OPTIONS_BY_CHANNEL[channel];
+  const contentLabel = CONTENT_LABEL[channel];
   const stepLabel = step ? `D${step.day} · ${step.channel} · ${step.nextAction}` : lead.stage;
+  const labelFor = (v: Outcome) => options.find((o) => o.value === v)?.label || v;
 
   const reset = () => {
-    setOutcome(""); setReminderDays("none"); setReturnDate(""); setReturnTime("10:00"); setFreeText("");
+    setOutcome(""); setReminderDays("none"); setReturnDate(""); setReturnTime("10:00");
+    setFreeText(""); setSentContent("");
   };
 
   const scheduleReminder = (title: string, message: string, whenISO: string) => {
@@ -87,22 +145,26 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
   const submit = () => {
     if (!outcome) { toast.error("Selecione um desfecho"); return; }
     const noteHeader = `[Cadência ${stepLabel}]`;
+    const contentSuffix = sentContent.trim() ? ` — Conteúdo: ${sentContent.trim()}` : "";
+    const note = (body: string) => addCallNote(lead.id, `${noteHeader} ${body}${contentSuffix}`);
 
-    // Toda conclusão de tentativa conta como uma ligação (fonte "tentativa").
+    // Toda conclusão de tentativa conta como atividade no canal do passo.
     // O ledger deduplica contra a movimentação/nota gerada logo em seguida.
-    recordActivity({ leadId: lead.id, channel: "call", source: "attempt" });
+    recordActivity({ leadId: lead.id, channel: ACTIVITY_CHANNEL[channel], source: "attempt" });
 
-    if (outcome === "nao_atendeu" || outcome === "caixa_postal") {
-      const label = outcome === "nao_atendeu" ? "Não atendeu" : "Caixa postal";
-      addCallNote(lead.id, `${noteHeader} ${label} — avançando cadência`);
+    if (outcome === "sem_resposta" || outcome === "caixa_postal") {
+      note(`${labelFor(outcome)} — avançando cadência`);
       const dest = nextAttemptStage(lead.stage);
       // "Sem contato" continua no pipeline cold_call → updateLeadStage é suficiente
       const coldStages = new Set(getStagesForPipeline("cold_call"));
       if (coldStages.has(dest)) updateLeadStage(lead.id, dest);
       else moveLeadToStage(lead.id, dest);
       toast.success(`Lead movido para ${dest}`);
+    } else if (outcome === "respondeu_interesse") {
+      note(labelFor(outcome));
+      toast.success("Resposta registrada. Lead permanece na etapa.");
     } else if (outcome === "sem_interesse") {
-      addCallNote(lead.id, `${noteHeader} Sem interesse`);
+      note(labelFor(outcome));
       updateLeadStage(lead.id, "Não Quer");
       if (reminderDays !== "none") {
         const when = new Date();
@@ -121,7 +183,7 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
       if (!returnDate || !returnTime) { toast.error("Informe data e hora do retorno"); return; }
       const when = new Date(`${returnDate}T${returnTime}:00`);
       if (isNaN(when.getTime())) { toast.error("Data/hora inválida"); return; }
-      addCallNote(lead.id, `${noteHeader} Pediu retorno em ${when.toLocaleString("pt-BR")}`);
+      note(`Pediu retorno em ${when.toLocaleString("pt-BR")}`);
       scheduleReminder(
         `Retornar para ${lead.company}`,
         `${lead.contact || lead.company} pediu retorno.`,
@@ -129,20 +191,25 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
       );
       toast.success("Lembrete de retorno criado. Lead permanece na etapa.");
     } else if (outcome === "agendou") {
-      addCallNote(lead.id, `${noteHeader} Agendou reunião`);
+      note("Agendou reunião");
       onOpenChange(false);
       reset();
       onRequestSchedule();
       onDone();
       return;
-    } else if (outcome === "numero_invalido") {
-      addCallNote(lead.id, `${noteHeader} Número inválido`);
-      updateLead(lead.id, { phoneInvalid: true });
-      updateLeadStage(lead.id, "Sem contato");
-      toast.success("Lead marcado como telefone inválido");
+    } else if (outcome === "contato_invalido") {
+      note(labelFor(outcome));
+      if (channel === "Ligação" || channel === "WhatsApp") {
+        updateLead(lead.id, { phoneInvalid: true });
+        updateLeadStage(lead.id, "Sem contato");
+        toast.success("Lead marcado como telefone inválido");
+      } else {
+        updateLeadStage(lead.id, "Sem contato");
+        toast.success("Lead movido para Sem contato");
+      }
     } else if (outcome === "outro") {
       if (!freeText.trim()) { toast.error("Descreva o desfecho"); return; }
-      addCallNote(lead.id, `${noteHeader} ${freeText.trim()}`);
+      note(freeText.trim());
       toast.success("Anotação registrada");
     }
 
@@ -155,18 +222,26 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Como terminou essa tentativa?</DialogTitle>
+          <DialogTitle>{TITLE_BY_CHANNEL[channel]}</DialogTitle>
           <DialogDescription>{stepLabel}</DialogDescription>
         </DialogHeader>
 
         <RadioGroup value={outcome} onValueChange={(v) => setOutcome(v as Outcome)} className="space-y-1.5">
-          {OPTIONS.map((o) => (
+          {options.map((o) => (
             <label key={o.value} className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 cursor-pointer hover:bg-accent/5">
               <RadioGroupItem value={o.value} id={`out-${o.value}`} />
               <span className="text-sm">{o.label}</span>
             </label>
           ))}
         </RadioGroup>
+
+        {contentLabel && (
+          <div className="mt-3">
+            <Label className="text-xs text-muted-foreground">{contentLabel}</Label>
+            <Textarea rows={3} value={sentContent} onChange={(e) => setSentContent(e.target.value)}
+              placeholder="Cole ou resuma o que foi enviado" />
+          </div>
+        )}
 
         {outcome === "sem_interesse" && (
           <div className="mt-3 space-y-2">
