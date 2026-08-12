@@ -701,6 +701,7 @@ export async function syncInboundInteractions(): Promise<number> {
       appended++;
       okIds.push(row.id);
       affectedLeadIds.add(lead.id);
+      ledgerEntries.push({ leadId: lead.id, at: interaction.date, externalKey: `inbound:${row.id}` });
     } catch (e: any) {
       console.error("[inbound-int] row failed", { id: row.id, error: e?.message || String(e) });
       failed.push({ id: row.id, error: e?.message || String(e), dados: row.dados });
