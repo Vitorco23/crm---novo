@@ -9,6 +9,7 @@ export type P21EventType =
   | "LeadMovido"
   | "LigacaoRegistrada"
   | "MensagemRegistrada"
+  | "InteracaoRegistrada"
   | "ReuniaoMarcada"
   | "ReuniaoAtualizada"
   | "ReuniaoRealizada"

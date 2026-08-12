@@ -16,6 +16,7 @@ import {
 } from "@/shared/services/store";
 import { upsertReminders, type Reminder } from "@/modules/agenda/services/reminders";
 import { getStepForLead } from "@/modules/leads/services/cadence";
+import { recordActivity } from "@/shared/services/activityLedger";
 
 type Outcome =
   | "nao_atendeu"
@@ -86,6 +87,10 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
   const submit = () => {
     if (!outcome) { toast.error("Selecione um desfecho"); return; }
     const noteHeader = `[Cadência ${stepLabel}]`;
+
+    // Toda conclusão de tentativa conta como uma ligação (fonte "tentativa").
+    // O ledger deduplica contra a movimentação/nota gerada logo em seguida.
+    recordActivity({ leadId: lead.id, channel: "call", source: "attempt" });
 
     if (outcome === "nao_atendeu" || outcome === "caixa_postal") {
       const label = outcome === "nao_atendeu" ? "Não atendeu" : "Caixa postal";

@@ -635,8 +635,8 @@ export function moveLeadsToStageBatch(
       `move:${l.id}:${effectiveStage}:${now2}`
     );
     const kind = classifyStage(effectiveStage);
-    if (kind === "call") emit("LigacaoRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage });
-    if (kind === "message") emit("MensagemRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage });
+    if (kind === "call") emit("LigacaoRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage, activitySource: "movement" });
+    if (kind === "message") emit("MensagemRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage, activitySource: "movement" });
   }
 
   if (onboardingTriggers.length > 0) {
@@ -710,7 +710,7 @@ export function addCallNote(leadId: string, text: string, scriptUsed?: string) {
       },
     ];
     saveLeads(leads);
-    emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: lead.stage, scriptUsed });
+    emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: lead.stage, scriptUsed, activitySource: "note" });
   }
 }
 
@@ -759,9 +759,11 @@ export function addInteraction(
   };
   lead.interactions = [...(lead.interactions || []), interaction];
   saveLeads(leads);
-  emit("LigacaoRegistrada", {
+  emit("InteracaoRegistrada", {
     leadId: lead.id, company: lead.company, stage: lead.stage,
     interactionType: interaction.type,
+    date: interaction.date,
+    activitySource: "interaction",
   });
 }
 
@@ -851,8 +853,8 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
     `move:${lead.id}:${effectiveStage}:${lead.stageChangedAt}`
   );
   const kind = classifyStage(effectiveStage);
-  if (kind === "call") emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage });
-  if (kind === "message") emit("MensagemRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage });
+  if (kind === "call") emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage, activitySource: "movement" });
+  if (kind === "message") emit("MensagemRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage, activitySource: "movement" });
   if (effectiveStage.toLowerCase().includes("realizada") && effectiveStage.toLowerCase().includes("reuni")) {
     emit("ReuniaoRealizada", { leadId: lead.id, company: lead.company });
   }

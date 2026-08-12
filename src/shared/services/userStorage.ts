@@ -43,6 +43,7 @@ const SCOPED_KEYS = [
   "p21_diretor_ia_last_run",
   "p21_diretor_ia_history",
   "p21_scripts",
+  "p21_activity_ledger",
 ];
 
 
@@ -672,6 +673,7 @@ export async function syncInboundInteractions(): Promise<number> {
   const okIds: string[] = [];
   const affectedLeadIds = new Set<string>();
   const failed: Array<{ id: string; error: string; dados: any }> = [];
+  const ledgerEntries: Array<{ leadId: string; at: string; externalKey: string }> = [];
 
   for (const row of rows) {
     try {
@@ -700,6 +702,7 @@ export async function syncInboundInteractions(): Promise<number> {
       appended++;
       okIds.push(row.id);
       affectedLeadIds.add(lead.id);
+      ledgerEntries.push({ leadId: lead.id, at: interaction.date, externalKey: `inbound:${row.id}` });
     } catch (e: any) {
       console.error("[inbound-int] row failed", { id: row.id, error: e?.message || String(e) });
       failed.push({ id: row.id, error: e?.message || String(e), dados: row.dados });
@@ -709,6 +712,18 @@ export async function syncInboundInteractions(): Promise<number> {
 
   if (appended > 0) {
     usave<Lead[]>("p21_leads", leads);
+  }
+
+  // Ledger de atividade estimada — import dinâmico evita ciclo de módulos.
+  if (ledgerEntries.length > 0) {
+    try {
+      const { recordActivity } = await import("@/shared/services/activityLedger");
+      for (const e of ledgerEntries) {
+        recordActivity({ leadId: e.leadId, channel: "call", source: "callface", at: e.at, externalKey: e.externalKey });
+      }
+    } catch (e) {
+      console.warn("[activityLedger] inbound record failed", e);
+    }
   }
 
   if (okIds.length > 0) {

@@ -19,6 +19,7 @@ import {
 import StrategicIntelligencePanel, { type PeriodKey } from "@/modules/dashboard/components/StrategicIntelligencePanel";
 
 import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
+import EstimatedActivityCard from "@/modules/dashboard/components/EstimatedActivityCard";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/modules/pipeline/services/exportBuilders";
 import { resolvePeriod } from "@/modules/pipeline/services/exportEngine";
@@ -299,6 +300,18 @@ function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomR
           })()}
         </CardContent>
       </Card>
+
+      {/* Dados estimados do período — ledger automático de atividade */}
+      {(() => {
+        const now = new Date();
+        let from = new Date(now); from.setHours(0, 0, 0, 0);
+        let to = new Date(now); to.setHours(23, 59, 59, 999);
+        if (filter === "week") { from = new Date(now); from.setDate(now.getDate() - 6); from.setHours(0, 0, 0, 0); }
+        if (filter === "month") { from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0); }
+        if (filter === "custom" && custom) { from = custom.start; to = custom.end; }
+        return <EstimatedActivityCard from={from} to={to} periodLabel={filterLabels[filter]} />;
+      })()}
+
 
       {/* Reuniões por canal alternativo */}
       {otherChannelsMeetings > 0 && (

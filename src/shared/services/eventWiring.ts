@@ -9,6 +9,7 @@
 
 import { onAny, on } from "@/shared/services/eventBus";
 import { appendHistory } from "@/shared/services/history";
+import { recordActivity, channelFromLabel, type ActivitySource } from "@/shared/services/activityLedger";
 import { extractMemoryFromLead } from "@/modules/intelligence/services/commercialMemory";
 import { getLeads } from "@/shared/services/store";
 
@@ -38,6 +39,46 @@ export function installEventWiring() {
 
   // Qualquer evento → broadcast leve para os observadores existentes.
   onAny(() => scheduleRefresh());
+
+  // ===== Ledger de atividade (dados estimados do dia) =====
+  const src = (ev: any, fallback: ActivitySource): ActivitySource =>
+    (ev?.payload?.activitySource as ActivitySource) || fallback;
+
+  on("LigacaoRegistrada", (ev: any) => {
+    if (!ev.payload?.leadId) return;
+    recordActivity({ leadId: ev.payload.leadId, channel: "call", source: src(ev, "movement") });
+  });
+
+  on("MensagemRegistrada", (ev: any) => {
+    if (!ev.payload?.leadId) return;
+    recordActivity({ leadId: ev.payload.leadId, channel: "message", source: src(ev, "movement") });
+  });
+
+  on("InteracaoRegistrada", (ev: any) => {
+    const { leadId, interactionType, date } = ev.payload || {};
+    if (!leadId) return;
+    recordActivity({
+      leadId,
+      channel: channelFromLabel(interactionType),
+      source: "interaction",
+      at: date && !isNaN(new Date(date).getTime()) ? new Date(date).toISOString() : undefined,
+    });
+  });
+
+  on("InteracaoRegistrada", (ev: any) => {
+    const { leadId, company, interactionType } = ev.payload || {};
+    appendHistory({
+      leadId,
+      type: "InteracaoRegistrada",
+      label: `Interação registrada${interactionType ? ` · ${interactionType}` : ""}`,
+      detail: company,
+    });
+  });
+
+  on("ReuniaoMarcada", (ev: any) => {
+    if (!ev.payload?.leadId) return;
+    recordActivity({ leadId: ev.payload.leadId, channel: "meeting", source: "meeting" });
+  });
 
   // Histórico cronológico ————————————————————————————————
   on("LeadMovido", (ev: any) => {
