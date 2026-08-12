@@ -49,6 +49,10 @@ const SOURCE_PRIORITY: Record<ActivitySource, number> = {
   movement: 1,
 };
 
+// Fontes inferidas pelo sistema (baixa confiança) x fontes explícitas do usuário/CallFace.
+const INFERRED_SOURCES: ActivitySource[] = ["movement", "note"];
+const isExplicit = (s: ActivitySource) => !INFERRED_SOURCES.includes(s);
+
 export const CHANNEL_LABELS: Record<ActivityChannel, string> = {
   call: "Ligações",
   message: "WhatsApp / Mensagens",
@@ -110,6 +114,35 @@ export function recordActivity(input: RecordInput): boolean {
   // Idempotência por chave externa (ex.: linha da fila da CallFace).
   if (input.externalKey && all.some((e) => e.externalKey === input.externalKey)) {
     return false;
+  }
+
+  const inWindow = (e: ActivityEvent) =>
+    !!e.leadId &&
+    (e.leadId || "") === (input.leadId || "") &&
+    Math.abs(new Date(e.at).getTime() - t) < DEDUPE_WINDOW_MS;
+
+  // ===== Prioridade entre canais =====
+  // CallFace / registro manual > movimentação inferida.
+  if (input.leadId) {
+    if (isExplicit(input.source)) {
+      // Um registro explícito absorve um registro inferido do mesmo lead,
+      // mesmo que o canal seja diferente (ex.: movi o card e depois registrei WhatsApp).
+      const inferredIdx = all.findIndex((e) => inWindow(e) && !isExplicit(e.source));
+      if (inferredIdx >= 0) {
+        all[inferredIdx] = {
+          ...all[inferredIdx],
+          channel: input.channel,
+          source: input.source,
+          at,
+          externalKey: input.externalKey ?? all[inferredIdx].externalKey,
+        };
+        save(all);
+        return false;
+      }
+    } else {
+      // Movimentação/nota não cria nada se já existe ação explícita na janela.
+      if (all.some((e) => inWindow(e) && isExplicit(e.source))) return false;
+    }
   }
 
   // Procura registro do mesmo lead + canal dentro da janela.
