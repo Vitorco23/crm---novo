@@ -853,8 +853,8 @@ export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoT
     `move:${lead.id}:${effectiveStage}:${lead.stageChangedAt}`
   );
   const kind = classifyStage(effectiveStage);
-  if (kind === "call") emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage });
-  if (kind === "message") emit("MensagemRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage });
+  if (kind === "call") emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage, activitySource: "movement" });
+  if (kind === "message") emit("MensagemRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage, activitySource: "movement" });
   if (effectiveStage.toLowerCase().includes("realizada") && effectiveStage.toLowerCase().includes("reuni")) {
     emit("ReuniaoRealizada", { leadId: lead.id, company: lead.company });
   }
