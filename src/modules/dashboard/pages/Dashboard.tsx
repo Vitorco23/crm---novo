@@ -19,6 +19,7 @@ import {
 import StrategicIntelligencePanel, { type PeriodKey } from "@/modules/dashboard/components/StrategicIntelligencePanel";
 
 import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
+import EstimatedActivityCard from "@/modules/dashboard/components/EstimatedActivityCard";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/modules/pipeline/services/exportBuilders";
 import { resolvePeriod } from "@/modules/pipeline/services/exportEngine";
