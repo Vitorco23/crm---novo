@@ -710,7 +710,7 @@ export function addCallNote(leadId: string, text: string, scriptUsed?: string) {
       },
     ];
     saveLeads(leads);
-    emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: lead.stage, scriptUsed });
+    emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: lead.stage, scriptUsed, activitySource: "note" });
   }
 }
 
