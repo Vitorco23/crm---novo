@@ -47,7 +47,7 @@ const filterLabels: Record<Filter, string> = {
 };
 
 export default function Dashboard() {
-  const [filter, setFilter] = useState<Filter>("month");
+  const [filter, setFilter] = useState<Filter>("day");
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
   const custom = customStart && customEnd

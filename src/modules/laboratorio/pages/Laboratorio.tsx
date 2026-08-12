@@ -42,7 +42,7 @@ import type {
 
 const FILTERS_KEY = "p21_lab_filters";
 const DEFAULT_FILTERS: LabFilters = {
-  period: "last30", niche: "all", campaign: "all", city: "all",
+  period: "today", niche: "all", campaign: "all", city: "all",
   script: "all", responsible: "all",
 };
 

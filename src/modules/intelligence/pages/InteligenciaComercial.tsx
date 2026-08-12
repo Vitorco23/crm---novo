@@ -152,7 +152,7 @@ function resolveRange(f: Filters): DateRange {
 
 function FiltersProvider({ children }: { children: ReactNode }) {
   const [filters, setFiltersState] = useState<Filters>({
-    period: "last30", responsible: "all", niche: "all", campaign: "all",
+    period: "today", responsible: "all", niche: "all", campaign: "all",
   });
   const setFilters = useCallback(
     (patch: Partial<Filters>) => setFiltersState((prev) => ({ ...prev, ...patch })),

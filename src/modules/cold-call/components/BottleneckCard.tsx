@@ -31,7 +31,7 @@ const SEVERITY_STYLE: Record<Severity, { badge: string; ring: string; dot: strin
 const CONFIDENCE_DOT: Record<string, string> = { alta: "🟢", media: "🟡", baixa: "🔴" };
 
 export default function BottleneckCard() {
-  const [periodKey, setPeriodKey] = useState<PeriodKey>("thisMonth");
+  const [periodKey, setPeriodKey] = useState<PeriodKey>("today");
   const [tick, setTick] = useState(0);
 
   // Reage a mudanças de dados (cloud sync, novos eventos, etc.)
