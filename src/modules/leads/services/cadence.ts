@@ -155,17 +155,27 @@ function nicheKey(niche?: string): string {
   return (niche || "").trim().toLowerCase() || "__default__";
 }
 
+/**
+ * Garante que a cadência tenha uma etapa D0 (contato inicial, attempt 0) e
+ * numeração 0-based: índice 0 = Novo Lead, índice N = Tentativa N.
+ * Cadências antigas (que começavam em Tentativa 1) ganham o D0 padrão na frente.
+ */
+export function normalizeCadence(steps: CadenceStep[]): CadenceStep[] {
+  const list = steps.some((s) => s.attempt === 0) ? [...steps] : [{ ...DEFAULT_CADENCE[0] }, ...steps];
+  return list.map((s, i) => ({ ...s, attempt: i }));
+}
+
 export function getCadenceForNiche(niche?: string): CadenceStep[] {
   const key = nicheKey(niche);
   const overrides = readOverrides();
-  if (overrides[key]?.length) return overrides[key];
-  if (niche && NICHE_OVERRIDES[key]) return NICHE_OVERRIDES[key];
+  if (overrides[key]?.length) return normalizeCadence(overrides[key]);
+  if (niche && NICHE_OVERRIDES[key]) return normalizeCadence(NICHE_OVERRIDES[key]);
   return DEFAULT_CADENCE;
 }
 
 export function saveCadenceForNiche(niche: string | undefined, steps: CadenceStep[]) {
   const map = readOverrides();
-  map[nicheKey(niche)] = steps;
+  map[nicheKey(niche)] = normalizeCadence(steps);
   writeOverrides(map);
 }
 
@@ -179,14 +189,15 @@ export function resetCadenceForNiche(niche?: string) {
 export function getStepForLead(lead: Lead): CadenceStep | null {
   const stage = (lead.stage || "").trim();
   const cadence = getCadenceForNiche(lead.niche);
-  if (/^novo lead$/i.test(stage)) return cadence[0] || null;
+  if (/^novo lead$/i.test(stage)) return cadence.find((s) => s.attempt === 0) || cadence[0] || null;
   const m = stage.match(/tentativa\s*(\d+)/i);
   if (m) {
     const n = parseInt(m[1], 10);
-    if (n >= 1 && n <= cadence.length) return cadence[n - 1];
+    return cadence.find((s) => s.attempt === n) || null;
   }
   return null;
 }
+
 
 /** "Hoje", "Atrasado 3d", "Novo" — momento da execução baseado em stageChangedAt. */
 export function executionMoment(lead: Lead): string {
