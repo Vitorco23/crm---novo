@@ -436,7 +436,7 @@ export default function LeadDetailDrawer({
               </Select>
               {isColdCall && step && (
                 <Badge variant="outline" className="text-[11px]">
-                  {lead.niche ? `Cadência ${lead.niche}` : "Cadência Padrão"} · D{step.day} · Tentativa {step.attempt}
+                  {lead.niche ? `Cadência ${lead.niche}` : "Cadência Padrão"} · D{step.day} · {step.attempt === 0 ? "Novo Lead" : `Tentativa ${step.attempt}`}
                 </Badge>
               )}
             </div>
@@ -977,7 +977,7 @@ export default function LeadDetailDrawer({
       <Dialog open={scriptOpen} onOpenChange={setScriptOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-base">Script — {step ? `D${step.day} · Tentativa ${step.attempt} · ${step.channel}` : ""}</DialogTitle>
+            <DialogTitle className="text-base">Script — {step ? `D${step.day} · ${step.attempt === 0 ? "Novo Lead" : `Tentativa ${step.attempt}`} · ${step.channel}` : ""}</DialogTitle>
             <DialogDescription className="text-xs">{step?.objective}</DialogDescription>
           </DialogHeader>
           <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed rounded bg-muted/40 border border-border/60 p-4 max-h-[60vh] overflow-y-auto">{step?.script}</pre>

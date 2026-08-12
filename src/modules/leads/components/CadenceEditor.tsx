@@ -17,7 +17,11 @@ import { pullKeysFromCloud } from "@/shared/services/userStorage";
 const CHANNELS: CadenceChannel[] = ["Ligação", "WhatsApp", "Instagram", "E-mail"];
 
 function renumber(steps: CadenceStep[]): CadenceStep[] {
-  return steps.map((s, i) => ({ ...s, attempt: i + 1 }));
+  return steps.map((s, i) => ({ ...s, attempt: i }));
+}
+
+function stepLabel(attempt: number): string {
+  return attempt === 0 ? "Novo Lead (D0)" : `Tentativa ${attempt}`;
 }
 
 export default function CadenceEditor({
@@ -80,7 +84,7 @@ export default function CadenceEditor({
       const last = prev[prev.length - 1];
       const nextDay = last ? last.day + 1 : 1;
       const nextStep: CadenceStep = {
-        day: nextDay, attempt: prev.length + 1,
+        day: nextDay, attempt: prev.length,
         channel: "Ligação", objective: "Novo objetivo",
         nextAction: "Descreva a ação", script: "",
         estimatedMinutes: 5,
@@ -137,13 +141,13 @@ export default function CadenceEditor({
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <div className="flex flex-col">
-                    <button type="button" onClick={() => move(i, -1)} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0} aria-label="Mover para cima">▲</button>
-                    <button type="button" onClick={() => move(i, 1)} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === steps.length - 1} aria-label="Mover para baixo">▼</button>
+                    <button type="button" onClick={() => move(i, -1)} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i <= 1} aria-label="Mover para cima">▲</button>
+                    <button type="button" onClick={() => move(i, 1)} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0 || i === steps.length - 1} aria-label="Mover para baixo">▼</button>
                   </div>
-                  <Badge variant="outline" className="text-[10px]">Tentativa {s.attempt}</Badge>
+                  <Badge variant="outline" className="text-[10px]">{stepLabel(s.attempt)}</Badge>
                   {current && <Badge className="bg-accent text-accent-foreground text-[10px]">Atual</Badge>}
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => remove(i)} className="h-7 text-destructive hover:text-destructive">
+                <Button size="sm" variant="ghost" onClick={() => remove(i)} disabled={i === 0} className="h-7 text-destructive hover:text-destructive disabled:opacity-30">
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -151,8 +155,8 @@ export default function CadenceEditor({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <div>
                   <Label className="text-[10px] text-muted-foreground">Dia (D+)</Label>
-                  <Input type="number" min={1} value={s.day}
-                    onChange={(e) => update(i, { day: Math.max(1, parseInt(e.target.value || "1", 10)) })}
+                  <Input type="number" min={0} value={s.day}
+                    onChange={(e) => update(i, { day: Math.max(0, parseInt(e.target.value || "0", 10)) })}
                     className="h-8 text-xs" />
                 </div>
                 <div>
