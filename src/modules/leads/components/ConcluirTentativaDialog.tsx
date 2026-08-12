@@ -16,6 +16,7 @@ import {
 } from "@/shared/services/store";
 import { upsertReminders, type Reminder } from "@/modules/agenda/services/reminders";
 import { getStepForLead } from "@/modules/leads/services/cadence";
+import { recordActivity } from "@/shared/services/activityLedger";
 
 type Outcome =
   | "nao_atendeu"
