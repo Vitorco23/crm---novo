@@ -759,9 +759,11 @@ export function addInteraction(
   };
   lead.interactions = [...(lead.interactions || []), interaction];
   saveLeads(leads);
-  emit("LigacaoRegistrada", {
+  emit("InteracaoRegistrada", {
     leadId: lead.id, company: lead.company, stage: lead.stage,
     interactionType: interaction.type,
+    date: interaction.date,
+    activitySource: "interaction",
   });
 }
 
