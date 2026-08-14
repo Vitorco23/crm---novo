@@ -8,7 +8,8 @@ import {
   BookMarked, 
   FlaskConical, 
   ChevronRight,
-  LayoutDashboard
+  LayoutDashboard,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 
