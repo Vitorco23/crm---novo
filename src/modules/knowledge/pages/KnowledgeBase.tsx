@@ -212,63 +212,65 @@ export default function KnowledgeBase() {
   };
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Knowledge Base"
-        description="Documentação oficial da Performance21 usada pelo Mentor P21 (RAG semântico)"
-        icon={Library}
-        actions={
-          <div className="flex gap-2">
-            <label className="inline-flex">
-              <input
-                type="file" accept=".md,.txt,.markdown,.docx,.pdf" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); e.target.value = ""; }}
-              />
-              <span>
-                <Button asChild size="sm" variant="outline" disabled={importing}>
-                  <span className="cursor-pointer">
-                    {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                    Importar arquivo
-                  </span>
-                </Button>
-              </span>
-            </label>
-            <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" /> Importar em massa
-            </Button>
-            <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-2" /> Novo documento</Button>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 items-center gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Pesquisar na base..."
+              className="pl-9 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-        }
-      />
-
-
-      <div className="flex flex-wrap gap-2 mb-4">
-        <Input
-          placeholder="Buscar por título, descrição ou tag…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
-        <select
-          value={filterCat}
-          onChange={(e) => setFilterCat(e.target.value)}
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-        >
-          <option value="all">Todas as categorias</option>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+          <select
+            value={filterCat}
+            onChange={(e) => setFilterCat(e.target.value)}
+            className="rounded-md border bg-background px-3 py-2 text-xs"
+          >
+            <option value="all">Todas as categorias</option>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="inline-flex">
+            <input
+              type="file" accept=".md,.txt,.markdown,.docx,.pdf" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImport(f); e.target.value = ""; }}
+            />
+            <span>
+              <Button asChild size="sm" variant="outline" className="text-xs" disabled={importing}>
+                <span className="cursor-pointer">
+                  {importing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1.5" />}
+                  Importar
+                </span>
+              </Button>
+            </span>
+          </label>
+          <Button variant="outline" size="sm" className="text-xs" onClick={() => setBulkOpen(true)}>
+            <Upload className="h-3.5 w-3.5 mr-1.5" /> Massa
+          </Button>
+          <Button size="sm" className="text-xs" onClick={openNew}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Novo
+          </Button>
+          <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Carregando documentos…
+        <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">
+          <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Carregando base de conhecimento…
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          Nenhum documento. Crie manualmente ou importe um arquivo (.md, .txt, .docx, .pdf).
+        <Card className="p-20 text-center text-muted-foreground">
+          <Library className="mx-auto h-10 w-10 mb-4 opacity-20" />
+          <p className="text-sm">Nenhum documento encontrado.</p>
         </Card>
       ) : (
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map((d) => (
             <Card key={d.id} className="p-4 hover:border-primary/40 transition">
