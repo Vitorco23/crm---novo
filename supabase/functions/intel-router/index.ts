@@ -20,6 +20,7 @@ import {
   type CrmContext,
   type KnowledgeCitation,
   type SpecialistId,
+  type IntelIntent,
 } from "../_shared/ai-core/index.ts";
 
 const corsHeaders = {
@@ -36,7 +37,7 @@ interface IntelRequest {
   history?: ConversationTurn[];
 }
 
-async function classify(question: string, ctx: CrmContext): Promise<SpecialistId> {
+async function classify(question: string, ctx: CrmContext): Promise<{ specialist: SpecialistId; intent: IntelIntent }> {
   const result = await callAI({
     task: "intel_router",
     system: composeSystem("intel.router.classifier"),
@@ -49,68 +50,69 @@ async function classify(question: string, ctx: CrmContext): Promise<SpecialistId
     maxTokens: 200,
     inputChars: question.length,
   });
-  const parsed = safeParseJson<{ specialist?: string }>(result.content);
-  const s = parsed?.specialist;
-  if (s === "diretor_comercial" || s === "consultor_leads" || s === "mentor_p21") return s;
-  // fallback conservador
-  return ctx.leadContext ? "consultor_leads" : "diretor_comercial";
+  const parsed = safeParseJson<{ specialist?: string; intent?: string }>(result.content);
+  
+  let s = parsed?.specialist as SpecialistId;
+  if (!["diretor_comercial", "consultor_leads", "mentor_p21"].includes(s)) {
+    s = ctx.leadContext ? "consultor_leads" : "diretor_comercial";
+  }
+
+  let intent = (parsed?.intent ?? "outra") as IntelIntent;
+  
+  return { specialist: s, intent };
 }
 
-async function runDiretor(question: string, ctx: CrmContext, history?: ConversationTurn[]) {
-  const built = buildChatContext({ history, crm: ctx });
+async function runSpecialist(
+  specialist: SpecialistId,
+  intent: IntelIntent,
+  question: string, 
+  ctx: CrmContext, 
+  authHeader: string,
+  history?: ConversationTurn[]
+) {
+  // 1. RAG Global: Sempre pesquisa se a intenção não for puramente operacional.
+  const needsKnowledge = ["metodologia", "objecoes", "script_comunicacao", "prescricao_oferta", "conselho_estrategia", "lead_especifico"].includes(intent) || specialist === "mentor_p21";
+  
+  let chunks: any[] = [];
+  let citations: any = null;
+
+  if (needsKnowledge) {
+    const res = await runKnowledgeSearch({
+      specialist,
+      query: question,
+      authHeader,
+      matchCount: 6,
+      minSimilarity: 0.30,
+      engine: createKnowledgeEngineForSpecialist(),
+    });
+    chunks = res.chunks;
+    citations = res.citations;
+  }
+
+  // 2. Contexto Mínimo: Se a intenção for metodológica/scripts, reduzimos o CRM snapshot para economizar tokens e ruído.
+  const reducedCtx = { ...ctx };
+  if (["metodologia", "objecoes", "script_comunicacao"].includes(intent)) {
+    reducedCtx.dashboardSnapshot = null; // Omitimos dashboard global para focar no conhecimento.
+  }
+
+  const built = buildChatContext({ history, crm: reducedCtx, knowledgeChunks: chunks });
+  
+  const promptId = specialist === "diretor_comercial" ? "intel.diretor.chat" 
+                 : specialist === "consultor_leads" ? "intel.consultor.chat" 
+                 : "intel.mentor.chat";
+
   const r = await callAI({
-    task: "diretor_comercial",
-    system: composeSystem("intel.diretor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE),
+    task: specialist as any,
+    system: composeSystem(promptId, UNTRUSTED_INPUT_SYSTEM_CLAUSE),
     user: built.text + `Pergunta atual:\n${buildQuestionBlock(question)}\n\nResponda em Markdown.`,
     json: false,
-    temperature: 0.4,
+    temperature: specialist === "mentor_p21" ? 0.3 : 0.4,
     maxTokens: 1800,
     inputChars: built.inputChars,
   });
-  return { content: r.content, model: r.modelUsed };
-}
 
-async function runConsultor(question: string, ctx: CrmContext, history?: ConversationTurn[]) {
-  const built = buildChatContext({ history, crm: ctx });
-  const r = await callAI({
-    task: "consultor_leads",
-    system: composeSystem("intel.consultor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE),
-    user: built.text + `Pergunta atual:\n${buildQuestionBlock(question)}\n\nResponda em Markdown.`,
-    json: false,
-    temperature: 0.4,
-    maxTokens: 1800,
-    inputChars: built.inputChars,
-  });
-  return { content: r.content, model: r.modelUsed };
-}
-
-async function runMentor(question: string, ctx: CrmContext, authHeader: string, history?: ConversationTurn[]):
-  Promise<{ content: string; model: string; citations: KnowledgeCitation[] }>
-{
-  // Ferramenta autorizada pelo Tool Registry. Best-effort: falha não bloqueia a resposta.
-  // Fase 3C: engine com cache por execução + governança da Knowledge Platform.
-  const { chunks, citations } = await runKnowledgeSearch({
-    specialist: "mentor_p21",
-    query: question,
-    authHeader,
-    matchCount: 6,
-    minSimilarity: 0.30,
-    engine: createKnowledgeEngineForSpecialist(),
-  });
-
-  const built = buildChatContext({ history, crm: ctx, knowledgeChunks: chunks });
-  const r = await callAI({
-    task: "mentor_p21",
-    system: composeSystem("intel.mentor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE),
-    user: built.text + `Pergunta atual:\n${buildQuestionBlock(question)}\n\nResponda em Markdown.`,
-    json: false,
-    temperature: 0.3,
-    maxTokens: 1800,
-    inputChars: built.inputChars,
-  });
   return { content: r.content, model: r.modelUsed, citations };
 }
-
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -139,38 +141,26 @@ Deno.serve(async (req) => {
     }
 
     const ctx: CrmContext = body.context ?? {};
-    const specialist: SpecialistId = body.specialistOverride
-      ?? await classify(question, ctx);
+    const { specialist, intent } = body.specialistOverride 
+      ? { specialist: body.specialistOverride, intent: "outra" as IntelIntent }
+      : await classify(question, ctx);
 
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization")!;
     const history = normalizeHistory(body.history);
 
-    // Observabilidade: somente metadados agregados (Fase 3D.1).
+    // Observabilidade: somente metadados agregados.
     telemetry.setSpecialist(specialist);
     telemetry.setConversation(body.conversationId ?? null);
     if (ctx && Object.keys(ctx).length) telemetry.addSource("crm");
     if (ctx.leadContext) telemetry.addSource("lead");
     if (history.length) telemetry.addSource("history");
 
-    let content = "";
-    let model = "";
-    let citations: unknown = null;
+    const r = await runSpecialist(specialist, intent, question, ctx, authHeader, history);
+    const content = r.content;
+    const model = r.model;
+    const citations = r.citations;
 
-    if (specialist === "diretor_comercial") {
-      const r = await runDiretor(question, ctx, history);
-      content = r.content; model = r.model;
-    } else if (specialist === "consultor_leads") {
-      if (!ctx.leadContext) {
-        // Sem lead aberto: não bloqueia — responde como Diretor Comercial com o contexto disponível.
-        const r = await runDiretor(question, ctx, history);
-        content = r.content; model = r.model;
-      } else {
-        const r = await runConsultor(question, ctx, history);
-        content = r.content; model = r.model;
-      }
-    } else {
-      const r = await runMentor(question, ctx, authHeader, history);
-      content = r.content; model = r.model; citations = r.citations;
+    if (citations) {
       telemetry.addSource("knowledge");
       telemetry.addTool("knowledge.search");
     }
