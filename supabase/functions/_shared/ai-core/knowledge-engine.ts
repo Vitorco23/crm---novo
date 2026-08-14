@@ -135,6 +135,7 @@ export async function getKnowledgeContext(
       authHeader: q.authHeader,
     });
     let list = (raw?.chunks ?? []).map(sanitizeChunk).filter((c) => c.content.length > 0);
+    list = deduplicateChunks(list);
     if (q.scope === "document") {
       list = list.filter((c) => c.document_id === scoped.entity);
     }

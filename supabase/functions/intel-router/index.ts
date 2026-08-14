@@ -1,7 +1,6 @@
 // intel-router — Central de Inteligência.
 // Classifica a pergunta e delega para o especialista correto.
-// Fase 3A (Phoenix): contexto, prompts e ferramentas vêm do AI Core compartilhado.
-// Contrato público da função (rota, payload e retorno) permanece inalterado.
+// Fase 4: Observabilidade, RAG otimizado e Auditoria de contexto.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI } from "../_shared/ai-router.ts";
@@ -18,7 +17,6 @@ import {
   summarizeContext,
   type ConversationTurn,
   type CrmContext,
-  type KnowledgeCitation,
   type SpecialistId,
   type IntelIntent,
 } from "../_shared/ai-core/index.ts";
@@ -70,29 +68,36 @@ async function runSpecialist(
   authHeader: string,
   history?: ConversationTurn[]
 ) {
-  // 1. RAG Global: Sempre pesquisa se a intenção não for puramente operacional.
+  const startTime = Date.now();
+  // 1. RAG Global: Sempre pesquisa se a intenção envolver conhecimento institucional.
   const needsKnowledge = ["metodologia", "objecoes", "script_comunicacao", "prescricao_oferta", "conselho_estrategia", "lead_especifico"].includes(intent) || specialist === "mentor_p21";
   
   let chunks: any[] = [];
   let citations: any = null;
+  let knowledgeStatus: "found" | "none" | "skipped" = "skipped";
 
   if (needsKnowledge) {
     const res = await runKnowledgeSearch({
       specialist,
       query: question,
       authHeader,
-      matchCount: 6,
-      minSimilarity: 0.30,
+      matchCount: 8,
+      minSimilarity: 0.25,
       engine: createKnowledgeEngineForSpecialist(),
     });
     chunks = res.chunks;
     citations = res.citations;
+    knowledgeStatus = chunks.length > 0 ? "found" : "none";
   }
 
-  // 2. Contexto Mínimo: Se a intenção for metodológica/scripts, reduzimos o CRM snapshot para economizar tokens e ruído.
+  // 2. Contexto Mínimo: Otimização de ruído por intenção.
   const reducedCtx = { ...ctx };
+  const operationalUsed: string[] = [];
+  if (ctx.dashboardSnapshot) operationalUsed.push("dashboard");
+  if (ctx.leadContext) operationalUsed.push("lead");
+
   if (["metodologia", "objecoes", "script_comunicacao"].includes(intent)) {
-    reducedCtx.dashboardSnapshot = null; // Omitimos dashboard global para focar no conhecimento.
+    reducedCtx.dashboardSnapshot = null;
   }
 
   const built = buildChatContext({ history, crm: reducedCtx, knowledgeChunks: chunks });
@@ -111,7 +116,23 @@ async function runSpecialist(
     inputChars: built.inputChars,
   });
 
-  return { content: r.content, model: r.modelUsed, citations };
+  const observability = {
+    intention: intent,
+    specialist,
+    knowledge_result: knowledgeStatus,
+    operational_data: operationalUsed,
+    context_size_chars: built.inputChars,
+    latency_ms: Date.now() - startTime,
+    model: r.modelUsed,
+    knowledge_sources: citations?.map((c: any) => ({
+      document_id: c.documentId,
+      titulo: c.titulo,
+      categoria: c.categoria,
+      similarity: c.similarity
+    })) ?? []
+  };
+
+  return { content: r.content, model: r.modelUsed, citations, observability };
 }
 
 Deno.serve(async (req) => {
@@ -134,11 +155,6 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (question.length > 4000) {
-      return new Response(JSON.stringify({ error: "question_too_long" }), {
-        status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const ctx: CrmContext = body.context ?? {};
     const { specialist, intent } = body.specialistOverride 
@@ -148,23 +164,11 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization")!;
     const history = normalizeHistory(body.history);
 
-    // Observabilidade: somente metadados agregados.
     telemetry.setSpecialist(specialist);
     telemetry.setConversation(body.conversationId ?? null);
-    if (ctx && Object.keys(ctx).length) telemetry.addSource("crm");
-    if (ctx.leadContext) telemetry.addSource("lead");
-    if (history.length) telemetry.addSource("history");
-
+    
     const r = await runSpecialist(specialist, intent, question, ctx, authHeader, history);
-    const content = r.content;
-    const model = r.model;
-    const citations = r.citations;
-
-    if (citations) {
-      telemetry.addSource("knowledge");
-      telemetry.addTool("knowledge.search");
-    }
-
+    
     // Persiste user + assistant se houver conversationId
     if (body.conversationId) {
       const sb = createClient(
@@ -183,22 +187,27 @@ Deno.serve(async (req) => {
         {
           conversation_id: body.conversationId,
           role: "assistant",
-          content,
+          content: r.content,
           specialist,
-          citations,
-          model_used: model,
+          citations: r.citations,
+          model_used: r.model,
+          observability: r.observability,
         },
       ]);
     }
 
     await telemetry.success({
-      model: model || null,
+      model: r.model || null,
       inputChars: question.length,
-      outputChars: content.length,
+      outputChars: r.content.length,
     });
 
     return new Response(JSON.stringify({
-      specialist, content, model, citations,
+      specialist, 
+      content: r.content, 
+      model: r.model, 
+      citations: r.citations,
+      observability: r.observability,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     const err = e as Error & { status?: number };

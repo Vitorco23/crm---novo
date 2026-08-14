@@ -25,6 +25,7 @@ interface ChatMessage {
   specialist?: Specialist | null;
   citations?: Array<{ documentId: string; titulo: string; categoria: string; versao: number; similarity: number }> | null;
   model_used?: string | null;
+  observability?: Record<string, any> | null;
   created_at?: string;
 }
 
