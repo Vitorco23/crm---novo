@@ -80,8 +80,9 @@ export function AgendaEventCard({ event, onOpenLead, onRefresh }: AgendaEventCar
         {isTask ? (
           <button 
             onClick={handleToggleTask}
+            aria-label={isCompleted ? "Reabrir tarefa" : "Concluir tarefa"}
             className={cn(
-              "flex h-5 w-5 items-center justify-center rounded-full border transition-colors",
+              "flex h-5 w-5 items-center justify-center rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-accent outline-none",
               isCompleted ? "bg-accent border-accent text-accent-foreground" : "border-muted-foreground/30 hover:border-accent"
             )}
           >
@@ -111,10 +112,10 @@ export function AgendaEventCard({ event, onOpenLead, onRefresh }: AgendaEventCar
             )}
           </div>
           
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
             {event.hangoutLink && (
-              <Button size="icon" variant="ghost" className="h-7 w-7 text-accent" asChild title="Entrar no Meet">
-                <a href={event.hangoutLink} target="_blank" rel="noopener noreferrer">
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-accent" asChild>
+                <a href={event.hangoutLink} target="_blank" rel="noopener noreferrer" aria-label="Entrar no Google Meet">
                   <Video className="h-3.5 w-3.5" />
                 </a>
               </Button>
@@ -122,7 +123,7 @@ export function AgendaEventCard({ event, onOpenLead, onRefresh }: AgendaEventCar
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7">
+                <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Mais ações">
                   <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
