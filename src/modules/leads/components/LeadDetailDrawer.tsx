@@ -485,264 +485,144 @@ export default function LeadDetailDrawer({
 
 
 
-          {/* GERAL */}
-          <TabsContent value="geral" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-5">
-            {/* Próxima Ação */}
+          {/* GERAL - Reorganizado por Níveis */}
+          <TabsContent value="geral" className="flex-1 overflow-y-auto px-5 py-4 mt-0 space-y-6">
+            
+            {/* NÍVEL 1 - Essencial: Próxima Ação */}
             {isColdCall && step && (
-              <section className="rounded-lg border border-accent/40 bg-accent/5 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs uppercase tracking-wide text-accent font-semibold flex items-center gap-1.5">
-                    <Target className="h-3.5 w-3.5" /> Próxima Ação
+              <section className="rounded-lg border border-accent/30 bg-accent/5 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] uppercase tracking-wider text-accent font-bold flex items-center gap-1">
+                    <Target className="h-3 w-3" /> Próxima Ação
                   </span>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {executionMoment(lead)}
-                  </span>
+                  <span className="text-[10px] text-muted-foreground">{executionMoment(lead)}</span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
-                  <div><div className="text-[10px] uppercase text-muted-foreground">Tentativa</div><div className="font-medium">T{step.attempt}</div></div>
-                  <div><div className="text-[10px] uppercase text-muted-foreground">Canal</div><div className="font-medium">{step.channel}</div></div>
-                  <div><div className="text-[10px] uppercase text-muted-foreground">Objetivo</div><div className="font-medium">{step.objective}</div></div>
-                  <div><div className="text-[10px] uppercase text-muted-foreground">Ação</div><div className="font-medium text-accent">{step.nextAction}</div></div>
+                <div className="flex flex-wrap items-center gap-3 text-xs mb-2">
+                  <div className="bg-background/40 px-2 py-1 rounded">T{step.attempt} · {step.channel}</div>
+                  <div className="font-medium text-accent">{step.nextAction}</div>
                 </div>
-                
-                <div className="bg-background/50 rounded-md p-3 border border-border/40 mb-3">
-                  <p className="text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">
-                    {processTemplate(step.script, lead, user?.user_metadata?.full_name || user?.email)}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setScriptOpen(true)}>
-                    <FileText className="h-3.5 w-3.5 mr-1" /> Editar Cadência
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 text-xs bg-accent text-accent-foreground flex-1" onClick={() => setConcluirOpen(true)}>
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Concluir
                   </Button>
-                  <Button size="sm" variant="outline" onClick={copyScript}>
-                    <Copy className="h-3.5 w-3.5 mr-1" /> Copiar Texto
-                  </Button>
-                  <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setConcluirOpen(true)}>
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Marcar Realizada
-                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={copyScript}><Copy className="h-3 w-3" /></Button>
                 </div>
               </section>
             )}
 
-            {/* Mover / Marcar reunião */}
-            <section className="grid md:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
-                  <ArrowRightLeft className="h-3 w-3" /> Mover lead para...
-                </Label>
-                <Select
-                  value={lead.stage}
-                  onValueChange={(toStage) => {
-                    if (toStage === lead.stage) return;
-                    
-                    const isLost = toStage.toLowerCase().includes("não quer") || 
-                                 toStage.toLowerCase().includes("nao quer") || 
-                                 toStage === "Perdido";
-                    
-                    if (isLost) {
-                      // Dispara evento para o PipelineBoard capturar e abrir o LostReasonDialog
-                      window.dispatchEvent(new CustomEvent("p21:trigger-lost-reason", { 
-                        detail: { id: lead.id, stage: toStage } 
-                      }));
+            {/* NÍVEL 1 - Essencial: Mover e Marcar */}
+            <div className="grid grid-cols-2 gap-3">
+               <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-tighter">Etapa Atual</Label>
+                  <Select value={lead.stage} onValueChange={(toStage) => {
+                      if (toStage === lead.stage) return;
+                      const isLost = toStage.toLowerCase().includes("não quer") || toStage.toLowerCase().includes("nao quer") || toStage === "Perdido";
+                      if (isLost) {
+                        window.dispatchEvent(new CustomEvent("p21:trigger-lost-reason", { detail: { id: lead.id, stage: toStage } }));
+                        onOpenChange(false);
+                        return;
+                      }
+                      moveLeadToStage(lead.id, toStage);
+                      onRefresh();
                       onOpenChange(false);
-                      return;
-                    }
-
-                    const result = moveLeadToStage(lead.id, toStage);
-                    const labels: Record<PipelineName, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
-                    if (result.missingContractValue) toast.warning("Lead movido para Ganho sem valor de contrato definido");
-                    if (result.autoTransfer) toast.success(`Lead transferido para ${labels[result.autoTransfer]}!`);
-                    else toast.success("Lead movido!");
-                    onRefresh();
-                    const isAlinhamentoStage = toStage === "Reunião Realizada" && getPipelineForStage(toStage) === "oportunidades";
-                    const alreadyHasAlinhamento = getMeetingsForLead(lead.id).some((m) => (m.title || "").toLowerCase().startsWith("reunião de alinhamento"));
-                    if (isAlinhamentoStage && !alreadyHasAlinhamento) setAlignmentOpen(true);
-                    else onOpenChange(false);
-                  }}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="max-h-80">
-                    {(["cold_call", "oportunidades", "onboarding"] as PipelineName[]).map((p) => {
-                      const label = p === "cold_call" ? "Cold Call" : p === "oportunidades" ? "Oportunidades" : "Onboarding";
-                      const stages = getStagesForPipeline(p);
-                      if (stages.length === 0) return null;
-                      return (
+                  }}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(["cold_call", "oportunidades", "onboarding"] as PipelineName[]).map((p) => (
                         <SelectGroup key={p}>
-                          <SelectLabel className="text-[10px] uppercase tracking-wider text-accent">{label}</SelectLabel>
-                          {stages.map((s) => (<SelectItem key={`${p}-${s}`} value={s}>{s}</SelectItem>))}
+                          <SelectLabel className="text-[9px] uppercase text-accent">{p}</SelectLabel>
+                          {getStagesForPipeline(p).map((s) => (<SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>))}
                         </SelectGroup>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              {!isOnboarding && (
-                <div className="flex items-end">
-                  <Button onClick={() => setMeetingOpen(true)} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                    <CalendarCheck className="h-4 w-4 mr-1.5" /> Marcar Reunião
+                      ))}
+                    </SelectContent>
+                  </Select>
+               </div>
+               <div className="flex items-end">
+                  <Button size="sm" onClick={() => setMeetingOpen(true)} className="h-8 w-full text-xs bg-accent">
+                    <CalendarCheck className="h-3.5 w-3.5 mr-1" /> Reunião
                   </Button>
+               </div>
+            </div>
+
+            {/* NÍVEL 2 - Complementar: Contatos e Negócio */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div className="space-y-1">
+                   <Label className="text-[10px] text-muted-foreground">Decisor / Contato</Label>
+                   <Input size={1} className="h-8 text-xs" value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} onBlur={() => commitOnBlur({ contact: draft.contact })} />
+                </div>
+                <div className="space-y-1">
+                   <Label className="text-[10px] text-muted-foreground">Telefone</Label>
+                   <Input size={1} className="h-8 text-xs" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} onBlur={() => commitOnBlur({ phone: draft.phone })} />
+                </div>
+                <div className="space-y-1">
+                   <Label className="text-[10px] text-muted-foreground">WhatsApp</Label>
+                   <Input size={1} className="h-8 text-xs" value={draft.whatsapp || ""} placeholder={draft.phone} onChange={(e) => setDraft({ ...draft, whatsapp: e.target.value })} onBlur={() => commitOnBlur({ whatsapp: draft.whatsapp })} />
+                </div>
+                <div className="space-y-1">
+                   <Label className="text-[10px] text-muted-foreground">Instagram</Label>
+                   <Input size={1} className="h-8 text-xs" value={draft.instagramLink} onChange={(e) => setDraft({ ...draft, instagramLink: e.target.value })} onBlur={() => commitOnBlur({ instagramLink: draft.instagramLink })} />
+                </div>
+              </div>
+
+              {(isOnboarding || isOportunidades) && (
+                <div className="p-3 rounded border border-border/40 bg-muted/10 grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground uppercase">Valor Contrato</Label>
+                    <Input type="number" className="h-8 text-xs" value={draft.contractValue ?? ""} onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })} onBlur={() => commitOnBlur({ contractValue: draft.contractValue })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground uppercase">Serviço</Label>
+                    <Input className="h-8 text-xs" value={draft.serviceType ?? ""} onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })} onBlur={() => commitOnBlur({ serviceType: draft.serviceType })} />
+                  </div>
                 </div>
               )}
-            </section>
+            </div>
 
-            {/* Onboarding contract */}
-            {isOnboarding && (
-              <section className="rounded-md border border-accent/30 bg-accent/5 p-3 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-medium text-accent">
-                  <DollarSign className="h-3.5 w-3.5" /> Contrato Fechado
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
-                    <Input type="number" min="0" step="0.01" inputMode="decimal"
-                      value={draft.contractValue ?? ""}
-                      onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
-                      onBlur={() => commitOnBlur({ contractValue: draft.contractValue })}
-                      placeholder="0,00" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1"><Briefcase className="h-3 w-3" /> Tipo de Serviço</Label>
-                    <Input value={draft.serviceType ?? ""}
-                      onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })}
-                      onBlur={() => commitOnBlur({ serviceType: draft.serviceType })}
-                      placeholder="Ex: Tráfego pago" />
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Oportunidades contract */}
-            {isOportunidades && (() => {
-              const PRESETS = ["Gestão Recorrente", "Implementação Comercial"];
-              const current = draft.serviceType ?? "";
-              const selectValue = current === "" ? "" : (PRESETS.includes(current) ? current : "Outro");
-              return (
-                <section className="rounded-md border border-accent/30 bg-accent/5 p-3 space-y-3">
+            {/* NÍVEL 3 - Avançado: Seções Recolhíveis */}
+            <Accordion type="multiple" className="w-full">
+              <AccordionItem value="empresa" className="border-border/40">
+                <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
+                  <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Detalhes da Empresa</span>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4 space-y-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-accent flex items-center gap-1 mb-1.5"><DollarSign className="h-3.5 w-3.5" /> Valor do Contrato (R$)</Label>
-                      <Input type="number" min="0" step="0.01" inputMode="decimal"
-                        value={draft.contractValue ?? ""}
-                        onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
-                        onBlur={() => commitOnBlur({ contractValue: draft.contractValue })}
-                        placeholder="0,00" />
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Nicho</Label>
+                      <Input className="h-8 text-xs" value={draft.niche} onChange={(e) => setDraft({ ...draft, niche: e.target.value })} onBlur={() => commitOnBlur({ niche: draft.niche })} />
                     </div>
-                    <div>
-                      <Label className="text-xs text-accent flex items-center gap-1 mb-1.5"><Briefcase className="h-3.5 w-3.5" /> Tipo de Serviço</Label>
-                      <Select value={selectValue || undefined}
-                        onValueChange={(v) => { const next = v === "Outro" ? "" : v; setDraft({ ...draft, serviceType: next }); commitOnBlur({ serviceType: next }); }}>
-                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Gestão Recorrente">Gestão Recorrente</SelectItem>
-                          <SelectItem value="Implementação Comercial">Implementação Comercial</SelectItem>
-                          <SelectItem value="Outro">Outro (especificar)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {selectValue === "Outro" && (
-                        <Input className="mt-2" placeholder="Especifique"
-                          value={draft.serviceType ?? ""}
-                          onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })}
-                          onBlur={() => commitOnBlur({ serviceType: draft.serviceType })} />
-                      )}
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Cidade</Label>
+                      <Input className="h-8 text-xs" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} onBlur={() => commitOnBlur({ city: draft.city })} />
                     </div>
                   </div>
-                </section>
-              );
-            })()}
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/20">
+                    <span className="text-xs">Prioridade ICP</span>
+                    <StarRating value={draft.icpStars} onChange={(v) => { persist({ icpStars: v }); onRefresh(); }} />
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/20">
+                    <span className="text-xs">Faz Anúncios?</span>
+                    <Switch checked={draft.runsAds} onCheckedChange={(v) => { persist({ runsAds: v }); onRefresh(); }} />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Contatos */}
-            <section>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1"><UserIcon className="h-3 w-3" /> Contatos</h3>
-              <div className="grid md:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Decisor</Label>
-                  <Input value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} onBlur={() => commitOnBlur({ contact: draft.contact })} />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" /> Telefone</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} onBlur={() => commitOnBlur({ phone: draft.phone })} />
-                    {draft.phone && (
-                      <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                        <a href={`tel:${draft.phone.replace(/[^\d+]/g, "")}`} aria-label="Ligar"><Phone className="h-3.5 w-3.5" /></a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><MessageCircle className="h-3 w-3" /> WhatsApp</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.whatsapp ?? ""} placeholder={draft.phone || "Mesmo do telefone"}
-                      onChange={(e) => setDraft({ ...draft, whatsapp: e.target.value })}
-                      onBlur={() => commitOnBlur({ whatsapp: draft.whatsapp })} />
-                    {whats && (
-                      <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                        <a href={whatsUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp"><ExternalLink className="h-3.5 w-3.5" /></a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><Instagram className="h-3 w-3" /> Instagram</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.instagramLink} onChange={(e) => setDraft({ ...draft, instagramLink: e.target.value })} onBlur={() => commitOnBlur({ instagramLink: draft.instagramLink })} placeholder="https://instagram.com/..." />
-                    {draft.instagramLink && (
-                      <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                        <a href={draft.instagramLink} target="_blank" rel="noopener noreferrer" aria-label="Abrir Instagram"><ExternalLink className="h-3.5 w-3.5" /></a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Site</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.website ?? ""} placeholder="https://..."
-                      onChange={(e) => setDraft({ ...draft, website: e.target.value })}
-                      onBlur={() => commitOnBlur({ website: draft.website })} />
-                    {draft.website && (
-                      <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                        <a href={draft.website} target="_blank" rel="noopener noreferrer" aria-label="Abrir site"><ExternalLink className="h-3.5 w-3.5" /></a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> Google Maps</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.gmnLink} onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })} onBlur={() => commitOnBlur({ gmnLink: draft.gmnLink })} placeholder="Link ou busca automática" />
-                    <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                      <a href={mapsUrlFor(draft)} target="_blank" rel="noopener noreferrer" aria-label="Abrir no Maps"><ExternalLink className="h-3.5 w-3.5" /></a>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Empresa */}
-            <section>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1"><Building2 className="h-3 w-3" /> Empresa</h3>
-              <div className="grid md:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Nicho</Label>
-                  <Input value={draft.niche} onChange={(e) => setDraft({ ...draft, niche: e.target.value })} onBlur={() => commitOnBlur({ niche: draft.niche })} />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Cidade</Label>
-                  <Input value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} onBlur={() => commitOnBlur({ city: draft.city })} />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-3 flex-wrap">
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1 block">Prioridade ICP</Label>
-                  <StarRating value={draft.icpStars} onChange={(v) => { persist({ icpStars: v }); onRefresh(); }} />
-                </div>
-                <div className="flex items-center gap-2 rounded-md bg-muted/30 px-3 py-2">
-                  <Label className="text-sm">Faz Anúncios?</Label>
-                  <Switch checked={draft.runsAds} onCheckedChange={(v) => { persist({ runsAds: v }); onRefresh(); }} />
-                </div>
-              </div>
-            </section>
+              <AccordionItem value="links" className="border-border/40">
+                <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
+                   <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> Links e Localização</span>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4 space-y-3">
+                   <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Website</Label>
+                      <Input className="h-8 text-xs" value={draft.website ?? ""} onChange={(e) => setDraft({ ...draft, website: e.target.value })} onBlur={() => commitOnBlur({ website: draft.website })} />
+                   </div>
+                   <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Google Maps</Label>
+                      <Input className="h-8 text-xs" value={draft.gmnLink} onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })} onBlur={() => commitOnBlur({ gmnLink: draft.gmnLink })} />
+                   </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </TabsContent>
 
 
