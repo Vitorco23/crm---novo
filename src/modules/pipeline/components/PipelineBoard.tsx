@@ -250,7 +250,7 @@ function LeadCard({
         if (!step) return null;
         return (
           <div className="mt-2 flex flex-col gap-0.5 text-[10px] text-muted-foreground border-t border-border/50 pt-1.5">
-            <span className="truncate">D{step.day} · {step.channel} · {moment}</span>
+            <span className="truncate">T{step.attempt} · {step.channel} · {moment}</span>
           </div>
         );
       })()}

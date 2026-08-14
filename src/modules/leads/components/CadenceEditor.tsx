@@ -21,7 +21,7 @@ function renumber(steps: CadenceStep[]): CadenceStep[] {
 }
 
 function stepLabel(attempt: number): string {
-  return attempt === 0 ? "Novo Lead (D0)" : `Tentativa ${attempt}`;
+  return attempt === 0 ? "Novo Lead / T0" : `Tentativa T${attempt}`;
 }
 
 export default function CadenceEditor({
@@ -81,10 +81,8 @@ export default function CadenceEditor({
 
   const add = () => {
     setSteps((prev) => {
-      const last = prev[prev.length - 1];
-      const nextDay = last ? last.day + 1 : 1;
       const nextStep: CadenceStep = {
-        day: nextDay, attempt: prev.length,
+        attempt: prev.length,
         channel: "Ligação", objective: "Novo objetivo",
         nextAction: "Descreva a ação", script: "",
         estimatedMinutes: 5,
@@ -153,12 +151,6 @@ export default function CadenceEditor({
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Dia (D+)</Label>
-                  <Input type="number" min={0} value={s.day}
-                    onChange={(e) => update(i, { day: Math.max(0, parseInt(e.target.value || "0", 10)) })}
-                    className="h-8 text-xs" />
-                </div>
                 <div>
                   <Label className="text-[10px] text-muted-foreground">Canal</Label>
                   <Select value={s.channel} onValueChange={(v) => update(i, { channel: v as CadenceChannel })}>

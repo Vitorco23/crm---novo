@@ -37,13 +37,14 @@ import InteracoesTimeline from "@/modules/leads/components/InteracoesTimeline";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { getScripts, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/modules/knowledge/services/scripts";
 import { toast } from "sonner";
 import ScheduleMeetingDialog from "@/modules/leads/components/ScheduleMeetingDialog";
 import ConcluirTentativaDialog from "@/modules/leads/components/ConcluirTentativaDialog";
 import CadenceEditor from "@/modules/leads/components/CadenceEditor";
 import TaskFormDialog from "@/modules/leads/components/TaskFormDialog";
-import { getStepForLead, executionMoment, getCadenceForNiche } from "@/modules/leads/services/cadence";
+import { getStepForLead, executionMoment, getCadenceForNiche, processTemplate } from "@/modules/leads/services/cadence";
 import { CheckCircle2, Clock, Target, ListTodo, Plus } from "lucide-react";
 import { getTasksByLead, deleteTask, completeTask, reopenTask, PRIORITY_LABEL, PRIORITY_CLASSES, type LeadTask } from "@/modules/leads/services/leadTasks";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -175,6 +176,7 @@ export default function LeadDetailDrawer({
   initialAction?: "new-interaction" | "generate-script" | "run-diagnosis" | "schedule-meeting" | "upload-attachment" | "new-task";
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [alignmentOpen, setAlignmentOpen] = useState(false);
   const [concluirOpen, setConcluirOpen] = useState(false);
@@ -395,7 +397,8 @@ export default function LeadDetailDrawer({
 
   const copyScript = async () => {
     if (!step) return;
-    try { await navigator.clipboard.writeText(step.script); toast.success("Script copiado"); }
+    const processed = processTemplate(step.script, lead, user?.user_metadata?.full_name || user?.email);
+    try { await navigator.clipboard.writeText(processed); toast.success("Script copiado"); }
     catch { toast.error("Falha ao copiar"); }
   };
 
@@ -532,20 +535,27 @@ export default function LeadDetailDrawer({
                   </span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+                  <div><div className="text-[10px] uppercase text-muted-foreground">Tentativa</div><div className="font-medium">T{step.attempt}</div></div>
                   <div><div className="text-[10px] uppercase text-muted-foreground">Canal</div><div className="font-medium">{step.channel}</div></div>
                   <div><div className="text-[10px] uppercase text-muted-foreground">Objetivo</div><div className="font-medium">{step.objective}</div></div>
-                  <div><div className="text-[10px] uppercase text-muted-foreground">Tempo estimado</div><div className="font-medium">{step.estimatedMinutes} min</div></div>
                   <div><div className="text-[10px] uppercase text-muted-foreground">Ação</div><div className="font-medium text-accent">{step.nextAction}</div></div>
                 </div>
+                
+                <div className="bg-background/50 rounded-md p-3 border border-border/40 mb-3">
+                  <p className="text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                    {processTemplate(step.script, lead, user?.user_metadata?.full_name || user?.email)}
+                  </p>
+                </div>
+
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={() => setScriptOpen(true)}>
-                    <FileText className="h-3.5 w-3.5 mr-1" /> Visualizar Script
+                    <FileText className="h-3.5 w-3.5 mr-1" /> Editar Cadência
                   </Button>
                   <Button size="sm" variant="outline" onClick={copyScript}>
-                    <Copy className="h-3.5 w-3.5 mr-1" /> Copiar Script
+                    <Copy className="h-3.5 w-3.5 mr-1" /> Copiar Texto
                   </Button>
                   <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setConcluirOpen(true)}>
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Concluir Tentativa
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Marcar Realizada
                   </Button>
                 </div>
               </section>
