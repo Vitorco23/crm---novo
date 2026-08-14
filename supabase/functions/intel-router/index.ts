@@ -40,7 +40,7 @@ async function classify(question: string, ctx: CrmContext): Promise<{ specialist
     task: "intel_router",
     system: composeSystem("intel.router.classifier"),
     user:
-      `Contexto: ${JSON.stringify(summarizeContext(ctx))}\n` +
+      `Contexto Básico: ${JSON.stringify({ hasLead: !!ctx.leadContext, hasDashboard: !!ctx.dashboardSnapshot, page: ctx.page })}\n` +
       `Pergunta:\n${buildQuestionBlock(question, "PERGUNTA DO USUÁRIO")}\n` +
       `Responda apenas JSON.`,
     json: true,
@@ -117,7 +117,11 @@ async function runSpecialist(
     operationalUsed.push("strategic_metrics");
   } else if (isOperational) {
     operationalUsed.push("full_dashboard");
+  } else {
+    // Outras intenções sem contexto explícito não precisam do dashboard
+    reducedCtx.dashboardSnapshot = null;
   }
+
 
   if (reducedCtx.dashboardSnapshot) operationalUsed.push("dashboard");
   if (reducedCtx.leadContext) operationalUsed.push("lead");
