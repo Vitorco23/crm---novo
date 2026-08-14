@@ -152,4 +152,3 @@ export default function LeadExecutiveSummary({ lead }: { lead: Lead }) {
     </div>
   );
 }
-}
