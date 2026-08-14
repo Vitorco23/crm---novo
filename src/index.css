@@ -15,57 +15,57 @@
 @layer base {
   :root {
     /* -------- LIGHT THEME — clareza, produtividade, leveza -------- */
-    --background: 210 40% 99%;
-    --foreground: 216 45% 14%;
+    --background: 190 70% 97%; /* #F1FBFD aproximado em HSL */
+    --foreground: 222 46% 15%; /* Azul profundo Performance #152039 */
 
     --card: 0 0% 100%;
-    --card-foreground: 216 45% 14%;
+    --card-foreground: 222 46% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 216 45% 14%;
+    --popover-foreground: 222 46% 15%;
 
-    /* Brand Blue (Performance21) — inteligência, segurança, tecnologia */
-    --brand-blue: 216 78% 32%;
-    --brand-blue-strong: 216 82% 24%;
-    --brand-blue-soft: 216 60% 92%;
+    /* Brand Blue (Performance21) — #152039 */
+    --brand-blue: 222 46% 15%;
+    --brand-blue-strong: 222 46% 10%;
+    --brand-blue-soft: 222 20% 94%;
 
-    /* Brand Green (Performance21) — crescimento, receita, conversão */
-    --brand-green: 78 56% 47%;
-    --brand-green-strong: 78 60% 38%;
-    --brand-green-soft: 78 50% 92%;
+    /* Brand Green (Performance21) — #9ABD33 */
+    --brand-green: 74 57% 47%;
+    --brand-green-strong: 74 57% 37%;
+    --brand-green-soft: 74 57% 92%;
 
-    --primary: 216 78% 32%;
+    --primary: 222 46% 15%; /* Azul Performance como primário */
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 216 82% 28%;
-    --primary-active: 216 85% 22%;
+    --primary-hover: 222 46% 20%;
+    --primary-active: 222 46% 12%;
 
-    --secondary: 210 25% 95%;
-    --secondary-foreground: 216 45% 14%;
-    --secondary-hover: 210 25% 91%;
+    --secondary: 190 40% 92%;
+    --secondary-foreground: 222 46% 15%;
+    --secondary-hover: 190 40% 88%;
 
-    --muted: 210 22% 94%;
-    --muted-foreground: 216 12% 44%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 78 56% 47%;
-    --accent-foreground: 216 45% 14%;
-    --accent-hover: 78 60% 42%;
-    --accent-active: 78 62% 36%;
+    --accent: 74 57% 47%; /* Verde Performance como sotaque */
+    --accent-foreground: 222 46% 15%;
+    --accent-hover: 74 57% 42%;
+    --accent-active: 74 57% 36%;
 
-    --destructive: 0 72% 48%;
-    --destructive-foreground: 0 0% 100%;
-    --destructive-hover: 0 72% 42%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-hover: 0 84% 54%;
 
-    --success: 78 60% 40%;
+    --success: 74 57% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 216 45% 14%;
-    --info: 210 90% 48%;
+    --warning-foreground: 222 46% 15%;
+    --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 214 20% 88%;
-    --border-strong: 214 22% 78%;
-    --input: 214 20% 88%;
-    --ring: 216 78% 45%;
+    --border: 214 20% 90%;
+    --border-strong: 214 20% 82%;
+    --input: 214 20% 90%;
+    --ring: 222 46% 15%;
 
     /* Text roles */
     --text-primary: 216 45% 14%;
@@ -135,55 +135,55 @@
     /* -------- DARK THEME — grafite profundo, sofisticação, foco --------
        Inspirado em Linear/Vercel/Stripe: nunca preto absoluto, contraste alto,
        destaques em azul e verde da marca.                                    */
-    --background: 218 35% 8%;
-    --foreground: 210 30% 94%;
+    --background: 222 47% 8%; /* Azul Performance ainda mais profundo */
+    --foreground: 210 40% 96%;
 
-    --card: 218 32% 11%;
-    --card-foreground: 210 30% 94%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 96%;
 
-    --popover: 218 34% 12%;
-    --popover-foreground: 210 30% 94%;
+    --popover: 222 47% 12%;
+    --popover-foreground: 210 40% 96%;
 
-    --brand-blue: 214 90% 62%;
-    --brand-blue-strong: 214 92% 70%;
-    --brand-blue-soft: 216 45% 18%;
+    --brand-blue: 217 91% 60%;
+    --brand-blue-strong: 217 91% 70%;
+    --brand-blue-soft: 222 47% 18%;
 
-    --brand-green: 78 60% 55%;
-    --brand-green-strong: 78 65% 62%;
-    --brand-green-soft: 78 35% 18%;
+    --brand-green: 74 57% 55%;
+    --brand-green-strong: 74 57% 65%;
+    --brand-green-soft: 74 57% 18%;
 
-    --primary: 214 90% 62%;
-    --primary-foreground: 218 40% 10%;
-    --primary-hover: 214 92% 68%;
-    --primary-active: 214 92% 56%;
+    --primary: 74 57% 47%; /* Verde Performance como primário no Dark para contraste */
+    --primary-foreground: 222 47% 8%;
+    --primary-hover: 74 57% 55%;
+    --primary-active: 74 57% 40%;
 
-    --secondary: 218 28% 16%;
-    --secondary-foreground: 210 30% 94%;
-    --secondary-hover: 218 28% 20%;
+    --secondary: 222 40% 16%;
+    --secondary-foreground: 210 40% 96%;
+    --secondary-hover: 222 40% 20%;
 
-    --muted: 218 25% 15%;
-    --muted-foreground: 216 12% 62%;
+    --muted: 222 35% 15%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 78 60% 55%;
-    --accent-foreground: 218 40% 10%;
-    --accent-hover: 78 65% 62%;
-    --accent-active: 78 60% 48%;
+    --accent: 74 57% 55%;
+    --accent-foreground: 222 47% 8%;
+    --accent-hover: 74 57% 65%;
+    --accent-active: 74 57% 45%;
 
-    --destructive: 0 65% 55%;
-    --destructive-foreground: 0 0% 98%;
-    --destructive-hover: 0 65% 60%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --destructive-hover: 0 84% 65%;
 
-    --success: 78 60% 55%;
-    --success-foreground: 218 40% 10%;
+    --success: 74 57% 55%;
+    --success-foreground: 222 47% 8%;
     --warning: 38 92% 58%;
-    --warning-foreground: 218 40% 10%;
-    --info: 210 90% 66%;
-    --info-foreground: 218 40% 10%;
+    --warning-foreground: 222 47% 8%;
+    --info: 199 89% 66%;
+    --info-foreground: 222 47% 8%;
 
-    --border: 218 25% 20%;
-    --border-strong: 218 22% 30%;
-    --input: 218 25% 20%;
-    --ring: 214 90% 62%;
+    --border: 222 35% 18%;
+    --border-strong: 222 30% 28%;
+    --input: 222 35% 18%;
+    --ring: 74 57% 55%;
 
     --text-primary: 210 30% 94%;
     --text-secondary: 210 20% 78%;
