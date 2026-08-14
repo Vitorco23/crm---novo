@@ -639,91 +639,67 @@ export default function LeadDetailDrawer({
           </TabsContent>
 
 
-          {/* OBSERVAÇÕES (informações permanentes sobre o Lead) */}
-          <TabsContent value="observacoes" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-3">
-            <div>
-              <Label className="text-sm font-medium">Observações permanentes sobre o Lead</Label>
-              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-                Use este campo apenas para informações que <strong>não pertencem a uma interação específica</strong>.
-                Ex: prefere contato após as 16h · decisão depende do sócio · não atende chamadas pela manhã · empresa fecha aos sábados.
-              </p>
+          {/* OBSERVAÇÕES - Reorganizado */}
+          <TabsContent value="observacoes" className="flex-1 overflow-y-auto px-5 py-4 mt-0 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5" /> Notas Permanentes
+              </Label>
               <Textarea
                 value={draft.notes}
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
                 onBlur={() => commitOnBlur({ notes: draft.notes })}
-                rows={14}
-                placeholder="Escreva aqui informações permanentes sobre o lead..."
+                rows={6}
+                className="text-sm bg-muted/10 border-border/40"
+                placeholder="Prefere contato após as 16h, decisão depende do sócio..."
               />
             </div>
 
-            {/* Tarefas do lead — acessíveis dentro de Observações porque descrevem próximas ações permanentes */}
-            {(() => {
-              void tasksVer;
-              const tasks = getTasksByLead(lead.id);
-              const pending = tasks.filter((t) => t.status === "pendente");
-              const done = tasks.filter((t) => t.status === "concluida");
-              return (
-                <div className="mt-6 pt-4 border-t border-border/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <ListTodo className="h-3 w-3" /> Tarefas — {pending.length} pendente(s) · {done.length} concluída(s)
-                    </p>
-                    <Button size="sm" variant="outline"
-                      onClick={() => { setEditingTask(null); setTaskFormOpen(true); }}>
-                      <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
-                    </Button>
-                  </div>
-                  {tasks.length === 0 && (
-                    <p className="text-xs text-muted-foreground/60 text-center py-4">
-                      Nenhuma tarefa criada.
-                    </p>
-                  )}
-                  {tasks.map((t) => {
-                    const isDone = t.status === "concluida";
-                    const due = new Date(t.dueAt);
-                    const overdue = !isDone && due.getTime() < Date.now();
+            <Accordion type="multiple" defaultValue={["tasks"]} className="w-full">
+              <AccordionItem value="tasks" className="border-border/40">
+                <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
+                  <span className="flex items-center gap-1.5"><ListTodo className="h-3.5 w-3.5" /> Tarefas do Lead</span>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4 space-y-2">
+                  {(() => {
+                    void tasksVer;
+                    const tasks = getTasksByLead(lead.id);
                     return (
-                      <div key={t.id} className={`rounded-md border p-2 flex items-start gap-2 ${overdue ? "border-destructive/40 bg-destructive/5" : "border-border/40 bg-muted/20"}`}>
-                        <Checkbox checked={isDone}
-                          onCheckedChange={(v) => { if (v) completeTask(t.id); else reopenTask(t.id); setTasksVer((x) => x + 1); }}
-                          className="mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`text-sm font-medium ${isDone ? "line-through text-muted-foreground" : ""}`}>{t.title}</p>
-                            <Badge variant="outline" className={`text-[10px] shrink-0 ${PRIORITY_CLASSES[t.priority]}`}>
-                              {PRIORITY_LABEL[t.priority]}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground flex-wrap">
-                            <span className={overdue ? "text-destructive font-medium" : ""}>
-                              <Clock className="h-3 w-3 inline mr-0.5" />
-                              {format(due, "dd/MM 'às' HH:mm", { locale: ptBR })}
-                            </span>
-                            <button className="text-muted-foreground hover:text-foreground" onClick={() => { setEditingTask(t); setTaskFormOpen(true); }}>
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                            <button className="text-muted-foreground hover:text-destructive" onClick={async () => {
-                              if (t.googleEventId) { try { await AgendaRepository.deleteTaskEvent(t.googleEventId); } catch {} }
-                              deleteTask(t.id); setTasksVer((x) => x + 1);
-                            }}>
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-end">
+                           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditingTask(null); setTaskFormOpen(true); }}>
+                            <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
+                          </Button>
                         </div>
+                        {tasks.length === 0 && <p className="text-[10px] text-muted-foreground text-center py-4 italic">Nenhuma tarefa pendente.</p>}
+                        {tasks.map((t) => (
+                          <div key={t.id} className="rounded border border-border/40 bg-muted/20 p-2 flex items-center gap-2">
+                            <Checkbox checked={t.status === "concluida"} onCheckedChange={(v) => { if (v) completeTask(t.id); else reopenTask(t.id); setTasksVer((x) => x + 1); }} />
+                            <div className="flex-1 min-w-0">
+                               <p className={`text-xs font-medium truncate ${t.status === "concluida" ? "line-through text-muted-foreground" : ""}`}>{t.title}</p>
+                            </div>
+                            <Badge variant="outline" className={`text-[9px] ${PRIORITY_CLASSES[t.priority]}`}>{PRIORITY_LABEL[t.priority]}</Badge>
+                          </div>
+                        ))}
                       </div>
                     );
-                  })}
-                </div>
-              );
-            })()}
+                  })()}
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Cadência (Cold Call) */}
-            {isColdCall && (
-              <div className="mt-6 pt-4 border-t border-border/40">
-                <p className="text-xs text-muted-foreground mb-2">📜 Cadência do nicho</p>
-                <CadenceEditor niche={lead.niche} currentAttempt={step?.attempt} onChanged={onRefresh} />
-              </div>
-            )}
+              {isColdCall && (
+                <AccordionItem value="cadence" className="border-border/40">
+                  <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
+                    <span className="flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Cadência do Nicho</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-2 pb-4">
+                    <div className="rounded border border-border/40 bg-muted/10 p-1">
+                      <CadenceEditor niche={lead.niche} currentAttempt={step?.attempt} onChanged={onRefresh} />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+            </Accordion>
           </TabsContent>
 
 
