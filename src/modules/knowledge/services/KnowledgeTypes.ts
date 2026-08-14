@@ -18,6 +18,9 @@ export interface KnowledgeDocumentPayload {
   tags: string[];
   conteudo_markdown: string;
   ativo: boolean;
+  is_ai_generated?: boolean;
+  approved?: boolean;
+  source_lead_id?: string | null;
 }
 
 export interface KnowledgeImportResult {

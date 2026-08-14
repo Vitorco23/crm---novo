@@ -33,6 +33,9 @@ interface KDoc {
   versao: number;
   ativo: boolean;
   updated_at: string;
+  is_ai_generated?: boolean;
+  approved?: boolean;
+  source_lead_id?: string | null;
 }
 
 export default function KnowledgeBase() {
@@ -69,7 +72,7 @@ export default function KnowledgeBase() {
   }, [docs, search, filterCat]);
 
   const openNew = () => {
-    setEditing({ titulo: "", categoria: "Metodologia", descricao: "", tags: [], conteudo_markdown: "", ativo: true });
+    setEditing({ titulo: "", categoria: "Metodologia", descricao: "", tags: [], conteudo_markdown: "", ativo: true, is_ai_generated: false, approved: true });
     setEditorOpen(true);
   };
 
@@ -93,6 +96,9 @@ export default function KnowledgeBase() {
         tags: editing.tags ?? [],
         conteudo_markdown: conteudo,
         ativo: editing.ativo ?? true,
+        is_ai_generated: editing.is_ai_generated ?? false,
+        approved: editing.approved ?? true,
+        source_lead_id: editing.source_lead_id ?? null,
       };
       if (editing.id) await KnowledgeRepository.updateDocument(editing.id, payload);
       else await KnowledgeRepository.createDocument(payload);
@@ -163,6 +169,14 @@ export default function KnowledgeBase() {
               </div>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 <Badge variant={d.categoria === "Objeções" ? "default" : "secondary"}>{d.categoria}</Badge>
+                {d.is_ai_generated ? (
+                  <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30 flex items-center gap-1">
+                    <Sparkles className="h-2.5 w-2.5" /> IA
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30">MANUAL</Badge>
+                )}
+                {!d.approved && <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">PENDENTE</Badge>}
                 <span className="ml-auto">{new Date(d.updated_at).toLocaleDateString("pt-BR")}</span>
               </div>
             </Card>
@@ -182,6 +196,16 @@ export default function KnowledgeBase() {
                 </select>
               </div>
               <Textarea value={editing.conteudo_markdown} placeholder="Markdown..." className="h-64 font-mono text-xs" onChange={(e) => setEditing({...editing, conteudo_markdown: e.target.value})} />
+              <div className="flex items-center gap-4 py-2">
+                <div className="flex items-center gap-2">
+                  <Switch checked={editing.is_ai_generated} onCheckedChange={(v) => setEditing({...editing, is_ai_generated: v})} />
+                  <Label className="text-xs">Gerado por IA</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={editing.approved} onCheckedChange={(v) => setEditing({...editing, approved: v})} />
+                  <Label className="text-xs">Aprovado</Label>
+                </div>
+              </div>
               <DialogFooter>
                 <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
               </DialogFooter>
