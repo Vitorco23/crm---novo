@@ -1035,10 +1035,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                 key={stage}
                 onDrop={(e) => onDrop(e, stage)}
                 onDragOver={onDragOver}
-                className="flex flex-col min-w-[280px] w-[280px] bg-muted/10 rounded-xl border border-border/40"
+                className="flex flex-col min-w-[280px] w-[280px] bg-muted/10 rounded-xl border border-border/40 transition-shadow hover:shadow-md"
               >
-                <div className="p-3 border-b border-border/40">
-                  <div className="flex items-center justify-between mb-1.5">
+                <div className="p-2.5 border-b border-border/40 bg-muted/5">
+                  <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 overflow-hidden min-w-0">
                       <div className="w-1 h-3 rounded-full shrink-0" style={{ backgroundColor: stageColors[stage]?.match(/bg-([a-z0-9-]+)/)?.[1] ? `var(--${stageColors[stage].match(/bg-([a-z0-9-]+)/)[1]})` : '#9ABD33' }} />
                       
@@ -1057,58 +1057,29 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                           draggable
                           onDragStart={(e) => onStageDragStart(e, stage)}
                           onDoubleClick={() => startEditStage(stage)}
-                          className="text-[11px] font-bold text-foreground uppercase tracking-wider truncate cursor-grab active:cursor-grabbing select-none"
+                          className="text-[10px] font-bold text-foreground uppercase tracking-widest truncate cursor-grab active:cursor-grabbing select-none"
                         >
                           {stage}
                         </h3>
                       )}
                       
-                      <span className="text-[10px] font-semibold text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded-md shrink-0">
+                      <span className="text-[9px] font-bold text-muted-foreground/50 bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
                         {stageLeads.length}
                       </span>
                     </div>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="text-muted-foreground/40 hover:text-foreground transition-colors p-1">
-                          <MoreVertical className="h-3.5 w-3.5" />
+                        <button className="text-muted-foreground/30 hover:text-foreground transition-colors p-1">
+                          <MoreVertical className="h-3 w-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="text-xs">
-                        <DropdownMenuItem onClick={() => startEditStage(stage)} className="text-[11px]">
+                      <DropdownMenuContent align="end" className="text-[11px]">
+                        <DropdownMenuItem onClick={() => startEditStage(stage)}>
                           <Pencil className="h-3 w-3 mr-2" /> Renomear
                         </DropdownMenuItem>
-                        {pipeline === "cold_call" && (
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              const rows = stageLeads
-                                .filter((l) => (l.company || l.phone || l.city || l.niche))
-                                .map((l) => ({
-                                  Empresa: l.company || "",
-                                  Telefone: l.phone || "",
-                                  Cidade: l.city || "",
-                                  Nicho: l.niche || "",
-                                }));
-                              if (rows.length === 0) {
-                                toast.error("Nenhum lead para exportar nesta etapa");
-                                return;
-                              }
-                              const ws = XLSX.utils.json_to_sheet(rows, {
-                                header: ["Empresa", "Telefone", "Cidade", "Nicho"],
-                              });
-                              const wb = XLSX.utils.book_new();
-                              XLSX.utils.book_append_sheet(wb, ws, "Leads");
-                              const safe = stage.replace(/[^\w\-]+/g, "_");
-                              XLSX.writeFile(wb, `leads_${safe}.xlsx`);
-                              toast.success(`${rows.length} lead(s) exportado(s)`);
-                            }}
-                            className="text-[11px]"
-                          >
-                            <Download className="h-3 w-3 mr-2" /> Exportar Etapa
-                          </DropdownMenuItem>
-                        )}
                         {stages.length > 1 && (
-                          <DropdownMenuItem onClick={() => handleRemoveStage(stage)} className="text-[11px] text-destructive">
+                          <DropdownMenuItem onClick={() => handleRemoveStage(stage)} className="text-destructive">
                             <Trash2 className="h-3 w-3 mr-2" /> Excluir
                           </DropdownMenuItem>
                         )}
@@ -1117,10 +1088,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                   </div>
                   
                   {pipeline === "oportunidades" && totalValue > 0 && (
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[9px] text-muted-foreground/70 uppercase font-medium">Volume total</span>
-                      <span className="text-[11px] font-bold text-accent tracking-tight">
-                        {totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] text-muted-foreground/60 uppercase font-medium">Vol.</span>
+                      <span className="text-[10px] font-bold text-accent">
+                        {totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
                       </span>
                     </div>
                   )}
@@ -1128,8 +1099,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
                 <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[calc(100vh-280px)] scrollbar-hide content-visibility-auto">
                   {stageLeads.length === 0 ? (
-                    <div className="h-20 flex items-center justify-center border border-dashed border-border/40 rounded-lg">
-                      <p className="text-[10px] text-muted-foreground/40 italic">Vazio</p>
+                    <div className="h-20 flex items-center justify-center border border-dashed border-border/20 rounded-lg">
+                      <p className="text-[9px] text-muted-foreground/30 italic">Vazio</p>
                     </div>
                   ) : (
                     stageLeads.map((lead) => (
@@ -1150,6 +1121,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
               </div>
             );
           })}
+
 
           <div className="min-w-[280px] w-[280px]">
             {showAddStage ? (
