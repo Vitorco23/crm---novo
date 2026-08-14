@@ -4,6 +4,18 @@
 
 export type SpecialistId = "diretor_comercial" | "consultor_leads" | "mentor_p21";
 
+/** Intenções detectadas pelo roteador para otimização de contexto. */
+export type IntelIntent =
+  | "operacao_metricas"
+  | "metodologia"
+  | "objecoes"
+  | "script_comunicacao"
+  | "prescricao_oferta"
+  | "lead_especifico"
+  | "conselho_estrategia"
+  | "outra";
+
+
 /** Turno de conversa recebido do cliente (não confiável). */
 export interface ConversationTurn {
   role: string;
