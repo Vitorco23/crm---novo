@@ -193,22 +193,29 @@ export default function CentralInteligencia() {
     let convId = activeId;
     let isNewConversation = !convId;
 
-    if (!convId) {
-      // Criação preguiçosa (no banco) ou imediata. 
-      // Seguindo o item 4, vamos gerar título automático se for a primeira mensagem.
-      const title = q.length > 50 ? q.slice(0, 47) + "..." : q;
-      let data = await IntelligenceRepository.createConversation(title);
-      convId = data.id;
-      setConversations((prev) => [data, ...prev]);
-      setActiveId(convId);
-    }
-
+    // Se não há convId, não criamos no banco ainda.
+    // Usamos um ID temporário se necessário ou esperamos a resposta.
+    // Para simplificar e seguir a "Criação Preguiçosa" (item 3), 
+    // se activeId for null, estamos em uma conversa "virtual".
+    
     const optimistic: ChatMessage = {
       id: `tmp-${Date.now()}`, role: "user", content: q, created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, optimistic]);
     setInput("");
     setSending(true);
+
+    try {
+      // Se for a primeira mensagem, precisamos criar a conversa AGORA para ter um ID
+      if (!convId) {
+        // Título automático baseado na primeira mensagem (item 4)
+        const autoTitle = q.length > 50 ? q.slice(0, 47) + "..." : q;
+        const newConv = await IntelligenceRepository.createConversation(autoTitle);
+        convId = newConv.id;
+        setActiveId(convId);
+        // Atualiza a lista para incluir a nova conversa
+        refreshConversations();
+      }
 
     try {
       const data = await IntelligenceRepository.ask({
