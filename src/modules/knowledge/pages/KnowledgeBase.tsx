@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { KnowledgeRepository } from "../services/KnowledgeRepository";
 import { useKnowledgeChunkCounts, useKnowledgeDocuments, useInvalidateKnowledge } from "../hooks/useKnowledge";
 import { Button } from "@/components/ui/button";
