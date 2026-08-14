@@ -139,6 +139,7 @@ export default function CentralInteligencia() {
         question: q,
         conversationId: convId,
         specialistOverride: override === "auto" ? undefined : override,
+        history: messages.map(m => ({ role: m.role, content: m.content })),
         context: {
           page: window.location.pathname,
           leadContext: buildLeadContext(openLead),
