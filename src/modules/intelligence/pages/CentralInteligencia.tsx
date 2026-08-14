@@ -217,7 +217,6 @@ export default function CentralInteligencia() {
         refreshConversations();
       }
 
-    try {
       const data = await IntelligenceRepository.ask({
         question: q,
         conversationId: convId,
