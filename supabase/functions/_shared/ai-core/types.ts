@@ -48,6 +48,14 @@ export interface BuiltContext {
   inputChars: number;
   /** Fontes efetivamente consultadas (observabilidade). */
   sources: string[];
+  /** Metadados detalhados de observabilidade. */
+  observability?: {
+    intention: string;
+    specialist: SpecialistId;
+    contextSize: number;
+    operationalData?: string[];
+    knowledgeResult?: "found" | "none";
+  };
 }
 
 /** Prompt versionado do registry. */
@@ -70,4 +78,13 @@ export interface ToolDefinition {
   allowedFor: SpecialistId[];
   /** Exige o Authorization do usuário final (nunca service role). */
   requiresUserAuth: boolean;
+}
+
+export interface IntelRouterResponse {
+  content?: string;
+  specialist?: SpecialistId | null;
+  citations?: any;
+  model?: string | null;
+  observability?: Record<string, any>;
+  [key: string]: any;
 }
