@@ -158,7 +158,7 @@ export default function LeadExecutiveSummary({ lead }: { lead: Lead }) {
              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Conhecimento Aprovado</p>
           </div>
           <p className="text-[11px] text-foreground/80 line-clamp-2 italic">
-            {lead.autoDiagnosis?.painPoints?.[0] ? `Dores validadas: ${lead.autoDiagnosis.painPoints.join(", ")}` : "Aguardando validação manual de dores e scripts..."}
+            {lead.autoDiagnosis?.pain_points?.[0] ? `Dores validadas: ${lead.autoDiagnosis.pain_points.join(", ")}` : "Aguardando validação manual de dores e scripts..."}
           </p>
         </div>
 
