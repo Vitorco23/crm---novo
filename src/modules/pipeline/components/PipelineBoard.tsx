@@ -995,56 +995,62 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           showContractValue={pipeline === "oportunidades"}
         />
       ) : (
-      <div className="flex-1 overflow-x-auto scrollbar-thin">
-        <div className="flex gap-3 h-full min-w-max pb-2">
-
+      <div className="flex-1 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+        <div className="flex gap-4 h-full min-w-max">
           {stages.map((stage) => {
             const stageLeads = leadsByStage.get(stage) ?? [];
+            const totalValue = stageLeads.reduce((sum, l) => sum + (l.contractValue ?? 0), 0);
+            
             return (
               <div
                 key={stage}
                 onDrop={(e) => onDrop(e, stage)}
                 onDragOver={onDragOver}
-                className={`w-56 shrink-0 flex flex-col rounded-lg border p-2 ${stageColors[stage] || "bg-muted/30 border-border"}`}
+                className="flex flex-col min-w-[280px] w-[280px] bg-muted/10 rounded-xl border border-border/40"
               >
-                <div className="flex items-center justify-between mb-2 px-1 gap-1">
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={stageLeads.length > 0 && stageLeads.every((l) => selectedIds.has(l.id))}
-                        onCheckedChange={() => handleSelectAllInStage(stage)}
-                        className="h-3.5 w-3.5"
-                      />
+                <div className="p-3 border-b border-border/40">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                      <div className="w-1 h-3 rounded-full shrink-0" style={{ backgroundColor: stageColors[stage]?.match(/bg-([a-z0-9-]+)/)?.[1] ? `var(--${stageColors[stage].match(/bg-([a-z0-9-]+)/)[1]})` : '#9ABD33' }} />
+                      
+                      {editingStage === stage ? (
+                        <div className="flex items-center gap-0.5 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                          <Input
+                            autoFocus
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") commitEditStage(); if (e.key === "Escape") { setEditingStage(null); setEditingValue(""); } }}
+                            className="h-6 text-[11px] px-1.5 py-0 border-accent/40"
+                          />
+                        </div>
+                      ) : (
+                        <h3
+                          draggable
+                          onDragStart={(e) => onStageDragStart(e, stage)}
+                          onDoubleClick={() => startEditStage(stage)}
+                          className="text-[11px] font-bold text-foreground uppercase tracking-wider truncate cursor-grab active:cursor-grabbing select-none"
+                        >
+                          {stage}
+                        </h3>
+                      )}
+                      
+                      <span className="text-[10px] font-semibold text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded-md shrink-0">
+                        {stageLeads.length}
+                      </span>
                     </div>
-                    {editingStage === stage ? (
-                      <div className="flex items-center gap-0.5 flex-1 min-w-0">
-                        <Input
-                          autoFocus
-                          value={editingValue}
-                          onChange={(e) => setEditingValue(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") commitEditStage(); if (e.key === "Escape") { setEditingStage(null); setEditingValue(""); } }}
-                          className="h-6 text-xs px-1.5 py-0"
-                        />
-                        <button onClick={commitEditStage} className="text-accent hover:text-accent/70 shrink-0"><Check className="h-3.5 w-3.5" /></button>
-                        <button onClick={() => { setEditingStage(null); setEditingValue(""); }} className="text-muted-foreground hover:text-destructive shrink-0"><XIcon className="h-3.5 w-3.5" /></button>
-                      </div>
-                    ) : (
-                      <h3
-                        draggable
-                        onDragStart={(e) => onStageDragStart(e, stage)}
-                        onDoubleClick={() => startEditStage(stage)}
-                        title="Arraste para reordenar • Duplo clique para renomear"
-                        className="text-xs font-semibold text-foreground uppercase tracking-wide truncate cursor-grab active:cursor-grabbing select-none"
-                      >
-                        {stage}
-                      </h3>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {editingStage !== stage && (
-                      <>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="text-muted-foreground/40 hover:text-foreground transition-colors p-1">
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="text-xs">
+                        <DropdownMenuItem onClick={() => startEditStage(stage)} className="text-[11px]">
+                          <Pencil className="h-3 w-3 mr-2" /> Renomear
+                        </DropdownMenuItem>
                         {pipeline === "cold_call" && (
-                          <button
+                          <DropdownMenuItem 
                             onClick={() => {
                               const rows = stageLeads
                                 .filter((l) => (l.company || l.phone || l.city || l.niche))
@@ -1067,80 +1073,86 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                               XLSX.writeFile(wb, `leads_${safe}.xlsx`);
                               toast.success(`${rows.length} lead(s) exportado(s)`);
                             }}
-                            className="text-muted-foreground/60 hover:text-accent"
-                            title="Exportar leads (Excel)"
-
+                            className="text-[11px]"
                           >
-                            <Download className="h-3 w-3" />
-                          </button>
+                            <Download className="h-3 w-3 mr-2" /> Exportar Etapa
+                          </DropdownMenuItem>
                         )}
-                        <button onClick={() => startEditStage(stage)} className="text-muted-foreground/60 hover:text-accent" title="Renomear">
-                          <Pencil className="h-3 w-3" />
-                        </button>
                         {stages.length > 1 && (
-                          <button onClick={() => handleRemoveStage(stage)} className="text-muted-foreground/60 hover:text-destructive" title="Remover etapa">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                          <DropdownMenuItem onClick={() => handleRemoveStage(stage)} className="text-[11px] text-destructive">
+                            <Trash2 className="h-3 w-3 mr-2" /> Excluir
+                          </DropdownMenuItem>
                         )}
-                      </>
-                    )}
-                    <span className="text-[10px] font-medium bg-background/80 text-muted-foreground rounded-full px-1.5 py-0.5">
-                      {stageLeads.length}
-                    </span>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-
+                  
+                  {pipeline === "oportunidades" && totalValue > 0 && (
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[9px] text-muted-foreground/70 uppercase font-medium">Volume total</span>
+                      <span className="text-[11px] font-bold text-accent tracking-tight">
+                        {totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                {pipeline === "oportunidades" && (
-                  <p className="text-[10px] font-medium text-accent px-1 -mt-1 mb-2">
-                    {stageLeads.reduce((sum, l) => sum + (l.contractValue ?? 0), 0)
-                      .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                  </p>
-                )}
-                <div className="flex-1 space-y-2 overflow-y-auto scrollbar-thin min-h-[100px] content-visibility-auto">
-                  {stageLeads.map((lead) => (
-                    <LeadCard
-                      key={lead.id} 
-                      lead={lead} 
-                      pipeline={pipeline} 
-                      onDragStart={onDragStart} 
-                      onDelete={handleDelete}
-                      onRefresh={refresh} 
-                      onClick={handleCardClick} 
-                      selected={selectedIds.has(lead.id)}
-                      onToggleSelect={handleToggleSelect}
-                    />
-                  ))}
+
+                <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[calc(100vh-280px)] scrollbar-hide content-visibility-auto">
+                  {stageLeads.length === 0 ? (
+                    <div className="h-20 flex items-center justify-center border border-dashed border-border/40 rounded-lg">
+                      <p className="text-[10px] text-muted-foreground/40 italic">Vazio</p>
+                    </div>
+                  ) : (
+                    stageLeads.map((lead) => (
+                      <LeadCard
+                        key={lead.id}
+                        lead={lead}
+                        pipeline={pipeline}
+                        selected={selectedIds.has(lead.id)}
+                        onToggleSelect={handleToggleSelect}
+                        onClick={handleCardClick}
+                        onDelete={handleDelete}
+                        onDragStart={onDragStart}
+                        onRefresh={refresh}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
             );
           })}
 
-          {/* Add stage column */}
-          <div className="w-56 shrink-0 flex flex-col rounded-lg border-2 border-dashed border-border/50 p-2 bg-muted/10">
+          <div className="min-w-[280px] w-[280px]">
             {showAddStage ? (
-              <div className="flex items-center gap-1">
+              <div className="bg-muted/10 border border-accent/40 rounded-xl p-3 flex flex-col gap-2">
                 <Input
                   autoFocus
                   placeholder="Nome da etapa"
                   value={newStageName}
                   onChange={(e) => setNewStageName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleAddStage(); if (e.key === "Escape") { setShowAddStage(false); setNewStageName(""); } }}
-                  className="h-7 text-xs"
+                  className="h-8 text-xs"
                 />
-                <button onClick={handleAddStage} className="text-accent shrink-0"><Check className="h-4 w-4" /></button>
-                <button onClick={() => { setShowAddStage(false); setNewStageName(""); }} className="text-muted-foreground shrink-0"><XIcon className="h-4 w-4" /></button>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleAddStage} className="h-7 text-[10px] flex-1">Salvar</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setShowAddStage(false); setNewStageName(""); }} className="h-7 text-[10px] flex-1">Cancelar</Button>
+                </div>
               </div>
             ) : (
               <button
                 onClick={() => setShowAddStage(true)}
-                className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-accent py-2 transition-colors"
+                className="flex flex-col items-center justify-center w-full h-[100px] border-2 border-dashed border-border/30 rounded-xl text-muted-foreground hover:text-foreground hover:border-accent/40 hover:bg-accent/5 transition-all group"
               >
-                <Plus className="h-3.5 w-3.5" /> Nova etapa
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mb-2 group-hover:bg-accent/20">
+                  <Plus className="h-4 w-4" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider">Adicionar Etapa</span>
               </button>
             )}
           </div>
         </div>
       </div>
+
       )}
 
 
