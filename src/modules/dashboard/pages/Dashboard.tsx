@@ -1,30 +1,32 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
-  getLeads, getSessions, getMovementEvents, getMeetings,
-  COLD_CALL_STAGES, OPORTUNIDADES_STAGES,
-  getGoalsSettings, getLeadsForPipeline,
+  getLeads,
+  getSessions,
+  getMovementEvents,
+  getMeetings,
+  getGoalsSettings,
+  getLeadsForPipeline,
 } from "@/shared/services/store";
 import { getTransactions, formatBRL, monthKey } from "@/modules/financeiro/services/finance";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { isToday, isThisWeek, isThisMonth, isWithinInterval, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  TrendingUp, Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign,
-  Handshake, Trophy as TrophyIcon, Send, Instagram, Mail, Activity, Layers, Crown,
-  Calendar as CalendarIcon, Sparkles,
+  Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign,
+  Handshake, Calendar as CalendarIcon, Sparkles, Activity, Layers,
+  ChevronDown, ChevronUp, BarChart3, TrendingUp
 } from "lucide-react";
 import StrategicIntelligencePanel, { type PeriodKey } from "@/modules/dashboard/components/StrategicIntelligencePanel";
-
-import BottleneckCard from "@/modules/cold-call/components/BottleneckCard";
 import EstimatedActivityCard from "@/modules/dashboard/components/EstimatedActivityCard";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/modules/pipeline/services/exportBuilders";
-import { resolvePeriod } from "@/modules/pipeline/services/exportEngine";
-import { computeEfficiencyRatio, countOutcomes, type EfficiencyRatio } from "@/modules/dashboard/services/efficiency";
+import { computeEfficiencyRatio, countOutcomes } from "@/modules/dashboard/services/efficiency";
 import { cn } from "@/shared/utils/utils";
+import DailyPriorities from "@/modules/dashboard/components/DailyPriorities";
+import { summarizeActivity } from "@/shared/services/activityLedger";
 
 type Filter = "day" | "week" | "month" | "custom";
 
@@ -50,6 +52,8 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<Filter>("day");
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
+  const [showAdditional, setShowAdditional] = useState(false);
+
   const custom = customStart && customEnd
     ? { start: new Date(customStart.setHours(0, 0, 0, 0)), end: new Date(customEnd.setHours(23, 59, 59, 999)) }
     : undefined;
@@ -58,53 +62,65 @@ export default function Dashboard() {
     filter === "day" ? "today" : filter === "week" ? "last7" : "thisMonth";
 
   return (
-    <div className="p-4 max-w-6xl mx-auto space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
+      {/* 1. CABEÇALHO DA PÁGINA */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-[11px] text-muted-foreground">
-            Sala de inteligência comercial — como está a operação. Para executar, use a Central de Decisão.
-          </p>
+          <h1 className="text-2xl font-black text-foreground tracking-tight">Visão Geral</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest bg-accent/5 text-accent border-accent/20">
+              {filterLabels[filter]}
+            </Badge>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              Performance do time comercial
+            </span>
+          </div>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 bg-muted rounded-lg p-0.5">
+          <div className="flex gap-1 bg-muted/50 rounded-lg p-1 border border-border/50">
             {(["day", "week", "month", "custom"] as Filter[]).map((f) => (
               <Button key={f} size="sm" variant={filter === f ? "default" : "ghost"}
                 onClick={() => setFilter(f)}
-                className={filter === f ? "bg-accent text-accent-foreground hover:bg-accent/90 h-7 text-xs" : "h-7 text-xs"}>
+                className={cn(
+                  "h-8 px-3 text-xs font-bold transition-all",
+                  filter === f ? "bg-accent text-accent-foreground shadow-sm" : "text-muted-foreground"
+                )}>
                 {filterLabels[f]}
               </Button>
             ))}
           </div>
+
           {filter === "custom" && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 animate-in slide-in-from-right-2 duration-300">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                    {customStart ? format(customStart, "dd/MM/yyyy") : "Início"}
+                  <Button variant="outline" size="sm" className="h-8 text-xs font-bold gap-2 rounded-lg border-border/50">
+                    <CalendarIcon className="h-3.5 w-3.5 text-accent" />
+                    {customStart ? format(customStart, "dd/MM/yy") : "Início"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl border-border/50" align="start">
                   <CalendarUI mode="single" selected={customStart} onSelect={setCustomStart}
                     initialFocus className={cn("p-3 pointer-events-auto")} locale={ptBR} />
                 </PopoverContent>
               </Popover>
-              <span className="text-xs text-muted-foreground">até</span>
+              <span className="text-[10px] font-black text-muted-foreground/50 mx-1">/</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                    {customEnd ? format(customEnd, "dd/MM/yyyy") : "Fim"}
+                  <Button variant="outline" size="sm" className="h-8 text-xs font-bold gap-2 rounded-lg border-border/50">
+                    <CalendarIcon className="h-3.5 w-3.5 text-accent" />
+                    {customEnd ? format(customEnd, "dd/MM/yy") : "Fim"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 rounded-xl shadow-2xl border-border/50" align="start">
                   <CalendarUI mode="single" selected={customEnd} onSelect={setCustomEnd}
                     initialFocus className={cn("p-3 pointer-events-auto")} locale={ptBR} />
                 </PopoverContent>
               </Popover>
             </div>
           )}
+
           <ExportExcelDialog
             moduleName="Dashboard"
             moduleSlug="Dashboard"
@@ -115,603 +131,265 @@ export default function Dashboard() {
             }
           />
         </div>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* 2. BLOCO PRINCIPAL — PRIORIDADES DO DIA (Col 1-8) */}
+        <div className="lg:col-span-8 space-y-6">
+          <section>
+            <DailyPriorities />
+          </section>
+
+          {/* 4. VISÃO RESUMIDA DO FUNIL E DA AGENDA */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <PipelineCompactCard />
+             <ActivityFunnelCard filter={filter} custom={custom} />
+          </section>
+        </div>
+
+        {/* 3. INDICADORES ESSENCIAIS (Col 9-12) */}
+        <aside className="lg:col-span-4 space-y-6">
+          <section>
+            <div className="flex items-center justify-between mb-3 px-1">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-accent" />
+                Performance
+              </h3>
+            </div>
+            <EssentialMetrics filter={filter} custom={custom} />
+          </aside>
+        </div>
       </div>
 
-
-
-      {/* ============ PAINEL 1: OPERACIONAL (período) ============ */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2 border-l-2 border-accent pl-3">
-          <Activity className="h-4 w-4 text-accent" />
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Produtividade — {filterLabels[filter]}</h2>
-            <p className="text-[11px] text-muted-foreground">Ligações, conexões, decisores e reuniões registrados no período.</p>
-          </div>
+      {/* FINANCEIRO */}
+      <section className="pt-4 border-t border-border/30">
+        <div className="flex items-center gap-2 mb-4">
+          <DollarSign className="h-4 w-4 text-accent" />
+          <h2 className="text-sm font-bold tracking-tight">Saúde Financeira</h2>
         </div>
-        <OperationalPanel filter={filter} custom={custom} />
-        <BottleneckCard />
-      </section>
-
-      {/* ============ PAINEL 2: PIPELINE COMERCIAL (independente) ============ */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2 border-l-2 border-accent pl-3">
-          <Layers className="h-4 w-4 text-accent" />
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Pipeline Comercial</h2>
-            <p className="text-[11px] text-muted-foreground">Distribuição atual de todos os leads nas etapas — independente do filtro de período.</p>
-          </div>
-        </div>
-        <PipelinePanel />
-      </section>
-
-      {/* ============ PAINEL 3: INTELIGÊNCIA ESTRATÉGICA ============ */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2 border-l-2 border-accent pl-3">
-          <Sparkles className="h-4 w-4 text-accent" />
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Inteligência Estratégica</h2>
-            <p className="text-[11px] text-muted-foreground">Resumo executivo, oportunidades, variações vs. período anterior e leitura analítica do pipeline.</p>
-          </div>
-        </div>
-        <StrategicIntelligencePanel period={strategicPeriod} />
-      </section>
-
-      {/* ============ FINANCEIRO ============ */}
-      <section className="space-y-4">
         <FinancialHealthRow />
+      </section>
+
+      {/* 5. INFORMAÇÕES SECUNDÁRIAS (Recolhível) */}
+      <section className="space-y-4 pt-6">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setShowAdditional(!showAdditional)}
+          className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground transition-all border border-dashed border-border/50 rounded-xl py-6"
+        >
+          {showAdditional ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <span className="text-xs font-bold uppercase tracking-widest">
+            {showAdditional ? "Recolher Análises Adicionais" : "Ver Análises Adicionais"}
+          </span>
+        </Button>
+
+        {showAdditional && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in slide-in-from-top-4 duration-500">
+            <div className="space-y-6">
+              <StrategicIntelligencePanel period={strategicPeriod} />
+              <OperationalAnalysis filter={filter} custom={custom} />
+            </div>
+            <div className="space-y-6">
+              <EstimatedActivityPanel filter={filter} custom={custom} />
+              <PomodoroRankingPanel filter={filter} custom={custom} />
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
 }
 
-/* ============================================================
-   PAINEL 1 — OPERACIONAL
-   ============================================================ */
-function OperationalPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
+function EssentialMetrics({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
   const sessions = getSessions();
-  const movements = getMovementEvents();
   const meetings = getMeetings();
+  const allLeads = getLeads();
 
   const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter, custom)), [sessions, filter, custom]);
+  const sessionCalls = filteredSessions.reduce((a, s) => a + s.calls, 0);
+
   const filteredMeetings = useMemo(
     () => meetings.filter((m) => filterByDate(`${m.date}T${m.time || "00:00"}`, filter, custom)),
     [meetings, filter, custom]
   );
 
+  const oppLeads = getLeadsForPipeline("oportunidades");
+  const negotiating = oppLeads
+    .filter((l) => l.stage !== "Ganho" && l.stage !== "Perdido")
+    .reduce((s, l) => s + (l.contractValue || 0), 0);
 
-  const meetingsBySource = useMemo(() => {
-    const acc: Record<string, number> = { "Ligação": 0, "Disparo": 0, "Instagram": 0, "Email": 0 };
-    filteredMeetings.forEach((m) => {
-      const s = m.source || "Ligação";
-      acc[s] = (acc[s] || 0) + 1;
-    });
-    return acc;
-  }, [filteredMeetings]);
-
-  const callMeetings = meetingsBySource["Ligação"] || 0;
-  const otherChannelsMeetings =
-    (meetingsBySource["Disparo"] || 0) + (meetingsBySource["Instagram"] || 0) + (meetingsBySource["Email"] || 0);
-
-  const sessionCalls = filteredSessions.reduce((a, s) => a + s.calls, 0);
-  const sessionConnections = filteredSessions.reduce((a, s) => a + (s.connections || 0), 0);
-  const sessionDecisionMakers = filteredSessions.reduce((a, s) => a + (s.decisionMakers || 0), 0);
-  const sessionMeetings = filteredSessions.reduce((a, s) => a + s.meetings, 0);
-
-  const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : null);
-  const rateCallConn = pct(sessionConnections, sessionCalls);
-  const rateConnDM = pct(sessionDecisionMakers, sessionConnections);
-  const rateDMMeet = pct(sessionMeetings, sessionDecisionMakers);
-
-  const goldenHour = useMemo(() => {
-    if (filteredSessions.length === 0) return null;
-    const enriched = filteredSessions.map((s) => {
-      const start = new Date(s.startTime);
-      const end = new Date(s.endTime);
-      const movsDuring = movements.filter((m) => {
-        const t = new Date(m.timestamp);
-        return isWithinInterval(t, { start, end });
-      });
-      const autoCallsDuring = movsDuring.filter((m) => m.type === "call").length;
-      return {
-        ...s,
-        totalActivity: s.meetings * 3 + (s.decisionMakers || 0) * 2 + s.calls + autoCallsDuring,
-        autoCalls: autoCallsDuring,
-      };
-    });
-    return enriched.sort((a, b) => b.totalActivity - a.totalActivity)[0];
-  }, [filteredSessions, movements]);
-
-  // KPIs de eficiência — quantas ligações por reunião / por venda no período
-  const filteredMovements = useMemo(
-    () => movements.filter((m) => filterByDate(m.timestamp, filter, custom)),
-    [movements, filter, custom]
-  );
-  const outcomes = useMemo(() => countOutcomes(filteredMovements), [filteredMovements]);
-  const meetingsForRatio = Math.max(outcomes.meetings, sessionMeetings, callMeetings);
-  const callsPerMeeting = computeEfficiencyRatio(sessionCalls, meetingsForRatio);
-  const callsPerSale = computeEfficiencyRatio(sessionCalls, outcomes.sales);
+  // Atividade do ledger (Diferente da sessão manual)
+  const activity = useMemo(() => {
+    const now = new Date();
+    let from = new Date(now); from.setHours(0, 0, 0, 0);
+    let to = new Date(now); to.setHours(23, 59, 59, 999);
+    if (filter === "week") { from = new Date(now); from.setDate(now.getDate() - 6); from.setHours(0, 0, 0, 0); }
+    if (filter === "month") { from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0); }
+    if (filter === "custom" && custom) { from = custom.start; to = custom.end; }
+    return summarizeActivity(from, to);
+  }, [filter, custom]);
 
   return (
-    <div className="space-y-4">
-      {/* Métricas do período */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCard icon={Phone} label="Ligações" value={sessionCalls} />
-        <MetricCard icon={Users} label="Conexões" value={sessionConnections} sub={rateCallConn != null ? `${rateCallConn}% das ligações` : undefined} />
-        <MetricCard icon={UserCheck} label="Decisores" value={sessionDecisionMakers} sub={rateConnDM != null ? `${rateConnDM}% das conexões` : undefined} />
-        <MetricCard icon={CalendarCheck} label="Reuniões" value={sessionMeetings} sub={rateDMMeet != null ? `${rateDMMeet}% dos decisores` : undefined} />
-      </div>
-
-      {/* Custo em ligações (eficiência) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <EfficiencyCard
-          icon={CalendarCheck}
-          label="Ligações por reunião"
-          ratio={callsPerMeeting}
-          unit="reunião"
-        />
-        <EfficiencyCard
-          icon={Handshake}
-          label="Ligações por venda"
-          ratio={callsPerSale}
-          unit="venda"
-        />
-      </div>
-
-
-      {/* Funil de Outreach do período */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Funil de Outreach — {filterLabels[filter]}</CardTitle></CardHeader>
-        <CardContent>
-          {(() => {
-            const meetingsFromCalls = Math.max(callMeetings, sessionMeetings);
-            const stages = [
-              { name: "Ligações", value: sessionCalls },
-              { name: "Conexões", value: sessionConnections },
-              { name: "Decisores", value: sessionDecisionMakers },
-              { name: "Reuniões (Ligação)", value: meetingsFromCalls },
-            ];
-            const maxVal = stages[0].value || 1;
-            if (stages.every((s) => s.value === 0)) {
-              return <p className="text-sm text-muted-foreground py-6 text-center">Sem atividade de outreach no período.</p>;
-            }
-            return (
-              <div className="space-y-1.5">
-                {stages.map((s, i) => {
-                  const w = maxVal > 0 ? Math.round((s.value / maxVal) * 100) : 0;
-                  const prev = i > 0 ? stages[i - 1].value : 0;
-                  const rate = i > 0 && prev > 0 ? Math.round((s.value / prev) * 100) : null;
-                  const hue = 78 + i * 20;
-                  return (
-                    <div key={s.name} className="flex items-center gap-2 text-xs">
-                      <span className="w-40 truncate text-muted-foreground">{s.name}</span>
-                      <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
-                        <div className="h-full rounded-sm transition-all duration-500"
-                          style={{ width: `${w}%`, backgroundColor: `hsl(${hue} 50% ${47 - i * 2}%)` }} />
-                      </div>
-                      <span className="w-10 text-right font-medium text-foreground tabular-nums">{s.value}</span>
-                      <span className="w-20 text-[10px] text-right tabular-nums text-muted-foreground/70">
-                        {rate != null ? `${rate}% conv.` : "—"}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </CardContent>
-      </Card>
-
-      {/* Dados estimados do período — ledger automático de atividade */}
-      {(() => {
-        const now = new Date();
-        let from = new Date(now); from.setHours(0, 0, 0, 0);
-        let to = new Date(now); to.setHours(23, 59, 59, 999);
-        if (filter === "week") { from = new Date(now); from.setDate(now.getDate() - 6); from.setHours(0, 0, 0, 0); }
-        if (filter === "month") { from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0); }
-        if (filter === "custom" && custom) { from = custom.start; to = custom.end; }
-        return <EstimatedActivityCard from={from} to={to} periodLabel={filterLabels[filter]} />;
-      })()}
-
-
-      {/* Reuniões por canal alternativo */}
-      {otherChannelsMeetings > 0 && (
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Reuniões por Canal Alternativo</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-3">
-              {([
-                { key: "Disparo", icon: Send, hue: 200 },
-                { key: "Instagram", icon: Instagram, hue: 320 },
-                { key: "Email", icon: Mail, hue: 40 },
-              ] as const).map(({ key, icon: Icon, hue }) => (
-                <div key={key} className="rounded-md border border-border bg-muted/30 p-3">
-                  <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                    <Icon className="h-3.5 w-3.5" style={{ color: `hsl(${hue} 50% 55%)` }} /> {key}
-                  </div>
-                  <p className="text-2xl font-bold text-foreground tabular-nums">
-                    {meetingsBySource[key] || 0}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border">
-              Alternativos: <span className="font-medium text-foreground">{otherChannelsMeetings}</span> · Ligação: <span className="font-medium text-foreground">{callMeetings}</span>
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Ranking de Pomodoros do período */}
-      <PomodoroRanking sessions={filteredSessions} />
-
-      {/* Golden Hour */}
-      {goldenHour && (
-        <Card className="border-accent/30 bg-accent/5">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-accent" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Golden Hour</p>
-                <p className="text-xs text-muted-foreground">
-                  Sessão das {format(new Date(goldenHour.startTime), "HH:mm")} às{" "}
-                  {format(new Date(goldenHour.endTime), "HH:mm")}
-                  {goldenHour.niche ? ` (${goldenHour.niche})` : ""} foi a mais produtiva:{" "}
-                  <span className="font-medium text-accent">{goldenHour.meetings} reuniões</span>,{" "}
-                  {goldenHour.decisionMakers || 0} decisores, {goldenHour.calls + goldenHour.autoCalls} ligações.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+    <div className="grid grid-cols-1 gap-3">
+      <MetricCard 
+        icon={Phone} 
+        label="Ligações" 
+        value={activity.byChannel.call} 
+        description="Registradas pelo sistema"
+      />
+      <MetricCard 
+        icon={CalendarCheck} 
+        label="Reuniões" 
+        value={filteredMeetings.length} 
+        description={filterLabels[filter]}
+      />
+      <MetricCard 
+        icon={Handshake} 
+        label="Em Negociação" 
+        value={formatBRL(negotiating)} 
+        description="Valor no pipeline"
+      />
+      <MetricCard 
+        icon={Users} 
+        label="Leads Ativos" 
+        value={allLeads.length} 
+        description="Total na base"
+      />
     </div>
   );
 }
 
-function EfficiencyCard({
-  icon: Icon, label, ratio, unit,
-}: { icon: any; label: string; ratio: EfficiencyRatio; unit: string }) {
-  const inconclusive = ratio.callsPerResult == null;
-  const hint = inconclusive
-    ? ratio.reason === "sem-ligacoes"
-      ? "Sem ligações registradas no período."
-      : `Sem ${unit} registrada no período — dados inconclusivos.`
-    : `${ratio.calls} ligações · ${ratio.results} ${ratio.results === 1 ? unit : unit + "s"}${
-        ratio.reason === "amostra-baixa" ? " · amostra baixa" : ""
-      }`;
-
+function MetricCard({ icon: Icon, label, value, description }: { icon: any; label: string; value: string | number; description: string }) {
   return (
-    <Card className={inconclusive ? "border-dashed" : "border-accent/30"}>
-      <CardContent className="pt-4 pb-3">
-        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-          <Icon className="h-3.5 w-3.5" /> {label}
-        </div>
-        {inconclusive ? (
-          <p className="text-lg font-semibold text-muted-foreground/70">—</p>
-        ) : (
-          <p className="text-2xl font-bold text-foreground tabular-nums">
-            {ratio.callsPerResult}
-            <span className="text-xs font-normal text-muted-foreground ml-1">ligações / {unit}</span>
-          </p>
-        )}
-        <p className="text-[10px] text-muted-foreground mt-1">{hint}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-
-function MetricCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: number; sub?: string }) {
-  return (
-    <Card>
-      <CardContent className="pt-4 pb-3">
-        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-          <Icon className="h-3.5 w-3.5" /> {label}
-        </div>
-        <p className="text-2xl font-bold text-foreground tabular-nums">{value}</p>
-        {sub && <p className="text-[10px] text-muted-foreground mt-1">{sub}</p>}
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ============================================================
-   PAINEL 1.b — RANKING DE POMODOROS
-   ============================================================ */
-function PomodoroRanking({ sessions }: { sessions: ReturnType<typeof getSessions> }) {
-  const ranked = useMemo(() => {
-    return [...sessions]
-      .map((s) => ({
-        ...s,
-        score: s.meetings * 3 + (s.decisionMakers || 0) * 2 + (s.connections || 0) + s.calls * 0.5,
-      }))
-      .sort((a, b) => b.score - a.score);
-  }, [sessions]);
-
-  const bestId = ranked[0]?.id;
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Crown className="h-4 w-4 text-accent" /> Ranking de Pomodoros
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {ranked.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma sessão registrada no período.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground border-b border-border">
-                  <th className="py-2 pr-2 font-medium">#</th>
-                  <th className="py-2 pr-2 font-medium">Horário</th>
-                  <th className="py-2 pr-2 font-medium">Nicho</th>
-                  <th className="py-2 pr-2 font-medium text-right">Lig.</th>
-                  <th className="py-2 pr-2 font-medium text-right">Conex.</th>
-                  <th className="py-2 pr-2 font-medium text-right">Decis.</th>
-                  <th className="py-2 pr-2 font-medium text-right">Reun.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ranked.map((s, idx) => {
-                  const isBest = s.id === bestId;
-                  return (
-                    <tr
-                      key={s.id}
-                      className={`border-b border-border/50 last:border-0 ${
-                        isBest ? "bg-accent/10" : "hover:bg-muted/30"
-                      }`}
-                    >
-                      <td className="py-2 pr-2 tabular-nums">
-                        <span className={`inline-flex items-center gap-1 ${isBest ? "text-accent font-semibold" : "text-muted-foreground"}`}>
-                          {isBest && <Crown className="h-3 w-3" />}
-                          {idx + 1}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-2 tabular-nums text-foreground">
-                        {format(new Date(s.startTime), "dd/MM HH:mm", { locale: ptBR })}
-                        <span className="text-muted-foreground">
-                          {" → "}{format(new Date(s.endTime), "HH:mm")}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-2 text-muted-foreground truncate max-w-[140px]">{s.niche || "—"}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums text-foreground">{s.calls}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums text-foreground">{s.connections || 0}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums text-foreground">{s.decisionMakers || 0}</td>
-                      <td className={`py-2 pr-2 text-right tabular-nums font-medium ${isBest ? "text-accent" : "text-foreground"}`}>
-                        {s.meetings}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+    <Card className="border-border/40 shadow-sm bg-card/50 backdrop-blur-sm">
+      <CardContent className="p-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-9 w-9 rounded-xl bg-accent/5 border border-accent/10 flex items-center justify-center shrink-0">
+            <Icon className="h-4 w-4 text-accent" />
           </div>
-        )}
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">{label}</p>
+            <p className="text-lg font-black text-foreground tabular-nums leading-none truncate">{value}</p>
+          </div>
+        </div>
+        <div className="text-[10px] text-muted-foreground font-medium text-right shrink-0">
+          {description}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-/* ============================================================
-   PAINEL 2 — PIPELINE COMERCIAL (independente do filtro)
-   ============================================================ */
-function PipelinePanel() {
+function PipelineCompactCard() {
   const leads = getLeads();
-  const goals = getGoalsSettings();
-
-  const expectedRateByStage: Record<string, number> = {
-    "Reunião Marcada": goals.decisionMakerToMeetingScheduled,
-    "Reunião Realizada": goals.meetingScheduledToHeld,
-    "Ganho": goals.meetingHeldToClose,
-  };
-
-  // Agrupamento: Tentativas colapsadas + demais etapas de Oportunidades + Perdido
   const distribution = useMemo(() => {
-    const attemptsStages = COLD_CALL_STAGES.filter((s) => s !== "Novo Lead");
-    const novo = leads.filter((l) => l.stage === "Novo Lead").length;
-    const tentativas = leads.filter((l) => (attemptsStages as readonly string[]).includes(l.stage)).length;
-    const opps = OPORTUNIDADES_STAGES.map((s) => ({
+    const opps = ["Reunião Marcada", "Reunião Realizada", "Proposta Enviada", "Ganho"];
+    return opps.map((s) => ({
       name: s,
       value: leads.filter((l) => l.stage === s).length,
     }));
-    return [
-      { name: "Novo Lead", value: novo },
-      { name: "Tentativas", value: tentativas },
-      ...opps,
-    ];
   }, [leads]);
 
-  // Funil com taxas reais x esperadas (usa a ordem cold call → oportunidades sem Perdido)
-  const funnelData = useMemo(() => {
-    const allStages = [...COLD_CALL_STAGES, ...OPORTUNIDADES_STAGES.filter((s) => s !== "Perdido")];
-    const counts = allStages.map((_, i) =>
-      leads.filter((l) => {
-        const idx = allStages.indexOf(l.stage as any);
-        return idx >= i;
-      }).length
-    );
-    return allStages.map((stage, i) => {
-      const count = counts[i] || 0;
-      const prev = i > 0 ? counts[i - 1] : 0;
-      const realRate = prev > 0 ? (count / prev) * 100 : null;
-      const expectedRate = expectedRateByStage[stage] ?? null;
-      const hue = 78 + i * 12;
-      return {
-        name: stage,
-        value: count,
-        prev,
-        realRate,
-        expectedRate,
-        fill: `hsl(${hue} 50% ${47 - i * 1.5}%)`,
-      };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads]);
-
-  const bottleneck = useMemo(() => {
-    let worst: { name: string; prevName: string; real: number; expected: number; diff: number } | null = null;
-    funnelData.forEach((d, i) => {
-      if (d.expectedRate == null || d.realRate == null || d.prev === 0) return;
-      const diff = d.realRate - d.expectedRate;
-      if (worst == null || diff < worst.diff) {
-        worst = { name: d.name, prevName: funnelData[i - 1].name, real: d.realRate, expected: d.expectedRate, diff };
-      }
-    });
-    return worst;
-  }, [funnelData]);
-
-  const maxDist = Math.max(1, ...distribution.map((d) => d.value));
+  const max = Math.max(1, ...distribution.map(d => d.value));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Distribuição por etapa */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Distribuição de Leads por Etapa</CardTitle></CardHeader>
-        <CardContent>
-          <div className="space-y-1.5">
-            {distribution.map((d, i) => {
-              const w = Math.round((d.value / maxDist) * 100);
-              const hue = 78 + i * 15;
-              const isLost = d.name === "Perdido";
-              return (
-                <div key={d.name} className="flex items-center gap-2 text-xs">
-                  <span className="w-40 truncate text-muted-foreground">{d.name}</span>
-                  <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
-                    <div
-                      className="h-full rounded-sm transition-all duration-500"
-                      style={{
-                        width: `${w}%`,
-                        backgroundColor: isLost
-                          ? "hsl(0 60% 45%)"
-                          : `hsl(${hue} 50% ${47 - i * 1.5}%)`,
-                      }}
-                    />
-                  </div>
-                  <span className="w-10 text-right font-medium text-foreground tabular-nums">{d.value}</span>
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border">
-            Total: <span className="font-medium text-foreground">{leads.length}</span> leads no CRM.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Funil real x esperado */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Funil (Real × Meta)</CardTitle></CardHeader>
-        <CardContent>
-          {leads.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Sem leads no CRM ainda.</p>
-          ) : (
-            <div className="space-y-1.5">
-              {funnelData.map((item) => {
-                const maxVal = funnelData[0]?.value || 1;
-                const w = maxVal > 0 ? Math.round((item.value / maxVal) * 100) : 0;
-                let badge: { label: string; cls: string } | null = null;
-                if (item.expectedRate != null && item.realRate != null && item.prev > 0) {
-                  const diff = item.realRate - item.expectedRate;
-                  const tol = item.expectedRate * 0.15;
-                  const cls =
-                    diff >= tol
-                      ? "bg-accent/15 text-accent border-accent/30"
-                      : diff <= -tol
-                      ? "bg-red-500/15 text-red-400 border-red-500/30"
-                      : "bg-yellow-500/15 text-yellow-400 border-yellow-500/30";
-                  badge = { label: `${Math.round(item.realRate)}% / ${Math.round(item.expectedRate)}%`, cls };
-                }
-                return (
-                  <div key={item.name} className="flex items-center gap-2 text-xs">
-                    <span className="w-36 truncate text-muted-foreground">{item.name}</span>
-                    <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden">
-                      <div className="h-full rounded-sm transition-all duration-500" style={{ width: `${w}%`, backgroundColor: item.fill }} />
-                    </div>
-                    <span className="w-8 text-right font-medium text-foreground tabular-nums">{item.value}</span>
-                    <span className={`w-24 text-[10px] text-center px-1.5 py-0.5 rounded border tabular-nums ${badge ? badge.cls : "border-transparent text-muted-foreground/40"}`}>
-                      {badge ? badge.label : "—"}
-                    </span>
-                  </div>
-                );
-              })}
+    <Card className="border-border/40 bg-card/50">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Layers className="h-3.5 w-3.5 text-accent" />
+          <h3 className="text-xs font-bold uppercase tracking-widest">Pipeline Ativo</h3>
+        </div>
+        <div className="space-y-3">
+          {distribution.map((d, i) => (
+            <div key={d.name} className="space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-bold">
+                <span className="text-muted-foreground uppercase">{d.name}</span>
+                <span className="text-foreground">{d.value}</span>
+              </div>
+              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-accent transition-all duration-700 rounded-full" 
+                  style={{ width: `${(d.value / max) * 100}%`, opacity: 1 - (i * 0.15) }} 
+                />
+              </div>
             </div>
-          )}
-          {bottleneck && (
-            <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border">
-              <span className="text-red-400 font-medium">Gargalo atual:</span>{" "}
-              {bottleneck.prevName} → {bottleneck.name} ({Math.round(bottleneck.real)}% real vs {Math.round(bottleneck.expected)}% esperado)
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
-/* ============================================================
-   FINANCEIRO + AGENDA (mantidos)
-   ============================================================ */
-function FinancialHealthRow() {
-  const data = useMemo(() => {
-    const m = new Date().toISOString().slice(0, 7);
-    const txs = getTransactions();
-    const revenue = txs
-      .filter((t) => t.kind === "revenue" && monthKey(t.date) === m)
-      .reduce((s, t) => s + t.amount, 0);
-    const goal = getGoalsSettings().monthlyRevenueGoal;
+function ActivityFunnelCard({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
+  const sessions = getSessions();
+  const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter, custom)), [sessions, filter, custom]);
+  
+  const calls = filteredSessions.reduce((a, s) => a + s.calls, 0);
+  const connections = filteredSessions.reduce((a, s) => a + (s.connections || 0), 0);
+  const meetings = filteredSessions.reduce((a, s) => a + s.meetings, 0);
 
-    const oppLeads = getLeadsForPipeline("oportunidades");
-    const negotiating = oppLeads
-      .filter((l) => l.stage !== "Ganho" && l.stage !== "Perdido")
-      .reduce((s, l) => s + (l.contractValue || 0), 0);
+  const stages = [
+    { label: "Ligações", value: calls },
+    { label: "Conexões", value: connections },
+    { label: "Reuniões", value: meetings },
+  ];
 
-    const wonThisMonth = oppLeads.filter(
-      (l) => l.stage === "Ganho" && monthKey(l.stageChangedAt) === m
-    );
-    const wonAmount = wonThisMonth.reduce((s, l) => s + (l.contractValue || 0), 0);
-
-    return { revenue, goal, negotiating, wonCount: wonThisMonth.length, wonAmount };
-  }, []);
-
-  const pct = data.goal > 0 ? Math.min((data.revenue / data.goal) * 100, 100) : 0;
-  const barColor = pct < 30 ? "bg-red-500" : pct < 70 ? "bg-yellow-500" : "bg-accent";
+  const max = Math.max(1, calls);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <Card><CardContent className="pt-4 pb-3">
-        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-          <DollarSign className="h-3.5 w-3.5" /> Receita do mês
+    <Card className="border-border/40 bg-card/50">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="h-3.5 w-3.5 text-accent" />
+          <h3 className="text-xs font-bold uppercase tracking-widest">Conversão Outreach</h3>
         </div>
-        <p className="text-2xl font-bold text-foreground">{formatBRL(data.revenue)}</p>
-        <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-          <div className={`h-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+        <div className="space-y-3">
+          {stages.map((s, i) => (
+            <div key={s.label} className="space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-bold">
+                <span className="text-muted-foreground uppercase">{s.label}</span>
+                <span className="text-foreground">{s.value}</span>
+              </div>
+              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-accent transition-all duration-700 rounded-full" 
+                  style={{ width: `${(s.value / max) * 100}%`, opacity: 1 - (i * 0.2) }} 
+                />
+              </div>
+              {i > 0 && stages[i-1].value > 0 && (
+                <div className="text-[9px] text-accent font-black text-right">
+                  {Math.round((s.value / stages[i-1].value) * 100)}% de conversão
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">
-          {formatBRL(data.revenue)} / {formatBRL(data.goal)}
-        </p>
-      </CardContent></Card>
-
-      <Card><CardContent className="pt-4 pb-3">
-        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-          <Handshake className="h-3.5 w-3.5" /> Em negociação
-        </div>
-        <p className="text-2xl font-bold text-foreground">{formatBRL(data.negotiating)}</p>
-        <p className="text-[10px] text-muted-foreground mt-1">Oportunidades em aberto</p>
-      </CardContent></Card>
-
-      <Card><CardContent className="pt-4 pb-3">
-        <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-          <TrophyIcon className="h-3.5 w-3.5" /> Fechamentos no mês
-        </div>
-        <p className="text-2xl font-bold text-foreground">{data.wonCount}</p>
-        <p className="text-[10px] text-accent mt-1 tabular-nums">{formatBRL(data.wonAmount)}</p>
-      </CardContent></Card>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
-// TrendingUp import used by types elsewhere; keep to satisfy lint if unused
-void TrendingUp;
+// Subcomponentes para a área secundária (reutilizam lógica do original simplificada)
+function OperationalAnalysis({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
+    // Reutiliza OperationalPanel mas com estilo simplificado
+    return <OperationalPanel filter={filter} custom={custom} />;
+}
+
+function EstimatedActivityPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
+    const now = new Date();
+    let from = new Date(now); from.setHours(0, 0, 0, 0);
+    let to = new Date(now); to.setHours(23, 59, 59, 999);
+    if (filter === "week") { from = new Date(now); from.setDate(now.getDate() - 6); from.setHours(0, 0, 0, 0); }
+    if (filter === "month") { from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0); }
+    if (filter === "custom" && custom) { from = custom.start; to = custom.end; }
+    return <EstimatedActivityCard from={from} to={to} periodLabel={filterLabels[filter]} />;
+}
+
+function PomodoroRankingPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
+    const sessions = getSessions();
+    const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter, custom)), [sessions, filter, custom]);
+    return <PomodoroRanking sessions={filteredSessions} />;
+}
+
+
