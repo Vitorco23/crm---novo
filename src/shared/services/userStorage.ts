@@ -7,7 +7,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { idbGet, idbSet, idbDelete } from "@/shared/services/idbCache";
 
-const ADMIN_EMAIL = "vitorco23@gmail.com";
+
 
 const SCOPED_KEYS = [
   "p21_leads",
@@ -72,7 +72,7 @@ export function setCurrentUser(userId: string | null, email?: string | null) {
     if (email) localStorage.setItem("p21_current_user_email", email);
     // Migrate legacy unprefixed keys to admin's namespace on first login.
     // These land in localStorage; hydrateLocal() will move heavy ones to IDB.
-    if (email === ADMIN_EMAIL && !localStorage.getItem(`p21_migrated_${userId}`)) {
+    if (email === "vitorco23@gmail.com" && !localStorage.getItem(`p21_migrated_${userId}`)) {
       for (const k of SCOPED_KEYS) {
         const legacy = localStorage.getItem(k);
         if (legacy !== null && localStorage.getItem(`u:${userId}:${k}`) === null) {
