@@ -81,10 +81,8 @@ export default function CadenceEditor({
 
   const add = () => {
     setSteps((prev) => {
-      const last = prev[prev.length - 1];
-      const nextDay = last ? last.day + 1 : 1;
       const nextStep: CadenceStep = {
-        day: nextDay, attempt: prev.length,
+        attempt: prev.length,
         channel: "Ligação", objective: "Novo objetivo",
         nextAction: "Descreva a ação", script: "",
         estimatedMinutes: 5,
