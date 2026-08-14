@@ -155,10 +155,10 @@ export default function LeadExecutiveSummary({ lead }: { lead: Lead }) {
         <div className="rounded-lg border border-border bg-card/40 p-3">
           <div className="flex items-center gap-1.5 mb-2">
              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Conhecimento Aprovado</p>
+             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Conhecimento Relacionado</p>
           </div>
           <p className="text-[11px] text-foreground/80 line-clamp-2 italic">
-            {lead.autoDiagnosis?.pain_points?.[0] ? `Dores validadas: ${lead.autoDiagnosis.pain_points.join(", ")}` : "Aguardando validação manual de dores e scripts..."}
+            {lead.autoDiagnosis?.pain_points?.[0] ? `Dores identificadas: ${lead.autoDiagnosis.pain_points.join(", ")}` : "Nenhum conhecimento mapeado para este lead."}
           </p>
         </div>
 
