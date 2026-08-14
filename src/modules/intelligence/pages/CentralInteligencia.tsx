@@ -313,7 +313,6 @@ export default function CentralInteligencia() {
                         <DropdownMenuContent align="end" className="w-32">
                           <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
-                            console.log(`[ConversationCRUD] dropdown_rename_clicked id=${c.id}`);
                             setEditingId(c.id);
                             setEditTitle(c.title);
                           }}>
@@ -323,12 +322,12 @@ export default function CentralInteligencia() {
                             className="text-destructive focus:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation();
-                              console.log(`[ConversationCRUD] dropdown_delete_clicked id=${c.id}`);
                               setDeleteId(c.id);
                             }}
                           >
                             <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                           </DropdownMenuItem>
+
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
