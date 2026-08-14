@@ -221,13 +221,14 @@ export default function CentralInteligencia() {
         content: data?.content ?? "(sem resposta)",
         specialist: (data?.specialist ?? null) as ChatMessage["specialist"],
         citations: (data?.citations ?? null) as ChatMessage["citations"],
+        observability: (data?.observability ?? null) as ChatMessage["observability"],
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, reply]);
     } finally {
       setSending(false);
     }
-  }, [input, sending, activeId, override, openLead]);
+  }, [input, sending, activeId, override, openLead, messages]);
 
   return (
     <div className="flex h-[calc(100vh-120px)] bg-background">
@@ -328,7 +329,6 @@ export default function CentralInteligencia() {
                     <ShieldAlert className="h-3 w-3" /> MODO DEBUG
                   </Button>
                 )}
-             </div>
              </div>
              <Textarea
                value={input}
