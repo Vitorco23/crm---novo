@@ -45,7 +45,14 @@ const CATEGORIES = [
     label: "Conhecimento", 
     icon: Library, 
     path: "/inteligencia/knowledge",
-    description: "Base de documentos RAG"
+    description: "Base de documentos e scripts"
+  },
+  { 
+    id: "objecoes", 
+    label: "Objeções", 
+    icon: Sparkles, 
+    path: "/inteligencia/knowledge?cat=Objeções",
+    description: "Banco de respostas a objeções"
   },
   { 
     id: "memoria", 
