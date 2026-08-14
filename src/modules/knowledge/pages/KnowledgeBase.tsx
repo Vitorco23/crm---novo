@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Library, Plus, Upload, Trash2, Pencil, Loader2, RefreshCw, CheckCircle2, Search, Info } from "lucide-react";
+import { Library, Plus, Upload, Trash2, Pencil, Loader2, RefreshCw, CheckCircle2, Search, Info, Sparkles } from "lucide-react";
 
 const CATEGORIES = [
   "Metodologia",
