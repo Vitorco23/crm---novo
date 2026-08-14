@@ -187,7 +187,8 @@ export default function InteracoesTimeline({ lead, onRefresh, autoOpenNewInterac
 
   return (
     <div className="space-y-4">
-      <div className="space-y-4 opacity-50 grayscale pointer-events-none scale-[0.98] origin-top">
+      {/* Bloco de IA Oculto - Informações consolidadas no Resumo Executivo da aba Interações */}
+      <div className="hidden">
         <IntelligenceUpdateBlock lead={lead} running={refreshingIntel} noChange={intelNoChange} />
         <AutoDiagnosisCard lead={lead} />
         <DiagnosisHistoryBlock lead={lead} />
