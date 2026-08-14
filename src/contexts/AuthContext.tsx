@@ -3,7 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { setCurrentUser, syncFromCloud, hydrateLocal } from "@/shared/services/userStorage";
 
-const ADMIN_EMAIL = "vitorco23@gmail.com";
+/** 
+ * @deprecated Utilizado apenas para compatibilidade legada em fluxos de migração de dados.
+ * Não deve ser usado para conceder autorização em novos componentes.
+ */
+const LEGACY_ADMIN_EMAIL = "vitorco23@gmail.com";
+
 
 interface AuthCtx {
   user: User | null;
