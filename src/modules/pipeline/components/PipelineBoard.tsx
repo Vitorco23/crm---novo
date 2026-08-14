@@ -751,41 +751,57 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
   return (
     <div className="p-4 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-foreground">{title}</h1>
-          <p className="text-sm text-muted-foreground">{subtitle || `${pipelineLeads.length} leads`}</p>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">{title}</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle || `${pipelineLeads.length} leads no total`}</p>
         </div>
+
         <div className="flex items-center gap-2">
-          <div className="inline-flex items-center rounded-md border border-border bg-muted/40 p-0.5">
+          <div className="inline-flex items-center rounded-md border border-border bg-muted/30 p-0.5">
             <button
               onClick={() => setView("kanban")}
-              className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${view === "kanban" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              title="Visualização Kanban"
+              className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-all ${view === "kanban" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
             >
               <LayoutGrid className="h-3.5 w-3.5" /> Kanban
             </button>
             <button
               onClick={() => setView("list")}
-              className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${view === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              title="Visualização Lista"
+              className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-all ${view === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
             >
               <ListIcon className="h-3.5 w-3.5" /> Lista
             </button>
           </div>
+          
           {extraActions}
 
-          {showImport && (
-            <>
-              <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
-              <Button size="sm" variant="outline" onClick={() => csvRef.current?.click()}>
-                <Upload className="h-4 w-4 mr-1" /> Importar
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 gap-1 px-2">
+                <Settings2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Ações</span>
+                <ChevronDown className="h-3 w-3 opacity-50" />
               </Button>
-              <Button size="sm" variant="outline" onClick={handleDedupe} title="Remove leads com telefone, nome ou link GMN duplicados">
-                <Copy className="h-4 w-4 mr-1" /> Remover duplicatas
-              </Button>
-            </>
-          )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {showImport && (
+                <>
+                  <DropdownMenuItem onClick={() => csvRef.current?.click()} className="text-xs">
+                    <Upload className="h-3.5 w-3.5 mr-2" /> Importar Leads
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDedupe} className="text-xs">
+                    <Copy className="h-3.5 w-3.5 mr-2" /> Remover Duplicatas
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem onClick={() => setCampaignOpen(true)} className="text-xs" disabled={pipelineLeads.length === 0}>
+                <Download className="h-3.5 w-3.5 mr-2" /> Exportar Leads
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {showImport && <input ref={csvRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />}
+
           {showAddLead && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
@@ -831,117 +847,91 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      <div className="flex flex-wrap items-center gap-2 mb-4 bg-muted/20 p-2 rounded-lg border border-border/40">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
           <Input
-            placeholder="Pesquisar nome, número ou conteúdo..."
+            placeholder="Pesquisar leads..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 text-xs pl-8 w-64"
+            className="h-8 text-xs pl-8 border-border/60 bg-background/50 focus:bg-background"
           />
         </div>
 
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <FilterIcon className="h-3.5 w-3.5" /> Filtros:
-        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-[11px] font-normal border-border/60 bg-background/50 gap-2 min-w-[140px] justify-between">
+                <span className="truncate">
+                  {filterNiches.length === 0 ? "Nichos" : `${filterNiches.length} nicho(s)`}
+                </span>
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-2" align="start">
+              <div className="max-h-[240px] overflow-y-auto space-y-0.5">
+                {niches.map((n) => (
+                  <label key={n} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                    <Checkbox
+                      checked={filterNiches.includes(n)}
+                      onCheckedChange={() => setFilterNiches((prev) => toggleFilterValue(prev, n))}
+                      className="h-3.5 w-3.5"
+                    />
+                    <span className="truncate">{n}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[180px]">
-              <span className="truncate">
-                {filterNiches.length === 0
-                  ? "Todos os nichos"
-                  : filterNiches.length === 1
-                  ? filterNiches[0]
-                  : `${filterNiches.length} nichos`}
-              </span>
-              <ChevronDown className="h-3 w-3 ml-2 opacity-60" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-2" align="start">
-            <div className="max-h-[260px] overflow-y-auto space-y-1">
-              {niches.length === 0 && <div className="text-xs text-muted-foreground px-1 py-1">Sem opções</div>}
-              {niches.map((n) => (
-                <label key={n} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-accent cursor-pointer text-xs">
-                  <Checkbox
-                    checked={filterNiches.includes(n)}
-                    onCheckedChange={() => setFilterNiches((prev) => toggleFilterValue(prev, n))}
-                  />
-                  <span className="truncate">{n}</span>
-                </label>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-[11px] font-normal border-border/60 bg-background/50 gap-2 min-w-[140px] justify-between">
+                <span className="truncate">
+                  {filterCities.length === 0 ? "Cidades" : `${filterCities.length} cidade(s)`}
+                </span>
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-2" align="start">
+              <div className="max-h-[240px] overflow-y-auto space-y-0.5">
+                {cities.map((c) => (
+                  <label key={c} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                    <Checkbox
+                      checked={filterCities.includes(c)}
+                      onCheckedChange={() => setFilterCities((prev) => toggleFilterValue(prev, c))}
+                      className="h-3.5 w-3.5"
+                    />
+                    <span className="truncate">{c}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs justify-between min-w-[180px]">
-              <span className="truncate">
-                {filterCities.length === 0
-                  ? "Todas as cidades"
-                  : filterCities.length === 1
-                  ? filterCities[0]
-                  : `${filterCities.length} cidades`}
-              </span>
-              <ChevronDown className="h-3 w-3 ml-2 opacity-60" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-2" align="start">
-            <div className="max-h-[260px] overflow-y-auto space-y-1">
-              {cities.length === 0 && <div className="text-xs text-muted-foreground px-1 py-1">Sem opções</div>}
-              {cities.map((c) => (
-                <label key={c} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-accent cursor-pointer text-xs">
-                  <Checkbox
-                    checked={filterCities.includes(c)}
-                    onCheckedChange={() => setFilterCities((prev) => toggleFilterValue(prev, c))}
-                  />
-                  <span className="truncate">{c}</span>
-                </label>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="h-8 text-[11px] font-normal w-[160px] border-border/60 bg-background/50">
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default" className="text-xs">Padrão</SelectItem>
+              <SelectItem value="name_asc" className="text-xs">A → Z</SelectItem>
+              <SelectItem value="name_desc" className="text-xs">Z → A</SelectItem>
+              <SelectItem value="rating_desc" className="text-xs">Nota (↓)</SelectItem>
+              <SelectItem value="reviews_desc" className="text-xs">Avaliações (↓)</SelectItem>
+              <SelectItem value="reputation" className="text-xs">Reputação</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="h-8 text-xs w-[180px]">
-            <SelectValue placeholder="Ordenar por..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="default">Ordenação padrão</SelectItem>
-            <SelectItem value="name_asc">A → Z</SelectItem>
-            <SelectItem value="name_desc">Z → A</SelectItem>
-            <SelectItem value="rating_desc">Nota (Maior → Menor)</SelectItem>
-            <SelectItem value="rating_asc">Nota (Menor → Maior)</SelectItem>
-            <SelectItem value="reviews_desc">Avaliações (Maior → Menor)</SelectItem>
-            <SelectItem value="reviews_asc">Avaliações (Menor → Maior)</SelectItem>
-            <SelectItem value="reputation">Melhor reputação</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {(filterNiches.length > 0 || filterCities.length > 0 || searchQuery) && (
-          <>
-            <Button size="sm" variant="ghost" className="h-8 text-xs"
+          {(filterNiches.length > 0 || filterCities.length > 0 || searchQuery) && (
+            <Button size="sm" variant="ghost" className="h-8 px-2 text-[11px] text-muted-foreground hover:text-foreground"
               onClick={() => { setFilterNiches([]); setFilterCities([]); setSearchQuery(""); }}>
-              <XIcon className="h-3 w-3 mr-1" /> Limpar
+              <XIcon className="h-3.5 w-3.5 mr-1" /> Limpar
             </Button>
-            <Badge variant="outline" className="text-[10px]">
-              {pipelineLeads.length} de {allPipelineLeads.length} leads
-            </Badge>
-          </>
-        )}
-
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 text-xs ml-auto"
-          disabled={pipelineLeads.length === 0}
-          onClick={() => setCampaignOpen(true)}
-        >
-          📥 Exportar Leads
-        </Button>
+          )}
+        </div>
       </div>
+
 
       <ExportLeadsDialog
         open={campaignOpen}
