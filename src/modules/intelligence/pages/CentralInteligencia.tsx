@@ -367,7 +367,9 @@ export default function CentralInteligencia() {
                       </div>
                     )}
                     <div className={cn("group relative px-4 py-3 rounded-2xl max-w-[90%] prose prose-sm dark:prose-invert", m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                      <ReactMarkdown className="whitespace-pre-wrap">{m.content}</ReactMarkdown>
+                      <div className="whitespace-pre-wrap">
+                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      </div>
                       
                       {m.role === "assistant" && debugMode && (
                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
