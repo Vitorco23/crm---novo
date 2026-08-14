@@ -57,8 +57,14 @@ async function classify(question: string, ctx: CrmContext): Promise<{ specialist
 
   let intent = (parsed?.intent ?? "outra") as IntelIntent;
   
+  // Refinamento de intenção estratégica vs operacional
+  if (intent === "operacao_metricas" && (question.toLowerCase().includes("meta") || question.toLowerCase().includes("quinzena") || question.toLowerCase().includes("estrateg"))) {
+    intent = "conselho_estrategia";
+  }
+  
   return { specialist: s, intent };
 }
+
 
 async function runSpecialist(
   specialist: SpecialistId,
