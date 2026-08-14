@@ -22,6 +22,7 @@ import Lembretes from "@/modules/agenda/pages/Lembretes";
 import InteligenciaComercial from "@/modules/intelligence/pages/InteligenciaComercial";
 import CentralDecisao from "@/modules/intelligence/pages/CentralDecisao";
 import MissaoDoDia from "@/modules/intelligence/pages/MissaoDoDia";
+import { IntelligenceShell } from "@/modules/intelligence/components/IntelligenceShell";
 
 import Agenda from "@/modules/agenda/pages/Agenda";
 import MemoriaComercial from "@/modules/intelligence/pages/MemoriaComercial";
@@ -30,6 +31,7 @@ const Laboratorio = lazy(() => import("@/modules/laboratorio/pages/Laboratorio")
 const CentralInteligencia = lazy(() => import("@/modules/intelligence/pages/CentralInteligencia"));
 const KnowledgeBase = lazy(() => import("@/modules/knowledge/pages/KnowledgeBase"));
 const SaudeSistema = lazy(() => import("@/modules/configuracoes/pages/SaudeSistema"));
+
 
 import Auth from "@/pages/Auth";
 import OAuthConsent from "@/pages/OAuthConsent";
@@ -67,22 +69,26 @@ const App = () => (
                         <Route path="/financeiro" element={<Financeiro />} />
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/lembretes" element={<Lembretes />} />
-                        <Route path="/inteligencia" element={<InteligenciaComercial />} />
+                        <Route path="/inteligencia" element={<IntelligenceShell title="Visão Geral" description="Consolidação da inteligência comercial"><InteligenciaComercial /></IntelligenceShell>} />
                         <Route path="/inteligencia/central" element={
                           <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Central de Inteligência…</div>}>
-                            <CentralInteligencia />
+                            <IntelligenceShell title="Conversar" description="Chat com especialistas de IA da Performance21">
+                              <CentralInteligencia />
+                            </IntelligenceShell>
                           </Suspense>
                         } />
                         <Route path="/inteligencia/knowledge" element={
                           <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Knowledge Base…</div>}>
-                            <KnowledgeBase />
+                            <IntelligenceShell title="Conhecimento" description="Documentação oficial e metodologia RAG">
+                              <KnowledgeBase />
+                            </IntelligenceShell>
                           </Suspense>
                         } />
-                        <Route path="/central" element={<CentralDecisao />} />
+                        <Route path="/central" element={<IntelligenceShell title="Decisão" description="Comando operacional e o que fazer agora"><CentralDecisao /></IntelligenceShell>} />
                         <Route path="/missao" element={<MissaoDoDia />} />
 
                         <Route path="/agenda" element={<Agenda />} />
-                        <Route path="/memoria" element={<MemoriaComercial />} />
+                        <Route path="/memoria" element={<IntelligenceShell title="Memória" description="Aprendizados históricos e padrões identificados"><MemoriaComercial /></IntelligenceShell>} />
                         <Route path="/saude-sistema" element={
                           <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Saúde do Sistema…</div>}>
                             <SaudeSistema />
@@ -90,9 +96,12 @@ const App = () => (
                         } />
                         <Route path="/laboratorio" element={
                           <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Laboratório…</div>}>
-                            <Laboratorio />
+                            <IntelligenceShell title="Laboratório" description="Experimentação contínua da operação comercial">
+                              <Laboratorio />
+                            </IntelligenceShell>
                           </Suspense>
                         } />
+
 
 
                         <Route path="*" element={<NotFound />} />
