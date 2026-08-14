@@ -60,6 +60,24 @@ function buildLeadContext(lead: Lead | null) {
   return { id: lead.id, empresa: lead.company, contato: lead.contact, telefone: lead.phone, cidade: lead.city, niche: lead.niche, icp: lead.icpStars, stage: lead.stage };
 }
 
+function buildDashboardSnapshot() {
+  try {
+    const leads = getLeads();
+    const byStage: Record<string, number> = {};
+    leads.forEach((l) => { byStage[l.stage] = (byStage[l.stage] ?? 0) + 1; });
+    const oportunidades = leads.filter((l) => OPORTUNIDADES_STAGES.includes(l.stage as never));
+    const coldCall = leads.filter((l) => COLD_CALL_STAGES.includes(l.stage as never));
+    const pipelineValue = oportunidades.reduce((s, l) => s + (l.contractValue ?? 0), 0);
+    return {
+      totalLeads: leads.length,
+      coldCall: coldCall.length,
+      oportunidades: oportunidades.length,
+      pipelineValueBRL: pipelineValue,
+      distribuicaoPorEtapa: byStage,
+    };
+  } catch { return null; }
+}
+
 export default function CentralInteligencia() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -67,8 +85,6 @@ export default function CentralInteligencia() {
   const [sending, setSending] = useState(false);
   const [input, setInput] = useState("");
   const [override, setOverride] = useState<Specialist | "auto">("auto");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState("");
   const [debugMode, setDebugMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -111,7 +127,11 @@ export default function CentralInteligencia() {
         conversationId: convId,
         specialistOverride: override === "auto" ? undefined : override,
         history: messages.map(m => ({ role: m.role, content: m.content })),
-        context: { page: window.location.pathname, leadContext: buildLeadContext(openLead) },
+        context: { 
+          page: window.location.pathname, 
+          leadContext: buildLeadContext(openLead),
+          dashboardSnapshot: buildDashboardSnapshot()
+        },
       });
       
       const visibleContent = typeof data?.content === 'string' ? data.content : "(sem resposta)";
@@ -135,7 +155,7 @@ export default function CentralInteligencia() {
         <ScrollArea className="flex-1">
            <div className="space-y-1">
              {conversations.map(c => (
-               <div key={c.id} className={cn("group flex items-center w-full rounded-md text-xs px-2 py-1.5 cursor-pointer hover:bg-muted", activeId === c.id ? "bg-muted" : "")}>
+               <div key={c.id} className={cn("group flex items-center w-full rounded-md text-xs px-2 py-1.5 cursor-pointer hover:bg-muted", activeId === c.id ? "bg-muted font-medium" : "")}>
                  <button className="flex-1 text-left truncate" onClick={() => setActiveId(c.id)}>{c.title}</button>
                  <div className="opacity-0 group-hover:opacity-100"><MoreVertical className="h-3 w-3" /></div>
                </div>
@@ -144,7 +164,7 @@ export default function CentralInteligencia() {
         </ScrollArea>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 bg-background">
+      <main className="flex-1 flex flex-col min-w-0 bg-background relative">
         <ScrollArea className="flex-1 p-6" ref={scrollRef}>
           <div className="max-w-[800px] mx-auto space-y-8">
             {messages.length === 0 ? (
@@ -152,23 +172,38 @@ export default function CentralInteligencia() {
                 <Sparkles className="h-10 w-10 text-primary" />
                 <h2 className="text-xl font-bold">Performance21 IA</h2>
                 <p className="text-sm">Como posso ajudar na operação hoje?</p>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {["Analisar funil", "Avaliar lead", "Dúvida comercial", "Consultar metodologia"].map(t => (
+                    <Button key={t} variant="ghost" size="sm" className="text-[10px]" onClick={() => setInput(t)}>{t}</Button>
+                  ))}
+                </div>
               </div>
             ) : (
-               <div className="space-y-8">
+               <div className="space-y-10 pb-20">
                   {messages.map(m => (
                     <div key={m.id} className={cn("flex flex-col gap-2", m.role === "user" ? "items-end" : "items-start")}>
                       {m.role === "assistant" && (
                         <div className="flex items-center gap-2 text-xs font-semibold opacity-70 mb-1">
-                          {m.specialist && <Bot className="h-3.5 w-3.5" />} {m.specialist ? SPECIALIST_META[m.specialist].label : "Diretor Comercial"}
+                          <Bot className="h-3.5 w-3.5" /> {m.specialist ? SPECIALIST_META[m.specialist].label : "Diretor Comercial"}
                         </div>
                       )}
-                      <div className={cn("px-5 py-4 rounded-2xl max-w-[85%] text-sm leading-relaxed", m.role === "user" ? "bg-primary text-primary-foreground shadow-sm" : "bg-transparent -ml-5 p-0")}>
-                        {m.role === "user" ? m.content : <div className="prose prose-sm dark:prose-invert"><ReactMarkdown>{m.content}</ReactMarkdown></div>}
+                      <div className={cn("rounded-2xl max-w-[85%] text-sm leading-relaxed", m.role === "user" ? "bg-primary text-primary-foreground px-5 py-3 shadow-sm" : "bg-transparent w-full")}>
+                        {m.role === "user" ? m.content : (
+                          <div className="prose prose-sm dark:prose-invert prose-p:my-2 prose-headings:mb-2 prose-headings:mt-4 prose-ul:my-2">
+                            <ReactMarkdown>{m.content}</ReactMarkdown>
+                          </div>
+                        )}
                       </div>
                       {m.role === "assistant" && (
-                        <div className="flex gap-2 text-[10px] text-muted-foreground opacity-50">
-                           <button className="hover:text-foreground">Copiar</button>
-                           {debugMode && <button className="hover:text-foreground" onClick={() => alert(JSON.stringify(m.observability, null, 2))}>Debug</button>}
+                        <div className="flex gap-3 text-[10px] text-muted-foreground opacity-50 mt-1">
+                           <button className="hover:text-foreground flex items-center gap-1"><Copy className="h-3 w-3" /> Copiar</button>
+                           {isAdmin && <button className="hover:text-foreground" onClick={() => setDebugMode(!debugMode)}>{debugMode ? "Debug ON" : "Debug"}</button>}
+                           {debugMode && m.observability && (
+                             <Dialog>
+                               <DialogTrigger asChild><button className="hover:text-foreground underline">Metadados</button></DialogTrigger>
+                               <DialogContent><MessageInspector observability={m.observability} /></DialogContent>
+                             </Dialog>
+                           )}
                         </div>
                       )}
                     </div>
@@ -179,13 +214,13 @@ export default function CentralInteligencia() {
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t bg-background">
-           <div className="max-w-[800px] mx-auto relative border rounded-xl bg-card shadow-lg p-2">
-              <div className="flex items-center justify-between px-2 pb-2">
+        <div className="absolute bottom-6 left-0 right-0 px-6">
+           <div className="max-w-[800px] mx-auto border rounded-2xl bg-card shadow-2xl p-2 focus-within:ring-1 focus-within:ring-primary/50 transition-all">
+              <div className="flex items-center gap-2 px-2 pb-1">
                 <DropdownMenu>
                    <DropdownMenuTrigger asChild>
-                     <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1.5 uppercase font-bold text-muted-foreground">
-                       <Sparkles className="h-3 w-3" /> {override === "auto" ? "✨ Auto" : SPECIALIST_META[override].label} <ChevronDown className="h-3 w-3" />
+                     <Button variant="ghost" size="sm" className="h-6 text-[9px] gap-1 px-2 text-muted-foreground hover:bg-muted rounded-full">
+                       <Sparkles className="h-3 w-3" /> {override === "auto" ? "✨ Auto" : SPECIALIST_META[override].label} <ChevronDown className="h-2.5 w-2.5" />
                      </Button>
                    </DropdownMenuTrigger>
                    <DropdownMenuContent>
@@ -194,14 +229,15 @@ export default function CentralInteligencia() {
                    </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Pergunte sobre sua operação..."
-                className="border-none shadow-none focus-visible:ring-0 min-h-[40px] max-h-[200px] resize-none"
-              />
-              <div className="flex justify-end pt-2">
-                <Button onClick={send} size="sm" className="rounded-lg h-8 px-4" disabled={sending}>Enviar <Send className="h-3 w-3 ml-2" /></Button>
+              <div className="flex items-end gap-2 pr-2">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                  placeholder="Pergunte sobre sua operação..."
+                  className="border-none shadow-none focus-visible:ring-0 min-h-[44px] max-h-[200px] resize-none py-2 text-sm"
+                />
+                <Button onClick={send} size="icon" className="h-8 w-8 rounded-xl shrink-0 mb-1" disabled={sending}><Send className="h-4 w-4" /></Button>
               </div>
            </div>
         </div>
