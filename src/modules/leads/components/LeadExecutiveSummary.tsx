@@ -149,6 +149,29 @@ export default function LeadExecutiveSummary({ lead }: { lead: Lead }) {
           <span>Baseado na última interação e cadência</span>
         </div>
       </div>
+
+      {/* Camada de Rastreabilidade Sprint 9 */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg border border-border bg-card/40 p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Conhecimento Aprovado</p>
+          </div>
+          <p className="text-[11px] text-foreground/80 line-clamp-2 italic">
+            {lead.autoDiagnosis?.painPoints?.[0] ? `Dores validadas: ${lead.autoDiagnosis.painPoints.join(", ")}` : "Aguardando validação manual de dores e scripts..."}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card/40 p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+             <History className="h-3.5 w-3.5 text-sky-500" />
+             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Memória Histórica</p>
+          </div>
+          <p className="text-[11px] text-foreground/80 line-clamp-2">
+            {lead.autoDiagnosis?.summary ? lead.autoDiagnosis.summary : "Sem síntese histórica processada para este lead."}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
