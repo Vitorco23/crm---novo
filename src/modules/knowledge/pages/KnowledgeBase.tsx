@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Library, Plus, Upload, Trash2, Pencil, Loader2, RefreshCw, FileText, CheckCircle2 } from "lucide-react";
+import { Library, Plus, Upload, Trash2, Pencil, Loader2, RefreshCw, FileText, CheckCircle2, Search } from "lucide-react";
 
 const CATEGORIES = [
   "Metodologia",
