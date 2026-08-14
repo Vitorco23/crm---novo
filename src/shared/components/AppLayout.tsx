@@ -26,16 +26,16 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header global do Application Shell */}
-          <header className="sticky top-0 z-sticky h-14 flex items-center gap-3 border-b border-border bg-background/85 backdrop-blur-md px-3 md:px-4 shrink-0">
-            <SidebarTrigger className="shrink-0" />
-            <Separator orientation="vertical" className="h-6 hidden md:block" />
+          <header className="sticky top-0 z-sticky h-14 flex items-center gap-4 border-b border-border/60 bg-background/60 backdrop-blur-xl px-4 shrink-0 transition-all duration-300">
+            <SidebarTrigger className="shrink-0 hover:bg-muted" />
+            <Separator orientation="vertical" className="h-6 hidden md:block opacity-40" />
 
             {/* Título + breadcrumb */}
-            <div className="flex flex-col min-w-0 flex-1">
-              <Breadcrumbs className="hidden md:flex" />
-              <h1 className="text-small md:text-subtitle font-semibold text-foreground truncate leading-tight">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <h1 className="text-small md:text-subtitle font-bold text-foreground truncate tracking-tight">
                 {current?.title ?? "Performance21"}
               </h1>
+              <Breadcrumbs className="hidden md:flex opacity-60" />
             </div>
 
             {/* Busca global — só desktop/tablet */}
