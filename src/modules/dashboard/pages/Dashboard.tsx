@@ -8,6 +8,7 @@ import {
   getLeadsForPipeline,
 } from "@/shared/services/store";
 import { getTransactions, formatBRL, monthKey } from "@/modules/financeiro/services/finance";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
@@ -17,7 +18,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Phone, Users, UserCheck, CalendarCheck, Trophy, DollarSign,
   Handshake, Calendar as CalendarIcon, Sparkles, Activity, Layers,
-  ChevronDown, ChevronUp, BarChart3, TrendingUp
+  ChevronDown, ChevronUp, BarChart3, TrendingUp, TrendingDown, Repeat, Wallet
 } from "lucide-react";
 import StrategicIntelligencePanel, { type PeriodKey } from "@/modules/dashboard/components/StrategicIntelligencePanel";
 import EstimatedActivityCard from "@/modules/dashboard/components/EstimatedActivityCard";
@@ -372,8 +373,46 @@ function ActivityFunnelCard({ filter, custom }: { filter: Filter; custom?: Custo
 
 // Subcomponentes para a área secundária (reutilizam lógica do original simplificada)
 function OperationalAnalysis({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
-    // Reutiliza OperationalPanel mas com estilo simplificado
-    return <OperationalPanel filter={filter} custom={custom} />;
+    // Implementação básica do OperationalPanel (antes perdido)
+    const sessions = getSessions();
+    const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter, custom)), [sessions, filter, custom]);
+    
+    const stats = useMemo(() => {
+        const totalCalls = filteredSessions.reduce((a, s) => a + s.calls, 0);
+        const totalConns = filteredSessions.reduce((a, s) => a + (s.connections || 0), 0);
+        const totalMeets = filteredSessions.reduce((a, s) => a + s.meetings, 0);
+        const totalTime = filteredSessions.reduce((a, s) => a + (s.duration || 0), 0);
+        return { totalCalls, totalConns, totalMeets, totalTime };
+    }, [filteredSessions]);
+
+    return (
+        <Card className="border-border/40 bg-card/50">
+            <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                    <Activity className="h-3.5 w-3.5 text-accent" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest">Análise Operacional</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Total Chamadas</p>
+                        <p className="text-xl font-black">{stats.totalCalls}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Conexões</p>
+                        <p className="text-xl font-black">{stats.totalConns}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Reuniões</p>
+                        <p className="text-xl font-black">{stats.totalMeets}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Minutos Foco</p>
+                        <p className="text-xl font-black">{stats.totalTime}</p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
 }
 
 function EstimatedActivityPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
@@ -389,7 +428,96 @@ function EstimatedActivityPanel({ filter, custom }: { filter: Filter; custom?: C
 function PomodoroRankingPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
     const sessions = getSessions();
     const filteredSessions = useMemo(() => sessions.filter((s) => filterByDate(s.startTime, filter, custom)), [sessions, filter, custom]);
-    return <PomodoroRanking sessions={filteredSessions} />;
+    
+    // Implementação básica do PomodoroRanking
+    const ranking = useMemo(() => {
+        const users = new Map<string, { calls: number; sessions: number }>();
+        filteredSessions.forEach(s => {
+            const current = users.get(s.userName || "Vendedor") || { calls: 0, sessions: 0 };
+            users.set(s.userName || "Vendedor", {
+                calls: current.calls + s.calls,
+                sessions: current.sessions + 1
+            });
+        });
+        return Array.from(users.entries()).sort((a, b) => b[1].calls - a[1].calls);
+    }, [filteredSessions]);
+
+    return (
+        <Card className="border-border/40 bg-card/50">
+            <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                    <Trophy className="h-3.5 w-3.5 text-accent" />
+                    <h3 className="text-xs font-bold uppercase tracking-widest">Ranking de Foco</h3>
+                </div>
+                <div className="space-y-3">
+                    {ranking.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-4">Nenhuma sessão no período.</p>
+                    ) : (
+                        ranking.map(([name, data], i) => (
+                            <div key={name} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-black text-accent w-4">#{i+1}</span>
+                                    <span className="text-xs font-bold">{name}</span>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[11px] font-black">{data.calls} calls</p>
+                                    <p className="text-[9px] text-muted-foreground uppercase">{data.sessions} sessões</p>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function FinancialHealthRow() {
+    const txs = getTransactions();
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
+    const monthTxs = useMemo(() => txs.filter(t => monthKey(t.date) === currentMonth), [txs]);
+    const revenue = monthTxs.filter(t => t.kind === "revenue").reduce((a, b) => a + b.amount, 0);
+    const expenses = monthTxs.filter(t => t.kind === "expense").reduce((a, b) => a + b.amount, 0);
+    const profit = revenue - expenses;
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="border-border/40 bg-card/50">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                        <TrendingUp className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Entradas</p>
+                        <p className="text-lg font-black text-emerald-500">{formatBRL(revenue)}</p>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card className="border-border/40 bg-card/50">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                        <TrendingDown className="h-5 w-5 text-rose-500" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Saídas</p>
+                        <p className="text-lg font-black text-rose-500">{formatBRL(expenses)}</p>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card className="border-border/40 bg-card/50">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+                        <Wallet className="h-5 w-5 text-accent" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Lucro</p>
+                        <p className={`text-lg font-black ${profit >= 0 ? "text-accent" : "text-rose-500"}`}>{formatBRL(profit)}</p>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
 }
 
 
