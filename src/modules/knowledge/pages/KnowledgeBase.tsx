@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { KnowledgeRepository } from "../services/KnowledgeRepository";
 import { useKnowledgeChunkCounts, useKnowledgeDocuments, useInvalidateKnowledge } from "../hooks/useKnowledge";
-import { PageContainer } from "@/shared/components/shell/PageContainer";
-import { PageHeader } from "@/shared/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

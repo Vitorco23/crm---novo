@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { IntelligenceRepository } from "../services/IntelligenceRepository";
-import { PageContainer } from "@/shared/components/shell/PageContainer";
-import { PageHeader } from "@/shared/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -261,13 +259,7 @@ export default function CentralInteligencia() {
   );
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Central de Inteligência"
-        description="Converse com 3 especialistas de IA da Performance21"
-        icon={MessageCircle}
-      />
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 min-h-[calc(100vh-220px)]">
+    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 min-h-[calc(100vh-220px)]">
         {/* Sidebar */}
         <Card className="p-3 flex flex-col">
           <Button onClick={newConversation} className="mb-3 gap-2" size="sm">
@@ -430,8 +422,7 @@ export default function CentralInteligencia() {
             </div>
           </div>
         </Card>
-      </div>
-    </PageContainer>
+    </div>
   );
 }
 
