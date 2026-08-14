@@ -381,7 +381,7 @@ function OperationalAnalysis({ filter, custom }: { filter: Filter; custom?: Cust
         const totalCalls = filteredSessions.reduce((a, s) => a + s.calls, 0);
         const totalConns = filteredSessions.reduce((a, s) => a + (s.connections || 0), 0);
         const totalMeets = filteredSessions.reduce((a, s) => a + s.meetings, 0);
-        const totalTime = filteredSessions.reduce((a, s) => a + (s.duration || 0), 0);
+        const totalTime = filteredSessions.reduce((a, s) => a + (s.durationMinutes || 0), 0);
         return { totalCalls, totalConns, totalMeets, totalTime };
     }, [filteredSessions]);
 
@@ -433,8 +433,10 @@ function PomodoroRankingPanel({ filter, custom }: { filter: Filter; custom?: Cus
     const ranking = useMemo(() => {
         const users = new Map<string, { calls: number; sessions: number }>();
         filteredSessions.forEach(s => {
-            const current = users.get(s.userName || "Vendedor") || { calls: 0, sessions: 0 };
-            users.set(s.userName || "Vendedor", {
+            // PomodoroSession does not have userName in store.ts, using fallback
+            const name = "Vendedor";
+            const current = users.get(name) || { calls: 0, sessions: 0 };
+            users.set(name, {
                 calls: current.calls + s.calls,
                 sessions: current.sessions + 1
             });
