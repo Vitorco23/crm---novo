@@ -18,7 +18,6 @@ export interface KnowledgeDocumentPayload {
   tags: string[];
   conteudo_markdown: string;
   ativo: boolean;
-  source_lead_id?: string | null;
 }
 
 export interface KnowledgeImportResult {
