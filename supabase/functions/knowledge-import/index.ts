@@ -43,6 +43,45 @@ function deriveTitle(filename: string, text: string): string {
   return normalizeTitle(firstLine.replace(/^#+\s*/, "")) || "Documento importado";
 }
 
+async function extractTextFromPptx(bytes: Uint8Array): Promise<string> {
+  try {
+    const JSZip = (await import("npm:jszip@3.10.1")).default;
+    const zip = await JSZip.loadAsync(bytes);
+    
+    // PPTX stores slide content in ppt/slides/slideN.xml
+    // We need to find all slide files, sort them, and extract text
+    const slideFiles = Object.keys(zip.files)
+      .filter(name => name.startsWith("ppt/slides/slide") && name.endsWith(".xml"))
+      .sort((a, b) => {
+        const numA = parseInt(a.match(/slide(\d+)\.xml/)?.[1] || "0");
+        const numB = parseInt(b.match(/slide(\d+)\.xml/)?.[1] || "0");
+        return numA - numB;
+      });
+
+    let fullText = "";
+    for (const [index, slidePath] of slideFiles.entries()) {
+      const content = await zip.files[slidePath].async("string");
+      // Basic XML parsing to extract <a:t> tags which contain text
+      // We use a regex for simplicity in Edge Functions to avoid heavy XML parsers
+      const textMatches = content.match(/<a:t>([^<]*)<\/a:t>/g) || [];
+      const slideText = textMatches
+        .map(match => match.replace(/<a:t>|<\/a:t>/g, ""))
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+      
+      if (slideText) {
+        fullText += `## Slide ${index + 1}\n\n${slideText}\n\n`;
+      }
+    }
+    return fullText.trim();
+  } catch (e) {
+    console.error("PPTX extraction error:", e);
+    throw new Error("Falha ao extrair texto do PowerPoint.");
+  }
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const auth = await requireUser(req, corsHeaders);
@@ -91,12 +130,18 @@ Deno.serve(async (req) => {
       const mammoth = await import("npm:mammoth@1.8.0");
       const result = await mammoth.extractRawText({ buffer: bytes });
       raw = result.value ?? "";
-    } else {
+    } else if (ext === "pptx") {
+      raw = await extractTextFromPptx(bytes);
+    } else if (ext === "pdf") {
       const { extractText, getDocumentProxy } = await import("npm:unpdf@0.11.0");
       const pdf = await getDocumentProxy(bytes);
       const { text: pdfText } = await extractText(pdf, { mergePages: true });
       raw = Array.isArray(pdfText) ? pdfText.join("\n\n") : String(pdfText ?? "");
+    } else {
+      logKnowledgeIngest({ evt: "knowledge_import", stage: "rejected", reason: "unsupported_extension", extension: ext });
+      return json({ error: "unsupported_extension" }, 400);
     }
+
 
     // Normalização/sanitização estrutural + teto de caracteres.
     const normalized = normalizeIngestText(raw, KNOWLEDGE_INGESTION_LIMITS.maxExtractedChars);

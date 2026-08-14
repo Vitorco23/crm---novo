@@ -35,7 +35,7 @@ export const KNOWLEDGE_INGESTION_LIMITS = {
   maxBatchFiles: 50,
 } as const;
 
-export const KNOWLEDGE_EXTENSIONS = ["md", "markdown", "txt", "pdf", "docx"] as const;
+export const KNOWLEDGE_EXTENSIONS = ["md", "markdown", "txt", "pdf", "docx", "pptx"] as const;
 export type KnowledgeExtension = typeof KNOWLEDGE_EXTENSIONS[number];
 
 // ------------------------------------------------------------------

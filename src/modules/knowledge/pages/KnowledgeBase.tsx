@@ -11,7 +11,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Library, Plus, Upload, Trash2, Pencil, Loader2, RefreshCw, CheckCircle2, Search, Info, Sparkles } from "lucide-react";
+import { Library, Plus, Upload, Trash2, Pencil, Loader2, RefreshCw, CheckCircle2, Search, Info, Sparkles, FileText } from "lucide-react";
+import { KnowledgeFileImporter } from "../components/KnowledgeFileImporter";
+
 
 const CATEGORIES = [
   "Metodologia",
@@ -35,7 +37,6 @@ interface KDoc {
   versao: number;
   ativo: boolean;
   updated_at: string;
-  source_lead_id?: string | null;
 }
 
 export default function KnowledgeBase() {
@@ -96,7 +97,6 @@ export default function KnowledgeBase() {
         tags: editing.tags ?? [],
         conteudo_markdown: conteudo,
         ativo: editing.ativo ?? true,
-        source_lead_id: editing.source_lead_id ?? null,
       };
       if (editing.id) await KnowledgeRepository.updateDocument(editing.id, payload);
       else await KnowledgeRepository.createDocument(payload);
@@ -181,15 +181,41 @@ export default function KnowledgeBase() {
           {editing && (
             <div className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
-                <Input value={editing.titulo} placeholder="Título" onChange={(e) => setEditing({...editing, titulo: e.target.value})} />
-                <select value={editing.categoria} onChange={(e) => setEditing({...editing, categoria: e.target.value})} className="rounded-md border bg-background px-3 text-sm">
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <div className="space-y-2">
+                  <Label>Título</Label>
+                  <Input value={editing.titulo} placeholder="Título do documento" onChange={(e) => setEditing({...editing, titulo: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Categoria</Label>
+                  <select value={editing.categoria} onChange={(e) => setEditing({...editing, categoria: e.target.value})} className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
               </div>
-              <Textarea value={editing.conteudo_markdown} placeholder="Markdown..." className="h-64 font-mono text-xs" onChange={(e) => setEditing({...editing, conteudo_markdown: e.target.value})} />
+
+              {!editing.id && (
+                <KnowledgeFileImporter 
+                  disabled={saving}
+                  onImported={({ text, suggestedTitle }) => {
+                    setEditing({
+                      ...editing,
+                      titulo: suggestedTitle,
+                      conteudo_markdown: text
+                    });
+                  }} 
+                />
+              )}
+
+              <div className="space-y-2">
+                <Label>Conteúdo / Markdown</Label>
+                <Textarea value={editing.conteudo_markdown} placeholder="Digite ou cole conteúdo em Markdown..." className="h-64 font-mono text-xs" onChange={(e) => setEditing({...editing, conteudo_markdown: e.target.value})} />
+              </div>
+
               <DialogFooter>
+                <Button variant="outline" onClick={() => setEditorOpen(false)} disabled={saving}>Cancelar</Button>
                 <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
               </DialogFooter>
+
             </div>
           )}
         </DialogContent>
