@@ -278,33 +278,47 @@ export default function CentralInteligencia() {
                 )}
               >
                 {editingId === c.id ? (
-                  <Input
-                    autoFocus
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleRename(c.id);
-                      if (e.key === "Escape") setEditingId(null);
-                    }}
-                    onBlur={() => handleRename(c.id)}
-                    className="h-6 py-0 px-1 text-xs border-primary focus-visible:ring-0"
-                  />
+                  <div className="flex-1 flex items-center" onClick={(e) => e.stopPropagation()}>
+                    <Input
+                      autoFocus
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleRename(c.id);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setEditingId(null);
+                        }
+                      }}
+                      onBlur={() => handleRename(c.id)}
+                      className="h-6 py-0 px-1 text-xs border-primary focus-visible:ring-0 w-full"
+                    />
+                  </div>
                 ) : (
                   <>
                     <button 
-                      className="flex-1 text-left truncate pr-6" 
-                      onClick={() => setActiveId(c.id)}
+                      className="flex-1 text-left truncate pr-6 h-full w-full" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log(`[ConversationCRUD] sidebar_item_clicked id=${c.id}`);
+                        setActiveId(c.id);
+                      }}
                     >
                       {c.title}
                     </button>
-                    <div className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div 
+                      className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button 
                             variant="ghost" 
                             size="icon" 
                             className="h-5 w-5 hover:bg-background/50"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             <MoreVertical className="h-3 w-3" />
                           </Button>
@@ -312,6 +326,7 @@ export default function CentralInteligencia() {
                         <DropdownMenuContent align="end" className="w-32">
                           <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
+                            console.log(`[ConversationCRUD] dropdown_rename_clicked id=${c.id}`);
                             setEditingId(c.id);
                             setEditTitle(c.title);
                           }}>
@@ -321,6 +336,7 @@ export default function CentralInteligencia() {
                             className="text-destructive focus:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation();
+                              console.log(`[ConversationCRUD] dropdown_delete_clicked id=${c.id}`);
                               setDeleteId(c.id);
                             }}
                           >
@@ -331,6 +347,7 @@ export default function CentralInteligencia() {
                     </div>
                   </>
                 )}
+
               </div>
             ))}
           </div>
