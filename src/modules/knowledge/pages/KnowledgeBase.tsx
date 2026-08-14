@@ -153,7 +153,7 @@ export default function KnowledgeBase() {
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <Badge variant={d.categoria === "Objeções" ? "accent" : "secondary"}>{d.categoria}</Badge>
+                <Badge variant={d.categoria === "Objeções" ? "default" : "secondary"}>{d.categoria}</Badge>
                 <span className="ml-auto">{new Date(d.updated_at).toLocaleDateString("pt-BR")}</span>
               </div>
             </Card>
