@@ -270,8 +270,28 @@ export default function CentralInteligencia() {
                          <Bot className="h-3 w-3" /> {SPECIALIST_META[m.specialist].label}
                       </div>
                     )}
-                    <div className={cn("px-4 py-3 rounded-2xl max-w-[90%] prose prose-sm dark:prose-invert", m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                    <div className={cn("group relative px-4 py-3 rounded-2xl max-w-[90%] prose prose-sm dark:prose-invert", m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted")}>
                       <ReactMarkdown>{m.content}</ReactMarkdown>
+                      
+                      {m.role === "assistant" && debugMode && (
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
+                                <Info className="h-3 w-3" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle className="text-sm font-bold flex items-center gap-2">
+                                  <ShieldAlert className="h-4 w-4 text-primary" /> Auditoria da Resposta
+                                </DialogTitle>
+                              </DialogHeader>
+                              <MessageInspector observability={m.observability} />
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
