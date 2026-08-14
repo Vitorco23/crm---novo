@@ -10,9 +10,12 @@ import {
   Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, Pencil, ChevronDown, Bot, Copy, RefreshCw, Info, ShieldAlert, MoreVertical
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import { getLeads, getPipelineForStage, type Lead } from "@/shared/services/store";
-import { COLD_CALL_STAGES, OPORTUNIDADES_STAGES } from "@/shared/services/store";
+import { 
+  getLeads, getPipelineForStage, type Lead, 
+  COLD_CALL_STAGES, OPORTUNIDADES_STAGES, getGoalsSettings 
+} from "@/shared/services/store";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,10 +45,13 @@ function MessageInspector({ observability }: { observability?: Record<string, an
     <div className="space-y-4 text-xs font-mono p-2">
       <div>Intenção: {observability.intention}</div>
       <div>Especialista: {observability.specialist}</div>
+      <div>Dados Operacionais: {Array.isArray(observability.operational_data) ? observability.operational_data.join(", ") : "nenhum"}</div>
+      <div>Knowledge: {observability.knowledge_result}</div>
       <div>Latência: {observability.latency_ms}ms</div>
     </div>
   );
 }
+
 
 function useOpenLeadContext(): Lead | null {
   const [lead, setLead] = useState<Lead | null>(null);
@@ -63,20 +69,24 @@ function buildLeadContext(lead: Lead | null) {
 function buildDashboardSnapshot() {
   try {
     const leads = getLeads();
+    const goals = getGoalsSettings();
     const byStage: Record<string, number> = {};
     leads.forEach((l) => { byStage[l.stage] = (byStage[l.stage] ?? 0) + 1; });
-    const oportunidades = leads.filter((l) => OPORTUNIDADES_STAGES.includes(l.stage as never));
-    const coldCall = leads.filter((l) => COLD_CALL_STAGES.includes(l.stage as never));
+    const oportunidades = leads.filter((l) => OPORTUNIDADES_STAGES.includes(l.stage as any));
+    const coldCall = leads.filter((l) => COLD_CALL_STAGES.includes(l.stage as any));
     const pipelineValue = oportunidades.reduce((s, l) => s + (l.contractValue ?? 0), 0);
+    
     return {
       totalLeads: leads.length,
       coldCall: coldCall.length,
       oportunidades: oportunidades.length,
       pipelineValueBRL: pipelineValue,
       distribuicaoPorEtapa: byStage,
+      metaMensal: goals.monthlyRevenueGoal,
     };
   } catch { return null; }
 }
+
 
 export default function CentralInteligencia() {
   const [conversations, setConversations] = useState<Conversation[]>([]);

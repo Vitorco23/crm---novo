@@ -40,7 +40,7 @@ async function classify(question: string, ctx: CrmContext): Promise<{ specialist
     task: "intel_router",
     system: composeSystem("intel.router.classifier"),
     user:
-      `Contexto: ${JSON.stringify(summarizeContext(ctx))}\n` +
+      `Contexto Básico: ${JSON.stringify({ hasLead: !!ctx.leadContext, hasDashboard: !!ctx.dashboardSnapshot, page: ctx.page })}\n` +
       `Pergunta:\n${buildQuestionBlock(question, "PERGUNTA DO USUÁRIO")}\n` +
       `Responda apenas JSON.`,
     json: true,
@@ -57,8 +57,14 @@ async function classify(question: string, ctx: CrmContext): Promise<{ specialist
 
   let intent = (parsed?.intent ?? "outra") as IntelIntent;
   
+  // Refinamento de intenção estratégica vs operacional
+  if (intent === "operacao_metricas" && (question.toLowerCase().includes("meta") || question.toLowerCase().includes("quinzena") || question.toLowerCase().includes("estrateg"))) {
+    intent = "conselho_estrategia";
+  }
+  
   return { specialist: s, intent };
 }
+
 
 async function runSpecialist(
   specialist: SpecialistId,
@@ -90,17 +96,39 @@ async function runSpecialist(
     knowledgeStatus = chunks.length > 0 ? "found" : "none";
   }
 
-  // 2. Contexto Mínimo: Otimização de ruído por intenção.
-  const reducedCtx = { ...ctx };
+  // 2. Context Gating de Verdade: Seleção de dados por intenção
+  const reducedCtx = { ...ctx, intent };
   const operationalUsed: string[] = [];
-  if (ctx.dashboardSnapshot) operationalUsed.push("dashboard");
-  if (ctx.leadContext) operationalUsed.push("lead");
+  
+  // Decisão de carregamento baseada em intenção
+  const isStrategic = intent === "conselho_estrategia";
+  const isOperational = intent === "operacao_metricas";
+  const isLeadSpecific = intent === "lead_especifico";
+  const isRAGFocused = ["metodologia", "objecoes", "script_comunicacao"].includes(intent);
 
-  if (["metodologia", "objecoes", "script_comunicacao"].includes(intent)) {
+  if (isRAGFocused) {
+    // Perguntas puramente metodológicas não precisam de dashboard global
+    reducedCtx.dashboardSnapshot = null;
+  } else if (isLeadSpecific && !question.toLowerCase().includes("comparar")) {
+    // Foco no lead específico, remove dashboard global salvo se pedir comparação
+    reducedCtx.dashboardSnapshot = null;
+  } else if (isStrategic) {
+    // Redução de ancoragem: mantém dashboard mas marcará como estratégico no builder
+    operationalUsed.push("strategic_metrics");
+  } else if (isOperational) {
+    operationalUsed.push("full_dashboard");
+  } else {
+    // Outras intenções sem contexto explícito não precisam do dashboard
     reducedCtx.dashboardSnapshot = null;
   }
 
+
+  if (reducedCtx.dashboardSnapshot) operationalUsed.push("dashboard_snapshot");
+  if (reducedCtx.leadContext) operationalUsed.push("lead_context");
+
+
   const built = buildChatContext({ history, crm: reducedCtx, knowledgeChunks: chunks });
+
   
   const promptId = specialist === "diretor_comercial" ? "intel.diretor.chat" 
                  : specialist === "consultor_leads" ? "intel.consultor.chat" 

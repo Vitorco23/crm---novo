@@ -42,22 +42,26 @@ export function buildHistoryBlock(history?: ConversationTurn[]): string {
 
 export function buildCrmBlock(ctx: CrmContext): string {
   const parts: string[] = [];
+  
   if (ctx.dashboardSnapshot && Object.keys(ctx.dashboardSnapshot).length) {
+    const label = ctx.intent === "conselho_estrategia" ? "DADOS ESTRATÉGICOS E METAS" : "SNAPSHOT OPERACIONAL DO CRM";
     parts.push(wrapUntrusted(
       sanitizeExternal(JSON.stringify(ctx.dashboardSnapshot), CONTEXT_LIMITS.crmBlockChars),
-      { maxChars: CONTEXT_LIMITS.crmBlockChars, label: "SNAPSHOT OPERACIONAL DO CRM (JSON)" },
+      { maxChars: CONTEXT_LIMITS.crmBlockChars, label: `${label} (JSON)` },
     ));
   }
+  
   if (ctx.leadContext && Object.keys(ctx.leadContext).length) {
     parts.push(wrapUntrusted(
       sanitizeExternal(JSON.stringify(ctx.leadContext), CONTEXT_LIMITS.crmBlockChars),
       { maxChars: CONTEXT_LIMITS.crmBlockChars, label: "LEAD ABERTO NO CRM (JSON)" },
     ));
   }
+  
   if (!parts.length) return "";
   return parts.join("\n\n") + "\n\n";
-
 }
+
 
 export interface KnowledgeChunkLike {
   content: string;
