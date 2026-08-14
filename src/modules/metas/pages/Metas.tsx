@@ -96,15 +96,10 @@ export default function Metas() {
   }, [g]);
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
-          <Target className="h-5 w-5 text-accent" />
           <div>
-            <h1 className="text-xl font-bold text-foreground">Metas e Calculadora</h1>
-            <p className="text-xs text-muted-foreground">
-              Engenharia reversa do seu objetivo financeiro
-            </p>
           </div>
         </div>
         <ExportExcelDialog moduleName="Metas" moduleSlug="Metas" build={buildMetasSheets} />

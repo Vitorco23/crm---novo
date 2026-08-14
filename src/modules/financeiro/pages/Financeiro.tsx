@@ -67,12 +67,8 @@ export default function Financeiro() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Financeiro</h1>
-          <p className="text-sm text-muted-foreground">Controle de entradas, saídas e investimentos da agência.</p>
-        </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => setMonth(shiftMonth(month, -1))}>
             <ChevronLeft className="h-4 w-4" />
