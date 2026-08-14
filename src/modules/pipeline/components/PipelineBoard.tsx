@@ -35,7 +35,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
   Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search, LayoutGrid, List as ListIcon, Download, ArrowRight,
-  MoreVertical,
+  MoreVertical, Sparkles, MessageSquare, PhoneCall
 } from "lucide-react";
 import { computeLeadTemperature, lastInteractionLabel, nextActionLabel } from "@/modules/cold-call/services/coldCallMetrics";
 import { getStepForLead, executionMoment } from "@/modules/leads/services/cadence";
@@ -74,6 +74,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
 
 
 export const LOST_REASON_EVENT = "p21:trigger-lost-reason";
@@ -133,6 +134,9 @@ function LeadCard({
     e.target.value = "";
   };
 
+  const temp = LeadIntelligenceRepository.temperature(lead);
+  const summary = LeadIntelligenceRepository.executiveSummary(lead);
+
   return (
     <TooltipProvider>
       <div
@@ -144,7 +148,10 @@ function LeadCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(lead.id)} onClick={(e) => e.stopPropagation()} className="h-3.5 w-3.5" />
-            <p className="font-semibold text-xs truncate text-foreground">{lead.company}</p>
+            <div className="min-w-0">
+              <p className="font-bold text-xs truncate text-foreground">{lead.company}</p>
+              {lead.contact && <p className="text-[10px] text-muted-foreground truncate">{lead.contact}</p>}
+            </div>
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Tooltip>
@@ -166,51 +173,73 @@ function LeadCard({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
-          {lead.niche && <Badge variant="secondary" className="text-[9px] px-1 py-0 font-normal">{lead.niche}</Badge>}
-          {lead.city && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1 min-w-0">
+            {lead.niche && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0 font-normal max-w-[60px] truncate block">{lead.niche}</Badge>
+                </TooltipTrigger>
+                <TooltipContent><p className="text-[10px]">{lead.niche}</p></TooltipContent>
+              </Tooltip>
+            )}
+            <StarRating value={lead.icpStars} />
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="text-[9px] px-1 py-0 font-normal max-w-[80px] truncate block">{lead.city}</Badge>
+                <span className={`text-xs ${temp.cls}`}>{temp.emoji}</span>
               </TooltipTrigger>
-              <TooltipContent><p className="text-[10px]">{lead.city}</p></TooltipContent>
+              <TooltipContent><p className="text-[10px]">Temperatura: {temp.label}</p></TooltipContent>
             </Tooltip>
-          )}
-          <StarRating value={lead.icpStars} />
+            {lead.autoDiagnosis && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Sparkles className="h-3 w-3 text-accent" />
+                </TooltipTrigger>
+                <TooltipContent><p className="text-[10px]">Análise IA disponível</p></TooltipContent>
+              </Tooltip>
+            )}
+          </div>
           <input ref={fileRef} type="file" accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
         </div>
 
-
-        <div className="pt-2 border-t border-border/50 space-y-1.5">
+        <div className="pt-2 border-t border-border/40 space-y-1.5">
           <p className="text-[10px] text-foreground font-medium truncate flex items-center gap-1.5">
             <span className="text-accent shrink-0">→</span>
             <span className="truncate">{LeadIntelligenceRepository.nextAction(lead)}</span>
           </p>
-          <p className="text-[10px] text-muted-foreground truncate italic leading-relaxed">
-            {(() => {
-              const last = LeadIntelligenceRepository.lastInteraction(lead, 50);
-              return last ? `"${last.text}"` : "Sem interações recentes";
-            })()}
-          </p>
+          {summary.ultimaLigacao && (
+            <p className="text-[10px] text-muted-foreground truncate italic leading-relaxed">
+              "{summary.ultimaLigacao}"
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-between text-[10px] pt-1">
-          <div className="flex items-center gap-2 text-muted-foreground/70">
+          <div className="flex items-center gap-2 text-muted-foreground/60">
             <span>⏱ {timeInStage(lead.stageChangedAt)}</span>
-            {(() => {
-              const temp = LeadIntelligenceRepository.temperature(lead);
-              return <span title={temp.label}>{temp.emoji}</span>;
-            })()}
           </div>
-          {pipeline === "oportunidades" && lead.contractValue && lead.contractValue > 0 ? (
-            <span className="font-bold text-accent">
-              {lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </span>
-          ) : null}
+          <div className="flex items-center gap-2">
+             {pipeline === "oportunidades" && lead.contractValue && lead.contractValue > 0 && (
+              <span className="font-bold text-accent">
+                {lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+            )}
+            <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+               <button onClick={(e) => { e.stopPropagation(); window.open(`tel:${lead.phone}`, '_self'); }} className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground">
+                  <PhoneCall className="h-3 w-3" />
+               </button>
+               <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${lead.phoneNormalized || lead.phone?.replace(/\D/g, '')}`, '_blank'); }} className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground">
+                  <MessageSquare className="h-3 w-3" />
+               </button>
+            </div>
+          </div>
         </div>
       </div>
     </TooltipProvider>
   );
+
 
 }
 
@@ -1006,10 +1035,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                 key={stage}
                 onDrop={(e) => onDrop(e, stage)}
                 onDragOver={onDragOver}
-                className="flex flex-col min-w-[280px] w-[280px] bg-muted/10 rounded-xl border border-border/40"
+                className="flex flex-col min-w-[280px] w-[280px] bg-muted/10 rounded-xl border border-border/40 transition-shadow hover:shadow-md"
               >
-                <div className="p-3 border-b border-border/40">
-                  <div className="flex items-center justify-between mb-1.5">
+                <div className="p-2.5 border-b border-border/40 bg-muted/5">
+                  <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 overflow-hidden min-w-0">
                       <div className="w-1 h-3 rounded-full shrink-0" style={{ backgroundColor: stageColors[stage]?.match(/bg-([a-z0-9-]+)/)?.[1] ? `var(--${stageColors[stage].match(/bg-([a-z0-9-]+)/)[1]})` : '#9ABD33' }} />
                       
@@ -1028,58 +1057,29 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                           draggable
                           onDragStart={(e) => onStageDragStart(e, stage)}
                           onDoubleClick={() => startEditStage(stage)}
-                          className="text-[11px] font-bold text-foreground uppercase tracking-wider truncate cursor-grab active:cursor-grabbing select-none"
+                          className="text-[10px] font-bold text-foreground uppercase tracking-widest truncate cursor-grab active:cursor-grabbing select-none"
                         >
                           {stage}
                         </h3>
                       )}
                       
-                      <span className="text-[10px] font-semibold text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded-md shrink-0">
+                      <span className="text-[9px] font-bold text-muted-foreground/50 bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
                         {stageLeads.length}
                       </span>
                     </div>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="text-muted-foreground/40 hover:text-foreground transition-colors p-1">
-                          <MoreVertical className="h-3.5 w-3.5" />
+                        <button className="text-muted-foreground/30 hover:text-foreground transition-colors p-1">
+                          <MoreVertical className="h-3 w-3" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="text-xs">
-                        <DropdownMenuItem onClick={() => startEditStage(stage)} className="text-[11px]">
+                      <DropdownMenuContent align="end" className="text-[11px]">
+                        <DropdownMenuItem onClick={() => startEditStage(stage)}>
                           <Pencil className="h-3 w-3 mr-2" /> Renomear
                         </DropdownMenuItem>
-                        {pipeline === "cold_call" && (
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              const rows = stageLeads
-                                .filter((l) => (l.company || l.phone || l.city || l.niche))
-                                .map((l) => ({
-                                  Empresa: l.company || "",
-                                  Telefone: l.phone || "",
-                                  Cidade: l.city || "",
-                                  Nicho: l.niche || "",
-                                }));
-                              if (rows.length === 0) {
-                                toast.error("Nenhum lead para exportar nesta etapa");
-                                return;
-                              }
-                              const ws = XLSX.utils.json_to_sheet(rows, {
-                                header: ["Empresa", "Telefone", "Cidade", "Nicho"],
-                              });
-                              const wb = XLSX.utils.book_new();
-                              XLSX.utils.book_append_sheet(wb, ws, "Leads");
-                              const safe = stage.replace(/[^\w\-]+/g, "_");
-                              XLSX.writeFile(wb, `leads_${safe}.xlsx`);
-                              toast.success(`${rows.length} lead(s) exportado(s)`);
-                            }}
-                            className="text-[11px]"
-                          >
-                            <Download className="h-3 w-3 mr-2" /> Exportar Etapa
-                          </DropdownMenuItem>
-                        )}
                         {stages.length > 1 && (
-                          <DropdownMenuItem onClick={() => handleRemoveStage(stage)} className="text-[11px] text-destructive">
+                          <DropdownMenuItem onClick={() => handleRemoveStage(stage)} className="text-destructive">
                             <Trash2 className="h-3 w-3 mr-2" /> Excluir
                           </DropdownMenuItem>
                         )}
@@ -1088,10 +1088,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                   </div>
                   
                   {pipeline === "oportunidades" && totalValue > 0 && (
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[9px] text-muted-foreground/70 uppercase font-medium">Volume total</span>
-                      <span className="text-[11px] font-bold text-accent tracking-tight">
-                        {totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] text-muted-foreground/60 uppercase font-medium">Vol.</span>
+                      <span className="text-[10px] font-bold text-accent">
+                        {totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
                       </span>
                     </div>
                   )}
@@ -1099,8 +1099,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
                 <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[calc(100vh-280px)] scrollbar-hide content-visibility-auto">
                   {stageLeads.length === 0 ? (
-                    <div className="h-20 flex items-center justify-center border border-dashed border-border/40 rounded-lg">
-                      <p className="text-[10px] text-muted-foreground/40 italic">Vazio</p>
+                    <div className="h-20 flex items-center justify-center border border-dashed border-border/20 rounded-lg">
+                      <p className="text-[9px] text-muted-foreground/30 italic">Vazio</p>
                     </div>
                   ) : (
                     stageLeads.map((lead) => (
@@ -1122,6 +1122,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             );
           })}
 
+
           <div className="min-w-[280px] w-[280px]">
             {showAddStage ? (
               <div className="bg-muted/10 border border-accent/40 rounded-xl p-3 flex flex-col gap-2">
@@ -1141,17 +1142,18 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             ) : (
               <button
                 onClick={() => setShowAddStage(true)}
-                className="flex flex-col items-center justify-center w-full h-[100px] border-2 border-dashed border-border/30 rounded-xl text-muted-foreground hover:text-foreground hover:border-accent/40 hover:bg-accent/5 transition-all group"
+                className="flex flex-col items-center justify-center w-full h-[80px] border border-dashed border-border/20 rounded-xl text-muted-foreground/40 hover:text-foreground hover:border-accent/40 hover:bg-accent/5 transition-all group"
               >
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mb-2 group-hover:bg-accent/20">
-                  <Plus className="h-4 w-4" />
+                <div className="w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center mb-2 group-hover:bg-accent/10">
+                  <Plus className="h-3 w-3" />
                 </div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider">Adicionar Etapa</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest">Nova Etapa</span>
               </button>
             )}
           </div>
         </div>
       </div>
+
 
       )}
 
