@@ -15,7 +15,7 @@ const REGISTRY: Record<ToolId, ToolDefinition> = {
   "knowledge.search": {
     id: "knowledge.search",
     purpose: "Busca semântica de trechos na Knowledge Base oficial (fonte complementar).",
-    allowedFor: ["mentor_p21"],
+    allowedFor: ["mentor_p21", "diretor_comercial", "consultor_leads"],
     requiresUserAuth: true,
   },
   "memory.retrieve": {
