@@ -408,82 +408,58 @@ export default function LeadDetailDrawer({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[80vw] w-[80vw] h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
-        {/* Cabeçalho */}
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/60 shrink-0">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-[280px]">
+        {/* Cabeçalho Fixo e Compacto */}
+        <DialogHeader className="px-5 pt-4 pb-3 border-b border-border/60 shrink-0 sticky top-0 bg-background z-10">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <Input
                 value={draft.company}
                 onChange={(e) => setDraft({ ...draft, company: e.target.value })}
                 onBlur={() => commitOnBlur({ company: draft.company.trim() || lead.company })}
-                className="text-xl font-semibold border-0 px-0 h-auto focus-visible:ring-0 shadow-none bg-transparent"
-                aria-label="Empresa"
+                className="text-lg font-bold border-0 px-0 h-auto focus-visible:ring-0 shadow-none bg-transparent"
               />
-              <DialogDescription className="text-xs mt-1">
-                {lead.stage} · ⏱ {formatDistanceToNow(new Date(lead.stageChangedAt), { locale: ptBR, addSuffix: true })}
-              </DialogDescription>
-              <DialogTitle className="sr-only">{lead.company}</DialogTitle>
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                <span>{lead.stage}</span>
+                <span>•</span>
+                <span>⏱ {formatDistanceToNow(new Date(lead.stageChangedAt), { locale: ptBR, addSuffix: true })}</span>
+                <Badge className={`border ${prio.cls} ml-1`}>{prio.label}</Badge>
+                <TempIcon className={`h-3 w-3 ${tempCls}`} />
+                <span>{temp}</span>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className={`border ${prio.cls}`}>{prio.label}</Badge>
-              <Select value={temp} onValueChange={(v) => persist({ temperature: v as Lead["temperature"] })}>
-                <SelectTrigger className="h-7 w-[110px] text-xs">
-                  <TempIcon className={`h-3 w-3 mr-1 ${tempCls}`} />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Quente">🔥 Quente</SelectItem>
-                  <SelectItem value="Morno">🌡 Morno</SelectItem>
-                  <SelectItem value="Frio">❄ Frio</SelectItem>
-                </SelectContent>
-              </Select>
-              {isColdCall && step && (
-                <Badge variant="outline" className="text-[11px]">
-                  {lead.niche ? `Cadência ${lead.niche}` : "Cadência Padrão"} · D{step.day} · {step.attempt === 0 ? "Novo Lead" : `Tentativa ${step.attempt}`}
+            <div className="flex items-center gap-1 shrink-0">
+               {isColdCall && step && (
+                <Badge variant="outline" className="text-[10px] hidden sm:flex">
+                  D{step.day} · {step.attempt === 0 ? "Novo" : `T${step.attempt}`}
                 </Badge>
               )}
             </div>
           </div>
 
-          {/* Ações rápidas — reduzem cliques durante a prospecção */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+          <div className="flex items-center gap-1.5 mt-3">
             {draft.phone && (
-              <a href={`tel:${draft.phone}`}
-                className="inline-flex items-center gap-1 text-xs h-8 px-3 rounded-md border border-border bg-card hover:bg-accent/10 hover:text-accent transition-colors">
-                <Phone className="h-3.5 w-3.5" /> Ligar
-              </a>
+              <a href={`tel:${draft.phone}`} className="inline-flex items-center justify-center h-7 w-7 rounded border border-border bg-card hover:bg-accent/10"><Phone className="h-3.5 w-3.5" /></a>
             )}
             {whatsUrl && (
-              <a href={whatsUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs h-8 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors">
-                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-              </a>
+              <a href={whatsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center h-7 w-7 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-500"><MessageCircle className="h-3.5 w-3.5" /></a>
             )}
-            <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setMeetingOpen(true)}>
-              <CalendarCheck className="h-3.5 w-3.5" /> Agendar
-            </Button>
+            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setMeetingOpen(true)}><CalendarCheck className="h-3.5 w-3.5 mr-1" /> Agendar</Button>
             {isColdCall && step && (
-              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={copyScript}>
-                <Copy className="h-3.5 w-3.5" /> Copiar Script
-              </Button>
+              <Button size="sm" variant="outline" className="h-7 px-2" onClick={copyScript}><Copy className="h-3.5 w-3.5 mr-1" /> Script</Button>
             )}
-            <Button size="sm" className="h-8 gap-1 bg-accent text-accent-foreground hover:bg-accent/90 ml-auto"
-              onClick={() => { setTab("interacoes"); setAutoRunDiagnosis(true); }}
-              title="Recalcular todo o estado comercial do lead: briefing, temperatura, probabilidade, próxima melhor ação, memória, timeline e prioridade"
-            >
-              <Sparkles className="h-3.5 w-3.5" /> 🧠 Atualizar Inteligência
+            <Button size="sm" variant="ghost" className="h-7 px-2 ml-auto text-accent" onClick={() => { setTab("interacoes"); setAutoRunDiagnosis(true); }}>
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" /> IA
             </Button>
           </div>
           {meetings.length > 0 && (
-            <div className="flex flex-col gap-1.5 mt-2">
-              {meetings.map((m) => (
-                <MeetingRow key={m.id} lead={lead} draft={draft} meeting={m} onChanged={onRefresh} />
-              ))}
-            </div>
+             <div className="mt-2 text-xs">
+                {meetings.map((m) => (
+                  <div key={m.id} className="text-muted-foreground">
+                    📅 {format(new Date(`${m.date}T${m.time}`), "dd/MM HH:mm", { locale: ptBR })}
+                  </div>
+                ))}
+             </div>
           )}
-
-          {/* Prioridade operacional + próxima melhor ação (Priority Engine) */}
-          <LeadPriorityStrip lead={lead} />
         </DialogHeader>
 
 
