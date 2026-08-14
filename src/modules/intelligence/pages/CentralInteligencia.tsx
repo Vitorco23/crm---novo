@@ -37,6 +37,65 @@ const SPECIALIST_META: Record<Specialist, { label: string; icon: typeof Brain; c
   mentor_p21:        { label: "Mentor P21",        icon: Library,    color: "bg-purple-500/15 text-purple-500 border-purple-500/30", description: "Metodologia P21 (RAG)" },
 };
 
+function MessageInspector({ observability }: { observability?: Record<string, any> | null }) {
+  if (!observability) return <div className="text-xs text-muted-foreground">Nenhum metadado disponível.</div>;
+  return (
+    <div className="space-y-4 text-sm">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground">Intenção</label>
+          <div className="font-mono bg-muted p-1 rounded text-xs">{observability.intention}</div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground">Especialista</label>
+          <div className="font-mono bg-muted p-1 rounded text-xs">{observability.specialist}</div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground">Knowledge</label>
+          <div className={cn("font-mono p-1 rounded text-xs", observability.knowledge_result === "found" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
+            {observability.knowledge_result}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground">Latência</label>
+          <div className="font-mono bg-muted p-1 rounded text-xs">{observability.latency_ms}ms</div>
+        </div>
+      </div>
+      
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase font-bold text-muted-foreground">Contexto Enviado</label>
+        <div className="text-xs">{observability.context_size_chars} caracteres</div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase font-bold text-muted-foreground">Dados Operacionais</label>
+        <div className="flex flex-wrap gap-1">
+          {Array.isArray(observability.operational_data) && observability.operational_data.length > 0 ? (
+            observability.operational_data.map((d: string) => <Badge key={d} variant="outline" className="text-[10px]">{d}</Badge>)
+          ) : <span className="text-xs text-muted-foreground">Nenhum</span>}
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase font-bold text-muted-foreground">Fontes (Knowledge)</label>
+        <div className="space-y-1">
+          {Array.isArray(observability.knowledge_sources) && observability.knowledge_sources.length > 0 ? (
+            observability.knowledge_sources.map((s: any, i: number) => (
+              <div key={i} className="text-[11px] border-b pb-1 last:border-0">
+                <div className="font-medium">{s.titulo}</div>
+                <div className="text-muted-foreground flex justify-between">
+                  <span>{s.categoria}</span>
+                  <span>{(s.similarity * 100).toFixed(1)}% match</span>
+                </div>
+              </div>
+            ))
+          ) : <span className="text-xs text-muted-foreground">Nenhuma fonte institucional consultada.</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function useOpenLeadContext(): Lead | null {
   const [lead, setLead] = useState<Lead | null>(null);
   useEffect(() => {
