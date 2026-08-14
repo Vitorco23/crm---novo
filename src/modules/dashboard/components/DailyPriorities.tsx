@@ -4,7 +4,7 @@ import {
   type LeadPriority, 
   ACTION_LABEL 
 } from "@/modules/intelligence/services/priorityEngine";
-import { getLeads } from "@/shared/services/store";
+import { getLeads, findLeadById } from "@/shared/services/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -134,9 +134,10 @@ export default function DailyPriorities() {
 
       {selectedLeadId && (
         <LeadDetailDrawer
-          leadId={selectedLeadId}
+          lead={findLeadById(selectedLeadId)}
           open={!!selectedLeadId}
           onOpenChange={(open) => !open && setSelectedLeadId(null)}
+          onRefresh={() => setTick((t) => t + 1)}
         />
       )}
     </div>

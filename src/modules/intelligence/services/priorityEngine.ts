@@ -137,7 +137,7 @@ const MINUTES_BY_ACTION: Record<NBAActionKind, number> = {
   run_full_diagnosis: 6,
 };
 
-const ACTION_LABEL: Record<NBAActionKind, string> = {
+export const ACTION_LABEL: Record<NBAActionKind, string> = {
   call: "Ligar agora",
   whatsapp: "Responder no WhatsApp",
   schedule_meeting: "Agendar reunião",
