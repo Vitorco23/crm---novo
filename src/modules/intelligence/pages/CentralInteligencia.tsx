@@ -10,9 +10,12 @@ import {
   Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, Pencil, ChevronDown, Bot, Copy, RefreshCw, Info, ShieldAlert, MoreVertical
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
-import { getLeads, getPipelineForStage, type Lead } from "@/shared/services/store";
-import { COLD_CALL_STAGES, OPORTUNIDADES_STAGES } from "@/shared/services/store";
+import { 
+  getLeads, getPipelineForStage, type Lead, 
+  COLD_CALL_STAGES, OPORTUNIDADES_STAGES, getGoalsSettings 
+} from "@/shared/services/store";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
