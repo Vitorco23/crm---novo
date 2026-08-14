@@ -146,11 +146,13 @@ export default function CentralInteligencia() {
         const newConv = await IntelligenceRepository.createConversation(newTitle);
         convId = newConv.id;
         
-        // IMPORTANTE: Atualizamos o activeId e o ref simultaneamente
-        // para que o useEffect de carregamento não limpe nossas mensagens otimistas
+        // Protegemos o estado: dizemos que o último fetch foi para este novo ID
+        // assim o useEffect que vai rodar após o setActiveId não limpará o estado.
         lastFetchId.current = convId;
         setActiveId(convId);
-        refreshConversations();
+        
+        // Atualiza a lista lateral para incluir a nova conversa
+        setConversations(prev => [newConv, ...prev]);
       }
 
       const data = await IntelligenceRepository.ask({
