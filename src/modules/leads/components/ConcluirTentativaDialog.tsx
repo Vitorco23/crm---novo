@@ -94,7 +94,7 @@ function nextAttemptStage(currentStage: string): string {
   if (/novo lead/i.test(currentStage)) return "Tentativa 1";
   if (!m) return "Tentativa 1";
   const n = parseInt(m[1], 10);
-  if (n >= 10) return "Sem contato";
+  if (n >= 9) return "Tentativas Concluídas";
   return `Tentativa ${n + 1}`;
 }
 
@@ -119,7 +119,7 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
   const channel: CadenceChannel = step?.channel || "Ligação";
   const options = OPTIONS_BY_CHANNEL[channel];
   const contentLabel = CONTENT_LABEL[channel];
-  const stepLabel = step ? `D${step.day} · ${step.channel} · ${step.nextAction}` : lead.stage;
+  const stepLabel = step ? `T${step.attempt} · ${step.channel} · ${step.nextAction}` : lead.stage;
   const labelFor = (v: Outcome) => options.find((o) => o.value === v)?.label || v;
 
   const reset = () => {

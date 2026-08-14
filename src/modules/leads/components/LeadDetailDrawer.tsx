@@ -37,13 +37,14 @@ import InteracoesTimeline from "@/modules/leads/components/InteracoesTimeline";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { getScripts, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/modules/knowledge/services/scripts";
 import { toast } from "sonner";
 import ScheduleMeetingDialog from "@/modules/leads/components/ScheduleMeetingDialog";
 import ConcluirTentativaDialog from "@/modules/leads/components/ConcluirTentativaDialog";
 import CadenceEditor from "@/modules/leads/components/CadenceEditor";
 import TaskFormDialog from "@/modules/leads/components/TaskFormDialog";
-import { getStepForLead, executionMoment, getCadenceForNiche } from "@/modules/leads/services/cadence";
+import { getStepForLead, executionMoment, getCadenceForNiche, processTemplate } from "@/modules/leads/services/cadence";
 import { CheckCircle2, Clock, Target, ListTodo, Plus } from "lucide-react";
 import { getTasksByLead, deleteTask, completeTask, reopenTask, PRIORITY_LABEL, PRIORITY_CLASSES, type LeadTask } from "@/modules/leads/services/leadTasks";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -175,6 +176,7 @@ export default function LeadDetailDrawer({
   initialAction?: "new-interaction" | "generate-script" | "run-diagnosis" | "schedule-meeting" | "upload-attachment" | "new-task";
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [alignmentOpen, setAlignmentOpen] = useState(false);
   const [concluirOpen, setConcluirOpen] = useState(false);
@@ -395,7 +397,8 @@ export default function LeadDetailDrawer({
 
   const copyScript = async () => {
     if (!step) return;
-    try { await navigator.clipboard.writeText(step.script); toast.success("Script copiado"); }
+    const processed = processTemplate(step.script, lead, user?.user_metadata?.full_name || user?.email);
+    try { await navigator.clipboard.writeText(processed); toast.success("Script copiado"); }
     catch { toast.error("Falha ao copiar"); }
   };
 
