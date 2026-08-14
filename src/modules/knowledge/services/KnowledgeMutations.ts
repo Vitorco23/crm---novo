@@ -5,7 +5,7 @@ import type { KnowledgeDocumentPayload, KnowledgeImportResult } from "./Knowledg
 export async function insertDocument(payload: KnowledgeDocumentPayload): Promise<string> {
   const { data, error } = await supabase
     .from("knowledge_documents")
-    .insert(payload)
+    .insert(payload as any)
     .select("id")
     .single();
   if (error) throw new Error(error.message);
@@ -13,7 +13,7 @@ export async function insertDocument(payload: KnowledgeDocumentPayload): Promise
 }
 
 export async function updateDocument(id: string, payload: KnowledgeDocumentPayload): Promise<void> {
-  const { error } = await supabase.from("knowledge_documents").update(payload).eq("id", id);
+  const { error } = await supabase.from("knowledge_documents").update(payload as any).eq("id", id);
   if (error) throw new Error(error.message);
 }
 

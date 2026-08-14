@@ -32,7 +32,7 @@ export const MEMORY_KIND_LABELS: Record<MemoryKind, string> = {
 };
 
 export async function listMemories(filters?: { kind?: MemoryKind; search?: string }): Promise<CommercialMemory[]> {
-  let q = supabase.from("commercial_memory").select("*").order("created_at", { ascending: false }).limit(500);
+  let q = supabase.from("commercial_memory").select("*").order("updated_at", { ascending: false }).limit(500);
   if (filters?.kind) q = q.eq("kind", filters.kind);
   if (filters?.search) q = q.ilike("title", `%${filters.search}%`);
   const { data, error } = await q;

@@ -10,7 +10,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { AgendaRepository } from "@/modules/agenda/services/AgendaRepository";
 import { IntelligenceRepository } from "@/modules/intelligence/services/IntelligenceRepository";
 import { parseISO } from "date-fns";
-import { CalendarIcon, Loader2, Pencil, Copy, FileText, Building2, Flame, Thermometer, Snowflake, MapPin, Globe, MessageCircle, User as UserIcon } from "lucide-react";
+import { 
+  CalendarIcon, Loader2, Pencil, Copy, FileText, Building2, Flame, Thermometer, Snowflake, 
+  MapPin, Globe, MessageCircle, User as UserIcon, RefreshCw
+} from "lucide-react";
 import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/modules/financeiro/services/finance";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -32,6 +35,7 @@ import ReactMarkdown from "react-markdown";
 import { analyzeCallNote } from "@/modules/laboratorio/services/callAnalysis";
 import { CallAuditView } from "@/modules/laboratorio/components/CallAuditView";
 import InteracoesTimeline from "@/modules/leads/components/InteracoesTimeline";
+import LeadExecutiveSummary from "@/modules/leads/components/LeadExecutiveSummary";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 
@@ -627,7 +631,24 @@ export default function LeadDetailDrawer({
 
 
           {/* INTERAÇÕES COMERCIAIS */}
-          <TabsContent value="interacoes" className="flex-1 overflow-y-auto px-5 py-4 mt-0">
+          <TabsContent value="interacoes" className="flex-1 overflow-y-auto px-5 py-4 mt-0 space-y-6">
+            <div className="rounded-lg border border-accent/20 bg-accent/5 p-4 mb-2">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5" /> Memória e Inteligência
+                </h4>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-7 text-[10px] text-accent hover:bg-accent/10"
+                  onClick={() => { setTab("interacoes"); setAutoRunDiagnosis(true); }}
+                >
+                  <RefreshCw className="h-3 w-3 mr-1.5" /> Atualizar IA
+                </Button>
+              </div>
+              <LeadExecutiveSummary lead={lead} />
+            </div>
+
             <InteracoesTimeline
               lead={lead}
               onRefresh={onRefresh}

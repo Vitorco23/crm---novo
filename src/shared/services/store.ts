@@ -183,6 +183,8 @@ export interface AutoDiagnosis {
   next_action: string;
   attention: string;
   updated_memory: string;
+  pain_points?: string[];
+  objections?: string[];
   generatedAt: string;
   model?: string;
   /** Fingerprint das interações consideradas — usado para detectar "desatualizado". */

@@ -1,7 +1,7 @@
 // Briefing Comercial — leitura consolidada de dados JÁ existentes.
 // Fonte: Diagnóstico Automático (V1.1) + Observações Permanentes + Interações.
 // NÃO chama IA. NÃO altera nenhum dado. Zero consultas novas.
-import { User, Phone, ShieldAlert, Clock, Target, Flame, Thermometer, Snowflake, Sparkles, Timer } from "lucide-react";
+import { User, Phone, ShieldAlert, Clock, Target, Flame, Thermometer, Snowflake, Sparkles, Timer, CheckCircle2, History } from "lucide-react";
 import type { Lead } from "@/shared/services/store";
 import { LeadIntelligenceRepository } from "@/modules/leads/services/LeadIntelligenceRepository";
 import { Badge } from "@/components/ui/badge";
@@ -50,111 +50,127 @@ export default function LeadExecutiveSummary({ lead }: { lead: Lead }) {
   const TempIcon = TEMP_ICON[temp.key];
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold flex items-center gap-1.5">
-          <span aria-hidden>🧠</span> Briefing Comercial
-        </p>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Situação Atual</span>
-      </div>
-
+    <div className="space-y-4">
       {/* 1. Temperatura — protagonista */}
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <div className={`flex items-center gap-1.5 text-sm font-semibold ${temp.cls}`}>
-            <TempIcon className="h-4 w-4" />
-            {temp.emoji} {temp.label}
+      <div className="rounded-lg border border-border bg-card/60 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold flex items-center gap-1.5">
+            <span aria-hidden>🧠</span> Resumo Executivo
+          </p>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Visão Comercial</span>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <div className={`flex items-center gap-1.5 text-sm font-semibold ${temp.cls}`}>
+              <TempIcon className="h-4 w-4" />
+              {temp.emoji} {temp.label}
+            </div>
+            {hasProb && (
+              <span className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{probability}%</span> chance de reunião
+              </span>
+            )}
           </div>
           {hasProb && (
-            <span className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">{probability}%</span> chance de reunião
-            </span>
-          )}
-        </div>
-        {hasProb && (
-          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-            <div className={`h-full ${TEMP_BAR[temp.key]} transition-all`} style={{ width: `${probability}%` }} />
-          </div>
-        )}
-      </div>
-
-      <Divider />
-
-      {/* 2. Decisor */}
-      <div className="flex items-start gap-2">
-        <User className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Decisor</p>
-          {s.decisor ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm text-foreground/90 font-medium">{s.decisor}</p>
-              <Badge variant="outline" className="text-[10px] bg-emerald-500/15 text-emerald-500 border-emerald-500/30">
-                👤 Decisor identificado
-              </Badge>
+            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+              <div className={`h-full ${TEMP_BAR[temp.key]} transition-all`} style={{ width: `${probability}%` }} />
             </div>
-          ) : (
-            <Badge variant="outline" className="text-[10px] text-muted-foreground border-muted-foreground/30">
-              ⚪ Decisor ainda não identificado
-            </Badge>
           )}
         </div>
-      </div>
 
-      <Divider />
+        <Divider />
 
-      {/* 3. Último contato */}
-      <div className="flex items-start gap-2">
-        <Phone className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">📞 Último contato</p>
-          <p className="text-sm text-foreground/90"><LastContactLabel lead={lead} /></p>
-          {s.ultimaLigacao && (
-            <p className="text-xs text-muted-foreground italic mt-0.5 line-clamp-2">"{s.ultimaLigacao}"</p>
-          )}
-        </div>
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
+          {/* Decisor */}
+          <div className="flex items-start gap-2">
+            <User className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Decisor</p>
+              {s.decisor ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm text-foreground/90 font-medium">{s.decisor}</p>
+                  <Badge variant="outline" className="text-[9px] bg-emerald-500/15 text-emerald-500 border-emerald-500/30 py-0 px-1">
+                    Identificado
+                  </Badge>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Não identificado</p>
+              )}
+            </div>
+          </div>
 
-      <Divider />
+          {/* Objeção */}
+          <div className="flex items-start gap-2">
+            <ShieldAlert className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">🚧 Objeção</p>
+              <p className={`text-sm ${s.maiorObjecao ? "text-foreground/90 font-medium" : "text-muted-foreground/60 italic text-xs"}`}>
+                {s.maiorObjecao || "Nenhuma registrada"}
+              </p>
+            </div>
+          </div>
 
-      {/* 4. Maior objeção */}
-      <div className="flex items-start gap-2">
-        <ShieldAlert className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">🚧 Maior objeção</p>
-          <p className={`text-sm ${s.maiorObjecao ? "text-foreground/90" : "text-muted-foreground/60"}`}>
-            {s.maiorObjecao || "Nenhuma objeção registrada"}
-          </p>
-        </div>
-      </div>
+          {/* Último Contato */}
+          <div className="flex items-start gap-2">
+            <Phone className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">📞 Último</p>
+              <p className="text-sm text-foreground/90"><LastContactLabel lead={lead} /></p>
+            </div>
+          </div>
 
-      {s.melhorHorario && (
-        <>
-          <Divider />
+          {/* Horário */}
           <div className="flex items-start gap-2">
             <Clock className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">⏰ Melhor horário</p>
-              <p className="text-sm text-foreground/90">{s.melhorHorario}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">⏰ Horário</p>
+              <p className="text-sm text-foreground/90">{s.melhorHorario || "Indefinido"}</p>
             </div>
           </div>
-        </>
-      )}
-
-      <Divider />
+        </div>
+      </div>
 
       {/* 5. Próxima Melhor Ação — MAIOR destaque */}
-      <div className="rounded-md border border-accent/40 bg-accent/10 p-3 mt-1">
+      <div className="rounded-lg border border-accent/40 bg-accent/10 p-3 shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-1">
-          <p className="text-[10px] uppercase tracking-wider text-accent font-semibold flex items-center gap-1">
-            <Target className="h-3 w-3" /> 🎯 O que fazer agora
+          <p className="text-[10px] uppercase tracking-wider text-accent font-bold flex items-center gap-1">
+            <Target className="h-3.5 w-3.5" /> 🎯 Próxima Melhor Ação (NBA)
           </p>
-          <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground/80 inline-flex items-center gap-1 font-medium bg-background/50 px-1.5 py-0.5 rounded">
             <Timer className="h-3 w-3" /> ~{mins} min
           </span>
         </div>
-        <p className="text-base font-semibold text-foreground leading-snug">
+        <p className="text-base font-bold text-foreground leading-snug">
           {nextAction}
         </p>
+        <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground/70">
+          <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 opacity-70">RECOMENDAÇÃO IA</Badge>
+          <span>Baseado na última interação e cadência</span>
+        </div>
+      </div>
+
+      {/* Camada de Rastreabilidade Sprint 9 */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg border border-border bg-card/40 p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Conhecimento Aprovado</p>
+          </div>
+          <p className="text-[11px] text-foreground/80 line-clamp-2 italic">
+            {lead.autoDiagnosis?.pain_points?.[0] ? `Dores validadas: ${lead.autoDiagnosis.pain_points.join(", ")}` : "Aguardando validação manual de dores e scripts..."}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card/40 p-3">
+          <div className="flex items-center gap-1.5 mb-2">
+             <History className="h-3.5 w-3.5 text-sky-500" />
+             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Memória Histórica</p>
+          </div>
+          <p className="text-[11px] text-foreground/80 line-clamp-2">
+            {lead.autoDiagnosis?.summary ? lead.autoDiagnosis.summary : "Sem síntese histórica processada para este lead."}
+          </p>
+        </div>
       </div>
     </div>
   );
