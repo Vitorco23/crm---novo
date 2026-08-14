@@ -36,12 +36,20 @@ interface KDoc {
 }
 
 export default function KnowledgeBase() {
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [filterCat, setFilterCat] = useState<string>("all");
+  const initialCat = searchParams.get("cat") || "all";
+  const [filterCat, setFilterCat] = useState<string>(initialCat);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<KDoc> | null>(null);
   const [saving, setSaving] = useState(false);
   const { data: docsData, isLoading: loading } = useKnowledgeDocuments();
+
+  useEffect(() => {
+    const cat = searchParams.get("cat");
+    if (cat) setFilterCat(cat);
+  }, [searchParams]);
+
   const docs = useMemo(() => (docsData ?? []) as KDoc[], [docsData]);
   const docIds = useMemo(() => docs.map((d) => d.id), [docs]);
   const { data: chunkCountsData } = useKnowledgeChunkCounts(docIds);
