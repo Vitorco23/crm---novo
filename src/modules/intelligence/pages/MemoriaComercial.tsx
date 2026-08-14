@@ -224,7 +224,7 @@ export default function MemoriaComercial() {
                           ) : (
                             <>
                               <AlertCircle className="h-3 w-3 text-amber-500/70" />
-                              <span>Fonte não identificada nos dados atuais</span>
+                              <span>Fonte não identificada nos dados atuais.</span>
                             </>
                           )}
                         </div>
