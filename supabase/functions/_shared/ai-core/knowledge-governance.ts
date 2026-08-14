@@ -143,6 +143,22 @@ export function toCitations(chunks: KnowledgeChunkShape[]): KnowledgeCitationSha
   return [...byDoc.values()].sort((a, b) => b.similarity - a.similarity);
 }
 
+/**
+ * Deduplica trechos com base no conteúdo (remove redundância textual exata
+ * ou muito similar). Simples deduplicação por set de conteúdo limpo.
+ */
+export function deduplicateChunks(chunks: KnowledgeChunkShape[]): KnowledgeChunkShape[] {
+  const seen = new Set<string>();
+  const unique: KnowledgeChunkShape[] = [];
+  for (const c of chunks) {
+    const key = c.content.trim().toLowerCase().slice(0, 500); // Primeiros 500 chars como chave
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(c);
+  }
+  return unique;
+}
+
 /** Log padronizado — nunca inclui conteúdo da KB nem a consulta do usuário. */
 export function logKnowledgeAccess(entry: {
   scope: KnowledgeScope;
