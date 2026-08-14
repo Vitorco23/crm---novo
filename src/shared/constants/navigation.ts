@@ -1,10 +1,15 @@
 import {
   PhoneCall, Handshake, Timer, BarChart3, Target, Plug, Rocket, ListChecks,
   DollarSign, Bell, Brain, Compass, FlaskConical, BookMarked,
-  Calendar as CalendarIcon, MessageCircle, Library, Flag, LucideIcon,
+  Calendar as CalendarIcon, MessageCircle, Library, Flag, LucideIcon, ShieldCheck
 } from "lucide-react";
 
-export type NavGroupId = "decisao" | "operacao" | "inteligencia" | "planejamento" | "configuracoes";
+export type NavGroupId = "operacao" | "inteligencia" | "gestao" | "configuracoes";
+
+export interface NavSubItem {
+  title: string;
+  url: string;
+}
 
 export interface NavItem {
   title: string;
@@ -13,56 +18,155 @@ export interface NavItem {
   group: NavGroupId;
   end?: boolean;
   description?: string;
+  subItems?: NavSubItem[];
+  adminOnly?: boolean;
 }
 
 export const NAV_GROUPS: Record<NavGroupId, { label: string; order: number }> = {
-  decisao:        { label: "Decisão",        order: 0 },
-  operacao:       { label: "Operação",       order: 1 },
-  inteligencia:   { label: "Inteligência",   order: 2 },
-  planejamento:   { label: "Planejamento",   order: 3 },
-  configuracoes:  { label: "Configurações",  order: 4 },
+  operacao:       { label: "Operação",       order: 0 },
+  inteligencia:   { label: "Inteligência",   order: 1 },
+  gestao:         { label: "Gestão",         order: 2 },
+  configuracoes:  { label: "Configurações",  order: 3 },
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { title: "Central de Decisão", url: "/central",       icon: Compass,      group: "decisao",       description: "Visão executiva da operação" },
-  { title: "Missão do Dia",      url: "/missao",        icon: Flag,         group: "decisao",       description: "Execução operacional do dia" },
+  // OPERAÇÃO
+  { 
+    title: "Missão do Dia",      
+    url: "/missao",        
+    icon: Flag,         
+    group: "operacao",       
+    description: "Execução operacional do dia" 
+  },
+  { 
+    title: "Cold Call",          
+    url: "/",              
+    icon: PhoneCall,    
+    group: "operacao",   
+    end: true, 
+    description: "Prospecção ativa" 
+  },
+  { 
+    title: "Pipeline",      
+    url: "/oportunidades", 
+    icon: Handshake,    
+    group: "operacao",   
+    description: "Pipeline comercial e Onboarding",
+    subItems: [
+      { title: "Oportunidades", url: "/oportunidades" },
+      { title: "Onboarding", url: "/onboarding" }
+    ]
+  },
+  { 
+    title: "Agenda",             
+    url: "/agenda",        
+    icon: CalendarIcon, 
+    group: "operacao",   
+    description: "Calendário integrado",
+    subItems: [
+      { title: "Calendário", url: "/agenda" },
+      { title: "Lembretes", url: "/lembretes" },
+      { title: "Pomodoro", url: "/pomodoro" }
+    ]
+  },
 
+  // INTELIGÊNCIA
+  { 
+    title: "Central IA", 
+    url: "/inteligencia/central", 
+    icon: MessageCircle, 
+    group: "inteligencia", 
+    description: "Chat com IA e Decisão",
+    subItems: [
+      { title: "Chat Especialistas", url: "/inteligencia/central" },
+      { title: "Central de Decisão", url: "/central" },
+      { title: "Diretor Comercial IA", url: "/inteligencia" }
+    ]
+  },
+  { 
+    title: "Conhecimento",     
+    url: "/inteligencia/knowledge", 
+    icon: Library, 
+    group: "inteligencia", 
+    description: "Documentação e Memória",
+    subItems: [
+      { title: "Knowledge Base", url: "/inteligencia/knowledge" },
+      { title: "Memória Comercial", url: "/memoria" },
+      { title: "Laboratório", url: "/laboratorio" }
+    ]
+  },
 
-  { title: "Cold Call",          url: "/",              icon: PhoneCall,    group: "operacao",   end: true, description: "Prospecção ativa" },
-  { title: "Oportunidades",      url: "/oportunidades", icon: Handshake,    group: "operacao",   description: "Pipeline comercial" },
-  { title: "Onboarding",         url: "/onboarding",    icon: Rocket,       group: "operacao",   description: "Implementação de clientes" },
-  { title: "Agenda",             url: "/agenda",        icon: CalendarIcon, group: "operacao",   description: "Calendário integrado" },
-  { title: "Lembretes",          url: "/lembretes",     icon: Bell,         group: "operacao",   description: "Follow-ups e notificações" },
-  { title: "Pomodoro",           url: "/pomodoro",      icon: Timer,        group: "operacao",   description: "Sessões de foco" },
+  // GESTÃO
+  { 
+    title: "Dashboard",              
+    url: "/dashboard",   
+    icon: BarChart3,    
+    group: "gestao", 
+    description: "Indicadores comerciais" 
+  },
+  { 
+    title: "Plano de ação", 
+    url: "/scrum",     
+    icon: ListChecks, 
+    group: "gestao", 
+    description: "Sprints e backlog (Scrum)" 
+  },
+  { 
+    title: "Performance",           
+    url: "/metas",     
+    icon: Target,     
+    group: "gestao", 
+    description: "Metas e Financeiro",
+    subItems: [
+      { title: "Metas", url: "/metas" },
+      { title: "Financeiro", url: "/financeiro" }
+    ]
+  },
 
-  { title: "Central de Inteligência", url: "/inteligencia/central", icon: MessageCircle, group: "inteligencia", description: "Chat com IA dos 3 especialistas" },
-  { title: "Knowledge Base",     url: "/inteligencia/knowledge", icon: Library, group: "inteligencia", description: "Documentação oficial da Performance21" },
-  { title: "Dashboard",              url: "/dashboard",   icon: BarChart3,    group: "inteligencia", description: "Indicadores comerciais" },
-  { title: "Inteligência Comercial", url: "/inteligencia", icon: Brain,       group: "inteligencia", end: true, description: "Diagnósticos e IA" },
-  { title: "Memória Comercial",      url: "/memoria",     icon: BookMarked,   group: "inteligencia", description: "Padrões e aprendizado" },
-  { title: "Laboratório",            url: "/laboratorio", icon: FlaskConical, group: "inteligencia", description: "Experimentos A/B" },
-
-  { title: "Tarefas / Scrum", url: "/scrum",     icon: ListChecks, group: "planejamento", description: "Sprints e backlog" },
-  { title: "Metas",           url: "/metas",     icon: Target,     group: "planejamento", description: "Objetivos e KPIs" },
-  { title: "Financeiro",      url: "/financeiro", icon: DollarSign, group: "planejamento", description: "Receitas e despesas" },
-
-  { title: "Integrações", url: "/integracoes", icon: Plug, group: "configuracoes", description: "Conexões externas" },
+  // CONFIGURAÇÕES
+  { 
+    title: "Integrações", 
+    url: "/integracoes", 
+    icon: Plug, 
+    group: "configuracoes", 
+    description: "Conexões externas" 
+  },
+  { 
+    title: "Sistema", 
+    url: "/saude-sistema", 
+    icon: ShieldCheck, 
+    group: "configuracoes", 
+    description: "Saúde e Auditoria",
+    adminOnly: true
+  },
 ];
-
 
 export function findNavItem(pathname: string): NavItem | undefined {
   const exact = NAV_ITEMS.find((n) => n.url === pathname);
   if (exact) return exact;
+  
+  // Check subitems
+  for (const item of NAV_ITEMS) {
+    if (item.subItems?.find(s => s.url === pathname)) return item;
+  }
+
   return NAV_ITEMS.find((n) => n.url !== "/" && pathname.startsWith(n.url));
 }
 
 export function getBreadcrumb(pathname: string): { label: string; url?: string }[] {
   const item = findNavItem(pathname);
   const crumbs: { label: string; url?: string }[] = [{ label: "Início", url: "/" }];
+  
   if (item && item.url !== "/") {
     const group = NAV_GROUPS[item.group];
     if (group) crumbs.push({ label: group.label });
-    crumbs.push({ label: item.title });
+    crumbs.push({ label: item.title, url: item.url });
+    
+    // Check if it's a subitem
+    const subItem = item.subItems?.find(s => s.url === pathname);
+    if (subItem && subItem.url !== item.url) {
+      crumbs.push({ label: subItem.title });
+    }
   } else if (item) {
     crumbs.push({ label: item.title });
   }
