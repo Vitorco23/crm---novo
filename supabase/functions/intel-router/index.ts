@@ -123,8 +123,9 @@ async function runSpecialist(
   }
 
 
-  if (reducedCtx.dashboardSnapshot) operationalUsed.push("dashboard");
-  if (reducedCtx.leadContext) operationalUsed.push("lead");
+  if (reducedCtx.dashboardSnapshot) operationalUsed.push("dashboard_snapshot");
+  if (reducedCtx.leadContext) operationalUsed.push("lead_context");
+
 
   const built = buildChatContext({ history, crm: reducedCtx, knowledgeChunks: chunks });
 
