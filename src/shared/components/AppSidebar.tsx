@@ -15,14 +15,14 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        <div className="flex items-center gap-2 px-4 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sidebar-primary">
-            <Zap className="h-4 w-4 text-sidebar-primary-foreground" />
+        <div className="flex items-center gap-3 px-4 py-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sidebar-primary shadow-lg shadow-sidebar-primary/20">
+            <Zap className="h-5 w-5 text-sidebar-primary-foreground" />
           </div>
           {!collapsed && (
-            <div>
-              <p className="text-small font-bold text-sidebar-accent-foreground tracking-tight">Performance21</p>
-              <p className="text-caption text-sidebar-foreground/60 uppercase tracking-widest">SOC · CRM</p>
+            <div className="flex flex-col">
+              <span className="text-small font-bold text-sidebar-foreground tracking-tight leading-none">Performance21</span>
+              <span className="text-[10px] text-sidebar-foreground/40 font-medium uppercase tracking-[0.2em] mt-1">S.O.C. ENGINE</span>
             </div>
           )}
         </div>
@@ -31,25 +31,25 @@ export function AppSidebar() {
           const items = NAV_ITEMS.filter((n) => n.group === gid);
           if (items.length === 0) return null;
           return (
-            <SidebarGroup key={gid}>
-              <SidebarGroupLabel className="text-caption uppercase tracking-widest text-sidebar-foreground/50">
+            <SidebarGroup key={gid} className="px-3">
+              <SidebarGroupLabel className="text-[10px] uppercase font-bold tracking-[0.15em] text-sidebar-foreground/30 px-2 mb-2">
                 {NAV_GROUPS[gid].label}
               </SidebarGroupLabel>
               <SidebarGroupContent>
-                <SidebarMenu>
+                <SidebarMenu className="gap-0.5">
                   {items.map((item) => {
                     const Icon = item.icon;
                     return (
                       <SidebarMenuItem key={item.url}>
-                        <SidebarMenuButton asChild tooltip={item.title}>
+                        <SidebarMenuButton asChild tooltip={item.title} className="h-9 px-2 rounded-lg transition-all duration-200">
                           <NavLink
                             to={item.url}
                             end={item.end}
-                            className="hover:bg-sidebar-accent/50 transition-standard"
-                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                            className="flex items-center w-full rounded-lg hover:bg-sidebar-accent/40 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-all duration-200"
+                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
                           >
-                            <Icon className="mr-2 h-4 w-4" />
-                            {!collapsed && <span>{item.title}</span>}
+                            <Icon className="mr-3 h-4 w-4 shrink-0" />
+                            {!collapsed && <span className="text-small">{item.title}</span>}
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
