@@ -1,7 +1,7 @@
 // Briefing Comercial — leitura consolidada de dados JÁ existentes.
 // Fonte: Diagnóstico Automático (V1.1) + Observações Permanentes + Interações.
 // NÃO chama IA. NÃO altera nenhum dado. Zero consultas novas.
-import { User, Phone, ShieldAlert, Clock, Target, Flame, Thermometer, Snowflake, Sparkles, Timer } from "lucide-react";
+import { User, Phone, ShieldAlert, Clock, Target, Flame, Thermometer, Snowflake, Sparkles, Timer, CheckCircle2, History } from "lucide-react";
 import type { Lead } from "@/shared/services/store";
 import { LeadIntelligenceRepository } from "@/modules/leads/services/LeadIntelligenceRepository";
 import { Badge } from "@/components/ui/badge";
