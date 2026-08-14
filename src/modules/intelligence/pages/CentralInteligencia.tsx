@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import {
-  MessageCircle, Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, ChevronRight, Pencil, ChevronDown, Bot, Copy, RefreshCw, ThumbsUp, ThumbsDown, Info, ShieldAlert
+  MessageCircle, Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, ChevronRight, Pencil, ChevronDown, Bot, Copy, RefreshCw, ThumbsUp, ThumbsDown, Info, ShieldAlert, MoreVertical
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { getLeads, getPipelineForStage, type Lead } from "@/shared/services/store";
@@ -254,28 +254,42 @@ export default function CentralInteligencia() {
   }, [input, sending, activeId, override, openLead, messages, refreshConversations]);
 
   const handleRename = async (id: string, newTitle: string) => {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim()) {
+      setEditingId(null);
+      return;
+    }
     try {
+      console.log(`Renomeando conversa ${id} para: ${newTitle}`);
       await IntelligenceRepository.renameConversation(id, newTitle.trim());
       setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle.trim() } : c));
       setEditingId(null);
+      toast({ title: "Conversa renomeada" });
     } catch (error) {
+      console.error("Erro ao renomear conversa:", error);
       toast({ title: "Erro ao renomear", variant: "destructive" });
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
+      console.log(`Excluindo conversa: ${id}`);
       await IntelligenceRepository.deleteConversation(id);
-      setConversations(prev => prev.filter(c => c.id !== id));
+      
+      const newConversations = conversations.filter(c => c.id !== id);
+      setConversations(newConversations);
+      
       if (activeId === id) {
-        setActiveId(null);
+        setActiveId(newConversations.length > 0 ? newConversations[0].id : null);
       }
+      
       setDeleteConfirmId(null);
+      toast({ title: "Conversa excluída" });
     } catch (error) {
+      console.error("Erro ao excluir conversa:", error);
       toast({ title: "Erro ao excluir", variant: "destructive" });
     }
   };
+
 
   return (
     <div className="flex h-[calc(100vh-120px)] bg-background">
@@ -316,26 +330,39 @@ export default function CentralInteligencia() {
                          {c.title}
                        </button>
                        
-                       <div className="opacity-0 group-hover:opacity-100 transition-opacity pr-1">
-                         <DropdownMenu>
-                           <DropdownMenuTrigger asChild>
-                             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-                               <ChevronRight className="h-3.5 w-3.5" />
-                             </Button>
-                           </DropdownMenuTrigger>
-                           <DropdownMenuContent align="end">
-                             <DropdownMenuItem onClick={() => { setEditingId(c.id); setEditingTitle(c.title); }}>
-                               <Pencil className="h-4 w-4 mr-2" /> Renomear
-                             </DropdownMenuItem>
-                             <DropdownMenuItem 
-                               className="text-destructive focus:text-destructive" 
-                               onClick={() => setDeleteConfirmId(c.id)}
-                             >
-                               <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                             </DropdownMenuItem>
-                           </DropdownMenuContent>
-                         </DropdownMenu>
-                       </div>
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity pr-1">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-7 w-7 text-muted-foreground hover:bg-muted"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => { 
+                                e.stopPropagation();
+                                setEditingId(c.id); 
+                                setEditingTitle(c.title); 
+                              }}>
+                                <Pencil className="h-4 w-4 mr-2" /> Renomear
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteConfirmId(c.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
                      </>
                    )}
                  </div>
