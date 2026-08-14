@@ -5,6 +5,8 @@ import {
   Phone, Users, MessageCircle, Mail, FileText, MapPin, Handshake,
   Video, Sparkles, Plus, Pencil, Trash2, ExternalLink, Loader2, CalendarCheck,
   Calendar as CalendarIcon,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -12,8 +14,7 @@ import { toast } from "sonner";
 import {
   type Lead, type Interaction, type InteractionType, type CallNote,
   addInteraction, updateInteraction, removeInteraction, removeCallNote,
-  addCallNote, getLeads,
-  getMeetingsForLead, getDiagnosisHistory, type DiagnosisVersion,
+  getDiagnosisHistory, type DiagnosisVersion,
 } from "@/shared/services/store";
 import { analyzeCallNote } from "@/modules/laboratorio/services/callAnalysis";
 import { CallAuditView } from "@/modules/laboratorio/components/CallAuditView";
@@ -25,8 +26,6 @@ import { highlightsFor, isCriticalEvent } from "@/modules/intelligence/services/
 import IntelligenceUpdateBlock from "@/modules/intelligence/components/IntelligenceUpdateBlock";
 import DiagnosisHistoryBlock from "@/modules/intelligence/components/DiagnosisHistoryBlock";
 import { refreshLeadIntelligence } from "@/modules/intelligence/services/intelligenceSync";
-
-import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,19 +39,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
+import { getMeetingsForLead } from "@/shared/services/store";
 
 const INTERACTION_TYPES: InteractionType[] = [
-  "Ligação",
-  "Reunião Comercial",
-  "Reunião de Diagnóstico",
-  "Reunião de Apresentação",
-  "Follow-up",
-  "WhatsApp",
-  "E-mail",
-  "Envio de Proposta",
-  "Visita Presencial",
-  "Outro",
+  "Ligação", "Reunião Comercial", "Reunião de Diagnóstico", "Reunião de Apresentação",
+  "Follow-up", "WhatsApp", "E-mail", "Envio de Proposta", "Visita Presencial", "Outro",
 ];
 
 function iconFor(type: string) {
@@ -79,9 +70,6 @@ function colorFor(type: string) {
   return "text-muted-foreground bg-muted/40 border-border";
 }
 
-/** Renderiza sellerNotes como pares "Rótulo: Valor", com links clicáveis
- *  em novas abas. Linhas cujo valor seja "[object Object]" (dados legados
- *  de agendamentos malformatados) são ocultadas para não poluir a UI. */
 function SellerNotesView({ notes }: { notes: string }) {
   const lines = notes.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const isUrl = (v: string) => /^https?:\/\//i.test(v);
@@ -97,23 +85,14 @@ function SellerNotesView({ notes }: { notes: string }) {
     <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
       {items.map((it, idx) => (
         <div key={idx} className="contents">
-          <dt className="text-[10px] uppercase tracking-wider text-muted-foreground/80 pt-0.5">
-            {it.key || "—"}
-          </dt>
+          <dt className="text-[10px] uppercase tracking-wider text-muted-foreground/80 pt-0.5">{it.key || "—"}</dt>
           <dd className="text-foreground/90 break-words">
             {isUrl(it.value) ? (
-              <a
-                href={it.value}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-primary hover:underline break-all"
-              >
+              <a href={it.value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline break-all">
                 <ExternalLink className="h-3 w-3 shrink-0" />
                 <span>{it.value}</span>
               </a>
-            ) : (
-              <span className="whitespace-pre-wrap">{it.value}</span>
-            )}
+            ) : <span className="whitespace-pre-wrap">{it.value}</span>}
           </dd>
         </div>
       ))}
@@ -121,146 +100,64 @@ function SellerNotesView({ notes }: { notes: string }) {
   );
 }
 
-// Item unificado da timeline (interação nova, callNote legado, ou reunião agendada).
 type TimelineItem =
   | { kind: "interaction"; at: string; data: Interaction }
   | { kind: "callNote"; at: string; data: CallNote }
   | { kind: "meeting"; at: string; data: ReturnType<typeof getMeetingsForLead>[number] }
   | { kind: "ai"; at: string; data: DiagnosisVersion };
 
-function InteractionForm({
-  open, onOpenChange, leadId, editing, onSaved,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  leadId: string;
-  editing: Interaction | null;
-  onSaved: () => void;
-}) {
-  const nowLocal = () => {
-    const d = new Date();
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
-  };
-  const toLocalInput = (iso: string) => {
-    const d = new Date(iso);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
-  };
+function InteractionForm({ open, onOpenChange, leadId, editing, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; leadId: string; editing: Interaction | null; onSaved: () => void }) {
+  const nowLocal = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+  const toLocalInput = (iso: string) => { const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
   const [type, setType] = useState<InteractionType>(editing?.type ?? "Ligação");
-  const [customType, setCustomType] = useState(
-    editing && !INTERACTION_TYPES.includes(editing.type) ? editing.type : ""
-  );
+  const [customType, setCustomType] = useState(editing && !INTERACTION_TYPES.includes(editing.type) ? editing.type : "");
   const [date, setDate] = useState(editing ? toLocalInput(editing.date) : nowLocal());
   const [title, setTitle] = useState(editing?.title ?? "");
   const [summary, setSummary] = useState(editing?.summary ?? "");
   const [sellerNotes, setSellerNotes] = useState(editing?.sellerNotes ?? "");
-
-  const reset = () => {
-    setType("Ligação"); setCustomType(""); setTitle(""); setSummary(""); setSellerNotes("");
-    setDate(nowLocal());
-  };
-
-
+  const reset = () => { setType("Ligação"); setCustomType(""); setTitle(""); setSummary(""); setSellerNotes(""); setDate(nowLocal()); };
   const handleSave = () => {
     const finalType = type === "Outro" && customType.trim() ? customType.trim() : type;
-    if (!title.trim()) { toast.error("Informe um título para a interação."); return; }
-    if (!summary.trim()) { toast.error("Informe um resumo da interação."); return; }
+    if (!title.trim()) { toast.error("Informe um título."); return; }
+    if (!summary.trim()) { toast.error("Informe um resumo."); return; }
     const isoDate = new Date(date).toISOString();
-    if (editing) {
-      updateInteraction(leadId, editing.id, { type: finalType, date: isoDate, title, summary, sellerNotes });
-      toast.success("Interação atualizada");
-    } else {
-      addInteraction(leadId, { type: finalType, date: isoDate, title, summary, sellerNotes });
-      toast.success("Interação registrada");
-    }
+    if (editing) updateInteraction(leadId, editing.id, { type: finalType, date: isoDate, title, summary, sellerNotes });
+    else addInteraction(leadId, { type: finalType, date: isoDate, title, summary, sellerNotes });
     onSaved(); onOpenChange(false); reset();
   };
-
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
       <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{editing ? "Editar Interação" : "Nova Interação Comercial"}</DialogTitle>
-          <DialogDescription className="text-xs">
-            Cada interação alimenta a timeline do lead e serve como contexto para a IA.
-          </DialogDescription>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "Editar" : "Nova Interação"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Tipo</Label>
               <Select value={type} onValueChange={(v) => setType(v as InteractionType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {INTERACTION_TYPES.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
-                </SelectContent>
+                <SelectContent>{INTERACTION_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
               </Select>
-              {type === "Outro" && (
-                <Input className="mt-2" placeholder="Especifique o tipo"
-                  value={customType} onChange={(e) => setCustomType(e.target.value)} />
-              )}
             </div>
-            <div>
-              <Label className="text-xs">Data e hora</Label>
-              <Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
+            <div><Label className="text-xs">Data</Label><Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} /></div>
           </div>
-          <div>
-            <Label className="text-xs">Título</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Primeira Ligação · Reunião de Diagnóstico · Follow-up Financeiro" />
-          </div>
-          <div>
-            <Label className="text-xs">Resumo</Label>
-            <Textarea rows={5} value={summary} onChange={(e) => setSummary(e.target.value)}
-              placeholder="Resumo da conversa. Pode ser o gerado pela Matteline/IA ou escrito manualmente. Essa é a principal fonte para a IA Comercial." />
-          </div>
-          <div>
-            <Label className="text-xs">Anotações do vendedor (opcional)</Label>
-            <Textarea rows={3} value={sellerNotes} onChange={(e) => setSellerNotes(e.target.value)}
-              placeholder="Ex: cliente parecia com pressa · sócio participará da próxima reunião · demonstrou interesse na consultoria." />
-          </div>
+          <div><Label className="text-xs">Título</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div><Label className="text-xs">Resumo</Label><Textarea rows={4} value={summary} onChange={(e) => setSummary(e.target.value)} /></div>
+          <div><Label className="text-xs">Notas</Label><Textarea rows={2} value={sellerNotes} onChange={(e) => setSellerNotes(e.target.value)} /></div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleSave}>
-            {editing ? "Salvar alterações" : "Registrar interação"}
-          </Button>
-        </DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button className="bg-accent" onClick={handleSave}>Salvar</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-export default function InteracoesTimeline({
-  lead, onRefresh,
-  autoOpenNewInteraction, onAutoNewInteractionConsumed,
-  autoRunDiagnosis, onAutoRunDiagnosisConsumed,
-}: {
-  lead: Lead;
-  onRefresh: () => void;
-  autoOpenNewInteraction?: boolean;
-  onAutoNewInteractionConsumed?: () => void;
-  autoRunDiagnosis?: boolean;
-  onAutoRunDiagnosisConsumed?: () => void;
-}) {
+export default function InteracoesTimeline({ lead, onRefresh, autoOpenNewInteraction, onAutoNewInteractionConsumed, autoRunDiagnosis, onAutoRunDiagnosisConsumed }: { lead: Lead; onRefresh: () => void; autoOpenNewInteraction?: boolean; onAutoNewInteractionConsumed?: () => void; autoRunDiagnosis?: boolean; onAutoRunDiagnosisConsumed?: () => void }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Interaction | null>(null);
   const [analyzingNoteId, setAnalyzingNoteId] = useState<string | null>(null);
   const [refreshingIntel, setRefreshingIntel] = useState(false);
   const [intelNoChange, setIntelNoChange] = useState(false);
-  // Cards compactos por padrão — o vendedor expande apenas o que precisar.
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const toggle = (id: string) => setExpanded((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-
   const meetings = getMeetingsForLead(lead.id);
   const trail = useMemo(() => LeadIntelligenceRepository.trail(lead, meetings), [lead, meetings]);
-
   const items = useMemo<TimelineItem[]>(() => {
     const rows: TimelineItem[] = [];
     for (const i of lead.interactions || []) rows.push({ kind: "interaction", at: i.date, data: i });
@@ -272,340 +169,119 @@ export default function InteracoesTimeline({
 
   const analyzeNote = async (n: CallNote, mode: "quick" | "full") => {
     setAnalyzingNoteId(n.id);
-    try {
-      await analyzeCallNote(lead, n, mode);
-      onRefresh();
-      toast.success(mode === "quick" ? "Análise rápida gerada" : "Diagnóstico completo gerado");
-    } catch (e) {
-      toast.error("Falha ao analisar", { description: String((e as Error)?.message || e).slice(0, 260) });
-    } finally { setAnalyzingNoteId(null); }
+    try { await analyzeCallNote(lead, n, mode); onRefresh(); toast.success("Análise concluída"); }
+    catch (e) { toast.error("Falha ao analisar"); } finally { setAnalyzingNoteId(null); }
   };
 
-  // Ação inicial vinda da Próxima Melhor Ação
-  useEffect(() => {
-    if (autoOpenNewInteraction) {
-      setEditing(null);
-      setFormOpen(true);
-      onAutoNewInteractionConsumed?.();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoOpenNewInteraction]);
-
-  // "Atualizar Inteligência" (Diagnóstico Completo): recalcula TODO o estado
-  // comercial do lead — briefing, temperatura, probabilidade, NBA, memória,
-  // timeline, versionamento e prioridade.
   const runIntelligenceRefresh = async () => {
     if (refreshingIntel) return;
     setRefreshingIntel(true);
-    setIntelNoChange(false);
     try {
       const res = await refreshLeadIntelligence(lead.id);
-      if (!res.ok) {
-        toast.error("Falha ao atualizar a inteligência", { description: res.error });
-        return;
-      }
-      if (res.changed) {
-        toast.success(`Inteligência atualizada (v${res.version?.version ?? 1})`, {
-          description: res.changes[0] || "Estado comercial recalculado.",
-        });
-      } else {
-        setIntelNoChange(true);
-        toast.info("Nenhuma alteração relevante identificada desde a última análise.");
-      }
-      onRefresh();
-    } finally {
-      setRefreshingIntel(false);
-    }
+      if (res.ok) { onRefresh(); toast.success("Inteligência atualizada"); }
+    } finally { setRefreshingIntel(false); }
   };
 
-  useEffect(() => {
-    if (!autoRunDiagnosis) return;
-    runIntelligenceRefresh();
-    onAutoRunDiagnosisConsumed?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRunDiagnosis]);
-
-
+  useEffect(() => { if (autoOpenNewInteraction) { setEditing(null); setFormOpen(true); onAutoNewInteractionConsumed?.(); } }, [autoOpenNewInteraction]);
+  useEffect(() => { if (autoRunDiagnosis) { runIntelligenceRefresh(); onAutoRunDiagnosisConsumed?.(); } }, [autoRunDiagnosis]);
 
   return (
     <div className="space-y-4">
-      {/* O que mudou — fonte única da verdade da IA */}
       <IntelligenceUpdateBlock lead={lead} running={refreshingIntel} noChange={intelNoChange} />
-
-      {/* Diagnóstico Atual (versão mais recente) */}
       <AutoDiagnosisCard lead={lead} />
-
-      {/* Briefing Comercial — sempre derivado do diagnóstico mais recente */}
       <LeadExecutiveSummary lead={lead} />
-
-      {/* Histórico versionado da inteligência */}
       <DiagnosisHistoryBlock lead={lead} />
-
-      {/* Linha do Tempo Comercial — panorama rápido em ícones */}
       {trail.length > 0 && (
-        <div className="rounded-md border border-border/50 bg-card/40 p-3">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Linha do Tempo Comercial</p>
+        <div className="rounded border border-border/50 bg-card/40 p-2">
+          <p className="text-[10px] uppercase text-muted-foreground mb-1.5">Trail</p>
           <LeadTrail items={trail} />
         </div>
       )}
 
       <div className="flex items-center justify-between pt-2">
-        <div>
-          <p className="text-sm font-semibold text-foreground">Timeline de Interações</p>
-          <p className="text-xs text-muted-foreground">
-            {items.length} evento(s) — clique para expandir os detalhes.
-          </p>
-        </div>
-        <Button
-          size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90"
-          onClick={() => { setEditing(null); setFormOpen(true); }}
-        >
-          <Plus className="h-3.5 w-3.5 mr-1" /> Nova Interação
-        </Button>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Timeline</span>
+        <Button size="sm" className="h-7 text-xs bg-accent text-accent-foreground" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="h-3.5 w-3.5 mr-1" /> Registrar</Button>
       </div>
 
-
       {items.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border/60 p-10 text-center">
-          <Sparkles className="h-6 w-6 mx-auto text-muted-foreground/60 mb-2" />
-          <p className="text-sm text-muted-foreground">Nenhuma interação registrada ainda.</p>
-          <p className="text-xs text-muted-foreground/70 mt-1">
-            Registre a primeira ligação, reunião ou follow-up para começar a timeline.
-          </p>
-        </div>
+        <div className="py-10 text-center text-xs text-muted-foreground italic">Nenhuma interação registrada.</div>
       ) : (
-        <Accordion type="multiple" className="space-y-3 border-l border-border/60 ml-3 pl-4">
+        <Accordion type="multiple" className="space-y-2">
           {items.map((it, idx) => {
             const isLatest = idx === 0;
             const itemId = `item-${idx}`;
-
             if (it.kind === "meeting") {
               const m = it.data;
-              const Icon = Users;
               return (
                 <AccordionItem key={`m-${m.id}`} value={itemId} className="border-none">
-                  <div className="relative">
-                    <span className="absolute -left-[25px] mt-2 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-accent" />
-                    <div className={`rounded-md border p-2.5 ${colorFor("Reunião")} ${isLatest ? "ring-1 ring-accent/40 shadow-sm" : ""}`}>
+                  <div className="flex gap-2">
+                    <span className="mt-2 flex h-3 w-3 items-center justify-center rounded-full bg-accent" />
+                    <div className="flex-1 rounded border p-2 bg-accent/5">
                       <AccordionTrigger className="py-0 hover:no-underline border-none">
-                        <div className="flex items-center justify-between w-full pr-2">
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-3.5 w-3.5" />
-                            <span className="text-xs font-bold">Reunião</span>
-                            <Badge variant="outline" className="text-[9px] px-1 h-4">{m.channel || "Geral"}</Badge>
-                          </div>
-                          <span className="text-[10px] text-muted-foreground tabular-nums">
-                            {format(new Date(`${m.date}T${m.time}:00`), "dd/MM HH:mm", { locale: ptBR })}
-                          </span>
+                        <div className="flex items-center justify-between w-full text-[11px] pr-2">
+                           <span className="font-bold flex items-center gap-1"><Users className="h-3 w-3" /> Reunião</span>
+                           <span className="text-muted-foreground">{format(new Date(`${m.date}T${m.time}:00`), "dd/MM HH:mm")}</span>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="pt-2 pb-0">
-                        {m.title && <p className="text-xs font-medium mb-2">{m.title}</p>}
-                        <div className="flex flex-wrap gap-1.5">
-                          {m.meetLink && (
-                            <a href={m.meetLink} target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-accent/15 text-accent hover:bg-accent/25">
-                              <Video className="h-2.5 w-2.5" /> Abrir Meet
-                        </a>
-                      )}
-                      {m.googleEventUrl && (
-                        <a href={m.googleEventUrl} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground hover:text-foreground">
-                          <ExternalLink className="h-2.5 w-2.5" /> Google Agenda
-                        </a>
-                      )}
+                      <AccordionContent className="pt-2 pb-0 text-[11px]">
+                        <p>{m.title || "Reunião agendada"}</p>
+                        {m.meetLink && <a href={m.meetLink} target="_blank" className="text-accent underline mt-1 block">Google Meet</a>}
+                      </AccordionContent>
                     </div>
                   </div>
-                </li>
+                </AccordionItem>
               );
             }
-
             if (it.kind === "ai") {
               const v = it.data;
               return (
-                <li key={`ai-${v.id}`} className="ml-4">
-                  <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-accent" />
-                  <div className={`rounded-md border border-accent/30 bg-accent/5 p-3 ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-3.5 w-3.5 text-accent" />
-                        <span className="text-xs font-semibold">IA atualizou o lead</span>
-                        <Badge variant="outline" className="text-[10px]">v{v.version}</Badge>
-                      </div>
-                      <span className="text-[11px] text-muted-foreground">
-                        {format(new Date(v.at), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                      </span>
-                    </div>
-                    {v.changes.length > 0 ? (
-                      <ul className="mt-1.5 space-y-0.5">
-                        {v.changes.map((c, i) => (
-                          <li key={i} className="text-xs text-foreground/90">• {c}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1">Primeira análise completa registrada.</p>
-                    )}
-                  </div>
-                </li>
-              );
-            }
-
-            if (it.kind === "callNote") {
-              const n = it.data;
-              const isAnalyzing = analyzingNoteId === n.id;
-              const analysis = n.analysis;
-              const key = `c-${n.id}`;
-              const isOpen = expanded.has(key);
-              const oneLiner = (n.text || "").replace(/\s+/g, " ").trim().slice(0, 120);
-              const hlCall = highlightsFor(n.text);
-              const criticalCall = isCriticalEvent(hlCall);
-              return (
-                <li key={key} className="ml-4 group">
-                  <span className={`absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background ${criticalCall ? "bg-rose-500" : "bg-primary"}`} />
-                  <div className={`rounded-md border ${colorFor("Ligação")} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""} ${criticalCall ? "ring-2 ring-rose-500/40 shadow-md" : ""}`}>
-                    <button
-                      onClick={() => toggle(key)}
-                      className="w-full text-left p-3 flex items-start gap-2"
-                      aria-expanded={isOpen}
-                    >
-                      {isOpen ? <ChevronDown className="h-3.5 w-3.5 mt-0.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 mt-0.5 shrink-0" />}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Phone className="h-3.5 w-3.5 shrink-0" />
-                            <span className="text-xs font-semibold">Ligação</span>
-                            {n.scriptUsed && <Badge variant="outline" className="text-[10px]">{n.scriptUsed}</Badge>}
-                          </div>
-                          <span className="text-[11px] text-muted-foreground shrink-0">
-                            {format(new Date(n.createdAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                          </span>
-                        </div>
-                        {hlCall.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {hlCall.map((h) => (
-                              <Badge key={h.key} variant="outline" className={`text-[10px] ${h.cls}`}>{h.label}</Badge>
-                            ))}
-                          </div>
-                        )}
-                        {!isOpen && oneLiner && (
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">{oneLiner}</p>
-                        )}
-                      </div>
-
-                    </button>
-                    {isOpen && (
-                      <div className="px-3 pb-3">
-                        <p className="text-sm whitespace-pre-wrap">{n.text}</p>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1"
-                            onClick={() => analyzeNote(n, "quick")} disabled={isAnalyzing}>
-                            {isAnalyzing ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando…</>) : (<><Sparkles className="h-3 w-3" /> 🤖 Analisar Última</>)}
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 border-primary/40 text-primary hover:bg-primary/10"
-                            onClick={() => analyzeNote(n, "full")} disabled={isAnalyzing}>
-                            {isAnalyzing ? (<><Loader2 className="h-3 w-3 animate-spin" /> Analisando…</>) : (<>🧠 Diagnóstico Completo</>)}
-                          </Button>
-                          <button onClick={() => { removeCallNote(lead.id, n.id); onRefresh(); }}
-                            className="ml-auto text-muted-foreground hover:text-destructive">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                        {analysis && (
-                          <div className="mt-2 rounded-md border border-border/40 bg-background/60 p-3">
-                            {analysis.data ? (<CallAuditView data={analysis.data} lead={lead} onRunDiagnosis={() => analyzeNote(n, "full")} />)
-                              : analysis.markdown ? (
-                                <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1">
-                                  <ReactMarkdown>{analysis.markdown}</ReactMarkdown>
-                                </div>
-                              ) : null}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </li>
-              );
-            }
-
-            const i = it.data;
-            const Icon = iconFor(i.type);
-            const key = `i-${i.id}`;
-            const isOpen = expanded.has(key);
-            const oneLiner = (i.summary || i.title || "").replace(/\s+/g, " ").trim().slice(0, 140);
-            const hl = highlightsFor(`${i.title} ${i.summary} ${i.sellerNotes || ""}`);
-            const critical = isCriticalEvent(hl);
-            return (
-              <li key={key} className="ml-4 group">
-                <span className={`absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background ${critical ? "bg-rose-500" : "bg-foreground/70"}`} />
-                <div className={`rounded-md border ${colorFor(i.type)} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""} ${critical ? "ring-2 ring-rose-500/40 shadow-md" : ""}`}>
-                  <button
-                    onClick={() => toggle(key)}
-                    className="w-full text-left p-3 flex items-start gap-2"
-                    aria-expanded={isOpen}
-                  >
-                    {isOpen ? <ChevronDown className="h-3.5 w-3.5 mt-0.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 mt-0.5 shrink-0" />}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Icon className="h-3.5 w-3.5 shrink-0" />
-                          <span className="text-xs font-semibold truncate">{i.type}</span>
-                        </div>
-                        <span className="text-[11px] text-muted-foreground shrink-0">
-                          <CalendarIcon className="h-3 w-3 inline mr-0.5" />
-                          {format(parseISO(i.date), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                        </span>
-                      </div>
-                      {hl.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {hl.map((h) => (
-                            <Badge key={h.key} variant="outline" className={`text-[10px] ${h.cls}`}>{h.label}</Badge>
-                          ))}
-                        </div>
-                      )}
-                      {!isOpen && oneLiner && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{oneLiner}</p>
-                      )}
-                    </div>
-                  </button>
-
-                  {isOpen && (
-                    <div className="px-3 pb-3">
-                      <p className="text-sm font-medium">{i.title}</p>
-                      {i.summary && (
-                        <p className="text-sm whitespace-pre-wrap mt-1 text-foreground/90">{i.summary}</p>
-                      )}
-                      {i.sellerNotes && (
-                        <div className="mt-2 rounded bg-background/50 border border-border/40 p-2">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Anotações do vendedor</p>
-                          <SellerNotesView notes={i.sellerNotes} />
-                        </div>
-                      )}
-                      <div className="mt-2 flex items-center gap-2">
-                        <button onClick={() => { setEditing(i); setFormOpen(true); }}
-                          className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-                          <Pencil className="h-3 w-3" /> Editar
-                        </button>
-                        <button onClick={() => { removeInteraction(lead.id, i.id); onRefresh(); toast.success("Interação removida"); }}
-                          className="text-[11px] text-muted-foreground hover:text-destructive inline-flex items-center gap-1">
-                          <Trash2 className="h-3 w-3" /> Remover
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                <div key={`ai-${v.id}`} className="flex gap-2">
+                   <span className="mt-2 flex h-3 w-3 items-center justify-center rounded-full bg-foreground/20" />
+                   <div className="flex-1 rounded border p-2 bg-muted/20 text-[10px]">
+                      <p className="font-bold flex items-center gap-1 mb-0.5"><Sparkles className="h-2.5 w-2.5" /> IA v{v.version}</p>
+                      <p className="text-muted-foreground mb-1">{format(new Date(v.at), "dd/MM HH:mm")}</p>
+                      <div className="space-y-0.5">{v.changes.slice(0, 3).map((c, i) => <p key={i}>• {c}</p>)}</div>
+                   </div>
                 </div>
-              </li>
+              );
+            }
+            const isCall = it.kind === "callNote";
+            const data = it.data as any;
+            return (
+              <AccordionItem key={`i-${data.id}`} value={itemId} className="border-none">
+                  <div className="flex gap-2">
+                    <span className={`mt-2 flex h-3 w-3 items-center justify-center rounded-full ${isCall ? "bg-primary" : "bg-foreground/50"}`} />
+                    <div className="flex-1 rounded border p-2 bg-card">
+                      <AccordionTrigger className="py-0 hover:no-underline border-none">
+                         <div className="flex items-center justify-between w-full text-[11px] pr-2">
+                            <span className="font-bold flex items-center gap-1">{isCall ? <Phone className="h-3 w-3" /> : iconFor(data.type).name} {isCall ? "Ligação" : data.type}</span>
+                            <span className="text-muted-foreground">{format(new Date(isCall ? data.createdAt : data.date), "dd/MM HH:mm")}</span>
+                         </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-2 text-[11px]">
+                         <p className="whitespace-pre-wrap">{isCall ? data.text : data.summary}</p>
+                         {isCall && (
+                           <div className="mt-2 flex gap-1.5">
+                              <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[9px]" onClick={() => analyzeNote(data, "full")}>Diagnóstico</Button>
+                              <button onClick={() => { removeCallNote(lead.id, data.id); onRefresh(); }} className="ml-auto text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+                           </div>
+                         )}
+                         {!isCall && (
+                           <div className="mt-2 flex gap-1.5">
+                              <button onClick={() => { setEditing(data); setFormOpen(true); }} className="text-[9px] text-muted-foreground hover:text-foreground">Editar</button>
+                              <button onClick={() => { removeInteraction(lead.id, data.id); onRefresh(); }} className="text-[9px] text-muted-foreground hover:text-destructive">Remover</button>
+                           </div>
+                         )}
+                      </AccordionContent>
+                    </div>
+                  </div>
+              </AccordionItem>
             );
           })}
-        </ol>
+        </Accordion>
       )}
 
-      <InteractionForm
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        leadId={lead.id}
-        editing={editing}
-        onSaved={onRefresh}
-      />
+      <InteractionForm open={formOpen} onOpenChange={setFormOpen} leadId={lead.id} editing={editing} onSaved={onRefresh} />
     </div>
   );
 }
