@@ -139,41 +139,30 @@ Deno.serve(async (req) => {
     }
 
     const ctx: CrmContext = body.context ?? {};
-    const specialist: SpecialistId = body.specialistOverride
-      ?? await classify(question, ctx);
+    const { specialist, intent } = body.specialistOverride 
+      ? { specialist: body.specialistOverride, intent: "outra" as IntelIntent }
+      : await classify(question, ctx);
 
     const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization")!;
     const history = normalizeHistory(body.history);
 
-    // Observabilidade: somente metadados agregados (Fase 3D.1).
+    // Observabilidade: somente metadados agregados.
     telemetry.setSpecialist(specialist);
     telemetry.setConversation(body.conversationId ?? null);
     if (ctx && Object.keys(ctx).length) telemetry.addSource("crm");
     if (ctx.leadContext) telemetry.addSource("lead");
     if (history.length) telemetry.addSource("history");
 
-    let content = "";
-    let model = "";
-    let citations: unknown = null;
+    const r = await runSpecialist(specialist, intent, question, ctx, authHeader, history);
+    const content = r.content;
+    const model = r.model;
+    const citations = r.citations;
 
-    if (specialist === "diretor_comercial") {
-      const r = await runDiretor(question, ctx, history);
-      content = r.content; model = r.model;
-    } else if (specialist === "consultor_leads") {
-      if (!ctx.leadContext) {
-        // Sem lead aberto: não bloqueia — responde como Diretor Comercial com o contexto disponível.
-        const r = await runDiretor(question, ctx, history);
-        content = r.content; model = r.model;
-      } else {
-        const r = await runConsultor(question, ctx, history);
-        content = r.content; model = r.model;
-      }
-    } else {
-      const r = await runMentor(question, ctx, authHeader, history);
-      content = r.content; model = r.model; citations = r.citations;
+    if (citations) {
       telemetry.addSource("knowledge");
       telemetry.addTool("knowledge.search");
     }
+
 
     // Persiste user + assistant se houver conversationId
     if (body.conversationId) {
