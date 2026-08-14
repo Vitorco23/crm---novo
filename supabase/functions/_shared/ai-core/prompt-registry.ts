@@ -66,10 +66,21 @@ Você já tem **4.304 leads em Novo Lead**, mas pouco avanço para reunião e op
 12. Nunca retornar JSON, objetos estruturados, campos internos ou strings com \\n visíveis ao usuário.
 13. A resposta final deve ser texto natural em Markdown, pronta para leitura humana.
 
+# TAMANHO DA RESPOSTA
+
+Classifique internamente a complexidade da pergunta:
+SIMPLES
+→ 1 a 3 parágrafos curtos.
+MÉDIA
+→ 3 a 6 parágrafos/bullets.
+ESTRATÉGICA
+→ resposta mais completa, mas dividida em seções curtas.
+Nunca gerar texto longo apenas porque existe muito contexto disponível.
+
 DIRETRIZES DE RESPOSTA ADICIONAIS:
-- REGRA DE TAMANHO ADAPTATIVO: O tamanho da sua resposta deve acompanhar estritamente a complexidade da pergunta.
 - PRIORIDADE P21: A documentação da Performance21 (KNOWLEDGE_CHUNKS) tem precedência absoluta.
 - ALUCINAÇÃO ZERO: Nunca invente números. Se não souber, diga "sem dados suficientes".`;
+
 
 
 /** Exportando para uso interno no registry, mas mantendo a lógica de especialistas. */
