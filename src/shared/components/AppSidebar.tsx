@@ -1,15 +1,24 @@
-import { Zap } from "lucide-react";
+import { Zap, ChevronRight } from "lucide-react";
 import { NavLink } from "@/shared/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton, useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { NAV_GROUPS, NAV_ITEMS, NavGroupId } from "@/shared/constants/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "react-router-dom";
 
-const GROUP_ORDER: NavGroupId[] = ["decisao", "operacao", "inteligencia", "planejamento", "configuracoes"];
+const GROUP_ORDER: NavGroupId[] = ["operacao", "inteligencia", "gestao", "configuracoes"];
 
 export function AppSidebar() {
   const { state } = useSidebar();
+  const { isAdmin } = useAuth();
+  const location = useLocation();
   const collapsed = state === "collapsed";
 
   return (
@@ -28,8 +37,14 @@ export function AppSidebar() {
         </div>
 
         {GROUP_ORDER.map((gid) => {
-          const items = NAV_ITEMS.filter((n) => n.group === gid);
+          const items = NAV_ITEMS.filter((n) => {
+            if (n.group !== gid) return false;
+            if (n.adminOnly && !isAdmin) return false;
+            return true;
+          });
+          
           if (items.length === 0) return null;
+          
           return (
             <SidebarGroup key={gid} className="px-3">
               <SidebarGroupLabel className="text-[10px] uppercase font-bold tracking-[0.15em] text-sidebar-foreground/30 px-2 mb-2">
@@ -39,20 +54,65 @@ export function AppSidebar() {
                 <SidebarMenu className="gap-0.5">
                   {items.map((item) => {
                     const Icon = item.icon;
+                    const hasSubItems = item.subItems && item.subItems.length > 0;
+                    const isActive = location.pathname === item.url || item.subItems?.some(s => s.url === location.pathname);
+
+                    if (!hasSubItems) {
+                      return (
+                        <SidebarMenuItem key={item.url}>
+                          <SidebarMenuButton asChild tooltip={item.title} className="h-9 px-2 rounded-lg transition-all duration-200">
+                            <NavLink
+                              to={item.url}
+                              end={item.end}
+                              className="flex items-center w-full rounded-lg hover:bg-sidebar-accent/40 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-all duration-200"
+                              activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
+                            >
+                              <Icon className="mr-3 h-4 w-4 shrink-0" />
+                              {!collapsed && <span className="text-small">{item.title}</span>}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    }
+
                     return (
-                      <SidebarMenuItem key={item.url}>
-                        <SidebarMenuButton asChild tooltip={item.title} className="h-9 px-2 rounded-lg transition-all duration-200">
-                          <NavLink
-                            to={item.url}
-                            end={item.end}
-                            className="flex items-center w-full rounded-lg hover:bg-sidebar-accent/40 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-all duration-200"
-                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
-                          >
-                            <Icon className="mr-3 h-4 w-4 shrink-0" />
-                            {!collapsed && <span className="text-small">{item.title}</span>}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                      <Collapsible
+                        key={item.url}
+                        asChild
+                        defaultOpen={isActive}
+                        className="group/collapsible"
+                      >
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton tooltip={item.title} className="h-9 px-2 rounded-lg transition-all duration-200">
+                              <Icon className="mr-3 h-4 w-4 shrink-0" />
+                              {!collapsed && (
+                                <>
+                                  <span className="text-small text-sidebar-foreground/70 group-hover/collapsible:text-sidebar-foreground">{item.title}</span>
+                                  <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-sidebar-foreground/30" />
+                                </>
+                              )}
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {item.subItems?.map((subItem) => (
+                                <SidebarMenuSubItem key={subItem.url}>
+                                  <SidebarMenuSubButton asChild isActive={location.pathname === subItem.url}>
+                                    <NavLink 
+                                      to={subItem.url}
+                                      className="text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                                      activeClassName="text-sidebar-accent-foreground font-medium"
+                                    >
+                                      <span>{subItem.title}</span>
+                                    </NavLink>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
                     );
                   })}
                 </SidebarMenu>
