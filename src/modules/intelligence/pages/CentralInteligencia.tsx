@@ -315,7 +315,7 @@ export default function CentralInteligencia() {
                          <DropdownMenu>
                            <DropdownMenuTrigger asChild>
                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-                               <MessageCircle className="h-3.5 w-3.5" />
+                               <ChevronRight className="h-3.5 w-3.5" />
                              </Button>
                            </DropdownMenuTrigger>
                            <DropdownMenuContent align="end">
