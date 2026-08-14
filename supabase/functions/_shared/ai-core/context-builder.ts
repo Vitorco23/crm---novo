@@ -54,8 +54,9 @@ export function buildCrmBlock(ctx: CrmContext): string {
       { maxChars: CONTEXT_LIMITS.crmBlockChars, label: "LEAD ABERTO NO CRM (JSON)" },
     ));
   }
-  if (!parts.length) return "(nenhum dado operacional do CRM foi enviado nesta pergunta)\n\n";
+  if (!parts.length) return "";
   return parts.join("\n\n") + "\n\n";
+
 }
 
 export interface KnowledgeChunkLike {
