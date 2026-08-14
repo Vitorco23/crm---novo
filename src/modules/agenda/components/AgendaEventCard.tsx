@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/utils/utils";
 import { LeadTask, completeTask, reopenTask } from "@/modules/leads/services/leadTasks";
 import { toast } from "sonner";
 
