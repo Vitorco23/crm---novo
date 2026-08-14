@@ -52,7 +52,7 @@ const PRIORITY_COLOR = {
   urgente: "bg-red-500/20 text-red-300 border-red-500/40",
 } as const;
 
-type ViewMode = "mes" | "semana" | "dia";
+export type ViewMode = "mes" | "semana" | "dia";
 
 const browserTZ = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
 
