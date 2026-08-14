@@ -703,10 +703,10 @@ export default function LeadDetailDrawer({
           </TabsContent>
 
 
-          {/* ANEXOS */}
+          {/* ANEXOS - Reorganizado em Grid Compacto */}
           <TabsContent
             value="anexos"
-            className="flex-1 overflow-y-auto px-6 py-4 mt-0"
+            className="flex-1 overflow-y-auto px-5 py-4 mt-0"
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => {
@@ -716,86 +716,59 @@ export default function LeadDetailDrawer({
               if (files.length) void attachFiles(files);
             }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <FileAudio className="h-3 w-3" /> Arquivos ({lead.attachments.length})
-              </p>
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                <Paperclip className="h-3 w-3 mr-1" /> Anexar arquivo
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Paperclip className="h-3.5 w-3.5" /> Arquivos ({lead.attachments.length})
+              </span>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => fileRef.current?.click()}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
               </Button>
               <input ref={fileRef} type="file" multiple accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
             </div>
-            <div
-              className={`mb-3 rounded-md border border-dashed px-3 py-2 text-[11px] transition-colors ${
-                dragOver ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground/80"
-              }`}
-            >
-              📋 Cole um print com <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">V</kbd> ou arraste arquivos aqui — os anexos só são lidos pela IA quando você clicar em <strong>Atualizar Inteligência</strong> (ou em “Ler com IA”).
+
+            <div className={`mb-4 rounded border border-dashed p-3 text-[10px] text-center transition-colors ${dragOver ? "border-accent bg-accent/5" : "border-border/40 text-muted-foreground"}`}>
+              Arraste arquivos ou cole (Ctrl+V) prints aqui.
             </div>
 
             {lead.attachments.length > 0 ? (
-              <div className="grid md:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {lead.attachments.map((att) => {
-                  const d = new Date(att.createdAt);
-                  const isAudio = att.type.startsWith("audio/");
                   const isImg = att.type.startsWith("image/");
                   return (
-                    <div key={att.id} className="rounded-md border border-border/40 bg-muted/30 p-3">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{att.name}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {att.type || "arquivo"} · {format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                          </p>
+                    <div key={att.id} className="rounded border border-border/40 bg-muted/10 overflow-hidden flex flex-col">
+                      {isImg && (
+                        <div className="aspect-video w-full bg-black/20 flex items-center justify-center overflow-hidden">
+                           <img src={att.dataUrl} alt={att.name} className="w-full h-full object-cover" />
                         </div>
-                        <button onClick={() => { removeAttachment(lead.id, att.id); onRefresh(); }}
-                          className="text-muted-foreground hover:text-destructive shrink-0">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      {isAudio && <audio src={att.dataUrl} controls className="h-8 w-full" />}
-                      {isImg && <img src={att.dataUrl} alt={att.name} className="max-h-40 rounded object-cover w-full" />}
-                      <div className="flex gap-1.5 mt-2 flex-wrap">
-                        <Button size="sm" variant="outline" asChild className="h-7 text-xs flex-1 min-w-[80px]">
-                          <a href={att.dataUrl} target="_blank" rel="noopener noreferrer">Visualizar</a>
-                        </Button>
-                        <Button size="sm" variant="outline" asChild className="h-7 text-xs flex-1 min-w-[80px]">
-                          <a href={att.dataUrl} download={att.name}>Baixar</a>
-                        </Button>
-                        {!isAudio && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-7 text-xs flex-1 min-w-[110px] gap-1"
-                            disabled={aiReadingId === att.id}
-                            onClick={() => handleReadAttachmentWithAI(att)}
-                            title="Enviar este anexo para análise da IA (consome tokens)"
-                          >
-                            {aiReadingId === att.id ? (
-                              <><Loader2 className="h-3 w-3 animate-spin" /> Lendo…</>
-                            ) : (
-                              <>👁 {att.aiAnalysis ? "Reler com IA" : "Ler com IA"}</>
-                            )}
-                          </Button>
+                      )}
+                      <div className="p-2 space-y-1 flex-1">
+                        <div className="flex items-start justify-between gap-1">
+                           <p className="text-[11px] font-medium truncate flex-1" title={att.name}>{att.name}</p>
+                           <button onClick={() => { removeAttachment(lead.id, att.id); onRefresh(); }} className="text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
+                        </div>
+                        <p className="text-[9px] text-muted-foreground uppercase">{format(new Date(att.createdAt), "dd/MM HH:mm", { locale: ptBR })}</p>
+                        
+                        <div className="flex gap-1 pt-2">
+                           <Button size="sm" variant="outline" asChild className="h-6 text-[10px] flex-1"><a href={att.dataUrl} target="_blank" rel="noopener noreferrer">Ver</a></Button>
+                           {!att.type.startsWith("audio/") && (
+                             <Button size="sm" variant="secondary" className="h-6 text-[10px] flex-1" disabled={aiReadingId === att.id} onClick={() => handleReadAttachmentWithAI(att)}>
+                               {aiReadingId === att.id ? "..." : (att.aiAnalysis ? "Reler" : "IA")}
+                             </Button>
+                           )}
+                        </div>
+
+                        {att.aiAnalysis && (
+                          <div className="mt-2 text-[10px] text-muted-foreground line-clamp-3 italic border-t border-border/20 pt-1">
+                            {att.aiAnalysis}
+                          </div>
                         )}
                       </div>
-                      {isAudio && (
-                        <p className="text-[10px] text-muted-foreground/70 mt-1.5 italic">
-                          Áudios não são enviados para IA. A análise comercial usa os resumos da Matteline.
-                        </p>
-                      )}
-                      {(aiReadResults[att.id] || att.aiAnalysis) && (
-                        <div className="mt-2 rounded border border-border/40 bg-background/60 p-2 text-xs prose prose-invert prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-headings:my-1">
-                          <ReactMarkdown>{aiReadResults[att.id] || att.aiAnalysis || ""}</ReactMarkdown>
-                        </div>
-                      )}
-
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground/60 text-center py-10">Nenhum arquivo anexado</p>
+              <div className="text-center py-12 text-muted-foreground text-xs italic">Nenhum anexo.</div>
             )}
           </TabsContent>
 
