@@ -39,6 +39,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 
 const INTERACTION_TYPES: InteractionType[] = [
   "Ligação",
@@ -372,34 +374,38 @@ export default function InteracoesTimeline({
           </p>
         </div>
       ) : (
-        <ol className="relative border-l border-border/60 ml-3 space-y-5">
+        <Accordion type="multiple" className="space-y-3 border-l border-border/60 ml-3 pl-4">
           {items.map((it, idx) => {
             const isLatest = idx === 0;
+            const itemId = `item-${idx}`;
 
             if (it.kind === "meeting") {
               const m = it.data;
               const Icon = Users;
               return (
-                <li key={`m-${m.id}`} className="ml-4">
-                  <span className="absolute -left-[9px] mt-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-accent" />
-                  <div className={`rounded-md border p-3 ${colorFor("Reunião")} ${isLatest ? "ring-2 ring-accent/40 shadow-md" : ""}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5" />
-                        <span className="text-xs font-semibold">Reunião agendada</span>
-                        <Badge variant="outline" className="text-[10px]">{m.channel || "Reunião"}</Badge>
-                      </div>
-                      <span className="text-[11px] text-muted-foreground">
-                        <CalendarCheck className="h-3 w-3 inline mr-0.5" />
-                        {format(new Date(`${m.date}T${m.time}:00`), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                      </span>
-                    </div>
-                    {m.title && <p className="text-sm font-medium mt-1">{m.title}</p>}
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {m.meetLink && (
-                        <a href={m.meetLink} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-accent/15 text-accent hover:bg-accent/25">
-                          <Video className="h-2.5 w-2.5" /> Abrir Meet
+                <AccordionItem key={`m-${m.id}`} value={itemId} className="border-none">
+                  <div className="relative">
+                    <span className="absolute -left-[25px] mt-2 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-accent" />
+                    <div className={`rounded-md border p-2.5 ${colorFor("Reunião")} ${isLatest ? "ring-1 ring-accent/40 shadow-sm" : ""}`}>
+                      <AccordionTrigger className="py-0 hover:no-underline border-none">
+                        <div className="flex items-center justify-between w-full pr-2">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-3.5 w-3.5" />
+                            <span className="text-xs font-bold">Reunião</span>
+                            <Badge variant="outline" className="text-[9px] px-1 h-4">{m.channel || "Geral"}</Badge>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">
+                            {format(new Date(`${m.date}T${m.time}:00`), "dd/MM HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-2 pb-0">
+                        {m.title && <p className="text-xs font-medium mb-2">{m.title}</p>}
+                        <div className="flex flex-wrap gap-1.5">
+                          {m.meetLink && (
+                            <a href={m.meetLink} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-accent/15 text-accent hover:bg-accent/25">
+                              <Video className="h-2.5 w-2.5" /> Abrir Meet
                         </a>
                       )}
                       {m.googleEventUrl && (
