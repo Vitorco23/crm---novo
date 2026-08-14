@@ -187,10 +187,11 @@ export default function InteracoesTimeline({ lead, onRefresh, autoOpenNewInterac
 
   return (
     <div className="space-y-4">
-      <IntelligenceUpdateBlock lead={lead} running={refreshingIntel} noChange={intelNoChange} />
-      <AutoDiagnosisCard lead={lead} />
-      <LeadExecutiveSummary lead={lead} />
-      <DiagnosisHistoryBlock lead={lead} />
+      <div className="space-y-4 opacity-50 grayscale pointer-events-none scale-[0.98] origin-top">
+        <IntelligenceUpdateBlock lead={lead} running={refreshingIntel} noChange={intelNoChange} />
+        <AutoDiagnosisCard lead={lead} />
+        <DiagnosisHistoryBlock lead={lead} />
+      </div>
       {trail.length > 0 && (
         <div className="rounded border border-border/50 bg-card/40 p-2">
           <p className="text-[10px] uppercase text-muted-foreground mb-1.5">Trail</p>
