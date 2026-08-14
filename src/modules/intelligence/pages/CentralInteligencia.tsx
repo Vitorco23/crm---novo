@@ -219,22 +219,21 @@ export default function CentralInteligencia() {
         description: error.message,
         variant: "destructive",
       });
+      setEditingId(null);
     }
   };
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    const id = deleteId;
+    if (!id) return;
 
     try {
-      await IntelligenceRepository.deleteConversation(deleteId);
-      
-      const remaining = conversations.filter(c => c.id !== deleteId);
+      await IntelligenceRepository.deleteConversation(id);
+      const remaining = conversations.filter(c => c.id !== id);
       setConversations(remaining);
-      
-      if (activeId === deleteId) {
+      if (activeId === id) {
         setActiveId(remaining.length > 0 ? remaining[0].id : null);
       }
-      
       setDeleteId(null);
       toast({ title: "Conversa excluída" });
     } catch (error: any) {
@@ -243,8 +242,11 @@ export default function CentralInteligencia() {
         description: error.message,
         variant: "destructive",
       });
+      setDeleteId(null);
     }
   };
+
+
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-background">
@@ -263,33 +265,47 @@ export default function CentralInteligencia() {
                 )}
               >
                 {editingId === c.id ? (
-                  <Input
-                    autoFocus
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleRename(c.id);
-                      if (e.key === "Escape") setEditingId(null);
-                    }}
-                    onBlur={() => handleRename(c.id)}
-                    className="h-6 py-0 px-1 text-xs border-primary focus-visible:ring-0"
-                  />
+                  <div className="flex-1 flex items-center" onClick={(e) => e.stopPropagation()}>
+                    <Input
+                      autoFocus
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleRename(c.id);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setEditingId(null);
+                        }
+                      }}
+                      onBlur={() => handleRename(c.id)}
+                      className="h-6 py-0 px-1 text-xs border-primary focus-visible:ring-0 w-full"
+                    />
+                  </div>
                 ) : (
                   <>
                     <button 
-                      className="flex-1 text-left truncate pr-6" 
-                      onClick={() => setActiveId(c.id)}
+                      className="flex-1 text-left truncate pr-6 h-full w-full" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveId(c.id);
+                      }}
+
                     >
                       {c.title}
                     </button>
-                    <div className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div 
+                      className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button 
                             variant="ghost" 
                             size="icon" 
                             className="h-5 w-5 hover:bg-background/50"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             <MoreVertical className="h-3 w-3" />
                           </Button>
@@ -311,11 +327,13 @@ export default function CentralInteligencia() {
                           >
                             <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                           </DropdownMenuItem>
+
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
                   </>
                 )}
+
               </div>
             ))}
           </div>
