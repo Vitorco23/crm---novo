@@ -101,7 +101,15 @@ export default function CentralInteligencia() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [debugMode, setDebugMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const openLead = useOpenLeadContext();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setIsAdmin(data.user?.email === "vitorco23@gmail.com");
+    });
+  }, []);
 
   const refreshConversations = useCallback(async () => {
     let data = await IntelligenceRepository.listConversations();
