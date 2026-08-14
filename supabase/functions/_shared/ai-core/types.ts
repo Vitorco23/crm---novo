@@ -25,9 +25,11 @@ export interface ConversationTurn {
 /** Contexto operacional enviado pelo CRM para uma execução de IA. */
 export interface CrmContext {
   page?: string;
+  intent?: IntelIntent;
   leadContext?: Record<string, unknown> | null;
   dashboardSnapshot?: Record<string, unknown> | null;
 }
+
 
 /** Bloco de contexto já sanitizado e pronto para composição do prompt. */
 export interface ContextBlock {

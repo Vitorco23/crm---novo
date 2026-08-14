@@ -63,20 +63,24 @@ function buildLeadContext(lead: Lead | null) {
 function buildDashboardSnapshot() {
   try {
     const leads = getLeads();
+    const goals = getGoalsSettings();
     const byStage: Record<string, number> = {};
     leads.forEach((l) => { byStage[l.stage] = (byStage[l.stage] ?? 0) + 1; });
-    const oportunidades = leads.filter((l) => OPORTUNIDADES_STAGES.includes(l.stage as never));
-    const coldCall = leads.filter((l) => COLD_CALL_STAGES.includes(l.stage as never));
+    const oportunidades = leads.filter((l) => OPORTUNIDADES_STAGES.includes(l.stage as any));
+    const coldCall = leads.filter((l) => COLD_CALL_STAGES.includes(l.stage as any));
     const pipelineValue = oportunidades.reduce((s, l) => s + (l.contractValue ?? 0), 0);
+    
     return {
       totalLeads: leads.length,
       coldCall: coldCall.length,
       oportunidades: oportunidades.length,
       pipelineValueBRL: pipelineValue,
       distribuicaoPorEtapa: byStage,
+      metaMensal: goals.monthlyRevenueGoal,
     };
   } catch { return null; }
 }
+
 
 export default function CentralInteligencia() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
