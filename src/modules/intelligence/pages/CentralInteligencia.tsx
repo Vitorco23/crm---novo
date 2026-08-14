@@ -203,54 +203,40 @@ export default function CentralInteligencia() {
 
   const handleRename = async (id: string) => {
     const title = editTitle.trim();
-    console.log(`[ConversationCRUD] rename_clicked id=${id} new_title=${title}`);
-    
     if (!title) {
-      console.log("[ConversationCRUD] rename canceled: empty title");
       setEditingId(null);
       return;
     }
 
     try {
-      console.log("[ConversationCRUD] mutation_started: rename");
       await IntelligenceRepository.renameConversation(id, title);
-      console.log("[ConversationCRUD] mutation_success: rename");
       setConversations(prev => prev.map(c => c.id === id ? { ...c, title } : c));
       setEditingId(null);
       toast({ title: "Conversa renomeada" });
     } catch (error: any) {
-      console.error("[ConversationCRUD] mutation_error: rename", error);
       toast({
         title: "Erro ao renomear",
         description: error.message,
         variant: "destructive",
       });
-      // Importante: resetar o estado de edição mesmo em erro para não travar a UI
       setEditingId(null);
     }
   };
 
   const handleDelete = async () => {
     const id = deleteId;
-    console.log(`[ConversationCRUD] delete_clicked id=${id}`);
     if (!id) return;
 
     try {
-      console.log("[ConversationCRUD] mutation_started: delete");
       await IntelligenceRepository.deleteConversation(id);
-      console.log("[ConversationCRUD] mutation_success: delete");
-      
       const remaining = conversations.filter(c => c.id !== id);
       setConversations(remaining);
-      
       if (activeId === id) {
         setActiveId(remaining.length > 0 ? remaining[0].id : null);
       }
-      
       setDeleteId(null);
       toast({ title: "Conversa excluída" });
     } catch (error: any) {
-      console.error("[ConversationCRUD] mutation_error: delete", error);
       toast({
         title: "Erro ao excluir",
         description: error.message,
@@ -259,6 +245,7 @@ export default function CentralInteligencia() {
       setDeleteId(null);
     }
   };
+
 
 
   return (
