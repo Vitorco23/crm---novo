@@ -431,6 +431,10 @@ export function saveLeads(leads: Lead[]) {
   saveToStorage("p21_leads", normalized);
 }
 
+export function findLeadById(id: string): Lead | null {
+  return getLeads().find((l) => l.id === id) || null;
+}
+
 // ===== Duplicate detection =====
 const normalizeText = (s: string) => (s || "").trim().toLowerCase();
 const normalizeUrl = (s: string) => {
