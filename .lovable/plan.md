@@ -1,40 +1,39 @@
-# Plano de Implementação: Sprint 2 — Dashboard Operacional Simplificado
+# Plano: Sprint 2 — Dashboard Operacional Simplificado
 
-A Sprint 2 aplicará a fundação visual da Sprint 1 na página inicial, transformando-a em um cockpit comercial focado em execução diária.
+Implementação da Sprint 2 com foco em transformar o Dashboard em um cockpit comercial orientado à execução diária, respeitando a nova fundação visual.
 
-## Análise do Dashboard Atual
-- **Componentes:** OperationalPanel, PipelinePanel, StrategicIntelligencePanel, FinancialHealthRow, BottleneckCard, EstimatedActivityCard, PomodoroRanking.
-- **Métricas:** Ligações, Conexões, Decisores, Reuniões, Eficiência (ligações/reunião), Receita, Pipeline em negociação, Conversão de funil.
-- **Filtros:** Período (Hoje, Semana, Mês, Custom).
-- **Ações:** Exportação Excel, Navegação para Leads.
+## 1. Estrutura Global
+- Reorganização do layout em 4 níveis de prioridade.
+- Grid responsivo (8 colunas para prioridades, 4 colunas para indicadores em desktop).
+- Seção analítica secundária recolhível para reduzir ruído visual.
 
-## Alterações Propostas
+## 2. Cabeçalho da Página
+- Título "Visão Geral" limpo com badge de período.
+- Filtros de período (Hoje, Semana, Mês, Personalizado) em grupo de botões discreto.
+- Botão de exportação XLSX integrado.
 
-### 1. Estrutura Global
-- Simplificar `src/modules/dashboard/pages/Dashboard.tsx` para seguir a hierarquia de quatro níveis.
-- Remover descrições longas e botões redundantes do cabeçalho.
-- Garantir responsividade (grid 12 colunas no desktop, stack no mobile).
+## 3. Prioridades do Dia (Principal)
+- Integração com `priorityEngine.ts` para exibir os 10 leads mais urgentes.
+- Lista operacional compacta com ícones de ação (Telefone, WhatsApp, Reunião).
+- Exibição de motivo da prioridade e tempo estimado.
+- Abertura direta do `LeadDetailDrawer` ao clicar no item.
 
-### 2. Bloco Principal: Prioridades do Dia
-- Criar `src/modules/dashboard/components/DailyPriorities.tsx`.
-- Exibir lista compacta baseada em `computePriorities()` do `priorityEngine.ts`.
-- Focar em: Follow-ups atrasados, Reuniões de hoje e Leads Críticos.
-- Atalhos para abrir o LeadDetailDrawer.
+## 4. Indicadores Essenciais
+- Grid de 4 KPIs principais: Ligações (via `activityLedger`), Reuniões, Valor em Negociação e Leads Ativos.
+- Cards simplificados com ícones e variações semânticas.
 
-### 3. Indicadores Essenciais
-- Reorganizar `MetricCard` para ser mais discreto e compacto.
-- Selecionar 4-6 KPIs: Atividades do dia (ledger), Reuniões (agenda), Conversão (funil), Valor em negociação (financeiro).
+## 5. Visão Resumida e Agenda
+- `PipelineCompactCard`: Distribuição do funil em barras horizontais.
+- `ActivityFunnelCard`: Conversão de outreach (Ligações -> Conexões -> Reuniões).
+- `FinancialHealthRow`: Integrado abaixo do bloco principal.
 
-### 4. Visão Resumida e Análises Adicionais
-- Consolidar Funil, Agenda e Saúde Financeira em blocos de menor peso visual.
-- Mover `PomodoroRanking`, `EstimatedActivityCard` e `StrategicIntelligencePanel` para uma seção secundária "Análises Adicionais" (recolhível).
-
-### 5. Refinamento Visual
-- Aplicar cores: `#152039` (Blue), `#9ABD33` (Green), `#F1FBFD` (Bg Light).
-- Remover bordas excessivas e sombras.
-- Padronizar estados de loading (Skeleton) e vazio.
+## 6. Análises Adicionais (Recolhível)
+- `StrategicIntelligencePanel`: Insights da IA e o que mudou.
+- `OperationalAnalysis`: Visão detalhada de performance.
+- `EstimatedActivityPanel`: Gráficos de atividade estimada.
+- `PomodoroRankingPanel`: Ranking de foco.
 
 ## Detalhes Técnicos
-- Utilizar `useMemo` para evitar re-cálculos desnecessários das prioridades.
-- Manter integração com `userStorage` e `eventBus` para tempo real.
-- Nenhuma alteração no banco de dados ou regras de negócio.
+- Utilização de `useMemo` para evitar re-renders pesados nos filtros.
+- Aplicação dos tokens de cor definidos na Sprint 1 (#152039, #9ABD33, #F1FBFD).
+- Resgate de componentes que foram acidentalmente omitidos na refatoração inicial do arquivo `Dashboard.tsx`.
