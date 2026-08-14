@@ -1142,17 +1142,18 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             ) : (
               <button
                 onClick={() => setShowAddStage(true)}
-                className="flex flex-col items-center justify-center w-full h-[100px] border-2 border-dashed border-border/30 rounded-xl text-muted-foreground hover:text-foreground hover:border-accent/40 hover:bg-accent/5 transition-all group"
+                className="flex flex-col items-center justify-center w-full h-[80px] border border-dashed border-border/20 rounded-xl text-muted-foreground/40 hover:text-foreground hover:border-accent/40 hover:bg-accent/5 transition-all group"
               >
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mb-2 group-hover:bg-accent/20">
-                  <Plus className="h-4 w-4" />
+                <div className="w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center mb-2 group-hover:bg-accent/10">
+                  <Plus className="h-3 w-3" />
                 </div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider">Adicionar Etapa</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest">Nova Etapa</span>
               </button>
             )}
           </div>
         </div>
       </div>
+
 
       )}
 
