@@ -1,12 +1,15 @@
-
-import { CONSULTOR_CORE, DIRETOR_CHAT_SYSTEM, CONSULTOR_SYSTEM, MENTOR_SYSTEM } from "./prompt-registry.ts";
+import { getPrompt } from "./prompt-registry.ts";
 
 function testAdaptability() {
   console.log("--- TESTANDO ADAPTABILIDADE ---");
-  console.log("CONSULTOR_CORE contém regra de tamanho adaptativo?", CONSULTOR_CORE.includes("REGRA DE TAMANHO ADAPTATIVO"));
-  console.log("DIRETOR_CHAT_SYSTEM contém perfil Diretor?", DIRETOR_CHAT_SYSTEM.includes("Diretor Comercial"));
-  console.log("CONSULTOR_SYSTEM contém perfil Consultor?", CONSULTOR_SYSTEM.includes("Consultor de Leads"));
-  console.log("MENTOR_SYSTEM contém perfil Mentor?", MENTOR_SYSTEM.includes("Mentor P21"));
+  
+  const diretorPrompt = getPrompt("intel.diretor.chat").system;
+  const consultorPrompt = getPrompt("intel.consultor.chat").system;
+  const mentorPrompt = getPrompt("intel.mentor.chat").system;
+
+  console.log("Diretor prompt contém perfil Diretor?", diretorPrompt.includes("Diretor Comercial"));
+  console.log("Consultor prompt contém perfil Consultor?", consultorPrompt.includes("Consultor de Leads"));
+  console.log("Mentor prompt contém perfil Mentor?", mentorPrompt.includes("Mentor P21"));
   
   const rules = [
     "começar respondendo diretamente",
@@ -16,7 +19,7 @@ function testAdaptability() {
   ];
   
   rules.forEach(rule => {
-    console.log(`Regra [${rule}] presente?`, CONSULTOR_CORE.toLowerCase().includes(rule.toLowerCase()));
+    console.log(`Regra [${rule}] presente no Diretor?`, diretorPrompt.toLowerCase().includes(rule.toLowerCase()));
   });
 }
 
