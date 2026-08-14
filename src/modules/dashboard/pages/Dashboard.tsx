@@ -63,18 +63,14 @@ export default function Dashboard() {
     filter === "day" ? "today" : filter === "week" ? "last7" : "thisMonth";
 
   return (
-    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
-      {/* 1. CABEÇALHO DA PÁGINA */}
+    <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
+      {/* 1. CABEÇALHO DA PÁGINA (FILTROS) */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-foreground tracking-tight">Visão Geral</h1>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest bg-accent/5 text-accent border-accent/20">
               {filterLabels[filter]}
             </Badge>
-            <span className="text-[11px] text-muted-foreground font-medium">
-              Performance do time comercial
-            </span>
           </div>
         </div>
 

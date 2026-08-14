@@ -40,8 +40,7 @@ export default function Pomodoro() {
     state.phase === "completed" ? "Registre a sessão" : "Pronto";
 
   return (
-    <div className="p-4 max-w-5xl mx-auto space-y-6">
-      <h1 className="text-xl font-bold text-foreground">Pomodoro de Outreach</h1>
+    <div className="max-w-5xl mx-auto space-y-6">
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Timer */}

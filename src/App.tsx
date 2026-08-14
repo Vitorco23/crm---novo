@@ -23,6 +23,7 @@ import InteligenciaComercial from "@/modules/intelligence/pages/InteligenciaCome
 import CentralDecisao from "@/modules/intelligence/pages/CentralDecisao";
 import MissaoDoDia from "@/modules/intelligence/pages/MissaoDoDia";
 import { IntelligenceShell } from "@/modules/intelligence/components/IntelligenceShell";
+import { ManagementShell } from "@/modules/dashboard/components/ManagementShell";
 
 import Agenda from "@/modules/agenda/pages/Agenda";
 import MemoriaComercial from "@/modules/intelligence/pages/MemoriaComercial";
@@ -62,11 +63,11 @@ const App = () => (
                         <Route path="/" element={<ColdCall />} />
                         <Route path="/oportunidades" element={<Oportunidades />} />
                         <Route path="/onboarding" element={<Onboarding />} />
-                        <Route path="/scrum" element={<Scrum />} />
-                        <Route path="/pomodoro" element={<Pomodoro />} />
-                        <Route path="/dashboard" element={<Dashboard />} />
-                        <Route path="/metas" element={<Metas />} />
-                        <Route path="/financeiro" element={<Financeiro />} />
+                        <Route path="/scrum" element={<ManagementShell title="Plano de Ação" description="Gestão de tarefas e sprints"><Scrum /></ManagementShell>} />
+                        <Route path="/pomodoro" element={<ManagementShell title="Performance" description="Desempenho operacional e produtividade"><Pomodoro /></ManagementShell>} />
+                        <Route path="/dashboard" element={<ManagementShell title="Visão Executiva" description="Visão consolidada da gestão comercial"><Dashboard /></ManagementShell>} />
+                        <Route path="/metas" element={<ManagementShell title="Metas" description="Acompanhamento de objetivos e conversão"><Metas /></ManagementShell>} />
+                        <Route path="/financeiro" element={<ManagementShell title="Financeiro" description="Saúde financeira e receitas"><Financeiro /></ManagementShell>} />
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/lembretes" element={<Lembretes />} />
                         <Route path="/inteligencia" element={<IntelligenceShell title="Visão Geral" description="Consolidação da inteligência comercial"><InteligenciaComercial /></IntelligenceShell>} />

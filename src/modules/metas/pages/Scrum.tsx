@@ -141,12 +141,8 @@ export default function Scrum() {
     : clientLeads.find((l) => l.id === scope)?.company ?? "Cliente";
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tarefas / Scrum</h1>
-          <p className="text-sm text-muted-foreground">Gestão ágil com sprints, backlog e burndown.</p>
-        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
             <PopoverTrigger asChild>
