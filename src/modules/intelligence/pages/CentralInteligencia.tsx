@@ -45,10 +45,13 @@ function MessageInspector({ observability }: { observability?: Record<string, an
     <div className="space-y-4 text-xs font-mono p-2">
       <div>Intenção: {observability.intention}</div>
       <div>Especialista: {observability.specialist}</div>
+      <div>Dados Operacionais: {Array.isArray(observability.operational_data) ? observability.operational_data.join(", ") : "nenhum"}</div>
+      <div>Knowledge: {observability.knowledge_result}</div>
       <div>Latência: {observability.latency_ms}ms</div>
     </div>
   );
 }
+
 
 function useOpenLeadContext(): Lead | null {
   const [lead, setLead] = useState<Lead | null>(null);
