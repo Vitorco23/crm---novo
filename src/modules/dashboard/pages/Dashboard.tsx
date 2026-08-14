@@ -158,6 +158,7 @@ export default function Dashboard() {
             </div>
             <EssentialMetrics filter={filter} custom={custom} />
           </section>
+        </aside>
       </div>
 
       {/* FINANCEIRO */}
