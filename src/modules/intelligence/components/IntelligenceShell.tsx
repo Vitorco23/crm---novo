@@ -76,20 +76,20 @@ export function IntelligenceShell({ children, title, description }: Intelligence
       <header className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Link to="/inteligencia" className="hover:text-foreground transition-colors">Inteligência</Link>
+            <nav className="flex items-center gap-2 text-muted-foreground mb-1 text-xs" aria-label="Breadcrumb">
+              <Link to="/inteligencia" className="hover:text-foreground transition-colors focus-visible:outline-none focus-visible:underline">Inteligência</Link>
               {pathname !== "/inteligencia" && (
                 <>
                   <ChevronRight className="h-3 w-3" />
                   <span className="text-foreground font-medium">{displayTitle}</span>
                 </>
               )}
-            </div>
+            </nav>
             <h1 className="text-h2 font-bold tracking-tight text-foreground">{displayTitle}</h1>
             {displayDesc && <p className="text-small text-muted-foreground">{displayDesc}</p>}
           </div>
           
-          <nav className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/40" aria-label="Categorias de Inteligência">
+          <nav className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/40" aria-label="Menu de Inteligência">
             {CATEGORIES.map((cat) => {
               const isActive = pathname === cat.path;
               const Icon = cat.icon;
@@ -121,4 +121,3 @@ export function IntelligenceShell({ children, title, description }: Intelligence
     </PageContainer>
   );
 }
-
