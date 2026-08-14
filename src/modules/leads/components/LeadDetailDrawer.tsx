@@ -627,7 +627,7 @@ export default function LeadDetailDrawer({
 
 
           {/* INTERAÇÕES COMERCIAIS */}
-          <TabsContent value="interacoes" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
+          <TabsContent value="interacoes" className="flex-1 overflow-y-auto px-5 py-4 mt-0">
             <InteracoesTimeline
               lead={lead}
               onRefresh={onRefresh}
