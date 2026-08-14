@@ -32,6 +32,8 @@ import ReactMarkdown from "react-markdown";
 import { analyzeCallNote } from "@/modules/laboratorio/services/callAnalysis";
 import { CallAuditView } from "@/modules/laboratorio/components/CallAuditView";
 import InteracoesTimeline from "@/modules/leads/components/InteracoesTimeline";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 
 
 import { formatDistanceToNow, format } from "date-fns";
