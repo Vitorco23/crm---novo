@@ -290,9 +290,9 @@ export default function CentralInteligencia() {
                       className="flex-1 text-left truncate pr-6 h-full w-full" 
                       onClick={(e) => {
                         e.stopPropagation();
-                        console.log(`[ConversationCRUD] sidebar_item_clicked id=${c.id}`);
                         setActiveId(c.id);
                       }}
+
                     >
                       {c.title}
                     </button>
