@@ -8,12 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import {
-  MessageCircle, Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, ChevronRight, Pencil, ChevronDown, Bot, Copy, RefreshCw, ThumbsUp, ThumbsDown
+  MessageCircle, Plus, Send, Trash2, Sparkles, Brain, User, Library, Loader2, ChevronRight, Pencil, ChevronDown, Bot, Copy, RefreshCw, ThumbsUp, ThumbsDown, Info, ShieldAlert
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 import { getLeads, getPipelineForStage, type Lead } from "@/shared/services/store";
 import { COLD_CALL_STAGES, OPORTUNIDADES_STAGES } from "@/shared/services/store";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 type Specialist = "diretor_comercial" | "consultor_leads" | "mentor_p21";
 
@@ -25,6 +27,7 @@ interface ChatMessage {
   specialist?: Specialist | null;
   citations?: Array<{ documentId: string; titulo: string; categoria: string; versao: number; similarity: number }> | null;
   model_used?: string | null;
+  observability?: Record<string, any> | null;
   created_at?: string;
 }
 
@@ -33,6 +36,65 @@ const SPECIALIST_META: Record<Specialist, { label: string; icon: typeof Brain; c
   consultor_leads:   { label: "Consultor de Leads", icon: User,       color: "bg-green-500/15 text-green-600 border-green-500/30", description: "Análise do lead aberto" },
   mentor_p21:        { label: "Mentor P21",        icon: Library,    color: "bg-purple-500/15 text-purple-500 border-purple-500/30", description: "Metodologia P21 (RAG)" },
 };
+
+function MessageInspector({ observability }: { observability?: Record<string, any> | null }) {
+  if (!observability) return <div className="text-xs text-muted-foreground">Nenhum metadado disponível.</div>;
+  return (
+    <div className="space-y-4 text-sm">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground">Intenção</label>
+          <div className="font-mono bg-muted p-1 rounded text-xs">{observability.intention}</div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground">Especialista</label>
+          <div className="font-mono bg-muted p-1 rounded text-xs">{observability.specialist}</div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground">Knowledge</label>
+          <div className={cn("font-mono p-1 rounded text-xs", observability.knowledge_result === "found" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
+            {observability.knowledge_result}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground">Latência</label>
+          <div className="font-mono bg-muted p-1 rounded text-xs">{observability.latency_ms}ms</div>
+        </div>
+      </div>
+      
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase font-bold text-muted-foreground">Contexto Enviado</label>
+        <div className="text-xs">{observability.context_size_chars} caracteres</div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase font-bold text-muted-foreground">Dados Operacionais</label>
+        <div className="flex flex-wrap gap-1">
+          {Array.isArray(observability.operational_data) && observability.operational_data.length > 0 ? (
+            observability.operational_data.map((d: string) => <Badge key={d} variant="outline" className="text-[10px]">{d}</Badge>)
+          ) : <span className="text-xs text-muted-foreground">Nenhum</span>}
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase font-bold text-muted-foreground">Fontes (Knowledge)</label>
+        <div className="space-y-1">
+          {Array.isArray(observability.knowledge_sources) && observability.knowledge_sources.length > 0 ? (
+            observability.knowledge_sources.map((s: any, i: number) => (
+              <div key={i} className="text-[11px] border-b pb-1 last:border-0">
+                <div className="font-medium">{s.titulo}</div>
+                <div className="text-muted-foreground flex justify-between">
+                  <span>{s.categoria}</span>
+                  <span>{(s.similarity * 100).toFixed(1)}% match</span>
+                </div>
+              </div>
+            ))
+          ) : <span className="text-xs text-muted-foreground">Nenhuma fonte institucional consultada.</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function useOpenLeadContext(): Lead | null {
   const [lead, setLead] = useState<Lead | null>(null);
@@ -98,7 +160,15 @@ export default function CentralInteligencia() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [debugMode, setDebugMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const openLead = useOpenLeadContext();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setIsAdmin(data.user?.email === "vitorco23@gmail.com");
+    });
+  }, []);
 
   const refreshConversations = useCallback(async () => {
     let data = await IntelligenceRepository.listConversations();
@@ -151,13 +221,14 @@ export default function CentralInteligencia() {
         content: data?.content ?? "(sem resposta)",
         specialist: (data?.specialist ?? null) as ChatMessage["specialist"],
         citations: (data?.citations ?? null) as ChatMessage["citations"],
+        observability: (data?.observability ?? null) as ChatMessage["observability"],
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, reply]);
     } finally {
       setSending(false);
     }
-  }, [input, sending, activeId, override, openLead]);
+  }, [input, sending, activeId, override, openLead, messages]);
 
   return (
     <div className="flex h-[calc(100vh-120px)] bg-background">
@@ -200,8 +271,28 @@ export default function CentralInteligencia() {
                          <Bot className="h-3 w-3" /> {SPECIALIST_META[m.specialist].label}
                       </div>
                     )}
-                    <div className={cn("px-4 py-3 rounded-2xl max-w-[90%] prose prose-sm dark:prose-invert", m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                    <div className={cn("group relative px-4 py-3 rounded-2xl max-w-[90%] prose prose-sm dark:prose-invert", m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted")}>
                       <ReactMarkdown>{m.content}</ReactMarkdown>
+                      
+                      {m.role === "assistant" && debugMode && (
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
+                                <Info className="h-3 w-3" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle className="text-sm font-bold flex items-center gap-2">
+                                  <ShieldAlert className="h-4 w-4 text-primary" /> Auditoria da Resposta
+                                </DialogTitle>
+                              </DialogHeader>
+                              <MessageInspector observability={m.observability} />
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -227,6 +318,17 @@ export default function CentralInteligencia() {
                      ))}
                    </DropdownMenuContent>
                 </DropdownMenu>
+                
+                {isAdmin && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className={cn("h-6 text-[10px] gap-1 px-2 ml-auto", debugMode ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                    onClick={() => setDebugMode(!debugMode)}
+                  >
+                    <ShieldAlert className="h-3 w-3" /> MODO DEBUG
+                  </Button>
+                )}
              </div>
              <Textarea
                value={input}

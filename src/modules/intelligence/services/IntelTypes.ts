@@ -14,6 +14,7 @@ export interface IntelMessage {
   specialist?: string | null;
   citations?: unknown;
   model_used?: string | null;
+  observability?: Record<string, any> | null;
   created_at: string;
 }
 

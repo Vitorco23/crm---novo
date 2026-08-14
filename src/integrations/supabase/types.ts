@@ -203,6 +203,7 @@ export type Database = {
           created_at: string
           id: string
           model_used: string | null
+          observability: Json | null
           role: string
           specialist: string | null
         }
@@ -214,6 +215,7 @@ export type Database = {
           created_at?: string
           id?: string
           model_used?: string | null
+          observability?: Json | null
           role: string
           specialist?: string | null
         }
@@ -225,6 +227,7 @@ export type Database = {
           created_at?: string
           id?: string
           model_used?: string | null
+          observability?: Json | null
           role?: string
           specialist?: string | null
         }
