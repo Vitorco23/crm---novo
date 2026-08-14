@@ -113,23 +113,7 @@ export default function Laboratorio() {
   }), [dataset]);
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <header className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-primary">
-            <FlaskConical className="h-5 w-5" />
-            <span className="text-xs font-semibold uppercase tracking-widest">Laboratório Comercial</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            Experimentação contínua da operação
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Compare scripts, campanhas, cidades, nichos e horários com dados reais.
-            Todas as conclusões seguem o nível de confiança estatístico da amostra.
-          </p>
-        </div>
-      </header>
-
+    <div className="space-y-6">
       <FiltersBar
         filters={filters}
         setFilters={setFilters}
@@ -158,7 +142,7 @@ export default function Laboratorio() {
               {(Object.keys(DIM_META) as LabDimension[]).map((d) => {
                 const Icon = DIM_META[d].icon;
                 return (
-                  <TabsTrigger key={d} value={d} className="gap-1.5">
+                  <TabsTrigger key={d} value={d} className="gap-1.5 text-xs">
                     <Icon className="h-3.5 w-3.5" /> {DIM_META[d].label}
                   </TabsTrigger>
                 );
@@ -177,6 +161,7 @@ export default function Laboratorio() {
     </div>
   );
 }
+
 
 // ============= barra de filtros =============
 

@@ -72,29 +72,21 @@ export const NAV_ITEMS: NavItem[] = [
 
   // INTELIGÊNCIA
   { 
-    title: "Central IA", 
-    url: "/inteligencia/central", 
-    icon: MessageCircle, 
+    title: "Inteligência", 
+    url: "/inteligencia", 
+    icon: Brain, 
     group: "inteligencia", 
-    description: "Chat com IA e Decisão",
+    description: "Cockpit de IA e Decisão",
     subItems: [
-      { title: "Chat Especialistas", url: "/inteligencia/central" },
-      { title: "Central de Decisão", url: "/central" },
-      { title: "Diretor Comercial IA", url: "/inteligencia" }
-    ]
-  },
-  { 
-    title: "Conhecimento",     
-    url: "/inteligencia/knowledge", 
-    icon: Library, 
-    group: "inteligencia", 
-    description: "Documentação e Memória",
-    subItems: [
-      { title: "Knowledge Base", url: "/inteligencia/knowledge" },
-      { title: "Memória Comercial", url: "/memoria" },
+      { title: "Visão Geral", url: "/inteligencia" },
+      { title: "Decisão", url: "/central" },
+      { title: "Conversar", url: "/inteligencia/central" },
+      { title: "Conhecimento", url: "/inteligencia/knowledge" },
+      { title: "Memória", url: "/memoria" },
       { title: "Laboratório", url: "/laboratorio" }
     ]
   },
+
 
   // GESTÃO
   { 

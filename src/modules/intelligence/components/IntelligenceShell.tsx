@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, Outlet } from "react-router-dom";
 import { PageContainer } from "@/shared/components/shell/PageContainer";
 import { 
   Compass, 
@@ -7,17 +7,25 @@ import {
   Library, 
   BookMarked, 
   FlaskConical, 
-  ChevronRight 
+  ChevronRight,
+  LayoutDashboard
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 
 interface IntelligenceShellProps {
-  children: ReactNode;
-  title: string;
+  children?: ReactNode;
+  title?: string;
   description?: string;
 }
 
 const CATEGORIES = [
+  { 
+    id: "visao-geral", 
+    label: "Visão Geral", 
+    icon: LayoutDashboard, 
+    path: "/inteligencia",
+    description: "Visão consolidada da inteligência"
+  },
   { 
     id: "decisao", 
     label: "Decisão", 
@@ -58,6 +66,11 @@ const CATEGORIES = [
 export function IntelligenceShell({ children, title, description }: IntelligenceShellProps) {
   const { pathname } = useLocation();
 
+  // Se não for passado title, tentamos encontrar baseado no path
+  const currentCat = CATEGORIES.find(c => c.path === pathname);
+  const displayTitle = title || currentCat?.label || "Inteligência";
+  const displayDesc = description || currentCat?.description;
+
   return (
     <PageContainer className="space-y-6">
       <header className="space-y-4">
@@ -65,11 +78,15 @@ export function IntelligenceShell({ children, title, description }: Intelligence
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
               <Link to="/inteligencia" className="hover:text-foreground transition-colors">Inteligência</Link>
-              <ChevronRight className="h-3 w-3" />
-              <span className="text-foreground font-medium">{title}</span>
+              {pathname !== "/inteligencia" && (
+                <>
+                  <ChevronRight className="h-3 w-3" />
+                  <span className="text-foreground font-medium">{displayTitle}</span>
+                </>
+              )}
             </div>
-            <h1 className="text-h2 font-bold tracking-tight text-foreground">{title}</h1>
-            {description && <p className="text-small text-muted-foreground">{description}</p>}
+            <h1 className="text-h2 font-bold tracking-tight text-foreground">{displayTitle}</h1>
+            {displayDesc && <p className="text-small text-muted-foreground">{displayDesc}</p>}
           </div>
           
           <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/40">
@@ -98,8 +115,9 @@ export function IntelligenceShell({ children, title, description }: Intelligence
       </header>
 
       <div className="min-h-[calc(100vh-250px)]">
-        {children}
+        {children || <Outlet />}
       </div>
     </PageContainer>
   );
 }
+

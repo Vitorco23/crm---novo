@@ -242,21 +242,8 @@ export default function CentralDecisao() {
   }, []);
 
   return (
-    <div className="space-y-4 pb-10">
-      {/* Cabeçalho + Filtros */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="h-11 w-11 rounded-lg bg-accent/15 text-accent flex items-center justify-center">
-            <Compass className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Central de Decisão</h1>
-            <p className="text-sm text-muted-foreground">
-              Centro de comando da operação — o que fazer agora, em que ordem e com quem falar.
-              Indicadores históricos ficam no Dashboard.
-            </p>
-          </div>
-        </div>
+    <div className="space-y-6 pb-10">
+      <div className="flex justify-end">
         <FiltersBar
           filters={filters}
           setFilters={setFilters}
@@ -266,32 +253,37 @@ export default function CentralDecisao() {
         />
       </div>
 
-      {/* 0. MISSÃO DO DIA — prioridade única gerada pelo Priority Engine */}
+      {/* 1. DECISÃO OU PRIORIDADE PRINCIPAL (MISSÃO DO DIA) */}
       <MissionOfTheDayCard />
 
-      {/* 0.b DIRETOR COMERCIAL IA — parecer diário */}
-      <DiretorComercialIACard />
+      {/* 2. EVIDÊNCIAS QUE SUSTENTAM A RECOMENDAÇÃO (DIRETOR COMERCIAL IA + ALERTAS) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <DiretorComercialIACard />
+        </div>
+        <div>
+          <OperationalAlertsBlock tick={tick} />
+        </div>
+      </div>
 
-      {/* 1. O QUE FAZER AGORA */}
-      <Section title="O que fazer agora" icon={<Zap className="h-4 w-4" />} accent>
-        <PriorityCard />
-        <NextActionsList data={data} />
-      </Section>
-
-      {/* 1.b LEADS PRIORITÁRIOS DO DIA (IA) */}
-      <PriorityLeadsBlock />
-
-      {/* 2. PONTOS DE ATENÇÃO (prioridades + alertas unificados) + AGENDA DE HOJE */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <OperationalAlertsBlock tick={tick} />
+      {/* 3. PRÓXIMA AÇÃO (O QUE FAZER AGORA) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Section title="Ações imediatas" icon={<Zap className="h-4 w-4 text-accent" />} accent>
+          <PriorityCard />
+          <NextActionsList data={data} />
+        </Section>
         <AgendaBlock tick={tick} />
       </div>
 
-      {/* 3. METAS DO DIA — execução, não análise histórica */}
-      <GoalsBlock data={data} tick={tick} />
+      {/* 4. DETALHAMENTO COMPLEMENTAR (LEADS PRIORITÁRIOS + METAS) */}
+      <div className="grid grid-cols-1 gap-6">
+        <PriorityLeadsBlock />
+        <GoalsBlock data={data} tick={tick} />
+      </div>
     </div>
   );
 }
+
 
 // ============================================================
 // BARRA DE FILTROS

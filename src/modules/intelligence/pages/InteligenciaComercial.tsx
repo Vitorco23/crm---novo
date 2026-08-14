@@ -814,24 +814,14 @@ function CampaignModule() {
 export default function InteligenciaComercial() {
   return (
     <FiltersProvider>
-      <div className="p-6 space-y-6 max-w-6xl mx-auto">
-        <header className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-md bg-accent/15 text-accent flex items-center justify-center">
-            <Brain className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">Inteligência Comercial</h1>
-            <p className="text-sm text-muted-foreground">
-              Análises históricas e comparativas para apoiar decisões estratégicas da operação.
-            </p>
-          </div>
+      <div className="space-y-6">
+        <div className="flex justify-end">
           <ExportExcelDialog
             moduleName="Inteligência Comercial"
             moduleSlug="Inteligencia_Comercial"
             build={buildInteligenciaSheets}
           />
-        </header>
-
+        </div>
 
         <FiltersBar />
 
@@ -847,17 +837,18 @@ export default function InteligenciaComercial() {
           </div>
         </div>
 
-        <section className="grid gap-4">
+        <section className="grid gap-6">
           <InsightsPanel />
           <HoursModule />
-          <CityModule />
-          <NicheModule />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CityModule />
+            <NicheModule />
+          </div>
           <CampaignModule />
-
-
           <ScriptManager />
         </section>
       </div>
     </FiltersProvider>
   );
 }
+
