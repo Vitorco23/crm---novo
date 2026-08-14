@@ -13,7 +13,7 @@ import { cn } from "@/shared/utils/utils";
 import { getLeads, getPipelineForStage, type Lead } from "@/shared/services/store";
 import { COLD_CALL_STAGES, OPORTUNIDADES_STAGES } from "@/shared/services/store";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -87,7 +87,12 @@ export default function CentralInteligencia() {
   const [override, setOverride] = useState<Specialist | "auto">("auto");
   const [debugMode, setDebugMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastFetchId = useRef<string | null>(null);
   const openLead = useOpenLeadContext();
 
   useEffect(() => { supabase.auth.getUser().then(({ data }) => setIsAdmin(data.user?.email === "vitorco23@gmail.com")); }, []);
@@ -100,8 +105,21 @@ export default function CentralInteligencia() {
   useEffect(() => { refreshConversations(); }, [refreshConversations]);
 
   useEffect(() => {
-    if (!activeId) { setMessages([]); return; }
-    IntelligenceRepository.listMessages(activeId).then(data => setMessages((data ?? []) as ChatMessage[]));
+    if (!activeId) { 
+      setMessages([]); 
+      lastFetchId.current = null;
+      return; 
+    }
+    
+    lastFetchId.current = activeId;
+    const currentFetchId = activeId;
+    
+    IntelligenceRepository.listMessages(activeId).then(data => {
+      // Proteção contra fetch fora de ordem
+      if (lastFetchId.current === currentFetchId) {
+        setMessages((data ?? []) as ChatMessage[]);
+      }
+    });
   }, [activeId]);
 
   const send = useCallback(async () => {
@@ -109,15 +127,28 @@ export default function CentralInteligencia() {
     if (!q || sending) return;
     
     let convId = activeId;
-    const optimistic: ChatMessage = { id: `tmp-${Date.now()}`, role: "user", content: q, created_at: new Date().toISOString() };
-    setMessages(prev => [...prev, optimistic]);
+    const optimisticUser: ChatMessage = { 
+      id: `tmp-u-${Date.now()}`, 
+      role: "user", 
+      content: q, 
+      created_at: new Date().toISOString() 
+    };
+    
+    // Mantém as mensagens atuais e adiciona a otimista
+    setMessages(prev => [...prev, optimisticUser]);
     setInput("");
     setSending(true);
 
     try {
       if (!convId) {
-        const newConv = await IntelligenceRepository.createConversation(q.slice(0, 30));
+        // Gera título curto (aprox 50 chars)
+        const newTitle = q.length > 50 ? q.slice(0, 47) + "..." : q;
+        const newConv = await IntelligenceRepository.createConversation(newTitle);
         convId = newConv.id;
+        
+        // IMPORTANTE: Atualizamos o activeId e o ref simultaneamente
+        // para que o useEffect de carregamento não limpe nossas mensagens otimistas
+        lastFetchId.current = convId;
         setActiveId(convId);
         refreshConversations();
       }
@@ -126,6 +157,7 @@ export default function CentralInteligencia() {
         question: q,
         conversationId: convId,
         specialistOverride: override === "auto" ? undefined : override,
+        // History: somente mensagens anteriores da conversa atual, ignorando a otimista que acabamos de adicionar
         history: messages.map(m => ({ role: m.role, content: m.content })),
         context: { 
           page: window.location.pathname, 
@@ -137,14 +169,70 @@ export default function CentralInteligencia() {
       const visibleContent = typeof data?.content === 'string' ? data.content : "(sem resposta)";
 
       const reply: ChatMessage = {
-        id: `tmp-a-${Date.now()}`, role: "assistant", content: visibleContent,
+        id: `tmp-a-${Date.now()}`, 
+        role: "assistant", 
+        content: visibleContent,
         specialist: (data?.specialist ?? null) as ChatMessage["specialist"],
         observability: (data?.observability ?? null) as ChatMessage["observability"],
         created_at: new Date().toISOString(),
       };
+      
       setMessages(prev => [...prev, reply]);
-    } finally { setSending(false); }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar mensagem",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally { 
+      setSending(false); 
+    }
   }, [input, sending, activeId, override, openLead, messages, refreshConversations]);
+
+  const handleRename = async (id: string) => {
+    const title = editTitle.trim();
+    if (!title) {
+      setEditingId(null);
+      return;
+    }
+
+    try {
+      await IntelligenceRepository.renameConversation(id, title);
+      setConversations(prev => prev.map(c => c.id === id ? { ...c, title } : c));
+      setEditingId(null);
+      toast({ title: "Conversa renomeada" });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao renomear",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+
+    try {
+      await IntelligenceRepository.deleteConversation(deleteId);
+      
+      const remaining = conversations.filter(c => c.id !== deleteId);
+      setConversations(remaining);
+      
+      if (activeId === deleteId) {
+        setActiveId(remaining.length > 0 ? remaining[0].id : null);
+      }
+      
+      setDeleteId(null);
+      toast({ title: "Conversa excluída" });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-background">
@@ -153,15 +241,88 @@ export default function CentralInteligencia() {
           <Plus className="h-3.5 w-3.5" /> Nova conversa
         </Button>
         <ScrollArea className="flex-1">
-           <div className="space-y-1">
-             {conversations.map(c => (
-               <div key={c.id} className={cn("group flex items-center w-full rounded-md text-xs px-2 py-1.5 cursor-pointer hover:bg-muted", activeId === c.id ? "bg-muted font-medium" : "")}>
-                 <button className="flex-1 text-left truncate" onClick={() => setActiveId(c.id)}>{c.title}</button>
-                 <div className="opacity-0 group-hover:opacity-100"><MoreVertical className="h-3 w-3" /></div>
-               </div>
-             ))}
-           </div>
+          <div className="space-y-1">
+            {conversations.map(c => (
+              <div 
+                key={c.id} 
+                className={cn(
+                  "group flex items-center w-full rounded-md text-xs px-2 py-1.5 cursor-pointer hover:bg-muted relative", 
+                  activeId === c.id ? "bg-muted font-medium" : ""
+                )}
+              >
+                {editingId === c.id ? (
+                  <Input
+                    autoFocus
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRename(c.id);
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    onBlur={() => handleRename(c.id)}
+                    className="h-6 py-0 px-1 text-xs border-primary focus-visible:ring-0"
+                  />
+                ) : (
+                  <>
+                    <button 
+                      className="flex-1 text-left truncate pr-6" 
+                      onClick={() => setActiveId(c.id)}
+                    >
+                      {c.title}
+                    </button>
+                    <div className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-5 w-5 hover:bg-background/50"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32">
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingId(c.id);
+                            setEditTitle(c.title);
+                          }}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" /> Renomear
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteId(c.id);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         </ScrollArea>
+
+        <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Excluir conversa?</DialogTitle>
+              <DialogDescription>
+                Essa conversa e suas mensagens serão removidas. Essa ação não pode ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="ghost" onClick={() => setDeleteId(null)}>Cancelar</Button>
+              <Button variant="destructive" onClick={handleDelete}>Excluir</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 bg-background relative">
