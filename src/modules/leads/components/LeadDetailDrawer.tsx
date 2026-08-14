@@ -467,7 +467,7 @@ export default function LeadDetailDrawer({
 
         {/* Tabs Barra Fixa */}
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-5 mt-2 self-start sticky top-0 bg-background z-10 w-[calc(100%-2.5rem)]">
+          <TabsList className="mx-5 mt-2 self-start sticky top-0 bg-background z-20 w-[calc(100%-2.5rem)]">
             <TabsTrigger value="geral" className="text-xs">📋 Info</TabsTrigger>
             <TabsTrigger value="interacoes" className="text-xs">💬 Interações</TabsTrigger>
             <TabsTrigger value="observacoes" className="text-xs">📝 Notas</TabsTrigger>
