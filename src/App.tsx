@@ -23,6 +23,7 @@ import InteligenciaComercial from "@/modules/intelligence/pages/InteligenciaCome
 import CentralDecisao from "@/modules/intelligence/pages/CentralDecisao";
 import MissaoDoDia from "@/modules/intelligence/pages/MissaoDoDia";
 import { IntelligenceShell } from "@/modules/intelligence/components/IntelligenceShell";
+import { ManagementShell } from "@/modules/dashboard/components/ManagementShell";
 
 import Agenda from "@/modules/agenda/pages/Agenda";
 import MemoriaComercial from "@/modules/intelligence/pages/MemoriaComercial";
