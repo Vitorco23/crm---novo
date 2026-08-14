@@ -124,167 +124,45 @@ function LeadCard({
       draggable
       onDragStart={(e) => onDragStart(e, lead.id)}
       onClick={() => onClick(lead)}
-      className={`group rounded-md border p-3 shadow-sm cursor-pointer active:cursor-grabbing hover:shadow-md transition-all ${
-        selected ? "bg-accent/10 border-accent/50 ring-1 ring-accent/30" : "bg-card"
-      }`}
+      className="group rounded-lg border border-border/60 p-2.5 bg-card shadow-sm cursor-pointer hover:border-accent/50 hover:shadow transition-all space-y-2"
     >
-      <div className="flex items-start justify-between gap-1">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <div onClick={(e) => e.stopPropagation()}>
-            <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(lead.id)} className="h-3.5 w-3.5" />
-          </div>
-          <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
-          <p className="font-semibold text-sm truncate text-card-foreground">{lead.company}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Checkbox checked={selected} onCheckedChange={(c) => { e.stopPropagation(); onToggleSelect(lead.id); }} className="h-3.5 w-3.5" />
+          <p className="font-semibold text-xs truncate text-foreground">{lead.company}</p>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-accent">
-            <Paperclip className="h-3.5 w-3.5" />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(lead.id); }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }} className="text-muted-foreground hover:text-accent"><Paperclip className="h-3.5 w-3.5" /></button>
+          <button onClick={(e) => { e.stopPropagation(); onDelete(lead.id); }} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
         </div>
-        <input ref={fileRef} type="file" accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
       </div>
 
-      {lead.contact && <p className="text-xs text-muted-foreground mt-1 truncate">{lead.contact}</p>}
-
-      <div className="flex flex-wrap items-center gap-1 mt-1.5">
+      <div className="flex flex-wrap gap-1">
         {lead.niche && <Badge variant="secondary" className="text-[9px] px-1 py-0">{lead.niche}</Badge>}
-        {lead.city && (
-          <Badge variant="outline" className="text-[9px] px-1 py-0">
-            <MapPin className="h-2 w-2 mr-0.5" />{lead.city}
-          </Badge>
-        )}
+        {lead.city && <Badge variant="outline" className="text-[9px] px-1 py-0">{lead.city}</Badge>}
         <StarRating value={lead.icpStars} />
-        {lead.runsAds && <Badge className="text-[9px] px-1 py-0 bg-accent text-accent-foreground">Ads ✓</Badge>}
-        {lead.googleRating !== undefined && (
-          <Badge variant="outline" className="text-[9px] px-1 py-0 gap-0.5 border-yellow-500/30 text-yellow-500">
-            <Star className="h-2 w-2 fill-yellow-500" /> {lead.googleRating.toFixed(1)}
-          </Badge>
-        )}
       </div>
 
-      <div className="flex gap-1 mt-2">
-        {lead.phone && (
-          <a href={`tel:${lead.phone}`} onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
-            <Phone className="h-2.5 w-2.5" /> Ligar
-          </a>
-        )}
-        {lead.gmnLink && (
-          <a href={lead.gmnLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
-            <ExternalLink className="h-2.5 w-2.5" /> GMN
-          </a>
-        )}
-        {lead.instagramLink && (
-          <a href={lead.instagramLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
-            <Instagram className="h-2.5 w-2.5" /> Insta
-          </a>
-        )}
+      <div className="pt-2 border-t border-border/50 space-y-1">
+        <p className="text-[10px] text-foreground font-medium truncate flex items-center gap-1">
+          <span className="text-accent">→</span> {LeadIntelligenceRepository.nextAction(lead)}
+        </p>
+        <p className="text-[10px] text-muted-foreground truncate italic">
+          {(() => {
+            const last = LeadIntelligenceRepository.lastInteraction(lead, 60);
+            return last ? `"${last.text}"` : "Sem interações recentes";
+          })()}
+        </p>
       </div>
 
-      {(lead.attachments.length > 0 || (lead.callNotes?.length ?? 0) > 0) && (
-        <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
-          {lead.attachments.length > 0 && (
-            <span className="flex items-center gap-0.5"><FileAudio className="h-2.5 w-2.5" /> {lead.attachments.length}</span>
-          )}
-          {(lead.callNotes?.length ?? 0) > 0 && (
-            <span className="flex items-center gap-0.5">💬 {lead.callNotes!.length}</span>
-          )}
-        </div>
-      )}
-
-      {/* Smart snippet: temperatura, próxima ação, última interação, diagnóstico */}
-      {(() => {
-        const temp = LeadIntelligenceRepository.temperature(lead);
-        const next = LeadIntelligenceRepository.nextAction(lead);
-        const last = LeadIntelligenceRepository.lastInteraction(lead, 80);
-        const meetings = getMeetingsForLead(lead.id);
-        const badges = LeadIntelligenceRepository.badges(lead, meetings).slice(0, 2);
-        const diag = lead.autoDiagnosis;
-        const diagStale = diag && diag.inputHash !== `n${(lead.interactions || []).length}|${(lead.notes || "").length}|${(lead.interactions || []).map((i) => `${i.id}:${i.date}`).sort().join(",")}`;
-        return (
-          <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${temp.cls}`}>
-                <span>{temp.emoji}</span><span className="uppercase tracking-wide">{temp.label}</span>
-              </span>
-              {diag && (
-                <span title={diagStale ? "Diagnóstico desatualizado" : "Diagnóstico atualizado"}
-                  className={`inline-flex items-center gap-0.5 text-[9px] ${diagStale ? "text-yellow-500" : "text-accent"}`}>
-                  <SparklesIcon className="h-2.5 w-2.5" /> IA
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] text-foreground/90 truncate flex items-center gap-1">
-              <ArrowRight className="h-2.5 w-2.5 shrink-0 text-accent" />
-              <span className="truncate">{next}</span>
-            </p>
-            {last && last.text && (
-              <p className="text-[10px] text-muted-foreground truncate italic" title={last.text}>
-                "{last.text}"
-              </p>
-            )}
-            {badges.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {badges.map((b) => (
-                  <span key={b.key} className={`text-[9px] px-1 py-0 rounded border ${b.cls}`}>{b.label}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {pipeline === "cold_call" && (() => {
-        const stageLower = lead.stage.toLowerCase();
-        const finalCol = stageLower.includes("não quer") || stageLower.includes("nao quer") || stageLower.includes("sem contato");
-        if (finalCol) return null;
-        const step = getStepForLead(lead);
-        const moment = executionMoment(lead);
-        if (!step) return null;
-        return (
-          <div className="mt-2 flex flex-col gap-0.5 text-[10px] text-muted-foreground border-t border-border/50 pt-1.5">
-            <span className="truncate">T{step.attempt} · {step.channel} · {moment}</span>
-          </div>
-        );
-      })()}
-
-      <div className="flex items-center justify-between gap-2 mt-2">
-        <p className="text-[10px] text-muted-foreground/70">⏱ {timeInStage(lead.stageChangedAt)}</p>
-        {pipeline === "oportunidades" && lead.contractValue && lead.contractValue > 0 && (
-          <span className="text-[10px] font-semibold text-accent">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>⏱ {timeInStage(lead.stageChangedAt)}</span>
+        {pipeline === "oportunidades" && lead.contractValue ? (
+          <span className="font-semibold text-accent">
             {lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </span>
-        )}
-        {daysSince(lead.stageChangedAt) >= 1 && (
-          <span
-            title="Sem movimentação há mais de 1 dia"
-            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-medium"
-          >
-            <AlertCircle className="h-2.5 w-2.5" /> Parado
-          </span>
-        )}
+        ) : null}
       </div>
-      {pipeline === "oportunidades" && lead.serviceType && lead.serviceType.trim() !== "" && (() => {
-        const t = lead.serviceType.trim();
-        const cls =
-          t === "Gestão Recorrente" ? "bg-blue-500/15 text-blue-400 border-blue-500/30" :
-          t === "Implementação Comercial" ? "bg-orange-500/15 text-orange-400 border-orange-500/30" :
-          "bg-muted text-muted-foreground border-border";
-        return (
-          <div className="mt-1.5 flex justify-end">
-            <span className={`inline-block text-[9px] font-medium px-1.5 py-0.5 rounded border ${cls}`}>
-              {t}
-            </span>
-          </div>
-        );
-      })()}
     </div>
   );
 }
