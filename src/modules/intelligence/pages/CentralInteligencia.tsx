@@ -229,9 +229,14 @@ export default function CentralInteligencia() {
         },
       });
       
+      const visibleContent = 
+        typeof data?.content === 'string' ? data.content :
+        (data as any)?.response || (data as any)?.resposta || (data as any)?.message || 
+        (typeof data?.content === 'object' ? JSON.stringify(data.content) : "(sem resposta)");
+
       const reply: ChatMessage = {
         id: `tmp-a-${Date.now()}`, role: "assistant",
-        content: data?.content ?? "(sem resposta)",
+        content: visibleContent,
         specialist: (data?.specialist ?? null) as ChatMessage["specialist"],
         citations: (data?.citations ?? null) as ChatMessage["citations"],
         observability: (data?.observability ?? null) as ChatMessage["observability"],
@@ -362,7 +367,9 @@ export default function CentralInteligencia() {
                       </div>
                     )}
                     <div className={cn("group relative px-4 py-3 rounded-2xl max-w-[90%] prose prose-sm dark:prose-invert", m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                      <div className="whitespace-pre-wrap">
+                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      </div>
                       
                       {m.role === "assistant" && debugMode && (
                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
