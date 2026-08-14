@@ -317,6 +317,18 @@ export default function CentralInteligencia() {
                      ))}
                    </DropdownMenuContent>
                 </DropdownMenu>
+                
+                {isAdmin && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className={cn("h-6 text-[10px] gap-1 px-2 ml-auto", debugMode ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                    onClick={() => setDebugMode(!debugMode)}
+                  >
+                    <ShieldAlert className="h-3 w-3" /> MODO DEBUG
+                  </Button>
+                )}
+             </div>
              </div>
              <Textarea
                value={input}
