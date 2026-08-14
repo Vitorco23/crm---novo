@@ -465,34 +465,20 @@ export default function LeadDetailDrawer({
         </DialogHeader>
 
 
-        {/* Tabs */}
+        {/* Tabs Barra Fixa */}
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-6 mt-3 self-start">
-            <TabsTrigger value="geral">📋 Informações</TabsTrigger>
-            <TabsTrigger value="interacoes">💬 Interações Comerciais</TabsTrigger>
-            <TabsTrigger value="observacoes">📝 Observações</TabsTrigger>
-            <TabsTrigger value="anexos">📎 Anexos</TabsTrigger>
-            <div className="ml-auto pr-6 flex items-center gap-3">
+          <TabsList className="mx-5 mt-2 self-start sticky top-0 bg-background z-10 w-[calc(100%-2.5rem)]">
+            <TabsTrigger value="geral" className="text-xs">📋 Info</TabsTrigger>
+            <TabsTrigger value="interacoes" className="text-xs">💬 Interações</TabsTrigger>
+            <TabsTrigger value="observacoes" className="text-xs">📝 Notas</TabsTrigger>
+            <TabsTrigger value="anexos" className="text-xs">📎 Anexos</TabsTrigger>
+            
+            <div className="ml-auto flex items-center gap-2 pr-2">
               {lead.googleRating !== undefined && (
-                <div className="flex items-center gap-1.5" title={`${lead.googleRating} estrelas no Google`}>
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`h-3 w-3 ${s <= Math.round(lead.googleRating!) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-xs font-bold text-foreground">{lead.googleRating.toFixed(1)}</span>
+                <div className="flex items-center gap-1" title={`${lead.googleRating} estrelas`}>
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                  <span className="text-[10px] font-bold">{lead.googleRating.toFixed(1)}</span>
                 </div>
-              )}
-              {lead.googleReviews !== undefined && (
-                <div className="text-[11px] text-muted-foreground">
-                  Avaliações ({lead.googleReviews})
-                </div>
-              )}
-              {!lead.googleRating && !lead.googleReviews && (
-                <span className="text-[11px] text-muted-foreground/50">—</span>
               )}
             </div>
           </TabsList>
