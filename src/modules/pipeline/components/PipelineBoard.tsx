@@ -150,7 +150,7 @@ function LeadCard({
             <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(lead.id)} onClick={(e) => e.stopPropagation()} className="h-3.5 w-3.5" />
             <div className="min-w-0">
               <p className="font-bold text-xs truncate text-foreground">{lead.company}</p>
-              {lead.contact && <p className="text-[10px] text-muted-foreground truncate">{lead.contact}</p>}
+              {lead.contact && <p className="text-[10px] text-muted-foreground truncate">{lead.contact} {lead.phone && <span className="text-[9px] opacity-60">· {lead.phone}</span>}</p>}
             </div>
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
