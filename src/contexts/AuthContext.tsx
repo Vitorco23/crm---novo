@@ -7,7 +7,12 @@ import { setCurrentUser, syncFromCloud, hydrateLocal } from "@/shared/services/u
  * @deprecated Utilizado apenas para compatibilidade legada em fluxos de migração de dados.
  * Não deve ser usado para conceder autorização em novos componentes.
  */
+/** 
+ * @deprecated Utilizado apenas para compatibilidade legada em fluxos de migração de dados.
+ * Não deve ser usado para conceder autorização em novos componentes.
+ */
 const LEGACY_ADMIN_EMAIL = "vitorco23@gmail.com";
+
 
 
 interface AuthCtx {
@@ -74,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         session,
         loading,
-        isAdmin: user?.email === ADMIN_EMAIL,
+        isAdmin: user?.email === LEGACY_ADMIN_EMAIL,
         signOut,
       }}
     >
@@ -84,4 +89,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export const useAuth = () => useContext(Ctx);
-export { ADMIN_EMAIL };
+export { LEGACY_ADMIN_EMAIL };
