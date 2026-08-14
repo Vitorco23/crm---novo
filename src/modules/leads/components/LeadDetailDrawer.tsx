@@ -32,6 +32,8 @@ import ReactMarkdown from "react-markdown";
 import { analyzeCallNote } from "@/modules/laboratorio/services/callAnalysis";
 import { CallAuditView } from "@/modules/laboratorio/components/CallAuditView";
 import InteracoesTimeline from "@/modules/leads/components/InteracoesTimeline";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 
 
 import { formatDistanceToNow, format } from "date-fns";
@@ -407,383 +409,225 @@ export default function LeadDetailDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[80vw] w-[80vw] h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
-        {/* Cabeçalho */}
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/60 shrink-0">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-[280px]">
+      <DialogContent className="max-w-[1000px] w-[95vw] h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
+        {/* Cabeçalho Fixo e Compacto */}
+        <DialogHeader className="px-5 pt-4 pb-3 border-b border-border/60 shrink-0 sticky top-0 bg-background z-10">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <Input
                 value={draft.company}
                 onChange={(e) => setDraft({ ...draft, company: e.target.value })}
                 onBlur={() => commitOnBlur({ company: draft.company.trim() || lead.company })}
-                className="text-xl font-semibold border-0 px-0 h-auto focus-visible:ring-0 shadow-none bg-transparent"
-                aria-label="Empresa"
+                className="text-lg font-bold border-0 px-0 h-auto focus-visible:ring-0 shadow-none bg-transparent"
               />
-              <DialogDescription className="text-xs mt-1">
-                {lead.stage} · ⏱ {formatDistanceToNow(new Date(lead.stageChangedAt), { locale: ptBR, addSuffix: true })}
-              </DialogDescription>
-              <DialogTitle className="sr-only">{lead.company}</DialogTitle>
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                <span>{lead.stage}</span>
+                <span>•</span>
+                <span>⏱ {formatDistanceToNow(new Date(lead.stageChangedAt), { locale: ptBR, addSuffix: true })}</span>
+                <Badge className={`border ${prio.cls} ml-1`}>{prio.label}</Badge>
+                <TempIcon className={`h-3 w-3 ${tempCls}`} />
+                <span>{temp}</span>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className={`border ${prio.cls}`}>{prio.label}</Badge>
-              <Select value={temp} onValueChange={(v) => persist({ temperature: v as Lead["temperature"] })}>
-                <SelectTrigger className="h-7 w-[110px] text-xs">
-                  <TempIcon className={`h-3 w-3 mr-1 ${tempCls}`} />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Quente">🔥 Quente</SelectItem>
-                  <SelectItem value="Morno">🌡 Morno</SelectItem>
-                  <SelectItem value="Frio">❄ Frio</SelectItem>
-                </SelectContent>
-              </Select>
-              {isColdCall && step && (
-                <Badge variant="outline" className="text-[11px]">
-                  {lead.niche ? `Cadência ${lead.niche}` : "Cadência Padrão"} · D{step.day} · {step.attempt === 0 ? "Novo Lead" : `Tentativa ${step.attempt}`}
+            <div className="flex items-center gap-1 shrink-0">
+               {isColdCall && step && (
+                <Badge variant="outline" className="text-[10px] hidden sm:flex">
+                  D{step.day} · {step.attempt === 0 ? "Novo" : `T${step.attempt}`}
                 </Badge>
               )}
             </div>
           </div>
 
-          {/* Ações rápidas — reduzem cliques durante a prospecção */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+          <div className="flex items-center gap-1.5 mt-3">
             {draft.phone && (
-              <a href={`tel:${draft.phone}`}
-                className="inline-flex items-center gap-1 text-xs h-8 px-3 rounded-md border border-border bg-card hover:bg-accent/10 hover:text-accent transition-colors">
-                <Phone className="h-3.5 w-3.5" /> Ligar
-              </a>
+              <a href={`tel:${draft.phone}`} className="inline-flex items-center justify-center h-7 w-7 rounded border border-border bg-card hover:bg-accent/10"><Phone className="h-3.5 w-3.5" /></a>
             )}
             {whatsUrl && (
-              <a href={whatsUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs h-8 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors">
-                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
-              </a>
+              <a href={whatsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center h-7 w-7 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-500"><MessageCircle className="h-3.5 w-3.5" /></a>
             )}
-            <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setMeetingOpen(true)}>
-              <CalendarCheck className="h-3.5 w-3.5" /> Agendar
-            </Button>
+            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setMeetingOpen(true)}><CalendarCheck className="h-3.5 w-3.5 mr-1" /> Agendar</Button>
             {isColdCall && step && (
-              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={copyScript}>
-                <Copy className="h-3.5 w-3.5" /> Copiar Script
-              </Button>
+              <Button size="sm" variant="outline" className="h-7 px-2" onClick={copyScript}><Copy className="h-3.5 w-3.5 mr-1" /> Script</Button>
             )}
-            <Button size="sm" className="h-8 gap-1 bg-accent text-accent-foreground hover:bg-accent/90 ml-auto"
-              onClick={() => { setTab("interacoes"); setAutoRunDiagnosis(true); }}
-              title="Recalcular todo o estado comercial do lead: briefing, temperatura, probabilidade, próxima melhor ação, memória, timeline e prioridade"
-            >
-              <Sparkles className="h-3.5 w-3.5" /> 🧠 Atualizar Inteligência
+            <Button size="sm" variant="ghost" className="h-7 px-2 ml-auto text-accent" onClick={() => { setTab("interacoes"); setAutoRunDiagnosis(true); }}>
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" /> IA
             </Button>
           </div>
           {meetings.length > 0 && (
-            <div className="flex flex-col gap-1.5 mt-2">
-              {meetings.map((m) => (
-                <MeetingRow key={m.id} lead={lead} draft={draft} meeting={m} onChanged={onRefresh} />
-              ))}
-            </div>
+             <div className="mt-2 text-xs">
+                {meetings.map((m) => (
+                  <div key={m.id} className="text-muted-foreground">
+                    📅 {format(new Date(`${m.date}T${m.time}`), "dd/MM HH:mm", { locale: ptBR })}
+                  </div>
+                ))}
+             </div>
           )}
-
-          {/* Prioridade operacional + próxima melhor ação (Priority Engine) */}
-          <LeadPriorityStrip lead={lead} />
         </DialogHeader>
 
 
-        {/* Tabs */}
+        {/* Tabs Barra Fixa */}
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-6 mt-3 self-start">
-            <TabsTrigger value="geral">📋 Informações</TabsTrigger>
-            <TabsTrigger value="interacoes">💬 Interações Comerciais</TabsTrigger>
-            <TabsTrigger value="observacoes">📝 Observações</TabsTrigger>
-            <TabsTrigger value="anexos">📎 Anexos</TabsTrigger>
-            <div className="ml-auto pr-6 flex items-center gap-3">
+          <TabsList className="mx-5 mt-2 self-start sticky top-0 bg-background z-20 w-[calc(100%-2.5rem)]">
+            <TabsTrigger value="geral" className="text-xs">📋 Info</TabsTrigger>
+            <TabsTrigger value="interacoes" className="text-xs">💬 Interações</TabsTrigger>
+            <TabsTrigger value="observacoes" className="text-xs">📝 Notas</TabsTrigger>
+            <TabsTrigger value="anexos" className="text-xs">📎 Anexos</TabsTrigger>
+            
+            <div className="ml-auto flex items-center gap-2 pr-2">
               {lead.googleRating !== undefined && (
-                <div className="flex items-center gap-1.5" title={`${lead.googleRating} estrelas no Google`}>
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`h-3 w-3 ${s <= Math.round(lead.googleRating!) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-xs font-bold text-foreground">{lead.googleRating.toFixed(1)}</span>
+                <div className="flex items-center gap-1" title={`${lead.googleRating} estrelas`}>
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                  <span className="text-[10px] font-bold">{lead.googleRating.toFixed(1)}</span>
                 </div>
-              )}
-              {lead.googleReviews !== undefined && (
-                <div className="text-[11px] text-muted-foreground">
-                  Avaliações ({lead.googleReviews})
-                </div>
-              )}
-              {!lead.googleRating && !lead.googleReviews && (
-                <span className="text-[11px] text-muted-foreground/50">—</span>
               )}
             </div>
           </TabsList>
 
 
 
-          {/* GERAL */}
-          <TabsContent value="geral" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-5">
-            {/* Próxima Ação */}
+          {/* GERAL - Reorganizado por Níveis */}
+          <TabsContent value="geral" className="flex-1 overflow-y-auto px-5 py-4 mt-0 space-y-6">
+            
+            {/* NÍVEL 1 - Essencial: Próxima Ação */}
             {isColdCall && step && (
-              <section className="rounded-lg border border-accent/40 bg-accent/5 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs uppercase tracking-wide text-accent font-semibold flex items-center gap-1.5">
-                    <Target className="h-3.5 w-3.5" /> Próxima Ação
+              <section className="rounded-lg border border-accent/30 bg-accent/5 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] uppercase tracking-wider text-accent font-bold flex items-center gap-1">
+                    <Target className="h-3 w-3" /> Próxima Ação
                   </span>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {executionMoment(lead)}
-                  </span>
+                  <span className="text-[10px] text-muted-foreground">{executionMoment(lead)}</span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
-                  <div><div className="text-[10px] uppercase text-muted-foreground">Tentativa</div><div className="font-medium">T{step.attempt}</div></div>
-                  <div><div className="text-[10px] uppercase text-muted-foreground">Canal</div><div className="font-medium">{step.channel}</div></div>
-                  <div><div className="text-[10px] uppercase text-muted-foreground">Objetivo</div><div className="font-medium">{step.objective}</div></div>
-                  <div><div className="text-[10px] uppercase text-muted-foreground">Ação</div><div className="font-medium text-accent">{step.nextAction}</div></div>
+                <div className="flex flex-wrap items-center gap-3 text-xs mb-2">
+                  <div className="bg-background/40 px-2 py-1 rounded">T{step.attempt} · {step.channel}</div>
+                  <div className="font-medium text-accent">{step.nextAction}</div>
                 </div>
-                
-                <div className="bg-background/50 rounded-md p-3 border border-border/40 mb-3">
-                  <p className="text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">
-                    {processTemplate(step.script, lead, user?.user_metadata?.full_name || user?.email)}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setScriptOpen(true)}>
-                    <FileText className="h-3.5 w-3.5 mr-1" /> Editar Cadência
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 text-xs bg-accent text-accent-foreground flex-1" onClick={() => setConcluirOpen(true)}>
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Concluir
                   </Button>
-                  <Button size="sm" variant="outline" onClick={copyScript}>
-                    <Copy className="h-3.5 w-3.5 mr-1" /> Copiar Texto
-                  </Button>
-                  <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setConcluirOpen(true)}>
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Marcar Realizada
-                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={copyScript}><Copy className="h-3 w-3" /></Button>
                 </div>
               </section>
             )}
 
-            {/* Mover / Marcar reunião */}
-            <section className="grid md:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
-                  <ArrowRightLeft className="h-3 w-3" /> Mover lead para...
-                </Label>
-                <Select
-                  value={lead.stage}
-                  onValueChange={(toStage) => {
-                    if (toStage === lead.stage) return;
-                    
-                    const isLost = toStage.toLowerCase().includes("não quer") || 
-                                 toStage.toLowerCase().includes("nao quer") || 
-                                 toStage === "Perdido";
-                    
-                    if (isLost) {
-                      // Dispara evento para o PipelineBoard capturar e abrir o LostReasonDialog
-                      window.dispatchEvent(new CustomEvent("p21:trigger-lost-reason", { 
-                        detail: { id: lead.id, stage: toStage } 
-                      }));
+            {/* NÍVEL 1 - Essencial: Mover e Marcar */}
+            <div className="grid grid-cols-2 gap-3">
+               <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-tighter">Etapa Atual</Label>
+                  <Select value={lead.stage} onValueChange={(toStage) => {
+                      if (toStage === lead.stage) return;
+                      const isLost = toStage.toLowerCase().includes("não quer") || toStage.toLowerCase().includes("nao quer") || toStage === "Perdido";
+                      if (isLost) {
+                        window.dispatchEvent(new CustomEvent("p21:trigger-lost-reason", { detail: { id: lead.id, stage: toStage } }));
+                        onOpenChange(false);
+                        return;
+                      }
+                      moveLeadToStage(lead.id, toStage);
+                      onRefresh();
                       onOpenChange(false);
-                      return;
-                    }
-
-                    const result = moveLeadToStage(lead.id, toStage);
-                    const labels: Record<PipelineName, string> = { cold_call: "Cold Call", oportunidades: "Oportunidades", onboarding: "Onboarding" };
-                    if (result.missingContractValue) toast.warning("Lead movido para Ganho sem valor de contrato definido");
-                    if (result.autoTransfer) toast.success(`Lead transferido para ${labels[result.autoTransfer]}!`);
-                    else toast.success("Lead movido!");
-                    onRefresh();
-                    const isAlinhamentoStage = toStage === "Reunião Realizada" && getPipelineForStage(toStage) === "oportunidades";
-                    const alreadyHasAlinhamento = getMeetingsForLead(lead.id).some((m) => (m.title || "").toLowerCase().startsWith("reunião de alinhamento"));
-                    if (isAlinhamentoStage && !alreadyHasAlinhamento) setAlignmentOpen(true);
-                    else onOpenChange(false);
-                  }}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="max-h-80">
-                    {(["cold_call", "oportunidades", "onboarding"] as PipelineName[]).map((p) => {
-                      const label = p === "cold_call" ? "Cold Call" : p === "oportunidades" ? "Oportunidades" : "Onboarding";
-                      const stages = getStagesForPipeline(p);
-                      if (stages.length === 0) return null;
-                      return (
+                  }}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(["cold_call", "oportunidades", "onboarding"] as PipelineName[]).map((p) => (
                         <SelectGroup key={p}>
-                          <SelectLabel className="text-[10px] uppercase tracking-wider text-accent">{label}</SelectLabel>
-                          {stages.map((s) => (<SelectItem key={`${p}-${s}`} value={s}>{s}</SelectItem>))}
+                          <SelectLabel className="text-[9px] uppercase text-accent">{p}</SelectLabel>
+                          {getStagesForPipeline(p).map((s) => (<SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>))}
                         </SelectGroup>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              {!isOnboarding && (
-                <div className="flex items-end">
-                  <Button onClick={() => setMeetingOpen(true)} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                    <CalendarCheck className="h-4 w-4 mr-1.5" /> Marcar Reunião
+                      ))}
+                    </SelectContent>
+                  </Select>
+               </div>
+               <div className="flex items-end">
+                  <Button size="sm" onClick={() => setMeetingOpen(true)} className="h-8 w-full text-xs bg-accent">
+                    <CalendarCheck className="h-3.5 w-3.5 mr-1" /> Reunião
                   </Button>
+               </div>
+            </div>
+
+            {/* NÍVEL 2 - Complementar: Contatos e Negócio */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div className="space-y-1">
+                   <Label className="text-[10px] text-muted-foreground">Decisor / Contato</Label>
+                   <Input size={1} className="h-8 text-xs" value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} onBlur={() => commitOnBlur({ contact: draft.contact })} />
+                </div>
+                <div className="space-y-1">
+                   <Label className="text-[10px] text-muted-foreground">Telefone</Label>
+                   <Input size={1} className="h-8 text-xs" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} onBlur={() => commitOnBlur({ phone: draft.phone })} />
+                </div>
+                <div className="space-y-1">
+                   <Label className="text-[10px] text-muted-foreground">WhatsApp</Label>
+                   <Input size={1} className="h-8 text-xs" value={draft.whatsapp || ""} placeholder={draft.phone} onChange={(e) => setDraft({ ...draft, whatsapp: e.target.value })} onBlur={() => commitOnBlur({ whatsapp: draft.whatsapp })} />
+                </div>
+                <div className="space-y-1">
+                   <Label className="text-[10px] text-muted-foreground">Instagram</Label>
+                   <Input size={1} className="h-8 text-xs" value={draft.instagramLink} onChange={(e) => setDraft({ ...draft, instagramLink: e.target.value })} onBlur={() => commitOnBlur({ instagramLink: draft.instagramLink })} />
+                </div>
+              </div>
+
+              {(isOnboarding || isOportunidades) && (
+                <div className="p-3 rounded border border-border/40 bg-muted/10 grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground uppercase">Valor Contrato</Label>
+                    <Input type="number" className="h-8 text-xs" value={draft.contractValue ?? ""} onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })} onBlur={() => commitOnBlur({ contractValue: draft.contractValue })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground uppercase">Serviço</Label>
+                    <Input className="h-8 text-xs" value={draft.serviceType ?? ""} onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })} onBlur={() => commitOnBlur({ serviceType: draft.serviceType })} />
+                  </div>
                 </div>
               )}
-            </section>
+            </div>
 
-            {/* Onboarding contract */}
-            {isOnboarding && (
-              <section className="rounded-md border border-accent/30 bg-accent/5 p-3 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-medium text-accent">
-                  <DollarSign className="h-3.5 w-3.5" /> Contrato Fechado
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
-                    <Input type="number" min="0" step="0.01" inputMode="decimal"
-                      value={draft.contractValue ?? ""}
-                      onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
-                      onBlur={() => commitOnBlur({ contractValue: draft.contractValue })}
-                      placeholder="0,00" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1"><Briefcase className="h-3 w-3" /> Tipo de Serviço</Label>
-                    <Input value={draft.serviceType ?? ""}
-                      onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })}
-                      onBlur={() => commitOnBlur({ serviceType: draft.serviceType })}
-                      placeholder="Ex: Tráfego pago" />
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Oportunidades contract */}
-            {isOportunidades && (() => {
-              const PRESETS = ["Gestão Recorrente", "Implementação Comercial"];
-              const current = draft.serviceType ?? "";
-              const selectValue = current === "" ? "" : (PRESETS.includes(current) ? current : "Outro");
-              return (
-                <section className="rounded-md border border-accent/30 bg-accent/5 p-3 space-y-3">
+            {/* NÍVEL 3 - Avançado: Seções Recolhíveis */}
+            <Accordion type="multiple" className="w-full">
+              <AccordionItem value="empresa" className="border-border/40">
+                <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
+                  <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Detalhes da Empresa</span>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4 space-y-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-accent flex items-center gap-1 mb-1.5"><DollarSign className="h-3.5 w-3.5" /> Valor do Contrato (R$)</Label>
-                      <Input type="number" min="0" step="0.01" inputMode="decimal"
-                        value={draft.contractValue ?? ""}
-                        onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })}
-                        onBlur={() => commitOnBlur({ contractValue: draft.contractValue })}
-                        placeholder="0,00" />
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Nicho</Label>
+                      <Input className="h-8 text-xs" value={draft.niche} onChange={(e) => setDraft({ ...draft, niche: e.target.value })} onBlur={() => commitOnBlur({ niche: draft.niche })} />
                     </div>
-                    <div>
-                      <Label className="text-xs text-accent flex items-center gap-1 mb-1.5"><Briefcase className="h-3.5 w-3.5" /> Tipo de Serviço</Label>
-                      <Select value={selectValue || undefined}
-                        onValueChange={(v) => { const next = v === "Outro" ? "" : v; setDraft({ ...draft, serviceType: next }); commitOnBlur({ serviceType: next }); }}>
-                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Gestão Recorrente">Gestão Recorrente</SelectItem>
-                          <SelectItem value="Implementação Comercial">Implementação Comercial</SelectItem>
-                          <SelectItem value="Outro">Outro (especificar)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {selectValue === "Outro" && (
-                        <Input className="mt-2" placeholder="Especifique"
-                          value={draft.serviceType ?? ""}
-                          onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })}
-                          onBlur={() => commitOnBlur({ serviceType: draft.serviceType })} />
-                      )}
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Cidade</Label>
+                      <Input className="h-8 text-xs" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} onBlur={() => commitOnBlur({ city: draft.city })} />
                     </div>
                   </div>
-                </section>
-              );
-            })()}
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/20">
+                    <span className="text-xs">Prioridade ICP</span>
+                    <StarRating value={draft.icpStars} onChange={(v) => { persist({ icpStars: v }); onRefresh(); }} />
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-muted/20">
+                    <span className="text-xs">Faz Anúncios?</span>
+                    <Switch checked={draft.runsAds} onCheckedChange={(v) => { persist({ runsAds: v }); onRefresh(); }} />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Contatos */}
-            <section>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1"><UserIcon className="h-3 w-3" /> Contatos</h3>
-              <div className="grid md:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Decisor</Label>
-                  <Input value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} onBlur={() => commitOnBlur({ contact: draft.contact })} />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" /> Telefone</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} onBlur={() => commitOnBlur({ phone: draft.phone })} />
-                    {draft.phone && (
-                      <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                        <a href={`tel:${draft.phone.replace(/[^\d+]/g, "")}`} aria-label="Ligar"><Phone className="h-3.5 w-3.5" /></a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><MessageCircle className="h-3 w-3" /> WhatsApp</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.whatsapp ?? ""} placeholder={draft.phone || "Mesmo do telefone"}
-                      onChange={(e) => setDraft({ ...draft, whatsapp: e.target.value })}
-                      onBlur={() => commitOnBlur({ whatsapp: draft.whatsapp })} />
-                    {whats && (
-                      <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                        <a href={whatsUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp"><ExternalLink className="h-3.5 w-3.5" /></a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><Instagram className="h-3 w-3" /> Instagram</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.instagramLink} onChange={(e) => setDraft({ ...draft, instagramLink: e.target.value })} onBlur={() => commitOnBlur({ instagramLink: draft.instagramLink })} placeholder="https://instagram.com/..." />
-                    {draft.instagramLink && (
-                      <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                        <a href={draft.instagramLink} target="_blank" rel="noopener noreferrer" aria-label="Abrir Instagram"><ExternalLink className="h-3.5 w-3.5" /></a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Site</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.website ?? ""} placeholder="https://..."
-                      onChange={(e) => setDraft({ ...draft, website: e.target.value })}
-                      onBlur={() => commitOnBlur({ website: draft.website })} />
-                    {draft.website && (
-                      <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                        <a href={draft.website} target="_blank" rel="noopener noreferrer" aria-label="Abrir site"><ExternalLink className="h-3.5 w-3.5" /></a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> Google Maps</Label>
-                  <div className="flex gap-1.5">
-                    <Input value={draft.gmnLink} onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })} onBlur={() => commitOnBlur({ gmnLink: draft.gmnLink })} placeholder="Link ou busca automática" />
-                    <Button size="icon" variant="outline" asChild className="shrink-0 h-9 w-9">
-                      <a href={mapsUrlFor(draft)} target="_blank" rel="noopener noreferrer" aria-label="Abrir no Maps"><ExternalLink className="h-3.5 w-3.5" /></a>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Empresa */}
-            <section>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1"><Building2 className="h-3 w-3" /> Empresa</h3>
-              <div className="grid md:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Nicho</Label>
-                  <Input value={draft.niche} onChange={(e) => setDraft({ ...draft, niche: e.target.value })} onBlur={() => commitOnBlur({ niche: draft.niche })} />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Cidade</Label>
-                  <Input value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} onBlur={() => commitOnBlur({ city: draft.city })} />
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-3 flex-wrap">
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1 block">Prioridade ICP</Label>
-                  <StarRating value={draft.icpStars} onChange={(v) => { persist({ icpStars: v }); onRefresh(); }} />
-                </div>
-                <div className="flex items-center gap-2 rounded-md bg-muted/30 px-3 py-2">
-                  <Label className="text-sm">Faz Anúncios?</Label>
-                  <Switch checked={draft.runsAds} onCheckedChange={(v) => { persist({ runsAds: v }); onRefresh(); }} />
-                </div>
-              </div>
-            </section>
+              <AccordionItem value="links" className="border-border/40">
+                <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
+                   <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> Links e Localização</span>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4 space-y-3">
+                   <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Website</Label>
+                      <Input className="h-8 text-xs" value={draft.website ?? ""} onChange={(e) => setDraft({ ...draft, website: e.target.value })} onBlur={() => commitOnBlur({ website: draft.website })} />
+                   </div>
+                   <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Google Maps</Label>
+                      <Input className="h-8 text-xs" value={draft.gmnLink} onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })} onBlur={() => commitOnBlur({ gmnLink: draft.gmnLink })} />
+                   </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </TabsContent>
 
 
           {/* INTERAÇÕES COMERCIAIS */}
-          <TabsContent value="interacoes" className="flex-1 overflow-y-auto px-6 py-4 mt-0">
+          <TabsContent value="interacoes" className="flex-1 overflow-y-auto px-5 py-4 mt-0">
             <InteracoesTimeline
               lead={lead}
               onRefresh={onRefresh}
@@ -795,98 +639,74 @@ export default function LeadDetailDrawer({
           </TabsContent>
 
 
-          {/* OBSERVAÇÕES (informações permanentes sobre o Lead) */}
-          <TabsContent value="observacoes" className="flex-1 overflow-y-auto px-6 py-4 mt-0 space-y-3">
-            <div>
-              <Label className="text-sm font-medium">Observações permanentes sobre o Lead</Label>
-              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-                Use este campo apenas para informações que <strong>não pertencem a uma interação específica</strong>.
-                Ex: prefere contato após as 16h · decisão depende do sócio · não atende chamadas pela manhã · empresa fecha aos sábados.
-              </p>
+          {/* OBSERVAÇÕES - Reorganizado */}
+          <TabsContent value="observacoes" className="flex-1 overflow-y-auto px-5 py-4 mt-0 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5" /> Notas Permanentes
+              </Label>
               <Textarea
                 value={draft.notes}
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
                 onBlur={() => commitOnBlur({ notes: draft.notes })}
-                rows={14}
-                placeholder="Escreva aqui informações permanentes sobre o lead..."
+                rows={6}
+                className="text-sm bg-muted/10 border-border/40"
+                placeholder="Prefere contato após as 16h, decisão depende do sócio..."
               />
             </div>
 
-            {/* Tarefas do lead — acessíveis dentro de Observações porque descrevem próximas ações permanentes */}
-            {(() => {
-              void tasksVer;
-              const tasks = getTasksByLead(lead.id);
-              const pending = tasks.filter((t) => t.status === "pendente");
-              const done = tasks.filter((t) => t.status === "concluida");
-              return (
-                <div className="mt-6 pt-4 border-t border-border/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <ListTodo className="h-3 w-3" /> Tarefas — {pending.length} pendente(s) · {done.length} concluída(s)
-                    </p>
-                    <Button size="sm" variant="outline"
-                      onClick={() => { setEditingTask(null); setTaskFormOpen(true); }}>
-                      <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
-                    </Button>
-                  </div>
-                  {tasks.length === 0 && (
-                    <p className="text-xs text-muted-foreground/60 text-center py-4">
-                      Nenhuma tarefa criada.
-                    </p>
-                  )}
-                  {tasks.map((t) => {
-                    const isDone = t.status === "concluida";
-                    const due = new Date(t.dueAt);
-                    const overdue = !isDone && due.getTime() < Date.now();
+            <Accordion type="multiple" defaultValue={["tasks"]} className="w-full">
+              <AccordionItem value="tasks" className="border-border/40">
+                <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
+                  <span className="flex items-center gap-1.5"><ListTodo className="h-3.5 w-3.5" /> Tarefas do Lead</span>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4 space-y-2">
+                  {(() => {
+                    void tasksVer;
+                    const tasks = getTasksByLead(lead.id);
                     return (
-                      <div key={t.id} className={`rounded-md border p-2 flex items-start gap-2 ${overdue ? "border-destructive/40 bg-destructive/5" : "border-border/40 bg-muted/20"}`}>
-                        <Checkbox checked={isDone}
-                          onCheckedChange={(v) => { if (v) completeTask(t.id); else reopenTask(t.id); setTasksVer((x) => x + 1); }}
-                          className="mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`text-sm font-medium ${isDone ? "line-through text-muted-foreground" : ""}`}>{t.title}</p>
-                            <Badge variant="outline" className={`text-[10px] shrink-0 ${PRIORITY_CLASSES[t.priority]}`}>
-                              {PRIORITY_LABEL[t.priority]}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground flex-wrap">
-                            <span className={overdue ? "text-destructive font-medium" : ""}>
-                              <Clock className="h-3 w-3 inline mr-0.5" />
-                              {format(due, "dd/MM 'às' HH:mm", { locale: ptBR })}
-                            </span>
-                            <button className="text-muted-foreground hover:text-foreground" onClick={() => { setEditingTask(t); setTaskFormOpen(true); }}>
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                            <button className="text-muted-foreground hover:text-destructive" onClick={async () => {
-                              if (t.googleEventId) { try { await AgendaRepository.deleteTaskEvent(t.googleEventId); } catch {} }
-                              deleteTask(t.id); setTasksVer((x) => x + 1);
-                            }}>
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-end">
+                           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditingTask(null); setTaskFormOpen(true); }}>
+                            <Plus className="h-3.5 w-3.5 mr-1" /> Nova Tarefa
+                          </Button>
                         </div>
+                        {tasks.length === 0 && <p className="text-[10px] text-muted-foreground text-center py-4 italic">Nenhuma tarefa pendente.</p>}
+                        {tasks.map((t) => (
+                          <div key={t.id} className="rounded border border-border/40 bg-muted/20 p-2 flex items-center gap-2">
+                            <Checkbox checked={t.status === "concluida"} onCheckedChange={(v) => { if (v) completeTask(t.id); else reopenTask(t.id); setTasksVer((x) => x + 1); }} />
+                            <div className="flex-1 min-w-0">
+                               <p className={`text-xs font-medium truncate ${t.status === "concluida" ? "line-through text-muted-foreground" : ""}`}>{t.title}</p>
+                            </div>
+                            <Badge variant="outline" className={`text-[9px] ${PRIORITY_CLASSES[t.priority]}`}>{PRIORITY_LABEL[t.priority]}</Badge>
+                          </div>
+                        ))}
                       </div>
                     );
-                  })}
-                </div>
-              );
-            })()}
+                  })()}
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Cadência (Cold Call) */}
-            {isColdCall && (
-              <div className="mt-6 pt-4 border-t border-border/40">
-                <p className="text-xs text-muted-foreground mb-2">📜 Cadência do nicho</p>
-                <CadenceEditor niche={lead.niche} currentAttempt={step?.attempt} onChanged={onRefresh} />
-              </div>
-            )}
+              {isColdCall && (
+                <AccordionItem value="cadence" className="border-border/40">
+                  <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
+                    <span className="flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Cadência do Nicho</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-2 pb-4">
+                    <div className="rounded border border-border/40 bg-muted/10 p-1">
+                      <CadenceEditor niche={lead.niche} currentAttempt={step?.attempt} onChanged={onRefresh} />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+            </Accordion>
           </TabsContent>
 
 
-          {/* ANEXOS */}
+          {/* ANEXOS - Reorganizado em Grid Compacto */}
           <TabsContent
             value="anexos"
-            className="flex-1 overflow-y-auto px-6 py-4 mt-0"
+            className="flex-1 overflow-y-auto px-5 py-4 mt-0"
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => {
@@ -896,86 +716,59 @@ export default function LeadDetailDrawer({
               if (files.length) void attachFiles(files);
             }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <FileAudio className="h-3 w-3" /> Arquivos ({lead.attachments.length})
-              </p>
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                <Paperclip className="h-3 w-3 mr-1" /> Anexar arquivo
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Paperclip className="h-3.5 w-3.5" /> Arquivos ({lead.attachments.length})
+              </span>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => fileRef.current?.click()}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
               </Button>
               <input ref={fileRef} type="file" multiple accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
             </div>
-            <div
-              className={`mb-3 rounded-md border border-dashed px-3 py-2 text-[11px] transition-colors ${
-                dragOver ? "border-primary bg-primary/10 text-primary" : "border-border/50 text-muted-foreground/80"
-              }`}
-            >
-              📋 Cole um print com <kbd className="px-1 rounded bg-muted">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted">V</kbd> ou arraste arquivos aqui — os anexos só são lidos pela IA quando você clicar em <strong>Atualizar Inteligência</strong> (ou em “Ler com IA”).
+
+            <div className={`mb-4 rounded border border-dashed p-3 text-[10px] text-center transition-colors ${dragOver ? "border-accent bg-accent/5" : "border-border/40 text-muted-foreground"}`}>
+              Arraste arquivos ou cole (Ctrl+V) prints aqui.
             </div>
 
             {lead.attachments.length > 0 ? (
-              <div className="grid md:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {lead.attachments.map((att) => {
-                  const d = new Date(att.createdAt);
-                  const isAudio = att.type.startsWith("audio/");
                   const isImg = att.type.startsWith("image/");
                   return (
-                    <div key={att.id} className="rounded-md border border-border/40 bg-muted/30 p-3">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{att.name}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {att.type || "arquivo"} · {format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                          </p>
+                    <div key={att.id} className="rounded border border-border/40 bg-muted/10 overflow-hidden flex flex-col">
+                      {isImg && (
+                        <div className="aspect-video w-full bg-black/20 flex items-center justify-center overflow-hidden">
+                           <img src={att.dataUrl} alt={att.name} className="w-full h-full object-cover" />
                         </div>
-                        <button onClick={() => { removeAttachment(lead.id, att.id); onRefresh(); }}
-                          className="text-muted-foreground hover:text-destructive shrink-0">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      {isAudio && <audio src={att.dataUrl} controls className="h-8 w-full" />}
-                      {isImg && <img src={att.dataUrl} alt={att.name} className="max-h-40 rounded object-cover w-full" />}
-                      <div className="flex gap-1.5 mt-2 flex-wrap">
-                        <Button size="sm" variant="outline" asChild className="h-7 text-xs flex-1 min-w-[80px]">
-                          <a href={att.dataUrl} target="_blank" rel="noopener noreferrer">Visualizar</a>
-                        </Button>
-                        <Button size="sm" variant="outline" asChild className="h-7 text-xs flex-1 min-w-[80px]">
-                          <a href={att.dataUrl} download={att.name}>Baixar</a>
-                        </Button>
-                        {!isAudio && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-7 text-xs flex-1 min-w-[110px] gap-1"
-                            disabled={aiReadingId === att.id}
-                            onClick={() => handleReadAttachmentWithAI(att)}
-                            title="Enviar este anexo para análise da IA (consome tokens)"
-                          >
-                            {aiReadingId === att.id ? (
-                              <><Loader2 className="h-3 w-3 animate-spin" /> Lendo…</>
-                            ) : (
-                              <>👁 {att.aiAnalysis ? "Reler com IA" : "Ler com IA"}</>
-                            )}
-                          </Button>
+                      )}
+                      <div className="p-2 space-y-1 flex-1">
+                        <div className="flex items-start justify-between gap-1">
+                           <p className="text-[11px] font-medium truncate flex-1" title={att.name}>{att.name}</p>
+                           <button onClick={() => { removeAttachment(lead.id, att.id); onRefresh(); }} className="text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
+                        </div>
+                        <p className="text-[9px] text-muted-foreground uppercase">{format(new Date(att.createdAt), "dd/MM HH:mm", { locale: ptBR })}</p>
+                        
+                        <div className="flex gap-1 pt-2">
+                           <Button size="sm" variant="outline" asChild className="h-6 text-[10px] flex-1"><a href={att.dataUrl} target="_blank" rel="noopener noreferrer">Ver</a></Button>
+                           {!att.type.startsWith("audio/") && (
+                             <Button size="sm" variant="secondary" className="h-6 text-[10px] flex-1" disabled={aiReadingId === att.id} onClick={() => handleReadAttachmentWithAI(att)}>
+                               {aiReadingId === att.id ? "..." : (att.aiAnalysis ? "Reler" : "IA")}
+                             </Button>
+                           )}
+                        </div>
+
+                        {att.aiAnalysis && (
+                          <div className="mt-2 text-[10px] text-muted-foreground line-clamp-3 italic border-t border-border/20 pt-1">
+                            {att.aiAnalysis}
+                          </div>
                         )}
                       </div>
-                      {isAudio && (
-                        <p className="text-[10px] text-muted-foreground/70 mt-1.5 italic">
-                          Áudios não são enviados para IA. A análise comercial usa os resumos da Matteline.
-                        </p>
-                      )}
-                      {(aiReadResults[att.id] || att.aiAnalysis) && (
-                        <div className="mt-2 rounded border border-border/40 bg-background/60 p-2 text-xs prose prose-invert prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-headings:my-1">
-                          <ReactMarkdown>{aiReadResults[att.id] || att.aiAnalysis || ""}</ReactMarkdown>
-                        </div>
-                      )}
-
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground/60 text-center py-10">Nenhum arquivo anexado</p>
+              <div className="text-center py-12 text-muted-foreground text-xs italic">Nenhum anexo.</div>
             )}
           </TabsContent>
 

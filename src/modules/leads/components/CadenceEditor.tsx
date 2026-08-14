@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, RotateCcw, Save, GripVertical } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 import { toast } from "sonner";
 import {
   type CadenceStep, type CadenceChannel,
@@ -121,73 +123,67 @@ export default function CadenceEditor({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-xs text-muted-foreground">{label} · {steps.length} etapas</p>
-        <div className="flex gap-1.5">
-          <Button size="sm" variant="outline" onClick={reset}><RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurar padrão</Button>
-          <Button size="sm" onClick={save} disabled={!dirty} className="bg-accent text-accent-foreground hover:bg-accent/90">
-            <Save className="h-3.5 w-3.5 mr-1" /> Salvar
-          </Button>
+      <div className="flex items-center justify-between gap-2 px-1">
+        <p className="text-[10px] uppercase text-muted-foreground">{niche || "Geral"} · {steps.length} etapas</p>
+        <div className="flex gap-1">
+           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={reset} title="Restaurar padrão"><RotateCcw className="h-3.5 w-3.5" /></Button>
+           <Button size="sm" variant="ghost" className={`h-7 w-7 p-0 ${dirty ? "text-accent" : "text-muted-foreground"}`} onClick={save} disabled={!dirty} title="Salvar"><Save className="h-3.5 w-3.5" /></Button>
         </div>
       </div>
 
-      <div className="space-y-2">
+      <Accordion type="single" collapsible className="space-y-1">
         {steps.map((s, i) => {
-          const current = currentAttempt === s.attempt;
+          const isCurrent = currentAttempt === s.attempt;
           return (
-            <div key={i} className={`rounded-md border p-3 space-y-2 ${current ? "border-accent/60 bg-accent/5" : "border-border/60 bg-muted/20"}`}>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-col">
-                    <button type="button" onClick={() => move(i, -1)} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i <= 1} aria-label="Mover para cima">▲</button>
-                    <button type="button" onClick={() => move(i, 1)} className="text-muted-foreground hover:text-foreground disabled:opacity-30" disabled={i === 0 || i === steps.length - 1} aria-label="Mover para baixo">▼</button>
-                  </div>
-                  <Badge variant="outline" className="text-[10px]">{stepLabel(s.attempt)}</Badge>
-                  {current && <Badge className="bg-accent text-accent-foreground text-[10px]">Atual</Badge>}
+            <AccordionItem key={i} value={`step-${i}`} className={`rounded border px-2 py-0 border-border/40 ${isCurrent ? "bg-accent/5 border-accent/30" : "bg-muted/10"}`}>
+              <AccordionTrigger className="py-2 hover:no-underline">
+                <div className="flex items-center gap-2 text-[11px] font-medium text-left">
+                   <Badge variant="outline" className={`px-1 h-4 text-[9px] ${isCurrent ? "bg-accent text-accent-foreground border-accent" : ""}`}>T{s.attempt}</Badge>
+                   <span className="truncate max-w-[120px]">{s.channel}</span>
+                   <span className="text-muted-foreground font-normal truncate max-w-[100px] hidden sm:inline">— {s.objective}</span>
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => remove(i)} disabled={i === 0} className="h-7 text-destructive hover:text-destructive disabled:opacity-30">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Canal</Label>
-                  <Select value={s.channel} onValueChange={(v) => update(i, { channel: v as CadenceChannel })}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {CHANNELS.map((c) => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+              </AccordionTrigger>
+              <AccordionContent className="pt-1 pb-3 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                   <div className="space-y-1">
+                      <Label className="text-[9px] text-muted-foreground uppercase">Canal</Label>
+                      <Select value={s.channel} onValueChange={(v) => update(i, { channel: v as CadenceChannel })}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CHANNELS.map((c) => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                   </div>
+                   <div className="space-y-1">
+                      <Label className="text-[9px] text-muted-foreground uppercase">Minutos</Label>
+                      <Input type="number" className="h-7 text-xs" value={s.estimatedMinutes} onChange={(e) => update(i, { estimatedMinutes: parseInt(e.target.value || "1") })} />
+                   </div>
                 </div>
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Tempo estimado (min)</Label>
-                  <Input type="number" min={1} value={s.estimatedMinutes}
-                    onChange={(e) => update(i, { estimatedMinutes: Math.max(1, parseInt(e.target.value || "1", 10)) })}
-                    className="h-8 text-xs" />
+                <div className="space-y-1">
+                   <Label className="text-[9px] text-muted-foreground uppercase">Objetivo / Ação</Label>
+                   <Input className="h-7 text-xs" value={s.objective} onChange={(e) => update(i, { objective: e.target.value })} />
                 </div>
-                <div>
-                  <Label className="text-[10px] text-muted-foreground">Objetivo</Label>
-                  <Input value={s.objective} onChange={(e) => update(i, { objective: e.target.value })} className="h-8 text-xs" />
+                <div className="space-y-1">
+                   <Label className="text-[9px] text-muted-foreground uppercase">Script</Label>
+                   <Textarea className="text-[11px] min-h-[80px]" value={s.script} onChange={(e) => update(i, { script: e.target.value })} />
                 </div>
-              </div>
-
-              <div>
-                <Label className="text-[10px] text-muted-foreground">Próxima ação (resumo)</Label>
-                <Input value={s.nextAction} onChange={(e) => update(i, { nextAction: e.target.value })} className="h-8 text-xs" />
-              </div>
-
-              <div>
-                <Label className="text-[10px] text-muted-foreground">Script</Label>
-                <Textarea rows={4} value={s.script} onChange={(e) => update(i, { script: e.target.value })} className="text-xs font-mono" />
-              </div>
-            </div>
+                <div className="flex justify-between items-center pt-2">
+                   <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => move(i, -1)} disabled={i <= 0}><GripVertical className="h-3 w-3 rotate-180" /></Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => move(i, 1)} disabled={i >= steps.length - 1}><GripVertical className="h-3 w-3" /></Button>
+                   </div>
+                   <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => remove(i)} disabled={i === 0}>
+                     <Trash2 className="h-3.5 w-3.5 mr-1" /> Remover
+                   </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           );
         })}
-      </div>
+      </Accordion>
 
-      <Button variant="outline" onClick={add} className="w-full">
-        <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar etapa
+      <Button variant="ghost" size="sm" onClick={add} className="w-full text-xs h-8 border border-dashed border-border/60 hover:bg-accent/5">
+        <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Etapa
       </Button>
     </div>
   );
