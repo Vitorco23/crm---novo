@@ -101,50 +101,43 @@ export default function MemoriaComercial() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BookMarked className="h-6 w-6 text-primary" />
-            Memória Comercial
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Aprendizados históricos da Performance21. A IA usa estas memórias para enriquecer cada análise.
-          </p>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 items-center gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Pesquisar memórias..."
+              className="pl-9 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="text-xs" onClick={refresh} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
             Atualizar
           </Button>
-          <Button size="sm" onClick={handleConsolidate} disabled={consolidating}>
-            <Sparkles className={`h-4 w-4 mr-1 ${consolidating ? "animate-pulse" : ""}`} />
-            Consolidar aprendizados agora
+          <Button size="sm" className="text-xs" onClick={handleConsolidate} disabled={consolidating}>
+            <Sparkles className={`h-3.5 w-3.5 mr-1.5 ${consolidating ? "animate-pulse" : ""}`} />
+            Consolidar aprendizados
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-4 space-y-3">
-          <div className="flex gap-2 items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por título ou conteúdo..." className="pl-9"
-                value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-          </div>
-          <Tabs value={kind} onValueChange={(v) => setKind(v as MemoryKind | "all")}>
-            <TabsList>
-              <TabsTrigger value="all">Todas ({counters.all || 0})</TabsTrigger>
-              {(Object.keys(MEMORY_KIND_LABELS) as MemoryKind[]).map((k) => (
-                <TabsTrigger key={k} value={k}>
-                  {MEMORY_KIND_LABELS[k]} ({counters[k] || 0})
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </CardContent>
-      </Card>
+
+      <Tabs value={kind} onValueChange={(v) => setKind(v as MemoryKind | "all")}>
+        <TabsList className="bg-muted/50 p-1 h-auto flex-wrap">
+          <TabsTrigger value="all" className="text-xs py-1.5">Todas ({counters.all || 0})</TabsTrigger>
+          {(Object.keys(MEMORY_KIND_LABELS) as MemoryKind[]).map((k) => (
+            <TabsTrigger key={k} value={k} className="text-xs py-1.5">
+              {MEMORY_KIND_LABELS[k]} ({counters[k] || 0})
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
 
       {loading ? (
         <div className="text-sm text-muted-foreground">Carregando...</div>
