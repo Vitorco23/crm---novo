@@ -89,7 +89,7 @@ export function IntelligenceShell({ children, title, description }: Intelligence
             {displayDesc && <p className="text-small text-muted-foreground">{displayDesc}</p>}
           </div>
           
-          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/40">
+          <nav className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/40" aria-label="Categorias de Inteligência">
             {CATEGORIES.map((cat) => {
               const isActive = pathname === cat.path;
               const Icon = cat.icon;
@@ -98,19 +98,20 @@ export function IntelligenceShell({ children, title, description }: Intelligence
                   key={cat.id}
                   to={cat.path}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                    "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     isActive 
                       ? "bg-background text-foreground shadow-sm ring-1 ring-border/20" 
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                   title={cat.description}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   <Icon className={cn("h-3.5 w-3.5", isActive ? "text-primary" : "text-muted-foreground")} />
                   <span className="hidden sm:inline">{cat.label}</span>
                 </Link>
               );
             })}
-          </div>
+          </nav>
         </div>
       </header>
 
