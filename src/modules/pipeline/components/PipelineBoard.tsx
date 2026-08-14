@@ -35,7 +35,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
   Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search, LayoutGrid, List as ListIcon, Download, ArrowRight,
-  MoreVertical,
+  MoreVertical, Sparkles, MessageSquare, PhoneCall
 } from "lucide-react";
 import { computeLeadTemperature, lastInteractionLabel, nextActionLabel } from "@/modules/cold-call/services/coldCallMetrics";
 import { getStepForLead, executionMoment } from "@/modules/leads/services/cadence";
@@ -74,6 +74,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
 
 
 export const LOST_REASON_EVENT = "p21:trigger-lost-reason";
@@ -133,6 +134,9 @@ function LeadCard({
     e.target.value = "";
   };
 
+  const temp = LeadIntelligenceRepository.temperature(lead);
+  const summary = LeadIntelligenceRepository.executiveSummary(lead);
+
   return (
     <TooltipProvider>
       <div
@@ -144,7 +148,10 @@ function LeadCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Checkbox checked={selected} onCheckedChange={() => onToggleSelect(lead.id)} onClick={(e) => e.stopPropagation()} className="h-3.5 w-3.5" />
-            <p className="font-semibold text-xs truncate text-foreground">{lead.company}</p>
+            <div className="min-w-0">
+              <p className="font-bold text-xs truncate text-foreground">{lead.company}</p>
+              {lead.contact && <p className="text-[10px] text-muted-foreground truncate">{lead.contact}</p>}
+            </div>
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Tooltip>
@@ -166,51 +173,73 @@ function LeadCard({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
-          {lead.niche && <Badge variant="secondary" className="text-[9px] px-1 py-0 font-normal">{lead.niche}</Badge>}
-          {lead.city && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1 min-w-0">
+            {lead.niche && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0 font-normal max-w-[60px] truncate block">{lead.niche}</Badge>
+                </TooltipTrigger>
+                <TooltipContent><p className="text-[10px]">{lead.niche}</p></TooltipContent>
+              </Tooltip>
+            )}
+            <StarRating value={lead.icpStars} />
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="text-[9px] px-1 py-0 font-normal max-w-[80px] truncate block">{lead.city}</Badge>
+                <span className={`text-xs ${temp.cls}`}>{temp.emoji}</span>
               </TooltipTrigger>
-              <TooltipContent><p className="text-[10px]">{lead.city}</p></TooltipContent>
+              <TooltipContent><p className="text-[10px]">Temperatura: {temp.label}</p></TooltipContent>
             </Tooltip>
-          )}
-          <StarRating value={lead.icpStars} />
+            {lead.autoDiagnosis && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Sparkles className="h-3 w-3 text-accent" />
+                </TooltipTrigger>
+                <TooltipContent><p className="text-[10px]">Análise IA disponível</p></TooltipContent>
+              </Tooltip>
+            )}
+          </div>
           <input ref={fileRef} type="file" accept="audio/*,image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
         </div>
 
-
-        <div className="pt-2 border-t border-border/50 space-y-1.5">
+        <div className="pt-2 border-t border-border/40 space-y-1.5">
           <p className="text-[10px] text-foreground font-medium truncate flex items-center gap-1.5">
             <span className="text-accent shrink-0">→</span>
             <span className="truncate">{LeadIntelligenceRepository.nextAction(lead)}</span>
           </p>
-          <p className="text-[10px] text-muted-foreground truncate italic leading-relaxed">
-            {(() => {
-              const last = LeadIntelligenceRepository.lastInteraction(lead, 50);
-              return last ? `"${last.text}"` : "Sem interações recentes";
-            })()}
-          </p>
+          {summary.ultimaLigacao && (
+            <p className="text-[10px] text-muted-foreground truncate italic leading-relaxed">
+              "{summary.ultimaLigacao}"
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-between text-[10px] pt-1">
-          <div className="flex items-center gap-2 text-muted-foreground/70">
+          <div className="flex items-center gap-2 text-muted-foreground/60">
             <span>⏱ {timeInStage(lead.stageChangedAt)}</span>
-            {(() => {
-              const temp = LeadIntelligenceRepository.temperature(lead);
-              return <span title={temp.label}>{temp.emoji}</span>;
-            })()}
           </div>
-          {pipeline === "oportunidades" && lead.contractValue && lead.contractValue > 0 ? (
-            <span className="font-bold text-accent">
-              {lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </span>
-          ) : null}
+          <div className="flex items-center gap-2">
+             {pipeline === "oportunidades" && lead.contractValue && lead.contractValue > 0 && (
+              <span className="font-bold text-accent">
+                {lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+            )}
+            <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+               <button onClick={(e) => { e.stopPropagation(); window.open(`tel:${lead.phone}`, '_self'); }} className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground">
+                  <PhoneCall className="h-3 w-3" />
+               </button>
+               <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${lead.phoneNormalized || lead.phone?.replace(/\D/g, '')}`, '_blank'); }} className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground">
+                  <MessageSquare className="h-3 w-3" />
+               </button>
+            </div>
+          </div>
         </div>
       </div>
     </TooltipProvider>
   );
+
 
 }
 
