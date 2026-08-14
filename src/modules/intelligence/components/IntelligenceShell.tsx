@@ -72,10 +72,11 @@ const CATEGORIES = [
 ];
 
 export function IntelligenceShell({ children, title, description }: IntelligenceShellProps) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const fullPath = pathname + search;
 
   // Se não for passado title, tentamos encontrar baseado no path
-  const currentCat = CATEGORIES.find(c => c.path === pathname);
+  const currentCat = CATEGORIES.find(c => c.path === fullPath || c.path === pathname);
   const displayTitle = title || currentCat?.label || "Inteligência";
   const displayDesc = description || currentCat?.description;
 
@@ -99,7 +100,7 @@ export function IntelligenceShell({ children, title, description }: Intelligence
           
           <nav className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border/40" aria-label="Menu de Inteligência">
             {CATEGORIES.map((cat) => {
-              const isActive = pathname === cat.path;
+              const isActive = fullPath === cat.path || (cat.path === pathname && !search);
               const Icon = cat.icon;
               return (
                 <Link
