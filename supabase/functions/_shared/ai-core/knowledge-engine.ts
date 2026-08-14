@@ -11,6 +11,7 @@ import {
   applyChunkBudget,
   clampMatchCount,
   clampSimilarity,
+  deduplicateChunks,
   KNOWLEDGE_LIMITS,
   type KnowledgeChunkShape,
   type KnowledgeCitationShape,
