@@ -162,6 +162,7 @@ export default function CentralInteligencia() {
   const [editingTitle, setEditingTitle] = useState("");
   const [debugMode, setDebugMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const openLead = useOpenLeadContext();
 
   useEffect(() => {
@@ -173,8 +174,7 @@ export default function CentralInteligencia() {
   const refreshConversations = useCallback(async () => {
     let data = await IntelligenceRepository.listConversations();
     setConversations(data ?? []);
-    if (!activeId && data && data.length) setActiveId(data[0].id);
-  }, [activeId]);
+  }, []);
 
   useEffect(() => { refreshConversations(); }, [refreshConversations]);
 
@@ -189,14 +189,20 @@ export default function CentralInteligencia() {
   const send = useCallback(async () => {
     const q = input.trim();
     if (!q || sending) return;
+    
     let convId = activeId;
+    let isNewConversation = !convId;
+
     if (!convId) {
-      const title = q.slice(0, 60);
+      // Criação preguiçosa (no banco) ou imediata. 
+      // Seguindo o item 4, vamos gerar título automático se for a primeira mensagem.
+      const title = q.length > 50 ? q.slice(0, 47) + "..." : q;
       let data = await IntelligenceRepository.createConversation(title);
       convId = data.id;
       setConversations((prev) => [data, ...prev]);
       setActiveId(convId);
     }
+
     const optimistic: ChatMessage = {
       id: `tmp-${Date.now()}`, role: "user", content: q, created_at: new Date().toISOString(),
     };
@@ -216,6 +222,7 @@ export default function CentralInteligencia() {
           dashboardSnapshot: buildDashboardSnapshot(),
         },
       });
+      
       const reply: ChatMessage = {
         id: `tmp-a-${Date.now()}`, role: "assistant",
         content: data?.content ?? "(sem resposta)",
@@ -225,25 +232,102 @@ export default function CentralInteligencia() {
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, reply]);
+      
+      // Se era nova conversa, o backend pode ter gerado um título melhor ou usamos o primeiro
+      if (isNewConversation) {
+        refreshConversations();
+      }
     } finally {
       setSending(false);
     }
-  }, [input, sending, activeId, override, openLead, messages]);
+  }, [input, sending, activeId, override, openLead, messages, refreshConversations]);
+
+  const handleRename = async (id: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    try {
+      await IntelligenceRepository.renameConversation(id, newTitle.trim());
+      setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle.trim() } : c));
+      setEditingId(null);
+    } catch (error) {
+      toast({ title: "Erro ao renomear", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await IntelligenceRepository.deleteConversation(id);
+      setConversations(prev => prev.filter(c => c.id !== id));
+      if (activeId === id) {
+        setActiveId(null);
+      }
+      setDeleteConfirmId(null);
+    } catch (error) {
+      toast({ title: "Erro ao excluir", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="flex h-[calc(100vh-120px)] bg-background">
       {/* Sidebar */}
       {sidebarOpen && (
-        <aside className="w-[240px] flex-shrink-0 border-r bg-muted/20 p-3 flex flex-col gap-3">
-          <Button onClick={() => setActiveId(null)} variant="outline" className="w-full justify-start gap-2">
+        <aside className="w-[260px] flex-shrink-0 border-r bg-muted/20 p-3 flex flex-col gap-3">
+          <Button onClick={() => setActiveId(null)} variant="outline" className="w-full justify-start gap-2 h-9">
             <Plus className="h-4 w-4" /> Nova conversa
           </Button>
           <ScrollArea className="flex-1">
-             <div className="space-y-1">
+             <div className="space-y-1 pr-3">
                {conversations.map(c => (
-                 <button key={c.id} onClick={() => setActiveId(c.id)} className={cn("w-full text-left px-3 py-2 text-sm rounded-md truncate hover:bg-muted", activeId === c.id && "bg-muted")}>
-                   {c.title}
-                 </button>
+                 <div 
+                   key={c.id} 
+                   className={cn(
+                     "group relative flex items-center w-full rounded-md text-sm transition-colors hover:bg-muted/50",
+                     activeId === c.id ? "bg-muted" : "transparent"
+                   )}
+                 >
+                   {editingId === c.id ? (
+                     <Input
+                       autoFocus
+                       className="h-8 text-sm m-1"
+                       value={editingTitle}
+                       onChange={(e) => setEditingTitle(e.target.value)}
+                       onKeyDown={(e) => {
+                         if (e.key === "Enter") handleRename(c.id, editingTitle);
+                         if (e.key === "Escape") setEditingId(null);
+                       }}
+                       onBlur={() => handleRename(c.id, editingTitle)}
+                     />
+                   ) : (
+                     <>
+                       <button 
+                         onClick={() => setActiveId(c.id)} 
+                         className="flex-1 text-left px-3 py-2 truncate"
+                       >
+                         {c.title}
+                       </button>
+                       
+                       <div className="opacity-0 group-hover:opacity-100 transition-opacity pr-1">
+                         <DropdownMenu>
+                           <DropdownMenuTrigger asChild>
+                             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                               <MessageCircle className="h-3.5 w-3.5" />
+                             </Button>
+                           </DropdownMenuTrigger>
+                           <DropdownMenuContent align="end">
+                             <DropdownMenuItem onClick={() => { setEditingId(c.id); setEditingTitle(c.title); }}>
+                               <Pencil className="h-4 w-4 mr-2" /> Renomear
+                             </DropdownMenuItem>
+                             <DropdownMenuItem 
+                               className="text-destructive focus:text-destructive" 
+                               onClick={() => setDeleteConfirmId(c.id)}
+                             >
+                               <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                             </DropdownMenuItem>
+                           </DropdownMenuContent>
+                         </DropdownMenu>
+                       </div>
+                     </>
+                   )}
+                 </div>
                ))}
              </div>
           </ScrollArea>
@@ -343,6 +427,21 @@ export default function CentralInteligencia() {
           </div>
         </div>
       </main>
+
+      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir conversa?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-muted-foreground">
+            Essa conversa e suas mensagens serão removidas. Essa ação não pode ser desfeita.
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => setDeleteConfirmId(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}>Excluir</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
