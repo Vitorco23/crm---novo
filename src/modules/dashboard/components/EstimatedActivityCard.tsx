@@ -84,6 +84,7 @@ export default function EstimatedActivityCard({ from, to, periodLabel }: Props) 
                     <span className="font-medium text-foreground">
                       {summary.byChannel[key]} {CHANNEL_LABELS[key].toLowerCase()}
                     </span>
+                    {` · ${summary.confirmedByChannel[key]} confirmado(s) · ${summary.estimatedByChannel[key]} estimado(s)`}
                     {parts.length > 0 ? ` · ${parts.join(" · ")}` : ""}
                   </p>
                 );
@@ -91,8 +92,10 @@ export default function EstimatedActivityCard({ from, to, periodLabel }: Props) 
             </div>
 
             <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border">
-              Total: <span className="font-medium text-foreground">{summary.total}</span> atividades ·
-              Estimativa baseada nas suas ações no CRM. Pode divergir do que foi anotado fora do sistema.
+              Total: <span className="font-medium text-foreground">{summary.total}</span> atividades ·{" "}
+              <span className="font-medium text-foreground">{summary.totalConfirmed}</span> confirmadas (CallFace/registro
+              explícito) · <span className="font-medium text-foreground">{summary.totalEstimated}</span> estimadas a partir
+              de ações no CRM. Estimativas não são disparos confirmados.
             </p>
           </>
         )}
