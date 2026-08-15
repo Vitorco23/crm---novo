@@ -94,6 +94,20 @@ export default function MetricasDiarias() {
     [date, auto, manual, results, qualitative, ai]
   );
 
+  // Qualquer edição após salvar invalida o "salvo" — impede IA em dados desatualizados.
+  const updateManual = useCallback((patch: Partial<ManualInputs>) => {
+    setManual((prev) => ({ ...prev, ...patch }));
+    setSaved(false);
+  }, []);
+  const updateResults = useCallback((patch: Partial<ResultInputs>) => {
+    setResults((prev) => ({ ...prev, ...patch }));
+    setSaved(false);
+  }, []);
+  const updateQualitative = useCallback((patch: Partial<QualitativeInputs>) => {
+    setQualitative((prev) => ({ ...prev, ...patch }));
+    setSaved(false);
+  }, []);
+
   const refreshAuto = useCallback(() => {
     setAuto(buildAutoMetrics(date));
     toast({ title: "Métricas automáticas atualizadas" });
@@ -117,13 +131,20 @@ export default function MetricasDiarias() {
   }, [currentReport]);
 
   const handleAi = useCallback(async () => {
+    const persisted = getReport(date);
+    if (!saved || !persisted) {
+      toast({
+        title: "Salve o fechamento antes de gerar a análise opcional",
+        description: "A IA usa apenas o relatório já salvo do dia.",
+      });
+      return;
+    }
     setAiLoading(true);
     try {
-      const payload = buildAiPayload(currentReport, listReports());
+      const payload = buildAiPayload(persisted, listReports());
       const analysis = await requestDailyAiAnalysis(payload);
+      saveReport({ ...persisted, ai: analysis });
       setAi(analysis);
-      const existing = getReport(date);
-      if (existing) saveReport({ ...existing, ai: analysis });
       setHistory(listReports());
       toast({ title: "Análise por IA gerada" });
     } catch (e) {
@@ -135,7 +156,7 @@ export default function MetricasDiarias() {
     } finally {
       setAiLoading(false);
     }
-  }, [currentReport, date]);
+  }, [date, saved]);
 
   const lastSync = auto.lastCallfaceAt
     ? new Date(auto.lastCallfaceAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
@@ -186,13 +207,13 @@ export default function MetricasDiarias() {
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Complemento externo (o CRM não comprova)</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <NumberField id="ext-msg" label="Disparos externos" value={manual.externalMessages} onChange={(n) => setManual({ ...manual, externalMessages: n })} />
-              <NumberField id="ext-fup" label="Follow-ups externos" value={manual.externalFollowups} onChange={(n) => setManual({ ...manual, externalFollowups: n })} />
-              <NumberField id="ext-meet" label="Reuniões externas" value={manual.externalMeetings} onChange={(n) => setManual({ ...manual, externalMeetings: n })} />
+              <NumberField id="ext-msg" label="Disparos externos" value={manual.externalMessages} onChange={(n) => updateManual({ externalMessages: n })} />
+              <NumberField id="ext-fup" label="Follow-ups externos" value={manual.externalFollowups} onChange={(n) => updateManual({ externalFollowups: n })} />
+              <NumberField id="ext-meet" label="Reuniões externas" value={manual.externalMeetings} onChange={(n) => updateManual({ externalMeetings: n })} />
             </div>
             <div className="mt-3 space-y-1">
               <Label htmlFor="day-note" className="text-xs text-muted-foreground">Observação do dia</Label>
-              <Textarea id="day-note" rows={2} value={manual.dayNote} onChange={(e) => setManual({ ...manual, dayNote: e.target.value })} />
+              <Textarea id="day-note" rows={2} value={manual.dayNote} onChange={(e) => updateManual({ dayNote: e.target.value })} />
             </div>
           </div>
 
@@ -201,11 +222,11 @@ export default function MetricasDiarias() {
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Resultados</p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <NumberField id="res-dm" label="Conexões c/ decisor" value={results.decisionMakerConnections} onChange={(n) => setResults({ ...results, decisionMakerConnections: n })} />
-              <NumberField id="res-meet" label="Reuniões marcadas" value={results.meetingsScheduled} onChange={(n) => setResults({ ...results, meetingsScheduled: n })} />
-              <NumberField id="res-prop" label="Propostas" value={results.proposals} onChange={(n) => setResults({ ...results, proposals: n })} />
-              <NumberField id="res-sales" label="Vendas" value={results.sales} onChange={(n) => setResults({ ...results, sales: n })} />
-              <NumberField id="res-rev" label="Receita (R$)" value={results.revenue} onChange={(n) => setResults({ ...results, revenue: n })} />
+              <NumberField id="res-dm" label="Conexões c/ decisor" value={results.decisionMakerConnections} onChange={(n) => updateResults({ decisionMakerConnections: n })} />
+              <NumberField id="res-meet" label="Reuniões marcadas" value={results.meetingsScheduled} onChange={(n) => updateResults({ meetingsScheduled: n })} />
+              <NumberField id="res-prop" label="Propostas" value={results.proposals} onChange={(n) => updateResults({ proposals: n })} />
+              <NumberField id="res-sales" label="Vendas" value={results.sales} onChange={(n) => updateResults({ sales: n })} />
+              <NumberField id="res-rev" label="Receita (R$)" value={results.revenue} onChange={(n) => updateResults({ revenue: n })} />
             </div>
           </div>
 
@@ -214,15 +235,15 @@ export default function MetricasDiarias() {
           <div className="grid gap-3 md:grid-cols-3">
             <div className="space-y-1">
               <Label htmlFor="q-obj" className="text-xs text-muted-foreground">Principal objeção</Label>
-              <Input id="q-obj" value={qualitative.mainObjection} onChange={(e) => setQualitative({ ...qualitative, mainObjection: e.target.value })} />
+              <Input id="q-obj" value={qualitative.mainObjection} onChange={(e) => updateQualitative({ mainObjection: e.target.value })} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="q-bot" className="text-xs text-muted-foreground">Gargalo percebido</Label>
-              <Input id="q-bot" value={qualitative.bottleneck} onChange={(e) => setQualitative({ ...qualitative, bottleneck: e.target.value })} />
+              <Input id="q-bot" value={qualitative.bottleneck} onChange={(e) => updateQualitative({ bottleneck: e.target.value })} />
             </div>
             <div className="space-y-1">
               <Label htmlFor="q-lea" className="text-xs text-muted-foreground">Aprendizado</Label>
-              <Input id="q-lea" value={qualitative.learning} onChange={(e) => setQualitative({ ...qualitative, learning: e.target.value })} />
+              <Input id="q-lea" value={qualitative.learning} onChange={(e) => updateQualitative({ learning: e.target.value })} />
             </div>
           </div>
 
@@ -289,7 +310,12 @@ export default function MetricasDiarias() {
             Opcional e sob demanda: nada é enviado à IA até você clicar. O envio contém apenas números
             agregados do dia e o texto que você digitou — nunca leads, telefones, interações ou transcrições.
           </p>
-          <Button variant="outline" onClick={handleAi} disabled={aiLoading}>
+          {!saved && (
+            <p className="text-xs text-muted-foreground">
+              Salve o fechamento antes de gerar a análise opcional
+            </p>
+          )}
+          <Button variant="outline" onClick={handleAi} disabled={aiLoading || !saved}>
             {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
             {ai ? "Regenerar análise com IA" : "Gerar análise com IA (opcional)"}
           </Button>
