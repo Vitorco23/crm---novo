@@ -100,8 +100,10 @@ export default function MetricasDiarias() {
     const existing = getReport(date);
     setReport(existing ?? emptyReport(date));
     setAi(existing?.ai ?? null);
+    setAiError(null);
     setStatus(existing ? "saved" : "unsaved");
   }, [date]);
+
 
   const patch = useCallback(<K extends keyof DailyMetricsReport>(key: K, value: Partial<DailyMetricsReport[K]>) => {
     setReport((prev) => ({ ...prev, [key]: { ...(prev[key] as object), ...(value as object) } as DailyMetricsReport[K] }));
