@@ -11,10 +11,8 @@ const summary = {
   total: 0,
   byChannel: { call: 0, message: 0, email: 0, followup: 0, meeting: 0, other: 0 },
   confirmedByChannel: { call: 10, message: 2, email: 0, followup: 0, meeting: 0, other: 0 },
-  estimatedByChannel: { call: 3, message: 5, email: 0, followup: 1, meeting: 0, other: 0 },
   bySource: { call: {}, message: {}, email: {}, followup: {}, meeting: {}, other: {} },
   totalConfirmed: 12,
-  totalEstimated: 9,
 };
 
 vi.mock("@/shared/services/activityLedger", () => ({
@@ -77,12 +75,10 @@ describe("fechamento diário de métricas", () => {
     expect(d.suggestedGoals.length).toBeGreaterThan(0);
   });
 
-  it("8) métricas separam confirmado x estimado", () => {
+  it("8) métricas usam apenas fontes confirmadas", () => {
     const a = buildAutoMetrics("2026-08-12");
     expect(a.callsConfirmed).toBe(10);
-    expect(a.callsEstimated).toBe(3);
     expect(a.messagesConfirmed).toBe(2);
-    expect(a.totalEstimated).toBe(9);
   });
 
   it("alerta de dado insuficiente quando não há denominador", () => {

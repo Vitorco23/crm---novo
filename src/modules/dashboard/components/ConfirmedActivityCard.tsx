@@ -23,7 +23,7 @@ interface Props {
   periodLabel: string;
 }
 
-export default function EstimatedActivityCard({ from, to, periodLabel }: Props) {
+export default function ConfirmedActivityCard({ from, to, periodLabel }: Props) {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -49,13 +49,13 @@ export default function EstimatedActivityCard({ from, to, periodLabel }: Props) 
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <Activity className="h-4 w-4 text-accent" />
-          Dados estimados — {periodLabel}
+          Atividades confirmadas — {periodLabel}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {summary.total === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
-            Nenhuma atividade registrada automaticamente no período.
+            Dado não informado ou sem fonte confirmada.
           </p>
         ) : (
           <>
@@ -67,14 +67,14 @@ export default function EstimatedActivityCard({ from, to, periodLabel }: Props) 
                     <span className="truncate">{CHANNEL_LABELS[key]}</span>
                   </div>
                   <p className="text-2xl font-bold text-foreground tabular-nums leading-none">
-                    {summary.byChannel[key]}
+                    {summary.confirmedByChannel[key]}
                   </p>
                 </div>
               ))}
             </div>
 
             <div className="mt-3 space-y-1">
-              {CHANNELS.filter(({ key }) => summary.byChannel[key] > 0).map(({ key }) => {
+              {CHANNELS.filter(({ key }) => summary.confirmedByChannel[key] > 0).map(({ key }) => {
                 const sources = summary.bySource[key];
                 const parts = (Object.keys(sources) as ActivitySource[])
                   .sort((a, b) => (sources[b] || 0) - (sources[a] || 0))
@@ -82,9 +82,8 @@ export default function EstimatedActivityCard({ from, to, periodLabel }: Props) 
                 return (
                   <p key={key} className="text-[11px] text-muted-foreground">
                     <span className="font-medium text-foreground">
-                      {summary.byChannel[key]} {CHANNEL_LABELS[key].toLowerCase()}
+                      {summary.confirmedByChannel[key]} {CHANNEL_LABELS[key].toLowerCase()}
                     </span>
-                    {` · ${summary.confirmedByChannel[key]} confirmado(s) · ${summary.estimatedByChannel[key]} estimado(s)`}
                     {parts.length > 0 ? ` · ${parts.join(" · ")}` : ""}
                   </p>
                 );
@@ -92,10 +91,8 @@ export default function EstimatedActivityCard({ from, to, periodLabel }: Props) 
             </div>
 
             <p className="text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border">
-              Total: <span className="font-medium text-foreground">{summary.total}</span> atividades ·{" "}
-              <span className="font-medium text-foreground">{summary.totalConfirmed}</span> confirmadas (CallFace/registro
-              explícito) · <span className="font-medium text-foreground">{summary.totalEstimated}</span> estimadas a partir
-              de ações no CRM. Estimativas não são disparos confirmados.
+              Total: <span className="font-medium text-foreground">{summary.totalConfirmed}</span> atividades
+              confirmadas por fonte real (CallFace/Matteline, registro explícito e reuniões registradas).
             </p>
           </>
         )}
