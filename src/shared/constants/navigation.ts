@@ -80,8 +80,6 @@ export const NAV_ITEMS: NavItem[] = [
     subItems: [
       { title: "Visão Geral", url: "/inteligencia" },
       { title: "Decisão", url: "/central" },
-      { title: "Conversar", url: "/inteligencia/central" },
-      { title: "Conhecimento", url: "/inteligencia/knowledge" },
       { title: "Memória", url: "/memoria" },
       { title: "Laboratório", url: "/laboratorio" }
     ]
