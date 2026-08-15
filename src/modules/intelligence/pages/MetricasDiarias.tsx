@@ -94,6 +94,7 @@ export default function MetricasDiarias() {
   const [scope, setScope] = useState<"week" | "month">("week");
   const [ai, setAi] = useState<AiAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     const existing = getReport(date);
