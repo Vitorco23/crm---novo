@@ -29,8 +29,6 @@ import Agenda from "@/modules/agenda/pages/Agenda";
 import MemoriaComercial from "@/modules/intelligence/pages/MemoriaComercial";
 import { lazy, Suspense } from "react";
 const Laboratorio = lazy(() => import("@/modules/laboratorio/pages/Laboratorio"));
-const CentralInteligencia = lazy(() => import("@/modules/intelligence/pages/CentralInteligencia"));
-const KnowledgeBase = lazy(() => import("@/modules/knowledge/pages/KnowledgeBase"));
 const SaudeSistema = lazy(() => import("@/modules/configuracoes/pages/SaudeSistema"));
 
 
