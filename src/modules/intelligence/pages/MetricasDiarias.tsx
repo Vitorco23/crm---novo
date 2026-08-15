@@ -1,6 +1,6 @@
-// Fechamento diário de métricas — ETAPA 2.
-// Página de baixa poluição visual: pulso do dia, formulário de fechamento,
-// diagnóstico determinístico (padrão) e análise por IA apenas sob clique.
+// Fechamento diário de métricas — Sprint 1 (reestruturação).
+// 100% manual: nenhuma métrica automática, nenhuma leitura do activityLedger,
+// Matteline/CallFace, Pipeline ou Pomodoro. IA apenas sob clique explícito.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,315 +9,326 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { toast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, Save, Sparkles } from "lucide-react";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+import { Loader2, Save, Sparkles } from "lucide-react";
+import {
+  DIFFICULTY_OPTIONS,
+  blastsRates,
   buildAiPayload,
-  buildAutoMetrics,
-  buildRuleDiagnosis,
-  emptyManual,
-  emptyQualitative,
-  emptyResults,
+  buildInstantSummary,
+  callsRates,
+  emptyReport,
+  filterHistory,
+  fmtRate,
+  followupsRates,
   getReport,
   listReports,
   saveReport,
   toDateKey,
+  totalMinutes,
   type AiAnalysis,
-  type AutoMetricsSnapshot,
+  type BlastsChannel,
+  type CallsChannel,
+  type ContextInputs,
   type DailyMetricsReport,
-  type ManualInputs,
-  type QualitativeInputs,
-  type ResultInputs,
-  type RuleDiagnosis,
+  type FollowupsChannel,
+  type GeneralInputs,
+  type NumField,
+  type OutcomeInputs,
 } from "@/modules/intelligence/services/dailyMetricsReport";
 import { requestDailyAiAnalysis } from "@/modules/intelligence/services/dailyMetricsAI";
 
-function Pulse({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="min-w-[112px] px-3 py-2">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold text-foreground leading-tight">{value}</p>
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
-
+/** Campo numérico que aceita vazio (null) e nunca coage para 0. */
 function NumberField({
-  id, label, value, onChange,
-}: { id: string; label: string; value: number; onChange: (n: number) => void }) {
+  id, label, value, onChange, step,
+}: { id: string; label: string; value: NumField; onChange: (n: NumField) => void; step?: string }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 min-w-0">
       <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
       <Input
         id={id}
         type="number"
         min={0}
-        inputMode="numeric"
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+        step={step}
+        inputMode="decimal"
+        placeholder="—"
+        value={value === null ? "" : String(value)}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw.trim() === "") return onChange(null);
+          const n = Number(raw);
+          onChange(Number.isFinite(n) ? Math.max(0, n) : null);
+        }}
+        className="h-9"
       />
     </div>
   );
 }
 
+function RateRow({ items }: { items: [string, number | null][] }) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2 border-t border-border/40 pt-3">
+      {items.map(([label, v]) => (
+        <Badge key={label} variant="outline" className="text-[11px] font-normal">
+          {label}: <span className="ml-1 font-semibold text-foreground">{fmtRate(v)}</span>
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
+type SaveState = "unsaved" | "dirty" | "saved";
+
 export default function MetricasDiarias() {
   const today = toDateKey(new Date());
   const [date, setDate] = useState(today);
-  const [auto, setAuto] = useState<AutoMetricsSnapshot>(() => buildAutoMetrics(today));
-  const [manual, setManual] = useState<ManualInputs>(emptyManual);
-  const [results, setResults] = useState<ResultInputs>(emptyResults);
-  const [qualitative, setQualitative] = useState<QualitativeInputs>(emptyQualitative);
-  const [diagnosis, setDiagnosis] = useState<RuleDiagnosis | null>(null);
+  const [report, setReport] = useState<DailyMetricsReport>(() => getReport(today) ?? emptyReport(today));
+  const [status, setStatus] = useState<SaveState>(() => (getReport(today) ? "saved" : "unsaved"));
+  const [history, setHistory] = useState<DailyMetricsReport[]>(() => listReports());
+  const [scope, setScope] = useState<"week" | "month">("week");
   const [ai, setAi] = useState<AiAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [history, setHistory] = useState<DailyMetricsReport[]>(() => listReports());
-  const [saved, setSaved] = useState(false);
 
-  // Troca de data carrega o relatório do dia (se existir) — nunca chama IA.
   useEffect(() => {
     const existing = getReport(date);
-    const snapshot = existing?.auto ?? buildAutoMetrics(date);
-    setAuto(snapshot);
-    setManual(existing?.manual ?? emptyManual());
-    setResults(existing?.results ?? emptyResults());
-    setQualitative(existing?.qualitative ?? emptyQualitative());
+    setReport(existing ?? emptyReport(date));
     setAi(existing?.ai ?? null);
-    setSaved(!!existing);
-    setDiagnosis(
-      existing ? buildRuleDiagnosis(existing, listReports()) : null
-    );
+    setStatus(existing ? "saved" : "unsaved");
   }, [date]);
 
-  const currentReport = useMemo<DailyMetricsReport>(
-    () => ({ date, updatedAt: new Date().toISOString(), auto, manual, results, qualitative, ai }),
-    [date, auto, manual, results, qualitative, ai]
-  );
-
-  // Qualquer edição após salvar invalida o "salvo" — impede IA em dados desatualizados.
-  const updateManual = useCallback((patch: Partial<ManualInputs>) => {
-    setManual((prev) => ({ ...prev, ...patch }));
-    setSaved(false);
-  }, []);
-  const updateResults = useCallback((patch: Partial<ResultInputs>) => {
-    setResults((prev) => ({ ...prev, ...patch }));
-    setSaved(false);
-  }, []);
-  const updateQualitative = useCallback((patch: Partial<QualitativeInputs>) => {
-    setQualitative((prev) => ({ ...prev, ...patch }));
-    setSaved(false);
+  const patch = useCallback(<K extends keyof DailyMetricsReport>(key: K, value: Partial<DailyMetricsReport[K]>) => {
+    setReport((prev) => ({ ...prev, [key]: { ...(prev[key] as object), ...(value as object) } as DailyMetricsReport[K] }));
+    setStatus((s) => (s === "saved" ? "dirty" : s));
   }, []);
 
-  const refreshAuto = useCallback(() => {
-    setAuto(buildAutoMetrics(date));
-    toast({ title: "Métricas automáticas atualizadas" });
-  }, [date]);
+  const setGeneral = (v: Partial<GeneralInputs>) => patch("general", v);
+  const setCalls = (v: Partial<CallsChannel>) => patch("calls", v);
+  const setBlasts = (v: Partial<BlastsChannel>) => patch("blasts", v);
+  const setFollowups = (v: Partial<FollowupsChannel>) => patch("followups", v);
+  const setOutcome = (v: Partial<OutcomeInputs>) => patch("outcome", v);
+  const setContext = (v: Partial<ContextInputs>) => patch("context", v);
+
+  const cRates = useMemo(() => callsRates(report.calls), [report.calls]);
+  const bRates = useMemo(() => blastsRates(report.blasts), [report.blasts]);
+  const fRates = useMemo(() => followupsRates(report.followups), [report.followups]);
+  const summary = useMemo(() => buildInstantSummary(report), [report]);
 
   const handleSave = useCallback(() => {
-    const snapshot = date === today ? buildAutoMetrics(date) : auto;
-    const report: DailyMetricsReport = { ...currentReport, auto: snapshot };
-    saveReport(report);
-    const all = listReports();
-    setAuto(snapshot);
-    setHistory(all);
-    setDiagnosis(buildRuleDiagnosis(report, all));
-    setSaved(true);
+    const saved = saveReport({ ...report, ai });
+    setReport(saved);
+    setHistory(listReports());
+    setStatus("saved");
     toast({ title: "Fechamento salvo", description: `Relatório de ${date} atualizado.` });
-  }, [currentReport, date, today, auto]);
-
-  const regenerate = useCallback(() => {
-    setDiagnosis(buildRuleDiagnosis(currentReport, listReports()));
-    toast({ title: "Diagnóstico por regras regenerado", description: "Sem custo de IA." });
-  }, [currentReport]);
+  }, [report, ai, date]);
 
   const handleAi = useCallback(async () => {
     const persisted = getReport(date);
-    if (!saved || !persisted) {
-      toast({
-        title: "Salve o fechamento antes de gerar a análise opcional",
-        description: "A IA usa apenas o relatório já salvo do dia.",
-      });
+    if (status !== "saved" || !persisted) {
+      toast({ title: "Salve o fechamento antes de gerar a análise opcional" });
       return;
     }
     setAiLoading(true);
     try {
-      const payload = buildAiPayload(persisted, listReports());
-      const analysis = await requestDailyAiAnalysis(payload);
+      const analysis = await requestDailyAiAnalysis(buildAiPayload(persisted));
       saveReport({ ...persisted, ai: analysis });
       setAi(analysis);
       setHistory(listReports());
       toast({ title: "Análise por IA gerada" });
     } catch (e) {
-      toast({
-        title: "Não foi possível gerar a análise por IA",
-        description: (e as Error).message + " O relatório e o diagnóstico por regras seguem válidos.",
-        variant: "destructive",
-      });
+      toast({ title: "Não foi possível gerar a análise por IA", description: (e as Error).message, variant: "destructive" });
     } finally {
       setAiLoading(false);
     }
-  }, [date, saved]);
+  }, [date, status]);
 
-  const lastSync = auto.lastCallfaceAt
-    ? new Date(auto.lastCallfaceAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-    : "—";
+  const filtered = useMemo(() => filterHistory(history, scope), [history, scope]);
+
+  const statusBadge =
+    status === "saved" ? <Badge variant="secondary" className="text-[11px]">Salvo</Badge>
+      : status === "dirty" ? <Badge className="text-[11px] bg-accent text-accent-foreground">Alterações pendentes</Badge>
+      : <Badge variant="outline" className="text-[11px]">Não salvo</Badge>;
+
+  const minutes = totalMinutes(report.general);
+  const fmtTime = (m: number | null) => (m === null ? "—" : `${Math.floor(m / 60)}h ${m % 60}min`);
 
   return (
-    <div className="space-y-6">
-      {/* Pulso do dia */}
-      <section aria-label="Pulso do dia" className="rounded-lg border border-border/50 bg-card">
-        <div className="flex items-center justify-between px-3 pt-3">
-          <h2 className="text-sm font-semibold text-foreground">Pulso do dia</h2>
-          <Button variant="ghost" size="sm" onClick={refreshAuto} className="h-7 text-xs">
-            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Atualizar
-          </Button>
-        </div>
-        <div className="flex flex-wrap divide-x divide-border/40 py-1">
-          <Pulse label="Pomodoros" value={String(auto.pomodoros)} />
-          <Pulse label="Foco" value={`${auto.focusMinutes} min`} />
-          <Pulse label="Ligações" value={String(auto.callsConfirmed)} hint="confirmadas CallFace" />
-          <Pulse
-            label="Mensagens"
-            value={auto.messagesConfirmed > 0 ? String(auto.messagesConfirmed) : "—"}
-            hint={auto.messagesConfirmed > 0 ? "confirmadas" : "sem fonte confirmada"}
-          />
-          <Pulse label="Reuniões" value={String(auto.meetings)} hint="registradas" />
-          <Pulse label="Último registro" value={lastSync} hint="Matteline/CallFace" />
-        </div>
-      </section>
-
-      {/* Fechamento do dia */}
+    <div className="space-y-5">
+      {/* 2. Campos gerais */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base">Fechamento do dia</CardTitle>
             <div className="flex items-center gap-2">
-              <Label htmlFor="metrics-date" className="text-xs text-muted-foreground">Data</Label>
-              <Input
-                id="metrics-date"
-                type="date"
-                value={date}
-                max={today}
-                onChange={(e) => setDate(e.target.value || today)}
-                className="h-8 w-[150px]"
-              />
-              {saved && <Badge variant="secondary" className="text-[11px]">Salvo</Badge>}
+              {statusBadge}
+              <Button size="sm" onClick={handleSave}>
+                <Save className="h-4 w-4 mr-2" /> Salvar
+              </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-5">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Complemento externo (o CRM não comprova)</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <NumberField id="ext-msg" label="Disparos externos" value={manual.externalMessages} onChange={(n) => updateManual({ externalMessages: n })} />
-              <NumberField id="ext-fup" label="Follow-ups externos" value={manual.externalFollowups} onChange={(n) => updateManual({ externalFollowups: n })} />
-              <NumberField id="ext-meet" label="Reuniões externas" value={manual.externalMeetings} onChange={(n) => updateManual({ externalMeetings: n })} />
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div className="space-y-1 min-w-0">
+              <Label htmlFor="m-date" className="text-xs text-muted-foreground">Data</Label>
+              <Input id="m-date" type="date" value={date} max={today}
+                onChange={(e) => setDate(e.target.value || today)} className="h-9" />
             </div>
-            <div className="mt-3 space-y-1">
-              <Label htmlFor="day-note" className="text-xs text-muted-foreground">Observação do dia</Label>
-              <Textarea id="day-note" rows={2} value={manual.dayNote} onChange={(e) => updateManual({ dayNote: e.target.value })} />
+            <div className="space-y-1 min-w-0">
+              <Label htmlFor="m-niche" className="text-xs text-muted-foreground">Nicho prospectado</Label>
+              <Input id="m-niche" value={report.general.niche} onChange={(e) => setGeneral({ niche: e.target.value })} className="h-9" />
             </div>
-          </div>
-
-          <Separator />
-
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Resultados</p>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <NumberField id="res-dm" label="Conexões c/ decisor" value={results.decisionMakerConnections} onChange={(n) => updateResults({ decisionMakerConnections: n })} />
-              <NumberField id="res-meet" label="Reuniões marcadas" value={results.meetingsScheduled} onChange={(n) => updateResults({ meetingsScheduled: n })} />
-              <NumberField id="res-prop" label="Propostas" value={results.proposals} onChange={(n) => updateResults({ proposals: n })} />
-              <NumberField id="res-sales" label="Vendas" value={results.sales} onChange={(n) => updateResults({ sales: n })} />
-              <NumberField id="res-rev" label="Receita (R$)" value={results.revenue} onChange={(n) => updateResults({ revenue: n })} />
+            <div className="space-y-1 min-w-0">
+              <Label htmlFor="m-region" className="text-xs text-muted-foreground">Cidade / região</Label>
+              <Input id="m-region" value={report.general.region} onChange={(e) => setGeneral({ region: e.target.value })} className="h-9" />
             </div>
-          </div>
-
-          <Separator />
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="space-y-1">
-              <Label htmlFor="q-obj" className="text-xs text-muted-foreground">Principal objeção</Label>
-              <Input id="q-obj" value={qualitative.mainObjection} onChange={(e) => updateQualitative({ mainObjection: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="q-bot" className="text-xs text-muted-foreground">Gargalo percebido</Label>
-              <Input id="q-bot" value={qualitative.bottleneck} onChange={(e) => updateQualitative({ bottleneck: e.target.value })} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="q-lea" className="text-xs text-muted-foreground">Aprendizado</Label>
-              <Input id="q-lea" value={qualitative.learning} onChange={(e) => updateQualitative({ learning: e.target.value })} />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" /> Salvar fechamento
-            </Button>
-            <Button variant="outline" onClick={regenerate}>
-              <RotateCcw className="h-4 w-4 mr-2" /> Regenerar diagnóstico por regras
-            </Button>
+            <NumberField id="m-goal" label="Meta de reuniões" value={report.general.meetingsGoal} onChange={(n) => setGeneral({ meetingsGoal: n })} />
+            <NumberField id="m-hours" label="Horas prospectando" value={report.general.hours} onChange={(n) => setGeneral({ hours: n })} />
+            <NumberField id="m-min" label="Minutos" value={report.general.minutes} onChange={(n) => setGeneral({ minutes: n })} />
           </div>
         </CardContent>
       </Card>
 
-      {/* Diagnóstico determinístico */}
-      {diagnosis && (
+      {/* 3-5. Canais */}
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Diagnóstico por regras</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p className="text-muted-foreground">{diagnosis.summary}</p>
-            <div className="flex flex-wrap gap-2">
-              {([
-                ["Conexão", diagnosis.rates.connectionRate],
-                ["Reunião", diagnosis.rates.meetingRate],
-                ["Proposta", diagnosis.rates.proposalRate],
-                ["Venda", diagnosis.rates.saleRate],
-              ] as const).map(([label, v]) => (
-                <Badge key={label} variant="outline" className="text-[11px]">
-                  {label}: {v === null ? "sem base" : `${v}%`}
-                </Badge>
-              ))}
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Ligações</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField id="c-calls" label="Ligações realizadas" value={report.calls.calls} onChange={(n) => setCalls({ calls: n })} />
+              <NumberField id="c-conn" label="Conexões" value={report.calls.connections} onChange={(n) => setCalls({ connections: n })} />
+              <NumberField id="c-dm" label="Decisores" value={report.calls.decisionMakers} onChange={(n) => setCalls({ decisionMakers: n })} />
+              <NumberField id="c-r1" label="R1 realizadas" value={report.calls.r1} onChange={(n) => setCalls({ r1: n })} />
             </div>
-            {diagnosis.warnings.length > 0 && (
-              <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
-                {diagnosis.warnings.map((w) => <li key={w}>{w}</li>)}
-              </ul>
-            )}
-            <p><span className="font-medium">Gargalo provável:</span> {diagnosis.bottleneck}</p>
-            <div>
-              <p className="font-medium mb-1">Recomendações para amanhã</p>
-              <ol className="list-decimal pl-5 space-y-1 text-muted-foreground">
-                {diagnosis.recommendations.slice(0, 3).map((r) => <li key={r}>{r}</li>)}
-              </ol>
+            <RateRow items={[["Conexão", cRates.connection], ["Decisor", cRates.decisionMaker], ["R1", cRates.r1]]} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Disparos</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField id="b-sent" label="Mensagens enviadas" value={report.blasts.sent} onChange={(n) => setBlasts({ sent: n })} />
+              <NumberField id="b-open" label="Mensagens abertas" value={report.blasts.opened} onChange={(n) => setBlasts({ opened: n })} />
+              <NumberField id="b-dm" label="Decisores gerados" value={report.blasts.decisionMakers} onChange={(n) => setBlasts({ decisionMakers: n })} />
+              <NumberField id="b-meet" label="Reuniões agendadas" value={report.blasts.meetings} onChange={(n) => setBlasts({ meetings: n })} />
             </div>
-            <div>
-              <p className="font-medium mb-1">Metas sugeridas</p>
-              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                {diagnosis.suggestedGoals.map((g) => <li key={g}>{g}</li>)}
-              </ul>
+            <RateRow items={[["Abertura", bRates.open], ["Decisor", bRates.decisionMaker], ["Reunião", bRates.meeting]]} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Follow-ups</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField id="f-sent" label="Follow-ups enviados" value={report.followups.sent} onChange={(n) => setFollowups({ sent: n })} />
+              <NumberField id="f-dm" label="Decisores gerados" value={report.followups.decisionMakers} onChange={(n) => setFollowups({ decisionMakers: n })} />
+              <NumberField id="f-meet" label="Reuniões agendadas" value={report.followups.meetings} onChange={(n) => setFollowups({ meetings: n })} />
+            </div>
+            <RateRow items={[["Decisor", fRates.decisionMaker], ["Reunião", fRates.meeting]]} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 6. Resultado do dia */}
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-sm">Resultado do dia</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <NumberField id="o-r1" label="R1 realizadas (canal Ligações)" value={report.calls.r1} onChange={(n) => setCalls({ r1: n })} />
+            <NumberField id="o-sales" label="Vendas fechadas" value={report.outcome.sales} onChange={(n) => setOutcome({ sales: n })} />
+            <NumberField id="o-rev" label="Receita coletada (R$)" step="0.01" value={report.outcome.revenue} onChange={(n) => setOutcome({ revenue: n })} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 7 + 8. Contexto e resumo lado a lado */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Contexto do dia</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="space-y-1 min-w-0">
+                <Label htmlFor="x-hour" className="text-xs text-muted-foreground">Melhor horário para conexões</Label>
+                <Input id="x-hour" value={report.context.bestHour} onChange={(e) => setContext({ bestHour: e.target.value })} className="h-9" placeholder="ex.: 9h–11h" />
+              </div>
+              <div className="space-y-1 min-w-0">
+                <Label htmlFor="x-diff" className="text-xs text-muted-foreground">Principal dificuldade</Label>
+                <Select value={report.context.difficulty || undefined} onValueChange={(v) => setContext({ difficulty: v })}>
+                  <SelectTrigger id="x-diff" className="h-9"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectContent>
+                    {DIFFICULTY_OPTIONS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1 min-w-0">
+                <Label htmlFor="x-goal" className="text-xs text-muted-foreground">Meta batida?</Label>
+                <Select
+                  value={report.context.goalHit === null ? undefined : report.context.goalHit ? "sim" : "nao"}
+                  onValueChange={(v) => setContext({ goalHit: v === "sim" })}
+                >
+                  <SelectTrigger id="x-goal" className="h-9"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="x-note" className="text-xs text-muted-foreground">
+                {report.context.difficulty === "Outro" ? "Descreva a dificuldade" : "Explicação breve da dificuldade"}
+              </Label>
+              <Textarea id="x-note" rows={2} value={report.context.difficultyNote} onChange={(e) => setContext({ difficultyNote: e.target.value })} />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="x-obj" className="text-xs text-muted-foreground">Principal objeção recebida</Label>
+                <Input id="x-obj" value={report.context.objection} onChange={(e) => setContext({ objection: e.target.value })} className="h-9" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="x-learn" className="text-xs text-muted-foreground">Aprendizado do dia</Label>
+                <Input id="x-learn" value={report.context.learning} onChange={(e) => setContext({ learning: e.target.value })} className="h-9" />
+              </div>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-sm">Resumo instantâneo</CardTitle></CardHeader>
+          <CardContent>
+            <dl className="text-sm divide-y divide-border/40">
+              {([
+                ["Reuniões agendadas", String(summary.meetingsScheduled)],
+                ["Meta de reuniões", summary.meetingsGoal === null ? "—" : String(summary.meetingsGoal)],
+                ["Reuniões por hora", summary.meetingsPerHour === null ? "—" : String(summary.meetingsPerHour)],
+                ["Tempo prospectando", fmtTime(summary.minutes)],
+                ["Canais utilizados", summary.channels.length ? summary.channels.join(", ") : "—"],
+                ["Meta batida", summary.goalHit === null ? "—" : summary.goalHit ? "Sim" : "Não"],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between gap-2 py-2">
+                  <dt className="text-xs text-muted-foreground">{k}</dt>
+                  <dd className="font-medium text-right">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* IA opcional */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Análise com IA (opcional)</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Análise com IA (opcional)</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-xs text-muted-foreground">
-            Opcional e sob demanda: nada é enviado à IA até você clicar. O envio contém apenas números
-            agregados do dia e o texto que você digitou — nunca leads, telefones, interações ou transcrições.
+            Nada é enviado à IA até você clicar. O envio contém apenas os números e textos que você digitou.
           </p>
-          {!saved && (
-            <p className="text-xs text-muted-foreground">
-              Salve o fechamento antes de gerar a análise opcional
-            </p>
+          {status !== "saved" && (
+            <p className="text-xs text-muted-foreground">Salve o fechamento antes de gerar a análise opcional</p>
           )}
-          <Button variant="outline" onClick={handleAi} disabled={aiLoading || !saved}>
+          <Button variant="outline" onClick={handleAi} disabled={aiLoading || status !== "saved"}>
             {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
             {ai ? "Regenerar análise com IA" : "Gerar análise com IA (opcional)"}
           </Button>
@@ -332,34 +343,61 @@ export default function MetricasDiarias() {
         </CardContent>
       </Card>
 
-      {/* Histórico */}
+      {/* 10. Histórico */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Fechamentos anteriores</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-sm">Histórico</CardTitle>
+            <div className="flex gap-1">
+              <Button size="sm" variant={scope === "week" ? "secondary" : "ghost"} onClick={() => setScope("week")}>Esta semana</Button>
+              <Button size="sm" variant={scope === "month" ? "secondary" : "ghost"} onClick={() => setScope("month")}>Este mês</Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {history.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum fechamento salvo ainda.</p>
+          {filtered.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum fechamento salvo neste período.</p>
           ) : (
-            <ul className="divide-y divide-border/40">
-              {history.slice(0, 30).map((r) => (
-                <li key={r.date}>
-                  <button
-                    type="button"
-                    onClick={() => setDate(r.date)}
-                    className="w-full flex flex-wrap items-center justify-between gap-2 py-2 text-left text-sm hover:bg-muted/40 rounded px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <span className="font-medium">{r.date}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {r.auto.callsConfirmed} ligações confirmadas · {r.results.meetingsScheduled} reuniões · {r.results.sales} vendas
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-x-auto -mx-2 px-2">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted-foreground">
+                    {["Data", "Ligações", "Conexões", "Decisores", "R1", "Reuniões", "Vendas", "Receita", "Tempo", "Avaliação"].map((h) => (
+                      <th key={h} className="py-2 pr-3 font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((r) => {
+                    const meetings = (r.blasts.meetings ?? 0) + (r.followups.meetings ?? 0) + (r.calls.r1 ?? 0);
+                    const dash = (v: NumField) => (v === null ? "—" : String(v));
+                    return (
+                      <tr key={r.date} className="border-t border-border/40 hover:bg-muted/40">
+                        <td className="py-2 pr-3">
+                          <button type="button" onClick={() => setDate(r.date)}
+                            className="font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded">
+                            {r.date}
+                          </button>
+                        </td>
+                        <td className="py-2 pr-3">{dash(r.calls.calls)}</td>
+                        <td className="py-2 pr-3">{dash(r.calls.connections)}</td>
+                        <td className="py-2 pr-3">{dash(r.calls.decisionMakers)}</td>
+                        <td className="py-2 pr-3">{dash(r.calls.r1)}</td>
+                        <td className="py-2 pr-3">{meetings}</td>
+                        <td className="py-2 pr-3">{dash(r.outcome.sales)}</td>
+                        <td className="py-2 pr-3">{r.outcome.revenue === null ? "—" : r.outcome.revenue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                        <td className="py-2 pr-3">{fmtTime(totalMinutes(r.general))}</td>
+                        <td className="py-2 pr-3">{r.context.goalHit === null ? "—" : r.context.goalHit ? "Meta batida" : "Meta não batida"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>
+      <p className="sr-only">{minutes ?? 0}</p>
     </div>
   );
 }
