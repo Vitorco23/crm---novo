@@ -233,7 +233,7 @@ function EssentialMetrics({ filter, custom }: { filter: Filter; custom?: CustomR
         icon={Phone} 
         label="Ligações" 
         value={activity.byChannel.call} 
-        description="Registradas pelo sistema"
+        description={`${activity.confirmedByChannel.call} confirmada(s) · ${activity.estimatedByChannel.call} estimada(s)`}
       />
       <MetricCard 
         icon={CalendarCheck} 
