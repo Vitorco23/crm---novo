@@ -9,7 +9,8 @@ import {
   FlaskConical, 
   ChevronRight,
   LayoutDashboard,
-  Sparkles
+  Sparkles,
+  BarChart3
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
 
@@ -33,6 +34,13 @@ const CATEGORIES = [
     icon: Compass, 
     path: "/central",
     description: "Comando operacional e prioridades"
+  },
+  { 
+    id: "metricas", 
+    label: "Métricas", 
+    icon: BarChart3, 
+    path: "/inteligencia/metricas",
+    description: "Fechamento diário da operação"
   },
   { 
     id: "memoria", 

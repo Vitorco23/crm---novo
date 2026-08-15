@@ -51,6 +51,7 @@ const SCOPED_KEYS = [
   "p21_diretor_ia_history",
   "p21_scripts",
   "p21_activity_ledger",
+  "p21_daily_metrics_reports",
 ];
 
 
