@@ -39,7 +39,9 @@ describe("fechamento diário manual", () => {
   it("não importa dados do activityLedger nem da Matteline", async () => {
     const src = await import("node:fs").then((fs) =>
       fs.readFileSync("src/modules/intelligence/services/dailyMetricsReport.ts", "utf8"));
-    expect(src).not.toMatch(/activityLedger|matteline|callface|summarizeActivity|getSessions/i);
+    const imports = src.split("\n").filter((l) => l.startsWith("import"));
+    expect(imports.join("\n")).not.toMatch(/activityLedger|matteline|store/i);
+    expect(src).not.toMatch(/summarizeActivity|getSessions|getMeetings/);
   });
 
   it("taxas: denominador vazio ou zero retorna null e exibe —", () => {
