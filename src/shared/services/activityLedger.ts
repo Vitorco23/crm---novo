@@ -1,11 +1,30 @@
 // ===== Activity Ledger =====
-// Registro automático (estimado) das atividades comerciais do dia.
-// Alimentado pelo eventWiring e pela drenagem da CallFace/Matteline.
+// Registro das atividades comerciais e reconciliação determinística de
+// duplicidades.
 //
-// Regra central: cada atividade é identificada por `lead + canal + janela de
-// tempo`. Duas ações do mesmo canal no mesmo lead dentro da janela contam UMA
-// vez. Se chega uma fonte mais confiável dentro da janela, o registro é
-// promovido (a fonte é atualizada) em vez de duplicar.
+// Causa-raiz do problema histórico (≈60 ligações reais viravam ≈200):
+// a MESMA ligação era gravada até 4 vezes — inbound Matteline/CallFace,
+// movimentação de card, conclusão de tentativa e interação manual — e a
+// deduplicação acontecia apenas no momento da escrita, com janela fixa de
+// 60 min e promoção entre canais (que também fundia ligações reais distintas).
+//
+// Nova arquitetura:
+//  • ESCRITA é crua e idempotente: guardamos o evento como veio, sem promoções.
+//    A única rejeição na escrita é a identidade primária (`externalKey`) e a
+//    movimentação de card no canal "call" (nunca é ligação — regra 4).
+//  • LEITURA reconcilia: `summarizeActivity` aplica a regra canônica sobre os
+//    eventos do período, inclusive sobre registros legados já persistidos,
+//    sem apagar nada e sem migração de banco.
+//
+// Regra canônica de ligação:
+//  1. Fonte canônica/CONFIRMADA = inbound Matteline/CallFace (`source: callface`),
+//     identidade primária `externalKey` (`inbound:<row.id>`), fallback `id`.
+//     Dois inbounds distintos = duas ligações, mesmo no mesmo minuto.
+//  2. Registro manual / tentativa concluída / nota = ESTIMADO. Só conta quando
+//     não existe ligação confirmada correlacionável (mesmo lead, janela de
+//     correlação) e não colide com outro estimado do mesmo lead na janela curta.
+//  3. Movimentação de card nunca conta como ligação.
+//  4. Reuniões são independentes e nunca deduplicadas contra ligações.
 
 import { uload, usave } from "@/shared/services/userStorage";
 
@@ -31,27 +50,26 @@ export interface ActivityEvent {
   leadId?: string;
   channel: ActivityChannel;
   source: ActivitySource;
-  /** Chave estável opcional (ex.: id da linha da fila da CallFace). */
+  /** Identidade primária quando existe (ex.: `inbound:<row.id>` da CallFace). */
   externalKey?: string;
 }
 
 const KEY = "p21_activity_ledger";
 const MAX_ENTRIES = 20000;
-export const DEDUPE_WINDOW_MS = 60 * 60 * 1000; // 60 minutos
 
-// Prioridade: maior número vence (fonte mais confiável).
-const SOURCE_PRIORITY: Record<ActivitySource, number> = {
-  callface: 5,
-  interaction: 4,
-  meeting: 4,
-  attempt: 3,
-  note: 2,
-  movement: 1,
-};
+/** Janela usada apenas como fallback de correlação (confirmado x estimado). */
+export const CORRELATION_WINDOW_MS = 60 * 60 * 1000; // 60 min
+/** Janela curta para colapsar registros estimados redundantes da mesma ação. */
+export const ESTIMATED_MERGE_WINDOW_MS = 15 * 60 * 1000; // 15 min
+/** Guarda contra double-submit exato na escrita. */
+const WRITE_ECHO_WINDOW_MS = 5 * 1000;
 
-// Fontes inferidas pelo sistema (baixa confiança) x fontes explícitas do usuário/CallFace.
-const INFERRED_SOURCES: ActivitySource[] = ["movement", "note"];
-const isExplicit = (s: ActivitySource) => !INFERRED_SOURCES.includes(s);
+/** Fontes que comprovam a atividade (confirmado). Para "call", só CallFace. */
+function isConfirmed(e: Pick<ActivityEvent, "channel" | "source">): boolean {
+  if (e.channel === "call") return e.source === "callface";
+  if (e.channel === "meeting") return e.source === "meeting" || e.source === "interaction";
+  return e.source === "callface" || e.source === "interaction";
+}
 
 export const CHANNEL_LABELS: Record<ActivityChannel, string> = {
   call: "Ligações",
@@ -101,71 +119,33 @@ export interface RecordInput {
 }
 
 /**
- * Grava uma atividade aplicando dedupe por lead+canal+janela e promoção de
- * fonte. Retorna `true` quando um novo registro foi criado.
+ * Grava uma atividade crua. A deduplicação comercial acontece na leitura
+ * (`summarizeActivity`). Retorna `true` quando um novo registro foi criado.
  */
 export function recordActivity(input: RecordInput): boolean {
   const at = input.at ?? new Date().toISOString();
   const t = new Date(at).getTime();
   if (isNaN(t)) return false;
 
+  // Regra 4: movimentação de card nunca é ligação.
+  if (input.channel === "call" && input.source === "movement") return false;
+
   const all = getActivityLedger();
 
-  // Idempotência por chave externa (ex.: linha da fila da CallFace).
+  // Identidade primária: reprocessar o mesmo inbound não cria nada novo.
   if (input.externalKey && all.some((e) => e.externalKey === input.externalKey)) {
     return false;
   }
 
-  const inWindow = (e: ActivityEvent) =>
-    !!e.leadId &&
-    (e.leadId || "") === (input.leadId || "") &&
-    Math.abs(new Date(e.at).getTime() - t) < DEDUPE_WINDOW_MS;
-
-  // ===== Prioridade entre canais =====
-  // CallFace / registro manual > movimentação inferida.
-  if (input.leadId) {
-    if (isExplicit(input.source)) {
-      // Um registro explícito absorve um registro inferido do mesmo lead,
-      // mesmo que o canal seja diferente (ex.: movi o card e depois registrei WhatsApp).
-      const inferredIdx = all.findIndex((e) => inWindow(e) && !isExplicit(e.source));
-      if (inferredIdx >= 0) {
-        all[inferredIdx] = {
-          ...all[inferredIdx],
-          channel: input.channel,
-          source: input.source,
-          at,
-          externalKey: input.externalKey ?? all[inferredIdx].externalKey,
-        };
-        save(all);
-        return false;
-      }
-    } else {
-      // Movimentação/nota não cria nada se já existe ação explícita na janela.
-      if (all.some((e) => inWindow(e) && isExplicit(e.source))) return false;
-    }
-  }
-
-  // Procura registro do mesmo lead + canal dentro da janela.
-  const idx = all.findIndex((e) => {
-    if (e.channel !== input.channel) return false;
-    if ((e.leadId || "") !== (input.leadId || "")) return false;
-    if (!e.leadId) return false; // sem lead não há como correlacionar
-    return Math.abs(new Date(e.at).getTime() - t) < DEDUPE_WINDOW_MS;
-  });
-
-  if (idx >= 0) {
-    const existing = all[idx];
-    if (SOURCE_PRIORITY[input.source] > SOURCE_PRIORITY[existing.source]) {
-      all[idx] = {
-        ...existing,
-        source: input.source,
-        at,
-        externalKey: input.externalKey ?? existing.externalKey,
-      };
-      save(all);
-    }
-    return false;
-  }
+  // Eco de escrita (mesmo lead/canal/fonte em poucos segundos).
+  const echo = all.some(
+    (e) =>
+      e.channel === input.channel &&
+      e.source === input.source &&
+      (e.leadId || "") === (input.leadId || "") &&
+      Math.abs(new Date(e.at).getTime() - t) < WRITE_ECHO_WINDOW_MS
+  );
+  if (echo) return false;
 
   all.push({
     id: crypto.randomUUID(),
@@ -181,29 +161,110 @@ export function recordActivity(input: RecordInput): boolean {
 
 export interface ActivitySummary {
   total: number;
+  /** Total após reconciliação (confirmado + estimado). */
   byChannel: Record<ActivityChannel, number>;
+  /** Comprovado por fonte canônica (CallFace / registro explícito). */
+  confirmedByChannel: Record<ActivityChannel, number>;
+  /** Inferido a partir de ações no CRM (tentativa, nota, movimentação). */
+  estimatedByChannel: Record<ActivityChannel, number>;
   bySource: Record<ActivityChannel, Partial<Record<ActivitySource, number>>>;
+  totalConfirmed: number;
+  totalEstimated: number;
 }
 
 function emptyByChannel(): Record<ActivityChannel, number> {
   return { call: 0, message: 0, email: 0, followup: 0, meeting: 0, other: 0 };
 }
 
+/**
+ * Aplica a regra canônica sobre um conjunto de eventos e devolve apenas os
+ * registros que representam atividades reais distintas.
+ */
+export function reconcileActivity(events: ActivityEvent[]): ActivityEvent[] {
+  // Identidade primária: mesmo externalKey = mesma atividade (dados legados).
+  const seenKeys = new Set<string>();
+  const unique = events.filter((e) => {
+    if (!e.externalKey) return true;
+    if (seenKeys.has(e.externalKey)) return false;
+    seenKeys.add(e.externalKey);
+    return true;
+  });
+
+  const sorted = [...unique].sort(
+    (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()
+  );
+
+  // Regra 4 aplicada também em leitura, para registros legados.
+  const eligible = sorted.filter((e) => !(e.channel === "call" && e.source === "movement"));
+
+  const confirmed = eligible.filter(isConfirmed);
+  const accepted: ActivityEvent[] = [...confirmed];
+
+  for (const e of eligible) {
+    if (isConfirmed(e)) continue;
+    const t = new Date(e.at).getTime();
+    if (isNaN(t)) continue;
+
+    if (e.leadId) {
+      // Estimado é suprimido por atividade confirmada correlacionável.
+      const hasConfirmed = confirmed.some(
+        (c) =>
+          c.channel === e.channel &&
+          c.leadId === e.leadId &&
+          Math.abs(new Date(c.at).getTime() - t) <= CORRELATION_WINDOW_MS
+      );
+      if (hasConfirmed) continue;
+
+      // Estimados redundantes da mesma ação (tentativa + nota + movimentação).
+      const dupEstimated = accepted.some(
+        (a) =>
+          !isConfirmed(a) &&
+          a.channel === e.channel &&
+          a.leadId === e.leadId &&
+          Math.abs(new Date(a.at).getTime() - t) <= ESTIMATED_MERGE_WINDOW_MS
+      );
+      if (dupEstimated) continue;
+    }
+
+    accepted.push(e);
+  }
+
+  return accepted.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+}
+
 export function summarizeActivity(from: Date, to: Date): ActivitySummary {
   const a = from.getTime();
   const b = to.getTime();
+
+  const inRange = getActivityLedger().filter((e) => {
+    const t = new Date(e.at).getTime();
+    return !isNaN(t) && t >= a && t <= b;
+  });
+
+  const events = reconcileActivity(inRange);
+
   const byChannel = emptyByChannel();
+  const confirmedByChannel = emptyByChannel();
+  const estimatedByChannel = emptyByChannel();
   const bySource = {
     call: {}, message: {}, email: {}, followup: {}, meeting: {}, other: {},
   } as ActivitySummary["bySource"];
   let total = 0;
+  let totalConfirmed = 0;
+  let totalEstimated = 0;
 
-  for (const e of getActivityLedger()) {
-    const t = new Date(e.at).getTime();
-    if (isNaN(t) || t < a || t > b) continue;
-    byChannel[e.channel] = (byChannel[e.channel] || 0) + 1;
+  for (const e of events) {
+    byChannel[e.channel] += 1;
+    if (isConfirmed(e)) {
+      confirmedByChannel[e.channel] += 1;
+      totalConfirmed++;
+    } else {
+      estimatedByChannel[e.channel] += 1;
+      totalEstimated++;
+    }
     bySource[e.channel][e.source] = (bySource[e.channel][e.source] || 0) + 1;
     total++;
   }
-  return { total, byChannel, bySource };
+
+  return { total, byChannel, confirmedByChannel, estimatedByChannel, bySource, totalConfirmed, totalEstimated };
 }
