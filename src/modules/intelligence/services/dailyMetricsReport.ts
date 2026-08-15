@@ -19,12 +19,8 @@ export interface AutoMetricsSnapshot {
   pomodoros: number;
   focusMinutes: number;
   callsConfirmed: number;
-  callsEstimated: number;
   messagesConfirmed: number;
-  messagesEstimated: number;
-  followupsEstimated: number;
   totalConfirmed: number;
-  totalEstimated: number;
   meetings: number;
   /** Última ligação canônica CallFace/Matteline registrada (ISO) ou null. */
   lastCallfaceAt: string | null;
@@ -130,12 +126,8 @@ export function buildAutoMetrics(dateKey: string): AutoMetricsSnapshot {
     pomodoros: sessions.length,
     focusMinutes,
     callsConfirmed: s.confirmedByChannel.call,
-    callsEstimated: s.estimatedByChannel.call,
     messagesConfirmed: s.confirmedByChannel.message,
-    messagesEstimated: s.estimatedByChannel.message,
-    followupsEstimated: s.estimatedByChannel.followup + s.confirmedByChannel.followup,
     totalConfirmed: s.totalConfirmed,
-    totalEstimated: s.totalEstimated,
     meetings,
     lastCallfaceAt: lastCallface ?? null,
   };
@@ -201,17 +193,15 @@ export function buildRuleDiagnosis(
   const rates = computeRates(report);
   const warnings: string[] = [];
 
+  const nd = "Dado não informado ou sem fonte confirmada.";
   const summary =
-    `${a.callsConfirmed} ligação(ões) confirmada(s) via Matteline/CallFace, ` +
-    `${a.callsEstimated} estimada(s) por registro no CRM. ` +
-    `${a.messagesConfirmed} mensagem(ns) confirmada(s) e ${a.messagesEstimated} ação(ões) de mensagem estimada(s). ` +
-    `${a.meetings} reunião(ões) na agenda, ${a.pomodoros} pomodoro(s) e ${a.focusMinutes} min de foco.`;
+    `${a.callsConfirmed} ligação(ões) confirmada(s) via Matteline/CallFace. ` +
+    `${a.messagesConfirmed > 0 ? `${a.messagesConfirmed} mensagem(ns) confirmada(s).` : `Mensagens: ${nd}`} ` +
+    `${report.manual.externalMessages + report.manual.externalFollowups} contato(s) informado(s) manualmente. ` +
+    `${a.meetings} reunião(ões) registrada(s), ${a.pomodoros} pomodoro(s) e ${a.focusMinutes} min de foco.`;
 
   if (a.callsConfirmed === 0) {
     warnings.push("Sem ligações confirmadas pela Matteline/CallFace neste dia: as taxas de conexão não têm base confiável.");
-  }
-  if (a.callsEstimated > a.callsConfirmed && a.callsEstimated > 0) {
-    warnings.push("Volume estimado maior que o confirmado — parte da operação não passou pelo discador.");
   }
   if (res.decisionMakerConnections === 0) warnings.push("Sem conexões com decisor registradas: taxa de reunião sem denominador.");
   if (res.meetingsScheduled === 0) warnings.push("Sem reuniões marcadas: taxa de proposta sem denominador.");

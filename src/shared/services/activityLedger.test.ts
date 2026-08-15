@@ -27,7 +27,6 @@ describe("activityLedger — regra canônica de ligação", () => {
     const s = sum();
     expect(s.byChannel.call).toBe(1);
     expect(s.confirmedByChannel.call).toBe(1);
-    expect(s.estimatedByChannel.call).toBe(0);
   });
 
   it("B) dois inbound IDs diferentes para o mesmo lead em menos de 60 min = 2 ligações", () => {
@@ -38,12 +37,11 @@ describe("activityLedger — regra canônica de ligação", () => {
     expect(s.confirmedByChannel.call).toBe(2);
   });
 
-  it("C) tentativa manual sem inbound = 1 ligação estimada", () => {
+  it("C) tentativa manual concluída não cria ligação nem contato estimado", () => {
     recordActivity({ leadId: "L1", channel: "call", source: "attempt", at: at(0) });
     const s = sum();
-    expect(s.byChannel.call).toBe(1);
-    expect(s.confirmedByChannel.call).toBe(0);
-    expect(s.estimatedByChannel.call).toBe(1);
+    expect(s.byChannel.call).toBe(0);
+    expect(s.total).toBe(0);
   });
 
   it("D) movimentação isolada = 0 ligações", () => {
@@ -61,12 +59,11 @@ describe("activityLedger — regra canônica de ligação", () => {
     expect(s.byChannel.call).toBe(1);
   });
 
-  it("F) WhatsApp estimado não aparece como disparo confirmado", () => {
+  it("F) clique em WhatsApp (movimentação) não vira mensagem nem disparo confirmado", () => {
     recordActivity({ leadId: "L1", channel: "message", source: "movement", at: at(0) });
     const s = sum();
-    expect(s.byChannel.message).toBe(1);
-    expect(s.confirmedByChannel.message).toBe(0);
-    expect(s.estimatedByChannel.message).toBe(1);
+    expect(s.byChannel.message).toBe(0);
+    expect(s.totalConfirmed).toBe(0);
   });
 
   it("mensagem registrada manualmente é confirmada e reuniões são independentes", () => {

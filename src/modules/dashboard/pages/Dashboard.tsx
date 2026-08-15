@@ -21,7 +21,7 @@ import {
   ChevronDown, ChevronUp, BarChart3, TrendingUp, TrendingDown, Repeat, Wallet
 } from "lucide-react";
 import StrategicIntelligencePanel, { type PeriodKey } from "@/modules/dashboard/components/StrategicIntelligencePanel";
-import EstimatedActivityCard from "@/modules/dashboard/components/EstimatedActivityCard";
+import ConfirmedActivityCard from "@/modules/dashboard/components/ConfirmedActivityCard";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
 import { buildDashboardSheets } from "@/modules/pipeline/services/exportBuilders";
 import { computeEfficiencyRatio, countOutcomes } from "@/modules/dashboard/services/efficiency";
@@ -188,7 +188,7 @@ export default function Dashboard() {
               <OperationalAnalysis filter={filter} custom={custom} />
             </div>
             <div className="space-y-6">
-              <EstimatedActivityPanel filter={filter} custom={custom} />
+              <ConfirmedActivityPanel filter={filter} custom={custom} />
               <PomodoroRankingPanel filter={filter} custom={custom} />
             </div>
           </div>
@@ -233,7 +233,7 @@ function EssentialMetrics({ filter, custom }: { filter: Filter; custom?: CustomR
         icon={Phone} 
         label="Ligações" 
         value={activity.byChannel.call} 
-        description={`${activity.confirmedByChannel.call} confirmada(s) · ${activity.estimatedByChannel.call} estimada(s)`}
+        description={`${activity.confirmedByChannel.call} confirmada(s) por fonte real`}
       />
       <MetricCard 
         icon={CalendarCheck} 
@@ -411,14 +411,14 @@ function OperationalAnalysis({ filter, custom }: { filter: Filter; custom?: Cust
     );
 }
 
-function EstimatedActivityPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
+function ConfirmedActivityPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
     const now = new Date();
     let from = new Date(now); from.setHours(0, 0, 0, 0);
     let to = new Date(now); to.setHours(23, 59, 59, 999);
     if (filter === "week") { from = new Date(now); from.setDate(now.getDate() - 6); from.setHours(0, 0, 0, 0); }
     if (filter === "month") { from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0); }
     if (filter === "custom" && custom) { from = custom.start; to = custom.end; }
-    return <EstimatedActivityCard from={from} to={to} periodLabel={filterLabels[filter]} />;
+    return <ConfirmedActivityCard from={from} to={to} periodLabel={filterLabels[filter]} />;
 }
 
 function PomodoroRankingPanel({ filter, custom }: { filter: Filter; custom?: CustomRange }) {
