@@ -40,6 +40,9 @@ import {
   type OutcomeInputs,
 } from "@/modules/intelligence/services/dailyMetricsReport";
 import { requestDailyAiAnalysis } from "@/modules/intelligence/services/dailyMetricsAI";
+import { buildDiagnosis } from "@/modules/intelligence/services/dailyDiagnosis";
+import DiagnosticoDiarioPanel, { RatingBadge } from "@/modules/intelligence/components/DiagnosticoDiarioPanel";
+import AnaliseIAPanel from "@/modules/intelligence/components/AnaliseIAPanel";
 
 /** Campo numérico que aceita vazio (null) e nunca coage para 0. */
 function NumberField({
