@@ -121,6 +121,8 @@ export default function MetricasDiarias() {
   const bRates = useMemo(() => blastsRates(report.blasts), [report.blasts]);
   const fRates = useMemo(() => followupsRates(report.followups), [report.followups]);
   const summary = useMemo(() => buildInstantSummary(report), [report]);
+  // Diagnóstico por regras — puramente local, zero chamadas de IA.
+  const diagnosis = useMemo(() => buildDiagnosis(report, history), [report, history]);
 
   const handleSave = useCallback(() => {
     const saved = saveReport({ ...report, ai });
@@ -137,18 +139,22 @@ export default function MetricasDiarias() {
       return;
     }
     setAiLoading(true);
+    setAiError(null);
     try {
-      const analysis = await requestDailyAiAnalysis(buildAiPayload(persisted));
+      const analysis = await requestDailyAiAnalysis(buildAiPayload(persisted, listReports()));
       saveReport({ ...persisted, ai: analysis });
       setAi(analysis);
       setHistory(listReports());
       toast({ title: "Análise por IA gerada" });
     } catch (e) {
-      toast({ title: "Não foi possível gerar a análise por IA", description: (e as Error).message, variant: "destructive" });
+      const msg = (e as Error).message;
+      setAiError(msg);
+      toast({ title: "Não foi possível gerar a análise por IA", description: msg, variant: "destructive" });
     } finally {
       setAiLoading(false);
     }
   }, [date, status]);
+
 
   const filtered = useMemo(() => filterHistory(history, scope), [history, scope]);
 
