@@ -318,30 +318,18 @@ export default function MetricasDiarias() {
         </Card>
       </div>
 
-      {/* IA opcional */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Análise com IA (opcional)</CardTitle></CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <p className="text-xs text-muted-foreground">
-            Nada é enviado à IA até você clicar. O envio contém apenas os números e textos que você digitou.
-          </p>
-          {status !== "saved" && (
-            <p className="text-xs text-muted-foreground">Salve o fechamento antes de gerar a análise opcional</p>
-          )}
-          <Button variant="outline" onClick={handleAi} disabled={aiLoading || status !== "saved"}>
-            {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            {ai ? "Regenerar análise com IA" : "Gerar análise com IA (opcional)"}
-          </Button>
-          {ai && (
-            <div className="rounded-md border border-border/50 p-3 space-y-2">
-              <p className="whitespace-pre-wrap text-foreground">{ai.text}</p>
-              <p className="text-[11px] text-muted-foreground">
-                Gerado em {new Date(ai.generatedAt).toLocaleString("pt-BR")}{ai.model ? ` · ${ai.model}` : ""}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Sprint 2 — Diagnóstico modular por regras */}
+      <DiagnosticoDiarioPanel diagnosis={diagnosis} />
+
+      {/* Sprint 2 — IA opcional, apenas sob clique e após salvar */}
+      <AnaliseIAPanel
+        ai={ai}
+        loading={aiLoading}
+        canRun={status === "saved"}
+        error={aiError}
+        onRun={handleAi}
+      />
+
 
       {/* 10. Histórico */}
       <Card>
