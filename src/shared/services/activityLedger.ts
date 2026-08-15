@@ -1,30 +1,17 @@
 // ===== Activity Ledger =====
-// Registro das atividades comerciais e reconciliação determinística de
-// duplicidades.
+// Armazena APENAS atividades comerciais confirmadas por uma fonte real e
+// identificável. O CRM não estima mais contatos.
 //
-// Causa-raiz do problema histórico (≈60 ligações reais viravam ≈200):
-// a MESMA ligação era gravada até 4 vezes — inbound Matteline/CallFace,
-// movimentação de card, conclusão de tentativa e interação manual — e a
-// deduplicação acontecia apenas no momento da escrita, com janela fixa de
-// 60 min e promoção entre canais (que também fundia ligações reais distintas).
-//
-// Nova arquitetura:
-//  • ESCRITA é crua e idempotente: guardamos o evento como veio, sem promoções.
-//    A única rejeição na escrita é a identidade primária (`externalKey`) e a
-//    movimentação de card no canal "call" (nunca é ligação — regra 4).
-//  • LEITURA reconcilia: `summarizeActivity` aplica a regra canônica sobre os
-//    eventos do período, inclusive sobre registros legados já persistidos,
-//    sem apagar nada e sem migração de banco.
-//
-// Regra canônica de ligação:
-//  1. Fonte canônica/CONFIRMADA = inbound Matteline/CallFace (`source: callface`),
-//     identidade primária `externalKey` (`inbound:<row.id>`), fallback `id`.
-//     Dois inbounds distintos = duas ligações, mesmo no mesmo minuto.
-//  2. Registro manual / tentativa concluída / nota = ESTIMADO. Só conta quando
-//     não existe ligação confirmada correlacionável (mesmo lead, janela de
-//     correlação) e não colide com outro estimado do mesmo lead na janela curta.
-//  3. Movimentação de card nunca conta como ligação.
-//  4. Reuniões são independentes e nunca deduplicadas contra ligações.
+// Regras:
+//  1. Fonte canônica de ligação = inbound Matteline/CallFace (`source: callface`),
+//     identidade primária `externalKey` (`inbound:<row.id>`).
+//     Dois inbounds distintos = duas ligações; o mesmo inbound reprocessado = uma.
+//  2. Interações registradas explicitamente pelo usuário e reuniões efetivamente
+//     registradas também são confirmadas.
+//  3. Fontes inferidas (movimentação de card, tentativa concluída, nota) são
+//     rejeitadas na escrita e ignoradas na leitura — permanecem nos tipos apenas
+//     por compatibilidade com registros legados já persistidos.
+
 
 import { uload, usave } from "@/shared/services/userStorage";
 
