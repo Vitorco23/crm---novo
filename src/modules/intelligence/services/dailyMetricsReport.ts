@@ -54,11 +54,28 @@ export interface ContextInputs {
   goalHit: boolean | null;
 }
 
+/** Sprint 2 — resposta estruturada e validada da IA (nunca markdown livre). */
+export interface AiStrength { title: string; evidence: string }
+export interface AiBottleneck { stage: string; evidence: string; interpretation: string }
+export interface AiNextAction { title: string; reason: string; suggestedTime?: string }
+
+export interface AiStructured {
+  executiveSummary: string;
+  strengths: AiStrength[];
+  bottlenecks: AiBottleneck[];
+  nextActions: AiNextAction[];
+  attentionPoint: string;
+}
+
 export interface AiAnalysis {
-  text: string;
+  /** Formato legado (texto livre) — mantido apenas para relatórios antigos. */
+  text?: string;
+  /** Formato Sprint 2 — módulos renderizados separadamente. */
+  data?: AiStructured;
   generatedAt: string;
   model?: string;
 }
+
 
 export interface DailyMetricsReport {
   date: string; // YYYY-MM-DD — identidade única por usuário+data
