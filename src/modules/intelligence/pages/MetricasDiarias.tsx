@@ -362,8 +362,8 @@ export default function MetricasDiarias() {
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="text-left text-xs text-muted-foreground">
-                    {["Data", "Ligações", "Conexões", "Decisores", "R1", "Reuniões", "Vendas", "Receita", "Tempo", "Avaliação"].map((h) => (
-                      <th key={h} className="py-2 pr-3 font-medium">{h}</th>
+                    {["Data", "Ligações", "Conexões", "Decisores", "R1", "Reuniões", "Vendas", "Receita", "Tempo", "Avaliação", ""].map((h, i) => (
+                      <th key={h || `col-${i}`} className="py-2 pr-3 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -371,6 +371,8 @@ export default function MetricasDiarias() {
                   {filtered.map((r) => {
                     const meetings = (r.blasts.meetings ?? 0) + (r.followups.meetings ?? 0) + (r.calls.r1 ?? 0);
                     const dash = (v: NumField) => (v === null ? "—" : String(v));
+                    // Avaliação por regras — não gera IA ao abrir relatórios antigos.
+                    const rowRating = ratingFromGoal(rate(meetings, r.general.meetingsGoal));
                     return (
                       <tr key={r.date} className="border-t border-border/40 hover:bg-muted/40">
                         <td className="py-2 pr-3">
@@ -387,10 +389,14 @@ export default function MetricasDiarias() {
                         <td className="py-2 pr-3">{dash(r.outcome.sales)}</td>
                         <td className="py-2 pr-3">{r.outcome.revenue === null ? "—" : r.outcome.revenue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
                         <td className="py-2 pr-3">{fmtTime(totalMinutes(r.general))}</td>
-                        <td className="py-2 pr-3">{r.context.goalHit === null ? "—" : r.context.goalHit ? "Meta batida" : "Meta não batida"}</td>
+                        <td className="py-2 pr-3"><RatingBadge rating={rowRating} /></td>
+                        <td className="py-2 pr-3">
+                          <Button size="sm" variant="ghost" onClick={() => setDate(r.date)}>Ver análise</Button>
+                        </td>
                       </tr>
                     );
                   })}
+
                 </tbody>
               </table>
             </div>
