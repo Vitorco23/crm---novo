@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import {
   Check, Clock, Compass, ExternalLink, Phone, Users, Target, FileText,
-  Flame, ListChecks, RotateCcw, Undo2, Plus,
+  Flame, ListChecks, RotateCcw, Undo2, Plus, BarChart3,
 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/shared/components/shell";
 import {
@@ -92,6 +92,9 @@ export default function MissaoDoDia() {
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm" className="gap-1">
               <Link to="/central"><Compass className="h-4 w-4" /> Central de Decisão</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+              <Link to="/inteligencia/metricas"><BarChart3 className="h-4 w-4" /> Fechar métricas do dia</Link>
             </Button>
             <Button variant="ghost" size="sm" className="gap-1" onClick={handleReset}>
               <RotateCcw className="h-4 w-4" /> Reiniciar missão

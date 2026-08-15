@@ -29,6 +29,7 @@ import Agenda from "@/modules/agenda/pages/Agenda";
 import MemoriaComercial from "@/modules/intelligence/pages/MemoriaComercial";
 import { lazy, Suspense } from "react";
 const Laboratorio = lazy(() => import("@/modules/laboratorio/pages/Laboratorio"));
+const MetricasDiarias = lazy(() => import("@/modules/intelligence/pages/MetricasDiarias"));
 const SaudeSistema = lazy(() => import("@/modules/configuracoes/pages/SaudeSistema"));
 
 
@@ -69,6 +70,13 @@ const App = () => (
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/lembretes" element={<Lembretes />} />
                         <Route path="/inteligencia" element={<IntelligenceShell title="Visão Geral" description="Consolidação da inteligência comercial"><InteligenciaComercial /></IntelligenceShell>} />
+                        <Route path="/inteligencia/metricas" element={
+                          <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Métricas…</div>}>
+                            <IntelligenceShell title="Métricas" description="Fechamento diário da operação comercial">
+                              <MetricasDiarias />
+                            </IntelligenceShell>
+                          </Suspense>
+                        } />
                         <Route path="/inteligencia/central" element={<Navigate to="/inteligencia" replace />} />
                         <Route path="/inteligencia/knowledge" element={<Navigate to="/inteligencia" replace />} />
                         <Route path="/central" element={<IntelligenceShell title="Decisão" description="Comando operacional e o que fazer agora"><CentralDecisao /></IntelligenceShell>} />
