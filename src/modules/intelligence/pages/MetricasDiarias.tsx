@@ -26,6 +26,7 @@ import {
   followupsRates,
   getReport,
   listReports,
+  rate,
   saveReport,
   toDateKey,
   totalMinutes,
