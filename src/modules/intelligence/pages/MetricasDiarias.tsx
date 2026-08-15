@@ -40,7 +40,7 @@ import {
   type OutcomeInputs,
 } from "@/modules/intelligence/services/dailyMetricsReport";
 import { requestDailyAiAnalysis } from "@/modules/intelligence/services/dailyMetricsAI";
-import { buildDiagnosis } from "@/modules/intelligence/services/dailyDiagnosis";
+import { buildDiagnosis, ratingFromGoal } from "@/modules/intelligence/services/dailyDiagnosis";
 import DiagnosticoDiarioPanel, { RatingBadge } from "@/modules/intelligence/components/DiagnosticoDiarioPanel";
 import AnaliseIAPanel from "@/modules/intelligence/components/AnaliseIAPanel";
 
