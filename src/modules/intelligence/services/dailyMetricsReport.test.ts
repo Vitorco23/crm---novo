@@ -75,7 +75,7 @@ describe("fechamento diário de métricas", () => {
     expect(d.suggestedGoals.length).toBeGreaterThan(0);
   });
 
-  it("8) métricas separam confirmado x estimado", () => {
+  it("8) métricas usam apenas fontes confirmadas", () => {
     const a = buildAutoMetrics("2026-08-12");
     expect(a.callsConfirmed).toBe(10);
     expect(a.messagesConfirmed).toBe(2);

@@ -9,7 +9,7 @@
 
 import { onAny, on } from "@/shared/services/eventBus";
 import { appendHistory } from "@/shared/services/history";
-import { recordActivity, channelFromLabel, type ActivitySource } from "@/shared/services/activityLedger";
+import { recordActivity, channelFromLabel } from "@/shared/services/activityLedger";
 import { extractMemoryFromLead } from "@/modules/intelligence/services/commercialMemory";
 import { getLeads } from "@/shared/services/store";
 
@@ -40,19 +40,9 @@ export function installEventWiring() {
   // Qualquer evento → broadcast leve para os observadores existentes.
   onAny(() => scheduleRefresh());
 
-  // ===== Ledger de atividade (dados estimados do dia) =====
-  const src = (ev: any, fallback: ActivitySource): ActivitySource =>
-    (ev?.payload?.activitySource as ActivitySource) || fallback;
-
-  on("LigacaoRegistrada", (ev: any) => {
-    if (!ev.payload?.leadId) return;
-    recordActivity({ leadId: ev.payload.leadId, channel: "call", source: src(ev, "movement") });
-  });
-
-  on("MensagemRegistrada", (ev: any) => {
-    if (!ev.payload?.leadId) return;
-    recordActivity({ leadId: ev.payload.leadId, channel: "message", source: src(ev, "movement") });
-  });
+  // ===== Ledger de atividade (somente fontes confirmadas) =====
+  // Eventos inferidos (movimentação de card, tentativa concluída, nota, clique
+  // em WhatsApp) NÃO alimentam mais nenhuma métrica comercial.
 
   on("InteracaoRegistrada", (ev: any) => {
     const { leadId, interactionType, date } = ev.payload || {};
