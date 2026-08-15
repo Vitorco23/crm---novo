@@ -71,20 +71,8 @@ const App = () => (
                         <Route path="/integracoes" element={<Integracoes />} />
                         <Route path="/lembretes" element={<Lembretes />} />
                         <Route path="/inteligencia" element={<IntelligenceShell title="Visão Geral" description="Consolidação da inteligência comercial"><InteligenciaComercial /></IntelligenceShell>} />
-                        <Route path="/inteligencia/central" element={
-                          <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Central de Inteligência…</div>}>
-                            <IntelligenceShell title="Conversar" description="Chat com especialistas de IA da Performance21">
-                              <CentralInteligencia />
-                            </IntelligenceShell>
-                          </Suspense>
-                        } />
-                        <Route path="/inteligencia/knowledge" element={
-                          <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando Knowledge Base…</div>}>
-                            <IntelligenceShell title="Conhecimento" description="Documentação oficial e metodologia RAG">
-                              <KnowledgeBase />
-                            </IntelligenceShell>
-                          </Suspense>
-                        } />
+                        <Route path="/inteligencia/central" element={<Navigate to="/inteligencia" replace />} />
+                        <Route path="/inteligencia/knowledge" element={<Navigate to="/inteligencia" replace />} />
                         <Route path="/central" element={<IntelligenceShell title="Decisão" description="Comando operacional e o que fazer agora"><CentralDecisao /></IntelligenceShell>} />
                         <Route path="/missao" element={<MissaoDoDia />} />
 
