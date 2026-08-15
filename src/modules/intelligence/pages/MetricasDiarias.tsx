@@ -26,6 +26,7 @@ import {
   followupsRates,
   getReport,
   listReports,
+  rate,
   saveReport,
   toDateKey,
   totalMinutes,
@@ -40,6 +41,9 @@ import {
   type OutcomeInputs,
 } from "@/modules/intelligence/services/dailyMetricsReport";
 import { requestDailyAiAnalysis } from "@/modules/intelligence/services/dailyMetricsAI";
+import { buildDiagnosis, ratingFromGoal } from "@/modules/intelligence/services/dailyDiagnosis";
+import DiagnosticoDiarioPanel, { RatingBadge } from "@/modules/intelligence/components/DiagnosticoDiarioPanel";
+import AnaliseIAPanel from "@/modules/intelligence/components/AnaliseIAPanel";
 
 /** Campo numérico que aceita vazio (null) e nunca coage para 0. */
 function NumberField({
@@ -91,13 +95,16 @@ export default function MetricasDiarias() {
   const [scope, setScope] = useState<"week" | "month">("week");
   const [ai, setAi] = useState<AiAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     const existing = getReport(date);
     setReport(existing ?? emptyReport(date));
     setAi(existing?.ai ?? null);
+    setAiError(null);
     setStatus(existing ? "saved" : "unsaved");
   }, [date]);
+
 
   const patch = useCallback(<K extends keyof DailyMetricsReport>(key: K, value: Partial<DailyMetricsReport[K]>) => {
     setReport((prev) => ({ ...prev, [key]: { ...(prev[key] as object), ...(value as object) } as DailyMetricsReport[K] }));
@@ -115,6 +122,8 @@ export default function MetricasDiarias() {
   const bRates = useMemo(() => blastsRates(report.blasts), [report.blasts]);
   const fRates = useMemo(() => followupsRates(report.followups), [report.followups]);
   const summary = useMemo(() => buildInstantSummary(report), [report]);
+  // Diagnóstico por regras — puramente local, zero chamadas de IA.
+  const diagnosis = useMemo(() => buildDiagnosis(report, history), [report, history]);
 
   const handleSave = useCallback(() => {
     const saved = saveReport({ ...report, ai });
@@ -131,18 +140,22 @@ export default function MetricasDiarias() {
       return;
     }
     setAiLoading(true);
+    setAiError(null);
     try {
-      const analysis = await requestDailyAiAnalysis(buildAiPayload(persisted));
+      const analysis = await requestDailyAiAnalysis(buildAiPayload(persisted, listReports()));
       saveReport({ ...persisted, ai: analysis });
       setAi(analysis);
       setHistory(listReports());
       toast({ title: "Análise por IA gerada" });
     } catch (e) {
-      toast({ title: "Não foi possível gerar a análise por IA", description: (e as Error).message, variant: "destructive" });
+      const msg = (e as Error).message;
+      setAiError(msg);
+      toast({ title: "Não foi possível gerar a análise por IA", description: msg, variant: "destructive" });
     } finally {
       setAiLoading(false);
     }
   }, [date, status]);
+
 
   const filtered = useMemo(() => filterHistory(history, scope), [history, scope]);
 
@@ -318,30 +331,18 @@ export default function MetricasDiarias() {
         </Card>
       </div>
 
-      {/* IA opcional */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Análise com IA (opcional)</CardTitle></CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <p className="text-xs text-muted-foreground">
-            Nada é enviado à IA até você clicar. O envio contém apenas os números e textos que você digitou.
-          </p>
-          {status !== "saved" && (
-            <p className="text-xs text-muted-foreground">Salve o fechamento antes de gerar a análise opcional</p>
-          )}
-          <Button variant="outline" onClick={handleAi} disabled={aiLoading || status !== "saved"}>
-            {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            {ai ? "Regenerar análise com IA" : "Gerar análise com IA (opcional)"}
-          </Button>
-          {ai && (
-            <div className="rounded-md border border-border/50 p-3 space-y-2">
-              <p className="whitespace-pre-wrap text-foreground">{ai.text}</p>
-              <p className="text-[11px] text-muted-foreground">
-                Gerado em {new Date(ai.generatedAt).toLocaleString("pt-BR")}{ai.model ? ` · ${ai.model}` : ""}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Sprint 2 — Diagnóstico modular por regras */}
+      <DiagnosticoDiarioPanel diagnosis={diagnosis} />
+
+      {/* Sprint 2 — IA opcional, apenas sob clique e após salvar */}
+      <AnaliseIAPanel
+        ai={ai}
+        loading={aiLoading}
+        canRun={status === "saved"}
+        error={aiError}
+        onRun={handleAi}
+      />
+
 
       {/* 10. Histórico */}
       <Card>
@@ -362,8 +363,8 @@ export default function MetricasDiarias() {
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="text-left text-xs text-muted-foreground">
-                    {["Data", "Ligações", "Conexões", "Decisores", "R1", "Reuniões", "Vendas", "Receita", "Tempo", "Avaliação"].map((h) => (
-                      <th key={h} className="py-2 pr-3 font-medium">{h}</th>
+                    {["Data", "Ligações", "Conexões", "Decisores", "R1", "Reuniões", "Vendas", "Receita", "Tempo", "Avaliação", ""].map((h, i) => (
+                      <th key={h || `col-${i}`} className="py-2 pr-3 font-medium">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -371,6 +372,8 @@ export default function MetricasDiarias() {
                   {filtered.map((r) => {
                     const meetings = (r.blasts.meetings ?? 0) + (r.followups.meetings ?? 0) + (r.calls.r1 ?? 0);
                     const dash = (v: NumField) => (v === null ? "—" : String(v));
+                    // Avaliação por regras — não gera IA ao abrir relatórios antigos.
+                    const rowRating = ratingFromGoal(rate(meetings, r.general.meetingsGoal));
                     return (
                       <tr key={r.date} className="border-t border-border/40 hover:bg-muted/40">
                         <td className="py-2 pr-3">
@@ -387,10 +390,14 @@ export default function MetricasDiarias() {
                         <td className="py-2 pr-3">{dash(r.outcome.sales)}</td>
                         <td className="py-2 pr-3">{r.outcome.revenue === null ? "—" : r.outcome.revenue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
                         <td className="py-2 pr-3">{fmtTime(totalMinutes(r.general))}</td>
-                        <td className="py-2 pr-3">{r.context.goalHit === null ? "—" : r.context.goalHit ? "Meta batida" : "Meta não batida"}</td>
+                        <td className="py-2 pr-3"><RatingBadge rating={rowRating} /></td>
+                        <td className="py-2 pr-3">
+                          <Button size="sm" variant="ghost" onClick={() => setDate(r.date)}>Ver análise</Button>
+                        </td>
                       </tr>
                     );
                   })}
+
                 </tbody>
               </table>
             </div>

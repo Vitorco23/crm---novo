@@ -135,11 +135,49 @@ describe("fechamento diário manual", () => {
     expect(aiSpy).not.toHaveBeenCalled();
   });
 
-  it("IA acontece exatamente uma vez por clique", async () => {
-    aiSpy.mockResolvedValue({ data: { text: "ok", model: "m", generatedAt: "2026-08-12T00:00:00Z" }, error: null });
+  const validAnalysis = {
+    executiveSummary: "Dia estável.",
+    strengths: [{ title: "Conexão", evidence: "20%" }],
+    bottlenecks: [{ stage: "R1", evidence: "10%", interpretation: "abaixo" }],
+    nextActions: [
+      { title: "a", reason: "r" },
+      { title: "b", reason: "r" },
+      { title: "c", reason: "r" },
+    ],
+    attentionPoint: "Base pequena.",
+  };
+
+  it("IA acontece exatamente uma vez por clique e retorna módulos estruturados", async () => {
+    aiSpy.mockResolvedValue({
+      data: { analysis: validAnalysis, model: "m", generatedAt: "2026-08-12T00:00:00Z" },
+      error: null,
+    });
     const { requestDailyAiAnalysis } = await import("./dailyMetricsAI");
     const out = await requestDailyAiAnalysis(buildAiPayload(make("2026-08-12")));
     expect(aiSpy).toHaveBeenCalledTimes(1);
-    expect(out.text).toBe("ok");
+    expect(out.data?.nextActions).toHaveLength(3);
+    expect(out.data?.executiveSummary).toBe("Dia estável.");
+  });
+
+  it("JSON inválido gera erro controlado, sem conteúdo quebrado", async () => {
+    aiSpy.mockResolvedValue({ data: { analysis: { executiveSummary: 1 } }, error: null });
+    const { requestDailyAiAnalysis } = await import("./dailyMetricsAI");
+    await expect(requestDailyAiAnalysis(buildAiPayload(make("2026-08-12")))).rejects.toThrow(/formato esperado/);
+  });
+
+  it("payload não contém informações proibidas", () => {
+    saveReport(make("2026-08-11"));
+    saveReport(make("2026-08-12", { calls: { calls: 20, connections: 5, decisionMakers: 3, r1: 1 } }));
+    const payload = buildAiPayload(getReport("2026-08-12")!, listReports());
+    expect(Object.keys(payload).sort()).toEqual(
+      ["blasts", "calls", "context", "date", "followups", "general", "last7", "outcome", "rates"],
+    );
+    const raw = JSON.stringify(payload).toLowerCase();
+    for (const forbidden of ["telefone", "phone", "lead", "pipeline", "transcri", "activityledger", "estimad"]) {
+      expect(raw).not.toContain(forbidden);
+    }
+    expect(payload.last7.fechamentos).toBe(2);
+    expect(payload.last7.calls).toBe(20);
   });
 });
+
