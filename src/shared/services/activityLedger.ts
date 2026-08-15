@@ -44,10 +44,6 @@ export interface ActivityEvent {
 const KEY = "p21_activity_ledger";
 const MAX_ENTRIES = 20000;
 
-/** Janela usada apenas como fallback de correlação (confirmado x estimado). */
-export const CORRELATION_WINDOW_MS = 60 * 60 * 1000; // 60 min
-/** Janela curta para colapsar registros estimados redundantes da mesma ação. */
-export const ESTIMATED_MERGE_WINDOW_MS = 15 * 60 * 1000; // 15 min
 /** Guarda contra double-submit exato na escrita. */
 const WRITE_ECHO_WINDOW_MS = 5 * 1000;
 
