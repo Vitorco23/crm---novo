@@ -7,131 +7,139 @@ vi.mock("@/shared/services/userStorage", () => ({
   usave: <T,>(k: string, v: T) => { store.set(k, v); },
 }));
 
-const summary = {
-  total: 0,
-  byChannel: { call: 0, message: 0, email: 0, followup: 0, meeting: 0, other: 0 },
-  confirmedByChannel: { call: 10, message: 2, email: 0, followup: 0, meeting: 0, other: 0 },
-  bySource: { call: {}, message: {}, email: {}, followup: {}, meeting: {}, other: {} },
-  totalConfirmed: 12,
-};
-
-vi.mock("@/shared/services/activityLedger", () => ({
-  summarizeActivity: () => summary,
-  getActivityLedger: () => [],
-}));
-
-vi.mock("@/shared/services/store", () => ({
-  getSessions: () => [],
-  getMeetings: () => [],
-}));
-
 const aiSpy = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { functions: { invoke: (...a: unknown[]) => aiSpy(...a) } },
 }));
 
 import {
-  DAILY_METRICS_KEY, buildAutoMetrics, saveReport, getReport, listReports,
-  buildRuleDiagnosis, buildAiPayload, emptyManual, emptyResults, emptyQualitative,
+  DAILY_METRICS_KEY, emptyReport, saveReport, getReport, listReports,
+  callsRates, blastsRates, followupsRates, fmtRate, buildInstantSummary,
+  buildAiPayload, filterHistory, migrateReport, totalMinutes,
   type DailyMetricsReport,
 } from "./dailyMetricsReport";
 
-function makeReport(date: string, over: Partial<DailyMetricsReport> = {}): DailyMetricsReport {
-  return {
-    date,
-    updatedAt: new Date().toISOString(),
-    auto: buildAutoMetrics(date),
-    manual: emptyManual(),
-    results: emptyResults(),
-    qualitative: emptyQualitative(),
-    ai: null,
-    ...over,
-  };
-}
-
 beforeEach(() => { store.clear(); aiSpy.mockReset(); });
 
-describe("fechamento diário de métricas", () => {
-  it("1) salva e edita o mesmo dia sem duplicar", () => {
-    saveReport(makeReport("2026-08-10"));
-    saveReport(makeReport("2026-08-10", { results: { ...emptyResults(), sales: 2 } }));
-    const all = store.get(DAILY_METRICS_KEY) as DailyMetricsReport[];
-    expect(all.filter((r) => r.date === "2026-08-10")).toHaveLength(1);
-    expect(getReport("2026-08-10")?.results.sales).toBe(2);
+const make = (date: string, over: Partial<DailyMetricsReport> = {}): DailyMetricsReport => ({
+  ...emptyReport(date),
+  ...over,
+});
+
+describe("fechamento diário manual", () => {
+  it("todos os campos operacionais iniciam vazios", () => {
+    const r = emptyReport("2026-08-15");
+    expect(Object.values(r.calls)).toEqual([null, null, null, null]);
+    expect(Object.values(r.blasts)).toEqual([null, null, null, null]);
+    expect(Object.values(r.followups)).toEqual([null, null, null]);
+    expect(r.outcome).toEqual({ sales: null, revenue: null });
+    expect(r.general.meetingsGoal).toBeNull();
   });
 
-  it("2) trocar data carrega o relatório correto", () => {
-    saveReport(makeReport("2026-08-10", { results: { ...emptyResults(), sales: 1 } }));
-    saveReport(makeReport("2026-08-11", { results: { ...emptyResults(), sales: 5 } }));
-    expect(getReport("2026-08-10")?.results.sales).toBe(1);
-    expect(getReport("2026-08-11")?.results.sales).toBe(5);
+  it("não importa dados do activityLedger nem da Matteline", async () => {
+    const src = await import("node:fs").then((fs) =>
+      fs.readFileSync("src/modules/intelligence/services/dailyMetricsReport.ts", "utf8"));
+    const imports = src.split("\n").filter((l) => l.startsWith("import"));
+    expect(imports.join("\n")).not.toMatch(/activityLedger|matteline|store/i);
+    expect(src).not.toMatch(/summarizeActivity|getSessions|getMeetings/);
+  });
+
+  it("taxas: denominador vazio ou zero retorna null e exibe —", () => {
+    const r = emptyReport("2026-08-15");
+    expect(callsRates(r.calls).connection).toBeNull();
+    expect(fmtRate(null)).toBe("—");
+    r.calls = { calls: 0, connections: 3, decisionMakers: null, r1: null };
+    expect(callsRates(r.calls).connection).toBeNull();
+  });
+
+  it("cálculos funcionam com valores preenchidos", () => {
+    expect(callsRates({ calls: 100, connections: 20, decisionMakers: 10, r1: 2 })).toEqual({
+      connection: 20, decisionMaker: 50, r1: 20,
+    });
+    expect(blastsRates({ sent: 200, opened: 50, decisionMakers: 10, meetings: 5 })).toEqual({
+      open: 25, decisionMaker: 20, meeting: 50,
+    });
+    expect(followupsRates({ sent: 40, decisionMakers: 10, meetings: 4 })).toEqual({
+      decisionMaker: 25, meeting: 40,
+    });
+  });
+
+  it("salvar o mesmo dia não duplica e edita corretamente", () => {
+    saveReport(make("2026-08-10"));
+    saveReport(make("2026-08-10", { outcome: { sales: 2, revenue: 1000 } }));
+    const all = store.get(DAILY_METRICS_KEY) as DailyMetricsReport[];
+    expect(all.filter((r) => r.date === "2026-08-10")).toHaveLength(1);
+    expect(getReport("2026-08-10")?.outcome.sales).toBe(2);
+  });
+
+  it("trocar a data carrega o relatório correto", () => {
+    saveReport(make("2026-08-10", { calls: { calls: 10, connections: null, decisionMakers: null, r1: null } }));
+    saveReport(make("2026-08-11", { calls: { calls: 50, connections: null, decisionMakers: null, r1: null } }));
+    expect(getReport("2026-08-10")?.calls.calls).toBe(10);
+    expect(getReport("2026-08-11")?.calls.calls).toBe(50);
     expect(listReports()[0].date).toBe("2026-08-11");
   });
 
-  it("3) diagnóstico por regras não chama IA", () => {
-    const d = buildRuleDiagnosis(makeReport("2026-08-12"));
-    expect(aiSpy).not.toHaveBeenCalled();
-    expect(d.recommendations.length).toBeGreaterThanOrEqual(3);
-    expect(d.suggestedGoals.length).toBeGreaterThan(0);
+  it("vazio não é salvo como zero", () => {
+    saveReport(make("2026-08-12"));
+    expect(getReport("2026-08-12")?.calls.calls).toBeNull();
   });
 
-  it("8) métricas usam apenas fontes confirmadas", () => {
-    const a = buildAutoMetrics("2026-08-12");
-    expect(a.callsConfirmed).toBe(10);
-    expect(a.messagesConfirmed).toBe(2);
+  it("R1 existe uma única vez na persistência (canal Ligações)", () => {
+    const r = make("2026-08-12", { calls: { calls: 10, connections: 5, decisionMakers: 4, r1: 3 } });
+    saveReport(r);
+    const persisted = getReport("2026-08-12")!;
+    expect(persisted.calls.r1).toBe(3);
+    expect((persisted.outcome as unknown as Record<string, unknown>).r1).toBeUndefined();
+    expect(buildAiPayload(persisted).outcome.r1).toBe(3);
   });
 
-  it("alerta de dado insuficiente quando não há denominador", () => {
-    const d = buildRuleDiagnosis(makeReport("2026-08-12"));
-    expect(d.warnings.join(" ")).toMatch(/sem denominador|base confiável|não passou pelo discador/i);
-    expect(d.rates.meetingRate).toBeNull();
-  });
-
-  it("taxas calculadas quando há denominador", () => {
-    const r = makeReport("2026-08-12", {
-      results: { decisionMakerConnections: 5, meetingsScheduled: 1, proposals: 1, sales: 1, revenue: 1000 },
+  it("resumo instantâneo usa apenas dados manuais", () => {
+    const r = make("2026-08-12", {
+      general: { niche: "", region: "", meetingsGoal: 4, hours: 2, minutes: 0 },
+      calls: { calls: 30, connections: 10, decisionMakers: 5, r1: 1 },
+      blasts: { sent: null, opened: null, decisionMakers: null, meetings: 2 },
+      followups: { sent: null, decisionMakers: null, meetings: null },
     });
-    const d = buildRuleDiagnosis(r);
-    expect(d.rates.connectionRate).toBe(50);
-    expect(d.rates.meetingRate).toBe(20);
-    expect(d.rates.saleRate).toBe(100);
+    const s = buildInstantSummary(r);
+    expect(s.meetingsScheduled).toBe(3);
+    expect(s.meetingsPerHour).toBe(1.5);
+    expect(s.channels).toEqual(["Ligações", "Disparos"]);
+    expect(totalMinutes(r.general)).toBe(120);
   });
 
-  it("6) payload da IA não contém leads, telefone, interação, transcrição nem áudio", () => {
-    const r = makeReport("2026-08-12", { qualitative: { mainObjection: "preço", bottleneck: "", learning: "" } });
-    const payload = buildAiPayload(r, [makeReport("2026-08-11")]);
-    const json = JSON.stringify(payload);
-    expect(json).not.toMatch(/lead|telefone|phone|transcri|audio|áudio|interaction|dashboard/i);
-    expect(payload.history7.days).toBe(1);
-    expect(payload.metrics.callsConfirmed).toBe(10);
-    expect(Object.keys(payload).sort()).toEqual(
-      ["date", "history7", "manual", "metrics", "qualitative", "rates", "results"]
-    );
+  it("histórico semanal e mensal filtram corretamente", () => {
+    const ref = new Date(2026, 7, 15); // sábado
+    const reports = [make("2026-08-15"), make("2026-08-10"), make("2026-07-30")];
+    expect(filterHistory(reports, "week", ref).map((r) => r.date)).toEqual(["2026-08-15", "2026-08-10"]);
+    expect(filterHistory(reports, "month", ref)).toHaveLength(2);
   });
 
-  it("7) falha da IA preserva relatório e diagnóstico local", async () => {
-    saveReport(makeReport("2026-08-12"));
-    aiSpy.mockResolvedValue({ data: null, error: { message: "429" } });
-    const { requestDailyAiAnalysis } = await import("./dailyMetricsAI");
-    await expect(requestDailyAiAnalysis(buildAiPayload(getReport("2026-08-12")!))).rejects.toThrow();
-    expect(getReport("2026-08-12")).not.toBeNull();
-    expect(buildRuleDiagnosis(getReport("2026-08-12")!).summary).toContain("confirmada");
+  it("migração v1 preserva histórico compatível", () => {
+    const legacy = {
+      date: "2026-08-01",
+      results: { decisionMakerConnections: 7, meetingsScheduled: 2, sales: 1, revenue: 500 },
+      qualitative: { mainObjection: "preço", bottleneck: "lista", learning: "x" },
+    };
+    const m = migrateReport(legacy)!;
+    expect(m.version).toBe(2);
+    expect(m.calls.decisionMakers).toBe(7);
+    expect(m.outcome.revenue).toBe(500);
+    expect(m.context.objection).toBe("preço");
   });
 
-  it("5) chamada de IA acontece exatamente uma vez por clique", async () => {
+  it("nenhuma chamada de IA ao abrir, preencher ou salvar", () => {
+    saveReport(make("2026-08-12"));
+    buildInstantSummary(getReport("2026-08-12")!);
+    buildAiPayload(getReport("2026-08-12")!);
+    expect(aiSpy).not.toHaveBeenCalled();
+  });
+
+  it("IA acontece exatamente uma vez por clique", async () => {
     aiSpy.mockResolvedValue({ data: { text: "ok", model: "m", generatedAt: "2026-08-12T00:00:00Z" }, error: null });
     const { requestDailyAiAnalysis } = await import("./dailyMetricsAI");
-    const out = await requestDailyAiAnalysis(buildAiPayload(makeReport("2026-08-12")));
+    const out = await requestDailyAiAnalysis(buildAiPayload(make("2026-08-12")));
     expect(aiSpy).toHaveBeenCalledTimes(1);
     expect(out.text).toBe("ok");
-  });
-
-  it("metas sugeridas usam histórico recente", () => {
-    const hist = [
-      makeReport("2026-08-11", { results: { ...emptyResults(), meetingsScheduled: 2 } }),
-      makeReport("2026-08-10", { results: { ...emptyResults(), meetingsScheduled: 4 } }),
-    ];
-    const d = buildRuleDiagnosis(makeReport("2026-08-12"), hist);
-    expect(d.suggestedGoals.join(" ")).toMatch(/média recente/);
   });
 });

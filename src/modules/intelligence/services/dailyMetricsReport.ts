@@ -1,50 +1,57 @@
-// ===== Fechamento diário de métricas (ETAPA 2) =====
-// Consome exclusivamente dados já existentes:
-//  • métricas automáticas -> summarizeActivity() (ledger já reconciliado)
-//  • pomodoros/foco       -> p21_sessions (store existente)
-//  • reuniões             -> p21_meetings (store existente)
+// ===== Fechamento diário de métricas (Sprint 1 — reestruturação) =====
+// 100% manual: nenhuma métrica automática, nenhum acesso ao activityLedger,
+// à Matteline/CallFace, ao Pipeline ou ao Pomodoro.
 // Persistência: userStorage namespaced (chave p21_daily_metrics_reports).
-// Nenhuma migration, nenhuma tabela nova, nenhuma chamada de IA automática.
 
 import { uload, usave } from "@/shared/services/userStorage";
-import { summarizeActivity, getActivityLedger } from "@/shared/services/activityLedger";
-import { getSessions, getMeetings } from "@/shared/services/store";
 
 export const DAILY_METRICS_KEY = "p21_daily_metrics_reports";
+export const DAILY_METRICS_VERSION = 2;
 
-/** Snapshot auditável das métricas automáticas no momento do fechamento. */
-export interface AutoMetricsSnapshot {
-  date: string; // YYYY-MM-DD
-  capturedAt: string; // ISO
-  pomodoros: number;
-  focusMinutes: number;
-  callsConfirmed: number;
-  messagesConfirmed: number;
-  totalConfirmed: number;
-  meetings: number;
-  /** Última ligação canônica CallFace/Matteline registrada (ISO) ou null. */
-  lastCallfaceAt: string | null;
+/** Campo numérico opcional: vazio permanece vazio (null), nunca vira 0. */
+export type NumField = number | null;
+
+export interface GeneralInputs {
+  niche: string;
+  region: string;
+  meetingsGoal: NumField;
+  hours: NumField;
+  minutes: NumField;
 }
 
-export interface ManualInputs {
-  externalMessages: number;
-  externalFollowups: number;
-  externalMeetings: number;
-  dayNote: string;
+export interface CallsChannel {
+  calls: NumField;
+  connections: NumField;
+  decisionMakers: NumField;
+  r1: NumField;
 }
 
-export interface ResultInputs {
-  decisionMakerConnections: number;
-  meetingsScheduled: number;
-  proposals: number;
-  sales: number;
-  revenue: number;
+export interface BlastsChannel {
+  sent: NumField;
+  opened: NumField;
+  decisionMakers: NumField;
+  meetings: NumField;
 }
 
-export interface QualitativeInputs {
-  mainObjection: string;
-  bottleneck: string;
+export interface FollowupsChannel {
+  sent: NumField;
+  decisionMakers: NumField;
+  meetings: NumField;
+}
+
+/** R1 NÃO é persistido aqui: vem sempre de calls.r1 (fonte única). */
+export interface OutcomeInputs {
+  sales: NumField;
+  revenue: NumField;
+}
+
+export interface ContextInputs {
+  bestHour: string;
+  difficulty: string;
+  difficultyNote: string;
+  objection: string;
   learning: string;
+  goalHit: boolean | null;
 }
 
 export interface AiAnalysis {
@@ -56,33 +63,61 @@ export interface AiAnalysis {
 export interface DailyMetricsReport {
   date: string; // YYYY-MM-DD — identidade única por usuário+data
   updatedAt: string;
-  auto: AutoMetricsSnapshot;
-  manual: ManualInputs;
-  results: ResultInputs;
-  qualitative: QualitativeInputs;
+  version: number;
+  general: GeneralInputs;
+  calls: CallsChannel;
+  blasts: BlastsChannel;
+  followups: FollowupsChannel;
+  outcome: OutcomeInputs;
+  context: ContextInputs;
   ai?: AiAnalysis | null;
 }
 
-export const emptyManual = (): ManualInputs => ({
-  externalMessages: 0,
-  externalFollowups: 0,
-  externalMeetings: 0,
-  dayNote: "",
-});
+export const DIFFICULTY_OPTIONS = [
+  "Encontrar o decisor",
+  "Gerar conexão",
+  "Converter conexão em decisor",
+  "Agendar R1",
+  "Comparecimento na R1",
+  "Enviar proposta",
+  "Fechar venda",
+  "Outro",
+] as const;
 
-export const emptyResults = (): ResultInputs => ({
-  decisionMakerConnections: 0,
-  meetingsScheduled: 0,
-  proposals: 0,
-  sales: 0,
-  revenue: 0,
+export const emptyGeneral = (): GeneralInputs => ({
+  niche: "",
+  region: "",
+  meetingsGoal: null,
+  hours: null,
+  minutes: null,
 });
-
-export const emptyQualitative = (): QualitativeInputs => ({
-  mainObjection: "",
-  bottleneck: "",
+export const emptyCalls = (): CallsChannel => ({ calls: null, connections: null, decisionMakers: null, r1: null });
+export const emptyBlasts = (): BlastsChannel => ({ sent: null, opened: null, decisionMakers: null, meetings: null });
+export const emptyFollowups = (): FollowupsChannel => ({ sent: null, decisionMakers: null, meetings: null });
+export const emptyOutcome = (): OutcomeInputs => ({ sales: null, revenue: null });
+export const emptyContext = (): ContextInputs => ({
+  bestHour: "",
+  difficulty: "",
+  difficultyNote: "",
+  objection: "",
   learning: "",
+  goalHit: null,
 });
+
+export function emptyReport(date: string): DailyMetricsReport {
+  return {
+    date,
+    updatedAt: new Date().toISOString(),
+    version: DAILY_METRICS_VERSION,
+    general: emptyGeneral(),
+    calls: emptyCalls(),
+    blasts: emptyBlasts(),
+    followups: emptyFollowups(),
+    outcome: emptyOutcome(),
+    context: emptyContext(),
+    ai: null,
+  };
+}
 
 export function toDateKey(d: Date): string {
   const y = d.getFullYear();
@@ -91,64 +126,75 @@ export function toDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function dayRange(dateKey: string): { from: Date; to: Date } {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  const from = new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
-  const to = new Date(y, (m || 1) - 1, d || 1, 23, 59, 59, 999);
-  return { from, to };
-}
+// ===== Migração local de formato (v1 -> v2) =====
+// Preserva o histórico existente sempre que compatível. Campos sem equivalente
+// direto (métricas automáticas) são descartados: a página é agora 100% manual.
 
-/** Métricas automáticas do dia — sempre derivadas das fontes existentes. */
-export function buildAutoMetrics(dateKey: string): AutoMetricsSnapshot {
-  const { from, to } = dayRange(dateKey);
-  const s = summarizeActivity(from, to);
+type LegacyReport = {
+  date?: string;
+  updatedAt?: string;
+  results?: { decisionMakerConnections?: number; meetingsScheduled?: number; sales?: number; revenue?: number };
+  qualitative?: { mainObjection?: string; bottleneck?: string; learning?: string };
+  ai?: AiAnalysis | null;
+};
 
-  const inDay = (iso?: string) => {
-    if (!iso) return false;
-    const t = new Date(iso).getTime();
-    return !isNaN(t) && t >= from.getTime() && t <= to.getTime();
-  };
+const num = (v: unknown): NumField =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
 
-  const sessions = getSessions().filter((x) => inDay(x.endTime || x.startTime));
-  const focusMinutes = sessions.reduce((acc, x) => acc + (x.durationMinutes || 0), 0);
-
-  const meetings = getMeetings().filter((m) => m.date === dateKey).length;
-
-  const lastCallface = getActivityLedger()
-    .filter((e) => e.source === "callface" && inDay(e.at))
-    .map((e) => e.at)
-    .sort()
-    .pop();
-
-  return {
-    date: dateKey,
-    capturedAt: new Date().toISOString(),
-    pomodoros: sessions.length,
-    focusMinutes,
-    callsConfirmed: s.confirmedByChannel.call,
-    messagesConfirmed: s.confirmedByChannel.message,
-    totalConfirmed: s.totalConfirmed,
-    meetings,
-    lastCallfaceAt: lastCallface ?? null,
-  };
+export function migrateReport(raw: unknown): DailyMetricsReport | null {
+  const r = raw as Partial<DailyMetricsReport> & LegacyReport;
+  if (!r || typeof r.date !== "string") return null;
+  if (typeof r.version === "number" && r.version >= 2) {
+    const base = emptyReport(r.date);
+    return {
+      ...base,
+      ...r,
+      general: { ...base.general, ...(r.general || {}) },
+      calls: { ...base.calls, ...(r.calls || {}) },
+      blasts: { ...base.blasts, ...(r.blasts || {}) },
+      followups: { ...base.followups, ...(r.followups || {}) },
+      outcome: { ...base.outcome, ...(r.outcome || {}) },
+      context: { ...base.context, ...(r.context || {}) },
+      updatedAt: r.updatedAt || base.updatedAt,
+      version: DAILY_METRICS_VERSION,
+    };
+  }
+  const out = emptyReport(r.date);
+  out.updatedAt = r.updatedAt || out.updatedAt;
+  out.calls.decisionMakers = num(r.results?.decisionMakerConnections);
+  out.blasts.meetings = num(r.results?.meetingsScheduled);
+  out.outcome.sales = num(r.results?.sales);
+  out.outcome.revenue = num(r.results?.revenue);
+  out.context.objection = r.qualitative?.mainObjection || "";
+  out.context.difficultyNote = r.qualitative?.bottleneck || "";
+  out.context.learning = r.qualitative?.learning || "";
+  out.ai = r.ai ?? null;
+  return out;
 }
 
 // ===== Persistência =====
 
 export function listReports(): DailyMetricsReport[] {
-  const all = uload<DailyMetricsReport[]>(DAILY_METRICS_KEY, []);
-  return Array.isArray(all) ? [...all].sort((a, b) => (a.date < b.date ? 1 : -1)) : [];
+  const all = uload<unknown[]>(DAILY_METRICS_KEY, []);
+  if (!Array.isArray(all)) return [];
+  return all
+    .map(migrateReport)
+    .filter((r): r is DailyMetricsReport => r !== null)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
 export function getReport(dateKey: string): DailyMetricsReport | null {
   return listReports().find((r) => r.date === dateKey) ?? null;
 }
 
-/** Salva/edita um único relatório por data (upsert, nunca duplica). */
+/** Upsert: um único fechamento por usuário e data. Nunca duplica nem apaga. */
 export function saveReport(report: DailyMetricsReport): DailyMetricsReport {
-  const all = uload<DailyMetricsReport[]>(DAILY_METRICS_KEY, []);
-  const list = Array.isArray(all) ? all : [];
-  const next: DailyMetricsReport = { ...report, updatedAt: new Date().toISOString() };
+  const list = listReports();
+  const next: DailyMetricsReport = {
+    ...report,
+    version: DAILY_METRICS_VERSION,
+    updatedAt: new Date().toISOString(),
+  };
   const idx = list.findIndex((r) => r.date === report.date);
   if (idx >= 0) list[idx] = { ...list[idx], ...next };
   else list.push(next);
@@ -156,127 +202,111 @@ export function saveReport(report: DailyMetricsReport): DailyMetricsReport {
   return next;
 }
 
-// ===== Diagnóstico determinístico (zero IA) =====
+// ===== Cálculos (somente com denominador válido) =====
 
-export interface Rates {
-  connectionRate: number | null; // conexões com decisor / ligações confirmadas
-  meetingRate: number | null; // reuniões marcadas / conexões
-  proposalRate: number | null; // propostas / reuniões marcadas
-  saleRate: number | null; // vendas / propostas
+/** null quando numerador ou denominador não foram informados / denominador = 0. */
+export function rate(numerator: NumField, denominator: NumField): number | null {
+  if (numerator === null || denominator === null || denominator <= 0) return null;
+  return Math.round((numerator / denominator) * 1000) / 10;
 }
 
-export function computeRates(r: DailyMetricsReport): Rates {
-  const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 1000) / 10 : null);
+export const fmtRate = (v: number | null): string => (v === null ? "—" : `${v}%`);
+
+export interface CallsRates { connection: number | null; decisionMaker: number | null; r1: number | null }
+export interface BlastsRates { open: number | null; decisionMaker: number | null; meeting: number | null }
+export interface FollowupsRates { decisionMaker: number | null; meeting: number | null }
+
+export const callsRates = (c: CallsChannel): CallsRates => ({
+  connection: rate(c.connections, c.calls),
+  decisionMaker: rate(c.decisionMakers, c.connections),
+  r1: rate(c.r1, c.decisionMakers),
+});
+
+export const blastsRates = (b: BlastsChannel): BlastsRates => ({
+  open: rate(b.opened, b.sent),
+  decisionMaker: rate(b.decisionMakers, b.opened),
+  meeting: rate(b.meetings, b.decisionMakers),
+});
+
+export const followupsRates = (f: FollowupsChannel): FollowupsRates => ({
+  decisionMaker: rate(f.decisionMakers, f.sent),
+  meeting: rate(f.meetings, f.decisionMakers),
+});
+
+const has = (...vals: NumField[]) => vals.some((v) => v !== null && v > 0);
+
+/** Minutos totais prospectando (null quando nada informado). */
+export function totalMinutes(g: GeneralInputs): number | null {
+  if (g.hours === null && g.minutes === null) return null;
+  return (g.hours ?? 0) * 60 + (g.minutes ?? 0);
+}
+
+export interface InstantSummary {
+  meetingsScheduled: number;
+  meetingsGoal: NumField;
+  meetingsPerHour: number | null;
+  minutes: number | null;
+  channels: string[];
+  goalHit: boolean | null;
+}
+
+/** Resumo instantâneo — apenas dados manuais informados. */
+export function buildInstantSummary(r: DailyMetricsReport): InstantSummary {
+  const meetings = (r.blasts.meetings ?? 0) + (r.followups.meetings ?? 0) + (r.calls.r1 ?? 0);
+  const minutes = totalMinutes(r.general);
+  const channels: string[] = [];
+  if (has(r.calls.calls, r.calls.connections, r.calls.decisionMakers, r.calls.r1)) channels.push("Ligações");
+  if (has(r.blasts.sent, r.blasts.opened, r.blasts.decisionMakers, r.blasts.meetings)) channels.push("Disparos");
+  if (has(r.followups.sent, r.followups.decisionMakers, r.followups.meetings)) channels.push("Follow-ups");
   return {
-    connectionRate: pct(r.results.decisionMakerConnections, r.auto.callsConfirmed),
-    meetingRate: pct(r.results.meetingsScheduled, r.results.decisionMakerConnections),
-    proposalRate: pct(r.results.proposals, r.results.meetingsScheduled),
-    saleRate: pct(r.results.sales, r.results.proposals),
+    meetingsScheduled: meetings,
+    meetingsGoal: r.general.meetingsGoal,
+    meetingsPerHour: minutes && minutes > 0 ? Math.round((meetings / (minutes / 60)) * 10) / 10 : null,
+    minutes,
+    channels,
+    goalHit: r.context.goalHit,
   };
 }
 
-export interface RuleDiagnosis {
-  summary: string;
-  rates: Rates;
-  warnings: string[];
-  bottleneck: string;
-  recommendations: string[];
-  suggestedGoals: string[];
-}
-
-export function buildRuleDiagnosis(
-  report: DailyMetricsReport,
-  history: DailyMetricsReport[] = []
-): RuleDiagnosis {
-  const a = report.auto;
-  const res = report.results;
-  const rates = computeRates(report);
-  const warnings: string[] = [];
-
-  const nd = "Dado não informado ou sem fonte confirmada.";
-  const summary =
-    `${a.callsConfirmed} ligação(ões) confirmada(s) via Matteline/CallFace. ` +
-    `${a.messagesConfirmed > 0 ? `${a.messagesConfirmed} mensagem(ns) confirmada(s).` : `Mensagens: ${nd}`} ` +
-    `${report.manual.externalMessages + report.manual.externalFollowups} contato(s) informado(s) manualmente. ` +
-    `${a.meetings} reunião(ões) registrada(s), ${a.pomodoros} pomodoro(s) e ${a.focusMinutes} min de foco.`;
-
-  if (a.callsConfirmed === 0) {
-    warnings.push("Sem ligações confirmadas pela Matteline/CallFace neste dia: as taxas de conexão não têm base confiável.");
-  }
-  if (res.decisionMakerConnections === 0) warnings.push("Sem conexões com decisor registradas: taxa de reunião sem denominador.");
-  if (res.meetingsScheduled === 0) warnings.push("Sem reuniões marcadas: taxa de proposta sem denominador.");
-  if (res.proposals === 0) warnings.push("Sem propostas: taxa de venda sem denominador.");
-
-  // Gargalo: primeira etapa do funil com denominador válido e taxa mais baixa.
-  let bottleneck = "Dados insuficientes para apontar gargalo com segurança.";
-  const steps: { label: string; rate: number | null }[] = [
-    { label: "contato com decisor (volume/qualificação da lista)", rate: rates.connectionRate },
-    { label: "agendamento de reunião (abordagem e oferta)", rate: rates.meetingRate },
-    { label: "envio de proposta (condução da reunião)", rate: rates.proposalRate },
-    { label: "fechamento (negociação)", rate: rates.saleRate },
-  ];
-  const valid = steps.filter((s) => s.rate !== null) as { label: string; rate: number }[];
-  if (valid.length > 0) {
-    const worst = valid.reduce((m, s) => (s.rate < m.rate ? s : m), valid[0]);
-    bottleneck = `Etapa com menor conversão hoje: ${worst.label} (${worst.rate}%). Observação estatística do dia, não causa comprovada.`;
-  }
-
-  const recommendations: string[] = [];
-  if (a.callsConfirmed < 40) recommendations.push("Aumentar volume: priorizar blocos de discagem contínua no primeiro período do dia.");
-  if (rates.connectionRate !== null && rates.connectionRate < 20) recommendations.push("Revisar horário de discagem e qualidade da lista para elevar contato com decisor.");
-  if (rates.meetingRate !== null && rates.meetingRate < 20) recommendations.push("Testar variação de abertura e proposta de valor na conexão com decisor.");
-  if (rates.proposalRate !== null && rates.proposalRate < 50) recommendations.push("Fechar a reunião com próximo passo definido e envio de proposta no mesmo dia.");
-  if (report.qualitative.mainObjection) recommendations.push(`Preparar resposta objetiva para a objeção recorrente: "${report.qualitative.mainObjection}".`);
-  if (a.pomodoros < 4) recommendations.push("Garantir ao menos 4 blocos de foco amanhã para sustentar o volume.");
-  while (recommendations.length < 3) {
-    recommendations.push("Registrar o resultado de cada tentativa no CRM para manter a base de decisão confiável.");
-  }
-
-  const recent = history.filter((h) => h.date !== report.date).slice(0, 7);
-  const suggestedGoals: string[] = [];
-  if (recent.length === 0) {
-    suggestedGoals.push("Histórico insuficiente para metas baseadas em série: use o dia de hoje como linha de base.");
+/** Filtro de histórico. */
+export function filterHistory(reports: DailyMetricsReport[], scope: "week" | "month", ref = new Date()): DailyMetricsReport[] {
+  const start = new Date(ref);
+  if (scope === "week") {
+    const dow = (start.getDay() + 6) % 7; // segunda como início
+    start.setDate(start.getDate() - dow);
   } else {
-    const avg = (nums: number[]) => Math.round(nums.reduce((x, y) => x + y, 0) / nums.length);
-    const avgCalls = avg(recent.map((h) => h.auto.callsConfirmed));
-    const avgMeetings = avg(recent.map((h) => h.results.meetingsScheduled));
-    suggestedGoals.push(`Ligações confirmadas: ${Math.max(avgCalls + Math.ceil(avgCalls * 0.1), avgCalls + 1)} (média recente ${avgCalls}).`);
-    suggestedGoals.push(`Reuniões marcadas: ${Math.max(avgMeetings + 1, 1)} (média recente ${avgMeetings}).`);
-    suggestedGoals.push("Metas são referências de esforço com base no histórico, não promessa de resultado.");
+    start.setDate(1);
   }
-
-  return { summary, rates, warnings, bottleneck, recommendations, suggestedGoals };
+  const key = toDateKey(start);
+  return reports.filter((r) => r.date >= key);
 }
 
-// ===== Payload mínimo para IA opcional =====
-// NUNCA inclui leads, nomes, telefones, interações, transcrições, áudios ou dashboard.
+// ===== Payload mínimo para IA opcional (somente sob clique) =====
 
 export interface AiPayload {
   date: string;
-  metrics: Omit<AutoMetricsSnapshot, "date" | "capturedAt" | "lastCallfaceAt">;
-  results: ResultInputs;
-  manual: ManualInputs;
-  qualitative: QualitativeInputs;
-  rates: Rates;
-  history7: { days: number; avgCallsConfirmed: number; avgMeetingsScheduled: number; avgSales: number };
+  general: Omit<GeneralInputs, "niche" | "region"> & { niche: string; region: string };
+  calls: CallsChannel;
+  blasts: BlastsChannel;
+  followups: FollowupsChannel;
+  outcome: OutcomeInputs & { r1: NumField };
+  context: ContextInputs;
+  rates: { calls: CallsRates; blasts: BlastsRates; followups: FollowupsRates };
 }
 
-export function buildAiPayload(report: DailyMetricsReport, history: DailyMetricsReport[] = []): AiPayload {
-  const recent = history.filter((h) => h.date !== report.date).slice(0, 7);
-  const avg = (nums: number[]) => (nums.length ? Math.round((nums.reduce((x, y) => x + y, 0) / nums.length) * 10) / 10 : 0);
-  const { date: _d, capturedAt: _c, lastCallfaceAt: _l, ...metrics } = report.auto;
+export function buildAiPayload(report: DailyMetricsReport): AiPayload {
   return {
     date: report.date,
-    metrics,
-    results: report.results,
-    manual: report.manual,
-    qualitative: report.qualitative,
-    rates: computeRates(report),
-    history7: {
-      days: recent.length,
-      avgCallsConfirmed: avg(recent.map((h) => h.auto.callsConfirmed)),
-      avgMeetingsScheduled: avg(recent.map((h) => h.results.meetingsScheduled)),
-      avgSales: avg(recent.map((h) => h.results.sales)),
+    general: report.general,
+    calls: report.calls,
+    blasts: report.blasts,
+    followups: report.followups,
+    outcome: { ...report.outcome, r1: report.calls.r1 },
+    context: report.context,
+    rates: {
+      calls: callsRates(report.calls),
+      blasts: blastsRates(report.blasts),
+      followups: followupsRates(report.followups),
     },
   };
 }
