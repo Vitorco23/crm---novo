@@ -64,6 +64,9 @@ export const ESTIMATED_MERGE_WINDOW_MS = 15 * 60 * 1000; // 15 min
 /** Guarda contra double-submit exato na escrita. */
 const WRITE_ECHO_WINDOW_MS = 5 * 1000;
 
+/** Fontes inferidas — ignoradas em escrita, leitura, resumos e diagnósticos. */
+export const INFERRED_SOURCES = new Set<ActivitySource>(["movement", "attempt", "note"]);
+
 /** Fontes que comprovam a atividade (confirmado). Para "call", só CallFace. */
 function isConfirmed(e: Pick<ActivityEvent, "channel" | "source">): boolean {
   if (e.channel === "call") return e.source === "callface";
@@ -127,8 +130,9 @@ export function recordActivity(input: RecordInput): boolean {
   const t = new Date(at).getTime();
   if (isNaN(t)) return false;
 
-  // Regra 4: movimentação de card nunca é ligação.
-  if (input.channel === "call" && input.source === "movement") return false;
+  // Estimativas foram removidas do produto: eventos inferidos (movimentação de
+  // card, tentativa concluída, nota) não geram mais atividade comercial.
+  if (INFERRED_SOURCES.has(input.source)) return false;
 
   const all = getActivityLedger();
 
@@ -161,15 +165,12 @@ export function recordActivity(input: RecordInput): boolean {
 
 export interface ActivitySummary {
   total: number;
-  /** Total após reconciliação (confirmado + estimado). */
+  /** Total confirmado por canal (única contagem existente). */
   byChannel: Record<ActivityChannel, number>;
   /** Comprovado por fonte canônica (CallFace / registro explícito). */
   confirmedByChannel: Record<ActivityChannel, number>;
-  /** Inferido a partir de ações no CRM (tentativa, nota, movimentação). */
-  estimatedByChannel: Record<ActivityChannel, number>;
   bySource: Record<ActivityChannel, Partial<Record<ActivitySource, number>>>;
   totalConfirmed: number;
-  totalEstimated: number;
 }
 
 function emptyByChannel(): Record<ActivityChannel, number> {
@@ -190,46 +191,10 @@ export function reconcileActivity(events: ActivityEvent[]): ActivityEvent[] {
     return true;
   });
 
-  const sorted = [...unique].sort(
-    (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()
-  );
-
-  // Regra 4 aplicada também em leitura, para registros legados.
-  const eligible = sorted.filter((e) => !(e.channel === "call" && e.source === "movement"));
-
-  const confirmed = eligible.filter(isConfirmed);
-  const accepted: ActivityEvent[] = [...confirmed];
-
-  for (const e of eligible) {
-    if (isConfirmed(e)) continue;
-    const t = new Date(e.at).getTime();
-    if (isNaN(t)) continue;
-
-    if (e.leadId) {
-      // Estimado é suprimido por atividade confirmada correlacionável.
-      const hasConfirmed = confirmed.some(
-        (c) =>
-          c.channel === e.channel &&
-          c.leadId === e.leadId &&
-          Math.abs(new Date(c.at).getTime() - t) <= CORRELATION_WINDOW_MS
-      );
-      if (hasConfirmed) continue;
-
-      // Estimados redundantes da mesma ação (tentativa + nota + movimentação).
-      const dupEstimated = accepted.some(
-        (a) =>
-          !isConfirmed(a) &&
-          a.channel === e.channel &&
-          a.leadId === e.leadId &&
-          Math.abs(new Date(a.at).getTime() - t) <= ESTIMATED_MERGE_WINDOW_MS
-      );
-      if (dupEstimated) continue;
-    }
-
-    accepted.push(e);
-  }
-
-  return accepted.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  // Somente fontes confirmadas entram em qualquer contagem comercial.
+  return unique
+    .filter((e) => !INFERRED_SOURCES.has(e.source) && isConfirmed(e))
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
 }
 
 export function summarizeActivity(from: Date, to: Date): ActivitySummary {
@@ -245,26 +210,19 @@ export function summarizeActivity(from: Date, to: Date): ActivitySummary {
 
   const byChannel = emptyByChannel();
   const confirmedByChannel = emptyByChannel();
-  const estimatedByChannel = emptyByChannel();
   const bySource = {
     call: {}, message: {}, email: {}, followup: {}, meeting: {}, other: {},
   } as ActivitySummary["bySource"];
   let total = 0;
   let totalConfirmed = 0;
-  let totalEstimated = 0;
 
   for (const e of events) {
     byChannel[e.channel] += 1;
-    if (isConfirmed(e)) {
-      confirmedByChannel[e.channel] += 1;
-      totalConfirmed++;
-    } else {
-      estimatedByChannel[e.channel] += 1;
-      totalEstimated++;
-    }
+    confirmedByChannel[e.channel] += 1;
+    totalConfirmed++;
     bySource[e.channel][e.source] = (bySource[e.channel][e.source] || 0) + 1;
     total++;
   }
 
-  return { total, byChannel, confirmedByChannel, estimatedByChannel, bySource, totalConfirmed, totalEstimated };
+  return { total, byChannel, confirmedByChannel, bySource, totalConfirmed };
 }
