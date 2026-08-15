@@ -300,6 +300,17 @@ export function filterHistory(reports: DailyMetricsReport[], scope: "week" | "mo
 
 // ===== Payload mínimo para IA opcional (somente sob clique) =====
 
+/** Resumo agregado dos últimos 7 fechamentos (somente números, sem identificação). */
+export interface AiHistorySummary {
+  fechamentos: number;
+  calls: number;
+  connections: number;
+  decisionMakers: number;
+  r1: number;
+  meetings: number;
+  minutes: number;
+}
+
 export interface AiPayload {
   date: string;
   general: Omit<GeneralInputs, "niche" | "region"> & { niche: string; region: string };
@@ -309,9 +320,24 @@ export interface AiPayload {
   outcome: OutcomeInputs & { r1: NumField };
   context: ContextInputs;
   rates: { calls: CallsRates; blasts: BlastsRates; followups: FollowupsRates };
+  last7: AiHistorySummary;
 }
 
-export function buildAiPayload(report: DailyMetricsReport): AiPayload {
+export function summarizeLast7(reports: DailyMetricsReport[], beforeOrOn: string): AiHistorySummary {
+  const slice = reports.filter((r) => r.date <= beforeOrOn).slice(0, 7);
+  const sum = (f: (r: DailyMetricsReport) => number) => slice.reduce((a, r) => a + f(r), 0);
+  return {
+    fechamentos: slice.length,
+    calls: sum((r) => r.calls.calls ?? 0),
+    connections: sum((r) => r.calls.connections ?? 0),
+    decisionMakers: sum((r) => (r.calls.decisionMakers ?? 0) + (r.blasts.decisionMakers ?? 0) + (r.followups.decisionMakers ?? 0)),
+    r1: sum((r) => r.calls.r1 ?? 0),
+    meetings: sum((r) => (r.blasts.meetings ?? 0) + (r.followups.meetings ?? 0) + (r.calls.r1 ?? 0)),
+    minutes: sum((r) => totalMinutes(r.general) ?? 0),
+  };
+}
+
+export function buildAiPayload(report: DailyMetricsReport, history: DailyMetricsReport[] = []): AiPayload {
   return {
     date: report.date,
     general: report.general,
@@ -325,5 +351,7 @@ export function buildAiPayload(report: DailyMetricsReport): AiPayload {
       blasts: blastsRates(report.blasts),
       followups: followupsRates(report.followups),
     },
+    last7: summarizeLast7(history, report.date),
   };
+
 }
