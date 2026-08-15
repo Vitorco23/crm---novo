@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity, Database, Brain, BookOpen, Plug, Zap, Gauge, ShieldCheck,
+  Activity, Database, Brain, Plug, Zap, Gauge, ShieldCheck,
   AlertTriangle, ClipboardList, RefreshCw, CheckCircle2, XCircle, AlertCircle,
 } from "lucide-react";
 import { PageContainer } from "@/shared/components/shell/PageContainer";
@@ -80,7 +80,6 @@ function timeAgo(iso?: string | null): string {
 
 interface HealthData {
   ping: { ok: boolean; latency: number };
-  knowledge: { docs: number | null; categories: number | null; versions: number | null; lastPublished: string | null; lastUpdated: string | null; lastIndexed: string | null };
   ai: { task: string; success: number; fail: number; avgLatency: number; lastRun: string | null; lastModel: string | null }[];
   aiTotals: { total: number; success: number; fail: number; avgLatency: number };
   integrations: { name: string; status: Status; lastSync?: string | null; hint?: string }[];
@@ -101,12 +100,6 @@ export default function SaudeSistema() {
       const ping = await HealthRepository.pingDatabase();
       const pingError = !ping.ok;
       const latency = ping.latency;
-
-      // Knowledge Base
-      const { docCount, docs, versionCount } = await HealthRepository.knowledgeSnapshot();
-      const categories = docs ? new Set(docs.map((d: any) => d.categoria).filter(Boolean)).size : null;
-      const lastUpdated = docs?.[0]?.updated_at ?? null;
-      const lastPublished = docs?.map((d: any) => d.created_at).sort().reverse()[0] ?? null;
 
       // AI router logs — last 24h
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -141,27 +134,17 @@ export default function SaudeSistema() {
         { name: "Lovable Cloud (Supabase)", status: pingError ? "critical" : "healthy", hint: pingError ? "Erro de conexão" : `Latência ${latency}ms` },
         { name: "OpenRouter / Lovable AI", status: totalRuns > 0 ? (totalFail / Math.max(totalRuns,1) > 0.3 ? "warn" : "healthy") : "unknown", lastSync: logs?.[0]?.created_at ?? null },
         { name: "Google Calendar", status: "unknown", hint: "Verificar em Integrações" },
-        { name: "Knowledge Base", status: docCount && docCount > 0 ? "healthy" : "warn", hint: `${docCount ?? 0} documentos` },
         { name: "Webhook Landing", status: "unknown", hint: "Público — sem métrica local" },
         { name: "Webhook Matteline", status: "unknown", hint: "Público — sem métrica local" },
       ];
 
       // Recent events (best-effort from KB updates + AI failures)
       const events: HealthData["events"] = [
-        ...(docs?.slice(0, 3).map((d: any) => ({ type: "kb", label: `Knowledge Base atualizada (${d.categoria})`, at: d.updated_at })) ?? []),
         ...recentErrors.slice(0, 3).map((e) => ({ type: "ai-fail", label: `Falha em IA (${e.task}): ${e.error}`, at: e.at })),
       ].sort((a, b) => (b.at || "").localeCompare(a.at || "")).slice(0, 8);
 
       setData({
         ping: { ok: !pingError, latency },
-        knowledge: {
-          docs: docCount ?? null,
-          categories,
-          versions: versionCount ?? null,
-          lastPublished,
-          lastUpdated,
-          lastIndexed: lastUpdated,
-        },
         ai: aiByTask,
         aiTotals: { total: totalRuns, success: totalSuccess, fail: totalFail, avgLatency: avgLat },
         integrations,
@@ -193,7 +176,6 @@ export default function SaudeSistema() {
     if (data.aiTotals.total > 0 && data.aiTotals.fail / data.aiTotals.total > 0.3) {
       a.push({ level: "warn", text: `Alta taxa de falhas nas IAs (${data.aiTotals.fail}/${data.aiTotals.total})` });
     }
-    if ((data.knowledge.docs ?? 0) === 0) a.push({ level: "warn", text: "Knowledge Base sem documentos" });
     data.recentErrors.slice(0, 2).forEach((e) => a.push({ level: "warn", text: `IA (${e.task}): ${e.error}` }));
     return a;
   }, [data]);
@@ -267,17 +249,6 @@ export default function SaudeSistema() {
             </p>
           </SectionCard>
 
-          {/* 4. Knowledge Base */}
-          <SectionCard icon={BookOpen} title="Knowledge Base" status={(data?.knowledge.docs ?? 0) > 0 ? "healthy" : "warn"}>
-            <div className="grid grid-cols-2 gap-3">
-              <Metric label="Documentos" value={data?.knowledge.docs ?? null} />
-              <Metric label="Categorias" value={data?.knowledge.categories ?? null} />
-              <Metric label="Versões" value={data?.knowledge.versions ?? null} />
-              <Metric label="Última publicação" value={data ? timeAgo(data.knowledge.lastPublished) : null} />
-              <Metric label="Última atualização" value={data ? timeAgo(data.knowledge.lastUpdated) : null} />
-              <Metric label="Última indexação" value={data ? timeAgo(data.knowledge.lastIndexed) : null} />
-            </div>
-          </SectionCard>
         </div>
 
         {/* 3. Inteligência Artificial */}
