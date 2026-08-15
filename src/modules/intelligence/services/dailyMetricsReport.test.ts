@@ -88,7 +88,7 @@ describe("fechamento diário manual", () => {
     saveReport(r);
     const persisted = getReport("2026-08-12")!;
     expect(persisted.calls.r1).toBe(3);
-    expect((persisted.outcome as Record<string, unknown>).r1).toBeUndefined();
+    expect((persisted.outcome as unknown as Record<string, unknown>).r1).toBeUndefined();
     expect(buildAiPayload(persisted).outcome.r1).toBe(3);
   });
 
