@@ -35,27 +35,6 @@ const CATEGORIES = [
     description: "Comando operacional e prioridades"
   },
   { 
-    id: "conversar", 
-    label: "Conversar", 
-    icon: MessageCircle, 
-    path: "/inteligencia/central",
-    description: "Chat com especialistas de IA"
-  },
-  { 
-    id: "conhecimento", 
-    label: "Conhecimento", 
-    icon: Library, 
-    path: "/inteligencia/knowledge",
-    description: "Base de documentos e scripts"
-  },
-  { 
-    id: "objecoes", 
-    label: "Objeções", 
-    icon: Sparkles, 
-    path: "/inteligencia/knowledge?cat=Objeções",
-    description: "Banco de respostas a objeções"
-  },
-  { 
     id: "memoria", 
     label: "Memória", 
     icon: BookMarked, 
