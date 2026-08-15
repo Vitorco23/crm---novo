@@ -176,10 +176,12 @@ export default function MetricasDiarias() {
           <Pulse label="Pomodoros" value={String(auto.pomodoros)} />
           <Pulse label="Foco" value={`${auto.focusMinutes} min`} />
           <Pulse label="Ligações" value={String(auto.callsConfirmed)} hint="confirmadas CallFace" />
-          <Pulse label="Ligações" value={String(auto.callsEstimated)} hint="estimadas (CRM)" />
-          <Pulse label="Mensagens" value={String(auto.messagesConfirmed)} hint="confirmadas" />
-          <Pulse label="Ações" value={String(auto.totalEstimated)} hint="estimadas" />
-          <Pulse label="Reuniões" value={String(auto.meetings)} />
+          <Pulse
+            label="Mensagens"
+            value={auto.messagesConfirmed > 0 ? String(auto.messagesConfirmed) : "—"}
+            hint={auto.messagesConfirmed > 0 ? "confirmadas" : "sem fonte confirmada"}
+          />
+          <Pulse label="Reuniões" value={String(auto.meetings)} hint="registradas" />
           <Pulse label="Último registro" value={lastSync} hint="Matteline/CallFace" />
         </div>
       </section>
@@ -349,7 +351,7 @@ export default function MetricasDiarias() {
                   >
                     <span className="font-medium">{r.date}</span>
                     <span className="text-xs text-muted-foreground">
-                      {r.auto.callsConfirmed} conf. · {r.auto.callsEstimated} est. · {r.results.meetingsScheduled} reuniões · {r.results.sales} vendas
+                      {r.auto.callsConfirmed} ligações confirmadas · {r.results.meetingsScheduled} reuniões · {r.results.sales} vendas
                     </span>
                   </button>
                 </li>
