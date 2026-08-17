@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PipelineBoard from "@/modules/pipeline/components/PipelineBoard";
 import ScheduleMeetingDialog from "@/modules/leads/components/ScheduleMeetingDialog";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,12 @@ export default function Oportunidades() {
   const [form, setForm] = useState({
     company: "", contact: "", phone: "", email: "", niche: "", city: "", notes: "",
   });
+
+  useEffect(() => {
+    const onLeadsChanged = () => setRefreshKey(k => k + 1);
+    window.addEventListener("p21:leads-changed", onLeadsChanged);
+    return () => window.removeEventListener("p21:leads-changed", onLeadsChanged);
+  }, []);
 
   const handlePullInbound = async () => {
     if (pulling) return;
