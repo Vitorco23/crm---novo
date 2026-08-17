@@ -136,7 +136,7 @@ function OutboundFunnelCard({ filter, custom }: { filter: Filter; custom?: Custo
                   <span className="text-muted-foreground uppercase">{s.label}</span>
                   {s.delta && (
                     <span className={cn("text-[9px] flex items-center", s.delta.dir === "up" ? "text-emerald-500" : "text-rose-500")}>
-                      {s.delta.dir === "up" ? <TrendingUp className="h-2 w-2 mr-0.5" /> : <TrendingDown className="h-2 w-2 mr-0.5"}
+                      {s.delta.dir === "up" ? <TrendingUp className="h-2 w-2 mr-0.5" /> : <TrendingDown className="h-2 w-2 mr-0.5" />}
                       {s.delta.val.toFixed(0)}%
                     </span>
                   )}
