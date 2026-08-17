@@ -298,7 +298,7 @@ const Dashboard = () => {
         <div className="lg:col-span-8 space-y-6">
           <FinancialHealthRow revenue={currentMonthRevenue} goal={goals.monthlyRevenueGoal} />
           
-          <StrategicIntelligencePanel filter={filter} customRange={customRange} />
+          <StrategicIntelligencePanel period={filter === "day" ? "today" : filter === "week" ? "last7" : filter === "month" ? "thisMonth" : "last30"} />
           
           <Card className="border-border/40 bg-card/50">
             <CardContent className="p-0">
