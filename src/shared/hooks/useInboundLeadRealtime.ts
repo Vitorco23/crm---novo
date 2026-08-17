@@ -8,7 +8,7 @@ import { toast } from "sonner";
  * Implementa catch-up automático após conexão/reconexão.
  */
 export function useInboundLeadRealtime() {
-  const isSubscribed = useRef(false);
+  
 
   useEffect(() => {
     console.log("[inbound-realtime] initializing subscription");
@@ -46,11 +46,8 @@ export function useInboundLeadRealtime() {
         console.log(`[inbound-realtime] status: ${status}`);
         if (status === "SUBSCRIBED") {
           console.log("[inbound-realtime] subscribed/catch-up");
-          isSubscribed.current = true;
           // Catch-up após conexão ou reconexão
           void handleSync();
-        } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-          isSubscribed.current = false;
         }
       });
 
@@ -61,12 +58,12 @@ export function useInboundLeadRealtime() {
       }
     };
 
-    window.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("online", handleSync);
 
     return () => {
       console.log("[inbound-realtime] unsubscribing");
-      window.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("online", handleSync);
       void supabase.removeChannel(channel);
     };

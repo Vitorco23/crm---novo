@@ -478,8 +478,6 @@ function inboundToLead(row: InboundRow): { lead: Lead; meeting: any | null } {
 
 let inboundSyncRunning = false;
 let inboundSyncPending = false;
-let lastSyncTimestamp = 0;
-const SYNC_COOLDOWN_MS = 2000;
 
 export function isSyncingInbound() {
   return inboundSyncRunning;
@@ -490,20 +488,15 @@ export async function syncInboundLeads(): Promise<number> {
   if (!uid) return 0;
 
   // Implementação de lock para evitar concorrência
-  const now = Date.now();
   if (inboundSyncRunning) {
     inboundSyncPending = true;
     return 0;
   }
   
-  // Cooldown preventativo para chamadas ultra-rápidas do Realtime
-  if (now - lastSyncTimestamp < SYNC_COOLDOWN_MS) {
-    return 0;
-  }
 
   inboundSyncRunning = true;
   inboundSyncPending = false;
-  lastSyncTimestamp = now;
+  
 
   try {
     const { data, error } = await supabase
@@ -515,7 +508,7 @@ export async function syncInboundLeads(): Promise<number> {
     if (rows.length === 0) return 0;
 
     const existing = uload<Lead[]>("p21_leads", []);
-    const existingIds = new Set(existing.map(l => l.id));
+    
     
     // Proteção contra duplicação: verifica se o inbound id já foi processado 
     // ou se o lead já existe no storage local por algum motivo.
