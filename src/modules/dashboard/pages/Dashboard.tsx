@@ -266,15 +266,21 @@ const Dashboard = () => {
 
           <div className="h-6 w-px bg-border/50 mx-1 hidden md:block" />
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8 text-xs px-3 gap-2 hover:bg-accent/10 hover:text-accent border-accent/20"
-            onClick={() => setIsExportOpen(true)}
-          >
-            <BarChart3 className="h-3.5 w-3.5" />
-            Exportar
-          </Button>
+          <ExportExcelDialog 
+            moduleName="Dashboard"
+            moduleSlug="dashboard"
+            build={(range) => buildDashboardSheets(range)}
+            trigger={
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 text-xs px-3 gap-2 hover:bg-accent/10 hover:text-accent border-accent/20"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                Exportar
+              </Button>
+            }
+          />
         </div>
       </header>
 
