@@ -400,18 +400,22 @@ Deno.serve(async (req) => {
   }
   const leadId = inserted.id as string;
 
-  // Envio de notificação por e-mail (Background, não bloqueia a resposta)
-  let notificationSent = false;
-  try {
-    notificationSent = await sendLeadNotification(leadId, dados, rawPayload);
-  } catch (e) {
-    console.error("[lead-email] critical failure in trigger", e);
+  // Envio de notificação por e-mail (Background via EdgeRuntime.waitUntil)
+  if (typeof (EdgeRuntime as any)?.waitUntil === "function") {
+    (EdgeRuntime as any).waitUntil(
+      sendLeadNotification(leadId, dados, rawPayload)
+        .catch(e => console.error("[lead-email] critical failure in background task", e))
+    );
+  } else {
+    // Fallback se waitUntil não estiver disponível (não deve ocorrer no Supabase)
+    sendLeadNotification(leadId, dados, rawPayload)
+      .catch(e => console.error("[lead-email] critical failure in fallback task", e));
   }
 
   return json(200, {
     ok: true,
     leadId,
-    notificationEmailSent: notificationSent,
+    notificationEmailQueued: true,
     stage: FIRST_OPP_STAGE,
     queued: true,
 
@@ -422,5 +426,6 @@ Deno.serve(async (req) => {
   });
 
 });
+
 
 
