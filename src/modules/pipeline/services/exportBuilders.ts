@@ -185,7 +185,23 @@ export function buildDashboardSheets(range: DateRange): SheetSpec[] {
       })),
   };
 
-  return [indicadores, pomodoros, reunioes, receita];
+  const outboundFunnel: SheetSpec = {
+    name: "Funil Outbound",
+    columns: [
+      { header: "Etapa", key: "stage", type: "text", width: 20 },
+      { header: "Volume", key: "volume", type: "int" },
+      { header: "Conversão", key: "rate", type: "percent" },
+      { header: "Gap p/ Próximo", key: "gap", type: "int" },
+    ],
+    rows: [
+      { stage: "Ligações", volume: ds.totalCalls, rate: 1, gap: ds.totalCalls - ds.totalConnections },
+      { stage: "Conexões", volume: ds.totalConnections, rate: rate(ds.totalConnections, ds.totalCalls), gap: ds.totalConnections - ds.totalDecisionMakers },
+      { stage: "Decisores", volume: ds.totalDecisionMakers, rate: rate(ds.totalDecisionMakers, ds.totalConnections), gap: ds.totalDecisionMakers - ds.totalMeetings },
+      { stage: "R1 Agendadas", volume: ds.totalMeetings, rate: rate(ds.totalMeetings, ds.totalDecisionMakers), gap: 0 },
+    ],
+  };
+
+  return [indicadores, pomodoros, reunioes, receita, outboundFunnel];
 }
 
 // ============================================================
