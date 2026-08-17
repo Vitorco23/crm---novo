@@ -116,6 +116,105 @@ async function createCalendarEvent(payload: LandingPayload, leadName: string, co
   };
 }
 
+async function sendLeadNotification(leadId: string, leadData: any, rawPayload: any) {
+  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+  const NOTIFICATION_EMAIL = Deno.env.get("LEAD_NOTIFICATION_EMAIL");
+  const NOTIFICATION_FROM = Deno.env.get("LEAD_NOTIFICATION_FROM");
+
+  if (!RESEND_API_KEY || !NOTIFICATION_EMAIL || !NOTIFICATION_FROM) {
+    console.log("[lead-email] notification_email_not_configured", { 
+      hasKey: !!RESEND_API_KEY, 
+      hasDest: !!NOTIFICATION_EMAIL, 
+      hasFrom: !!NOTIFICATION_FROM 
+    });
+    return false;
+  }
+
+  console.log(`[lead-email] preparing notification for lead ${leadId}`);
+
+  const { contact, company, phone, email, niche, source, receivedAt } = leadData;
+  const fat = rawPayload.faturamento || rawPayload.billing || "";
+  const func = rawPayload.funcionarios || rawPayload.employees || "";
+  const desafio = rawPayload.desafio || rawPayload.challenge || leadData.notes || "";
+
+  // Formatação de data em America/Sao_Paulo
+  const formattedDate = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(receivedAt));
+
+  const subject = `🚀 Novo lead — Diagnóstico P21 | ${company || contact || "Sem Nome"}`;
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+      <div style="background-color: #152039; color: #9abd33; padding: 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 20px;">NOVO LEAD RECEBIDO</h1>
+      </div>
+      <div style="padding: 20px; color: #1f2937;">
+        <p><strong>Nome:</strong> ${contact || "—"}</p>
+        <p><strong>Empresa:</strong> ${company || "—"}</p>
+        <p><strong>WhatsApp:</strong> ${phone || "—"}</p>
+        <p><strong>Segmento:</strong> ${niche || "—"}</p>
+        <p><strong>Faturamento:</strong> ${fat || "—"}</p>
+        <p><strong>Funcionários:</strong> ${func || "—"}</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+        <p><strong>Principal desafio:</strong><br>${desafio || "—"}</p>
+        <p><strong>Origem:</strong> ${source || "Landing Page"}</p>
+        <p><strong>Data/Hora:</strong> ${formattedDate}</p>
+        <p style="font-size: 12px; color: #6b7280;">ID: ${leadId}</p>
+        
+        <div style="text-align: center; margin-top: 30px;">
+          <a href="https://crm.performance21.com.br/oportunidades" 
+             style="background-color: #9abd33; color: #152039; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+            Abrir no CRM
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout
+
+  try {
+    console.log("[lead-email] sending via Resend...");
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: NOTIFICATION_FROM,
+        to: NOTIFICATION_EMAIL,
+        subject,
+        html,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      console.log(`[lead-email] success for lead ${leadId}`);
+      return true;
+    } else {
+      const errorData = await res.json();
+      console.error(`[lead-email] error for lead ${leadId}:`, errorData);
+      return false;
+    }
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      console.error(`[lead-email] timeout for lead ${leadId}`);
+    } else {
+      console.error(`[lead-email] exception for lead ${leadId}:`, error);
+    }
+    return false;
+  }
+}
+
 // Constant-time comparison p/ evitar timing side-channels no shared secret.
 function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -123,6 +222,7 @@ function safeEqual(a: string, b: string): boolean {
   for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return mismatch === 0;
 }
+
 
 function extractLandingSecret(req: Request): string | null {
   const hook = req.headers.get("x-webhook-secret");
@@ -300,11 +400,21 @@ Deno.serve(async (req) => {
   }
   const leadId = inserted.id as string;
 
+  // Envio de notificação por e-mail (Background, não bloqueia a resposta)
+  let notificationSent = false;
+  try {
+    notificationSent = await sendLeadNotification(leadId, dados, rawPayload);
+  } catch (e) {
+    console.error("[lead-email] critical failure in trigger", e);
+  }
+
   return json(200, {
     ok: true,
     leadId,
+    notificationEmailSent: notificationSent,
     stage: FIRST_OPP_STAGE,
     queued: true,
+
     meetingParsed: { source: meetingSource, startISO: resolvedISO },
     meeting: meeting ?? null,
     meetLink: meeting && meeting.ok ? meeting.meetLink : null,
