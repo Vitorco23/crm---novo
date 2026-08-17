@@ -476,9 +476,23 @@ function inboundToLead(row: InboundRow): { lead: Lead; meeting: any | null } {
   return { lead, meeting };
 }
 
+let inboundSyncRunning = false;
+let inboundSyncPending = false;
+
 export async function syncInboundLeads(): Promise<number> {
   const uid = getCurrentUserId();
   if (!uid) return 0;
+
+  // Implementação de lock para evitar concorrência
+  if (inboundSyncRunning) {
+    inboundSyncPending = true;
+    return 0;
+  }
+  inboundSyncRunning = true;
+  inboundSyncPending = false;
+
+  try {
+
 
   const { data, error } = await supabase
     .from("leads_inbound")
