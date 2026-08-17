@@ -329,12 +329,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <ExportExcelDialog 
-        open={isExportOpen} 
-        onOpenChange={setIsExportOpen} 
-        title="Exportar Dashboard"
-        onExport={(range) => buildDashboardSheets(range)}
-      />
     </div>
   );
 };
