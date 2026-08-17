@@ -547,6 +547,8 @@ export async function syncInboundLeads(): Promise<number> {
     const { error: delErr } = await supabase.from("leads_inbound").delete().in("id", ids);
     if (delErr) {
       console.warn("[userStorage] failed to delete drained inbound rows", delErr);
+      // O lock de duplicados (inboundId no storage local) já protege contra re-processamento
+      // se o delete falhar e a linha for lida novamente.
     }
 
     window.dispatchEvent(new Event("p21:storage-synced"));
