@@ -213,7 +213,7 @@ const Dashboard = () => {
 
   const totalCalls = filteredSessions.reduce((sum, s) => sum + (s.calls || 0), 0);
   const totalMeetings = filteredMeetings.length;
-  const totalSales = filteredEvents.filter(e => e.type === "stage_change" && e.to === "GANHO").length;
+  const totalSales = filteredEvents.filter(e => e.toStage === "Ganho").length;
   const currentMonthRevenue = transactions.filter(t => t.kind === 'revenue' && isThisMonth(new Date(t.date))).reduce((sum, t) => sum + t.amount, 0);
 
   const stats = [
