@@ -476,46 +476,62 @@ function inboundToLead(row: InboundRow): { lead: Lead; meeting: any | null } {
   return { lead, meeting };
 }
 
+let inboundSyncRunning = false;
+let inboundSyncPending = false;
+
 export async function syncInboundLeads(): Promise<number> {
   const uid = getCurrentUserId();
   if (!uid) return 0;
 
-  const { data, error } = await supabase
-    .from("leads_inbound")
-    .select("id,dados,created_at")
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  const rows = (data ?? []) as InboundRow[];
-  if (rows.length === 0) return 0;
-
-  const existing = uload<Lead[]>("p21_leads", []);
-  const converted = rows.map(inboundToLead);
-  const newLeads = converted.map(c => c.lead);
-  usave<Lead[]>("p21_leads", [...newLeads, ...existing]);
-
-  const newMeetings = converted.map(c => c.meeting).filter(Boolean);
-  if (newMeetings.length > 0) {
-    const existingMeetings = uload<any[]>("p21_meetings", []);
-    usave<any[]>("p21_meetings", [...newMeetings, ...existingMeetings]);
+  // Implementação de lock para evitar concorrência
+  if (inboundSyncRunning) {
+    inboundSyncPending = true;
+    return 0;
   }
+  inboundSyncRunning = true;
+  inboundSyncPending = false;
 
-  const ids = rows.map((r) => r.id);
-  const { error: delErr } = await supabase.from("leads_inbound").delete().in("id", ids);
-  if (delErr) {
-    console.warn("[userStorage] failed to delete drained inbound rows", delErr);
+  try {
+    const { data, error } = await supabase
+      .from("leads_inbound")
+      .select("id,dados,created_at")
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    const rows = (data ?? []) as InboundRow[];
+    if (rows.length === 0) return 0;
+
+    const existing = uload<Lead[]>("p21_leads", []);
+    const converted = rows.map(inboundToLead);
+    const newLeads = converted.map(c => c.lead);
+    usave<Lead[]>("p21_leads", [...newLeads, ...existing]);
+
+    const newMeetings = converted.map(c => c.meeting).filter(Boolean);
+    if (newMeetings.length > 0) {
+      const existingMeetings = uload<any[]>("p21_meetings", []);
+      usave<any[]>("p21_meetings", [...newMeetings, ...existingMeetings]);
+    }
+
+    const ids = rows.map((r) => r.id);
+    const { error: delErr } = await supabase.from("leads_inbound").delete().in("id", ids);
+    if (delErr) {
+      console.warn("[userStorage] failed to delete drained inbound rows", delErr);
+    }
+
+    window.dispatchEvent(new Event("p21:storage-synced"));
+    window.dispatchEvent(new CustomEvent("p21:leads-changed", { detail: { source: "inbound", count: newLeads.length } }));
+    window.dispatchEvent(new CustomEvent("p21:meetings-changed", { detail: { source: "inbound", count: newMeetings.length } }));
+    return newLeads.length;
+  } finally {
+    inboundSyncRunning = false;
+    if (inboundSyncPending) {
+      setTimeout(() => syncInboundLeads(), 100);
+    }
   }
-
-  window.dispatchEvent(new Event("p21:storage-synced"));
-  window.dispatchEvent(new CustomEvent("p21:leads-changed", { detail: { source: "inbound", count: newLeads.length } }));
-  window.dispatchEvent(new CustomEvent("p21:meetings-changed", { detail: { source: "inbound", count: newMeetings.length } }));
-  return newLeads.length;
 }
-
 
 // Alias público — mesma rotina, nome dedicado para chamadas manuais (botão UI).
-export async function pullInboundLeads(): Promise<number> {
-  return syncInboundLeads();
-}
+export const pullInboundLeads = syncInboundLeads;
+
 
 
 // ===== Matteline / n8n inbound interactions queue =====

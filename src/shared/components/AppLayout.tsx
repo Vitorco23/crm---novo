@@ -13,10 +13,14 @@ import { GlobalSearch } from "@/shared/components/shell/GlobalSearch";
 import { NotificationsMenu } from "@/shared/components/shell/NotificationsMenu";
 import { UserMenu } from "@/shared/components/shell/UserMenu";
 import { findNavItem } from "@/shared/constants/navigation";
+import { useInboundLeadRealtime } from "@/shared/hooks/useInboundLeadRealtime";
+
 
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   useReminderNotifications();
+  useInboundLeadRealtime();
+
   const { pathname } = useLocation();
   const current = findNavItem(pathname);
 
