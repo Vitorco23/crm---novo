@@ -550,12 +550,16 @@ export async function syncInboundLeads(): Promise<number> {
     if (rows.length === 0) return 0;
 
     const existing = uload<Lead[]>("p21_leads", []);
+    const tombstones = uload<string[]>("p21_deleted_leads_tombstones", []);
+    const tombstoneSet = new Set(tombstones);
+
     
     
     // Proteção contra duplicação: verifica se o inbound id já foi processado 
     // ou se o lead já existe no storage local por algum motivo.
-    const converted = rows.map(row => {
+    const converted = rows.filter(row => !tombstoneSet.has(row.id)).map(row => {
       const localExisting = existing.find(l => (l as any).inboundId === row.id);
+
       const { lead: incomingLead, meeting } = inboundToLead(row);
       (incomingLead as any).inboundId = row.id;
 
