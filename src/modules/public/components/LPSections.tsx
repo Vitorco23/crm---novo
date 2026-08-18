@@ -1,11 +1,18 @@
 import React from "react";
-import icebergAsset from "@/assets/iceberg-engenharia-receita.png.asset.json";
-import dashboardAsset from "@/assets/dashboard-hero.png.asset.json";
-import vitorAsset from "@/assets/vitor.png.asset.json";
-const caseEnergia = (await import("@/assets/solar-investimento.png.asset.json")).default;
-const caseAcademia = (await import("@/assets/academia-crm.jpg.asset.json")).default;
-const caseAcai = (await import("@/assets/acai-report.asset.json")).default;
+import icebergAssetImport from "@/assets/iceberg-engenharia-receita.png.asset.json";
+import dashboardAssetImport from "@/assets/dashboard-hero.png.asset.json";
+import vitorAssetImport from "@/assets/vitor.png.asset.json";
+import caseEnergiaImport from "@/assets/solar-investimento.png.asset.json";
+import caseAcademiaImport from "@/assets/academia-crm.jpg.asset.json";
+import caseAcaiImport from "@/assets/acai-report.asset.json";
 import { CheckCircle2 } from "lucide-react";
+
+const icebergAsset = icebergAssetImport as any;
+const dashboardAsset = dashboardAssetImport as any;
+const vitorAsset = vitorAssetImport as any;
+const caseEnergia = caseEnergiaImport as any;
+const caseAcademia = caseAcademiaImport as any;
+const caseAcai = caseAcaiImport as any;
 
 export function LPSections() {
   const cases = [
