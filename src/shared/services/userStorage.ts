@@ -562,9 +562,9 @@ export async function syncInboundLeads(): Promise<number> {
     }
 
     window.dispatchEvent(new Event("p21:storage-synced"));
-    window.dispatchEvent(new CustomEvent("p21:leads-changed", { detail: { source: "inbound", count: newLeads.length } }));
+    window.dispatchEvent(new CustomEvent("p21:leads-changed", { detail: { source: "inbound", count: converted.length } }));
     window.dispatchEvent(new CustomEvent("p21:meetings-changed", { detail: { source: "inbound", count: newMeetings.length } }));
-    return newLeads.length;
+    return converted.length;
   } finally {
     inboundSyncRunning = false;
     if (inboundSyncPending) {
