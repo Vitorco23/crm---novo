@@ -1,37 +1,29 @@
 import React from "react";
-import icebergAssetImport from "@/assets/iceberg-engenharia-receita.png.asset.json";
-import dashboardAssetImport from "@/assets/dashboard-hero.png.asset.json";
-import vitorAssetImport from "@/assets/vitor.png.asset.json";
-import caseEnergiaImport from "@/assets/solar-investimento.png.asset.json";
-import caseAcademiaImport from "@/assets/academia-crm.jpg.asset.json";
-import caseAcaiImport from "@/assets/acai-report.asset.json";
-import { CheckCircle2 } from "lucide-react";
-
-const icebergAsset = icebergAssetImport as any;
-const dashboardAsset = dashboardAssetImport as any;
-const vitorAsset = vitorAssetImport as any;
-const caseEnergia = caseEnergiaImport as any;
-const caseAcademia = caseAcademiaImport as any;
-const caseAcai = caseAcaiImport as any;
+const icebergUrl = "/assets/lp01/iceberg-engenharia-receita.webp";
+const dashboardUrl = "/assets/lp01/dashboard-hero.webp";
+const vitorUrl = "/assets/lp01/vitor.webp";
+const caseEnergiaUrl = "/assets/lp01/solar-investimento.webp";
+const caseAcademiaUrl = "/assets/lp01/academia-crm.webp";
+const caseAcaiUrl = "/assets/lp01/acai-report.webp";
 
 export function LPSections() {
   const cases = [
     {
       cat: "Energia Solar",
       headline: "R$ 186,80 investidos → R$ 14.200 em venda",
-      image: caseEnergia.url,
+      image: caseEnergiaUrl,
       results: ["Investimento em mídia: R$ 186,80", "Venda registrada: R$ 14.200,00"]
     },
     {
       cat: "Academia",
       headline: "AQUISIÇÃO → COMERCIAL → VENDA",
-      image: caseAcademia.url,
+      image: caseAcademiaUrl,
       results: ["Investimento em mídia: R$ 200,00", "Negociações vendidas: 46", "Receita registrada: R$ 9.328,80"]
     },
     {
       cat: "Açaíteria",
       headline: "ROAS 30,6 com +46% de crescimento semanal",
-      image: caseAcai.url,
+      image: caseAcaiUrl,
       results: ["Investimento em mídia: R$ 156,53", "ROAS atribuído: 30,6", "Valor de conversão: R$ 4.753,00"]
     }
   ];
