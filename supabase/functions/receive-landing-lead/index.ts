@@ -264,11 +264,17 @@ Deno.serve(async (req) => {
 
   let rawPayload: any;
   try {
-    rawPayload = await req.json();
-  } catch {
-    return json(400, { error: "invalid_json" });
+    const text = await req.text();
+    console.log(`[receive-landing-lead] Raw body length: ${text.length}`);
+    rawPayload = JSON.parse(text);
+  } catch (err) {
+    console.error("[receive-landing-lead] JSON parse error", err);
+    return json(400, { error: "invalid_json", message: err.message });
   }
-  console.log(`[receive-landing-lead] ${method} payload received`);
+  console.log(`[receive-landing-lead] ${method} payload received`, { 
+    hasLeadId: !!rawPayload.leadId,
+    leadId: rawPayload.leadId
+  });
 
   const payload = rawPayload as LandingPayload & Record<string, any>;
 
