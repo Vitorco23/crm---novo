@@ -36,7 +36,7 @@ export default function Oportunidades() {
     try {
       const n = await pullInboundLeads();
       if (n > 0) {
-        toast.success(`${n} lead${n > 1 ? "s" : ""} importado${n > 1 ? "s" : ""} da Landing Page`);
+        toast.success(`${n} registro${n > 1 ? "s" : ""} processado${n > 1 ? "s" : ""} da Landing Page`);
         setRefreshKey((k) => k + 1);
       } else {
         toast("Nenhum lead novo na caixa de entrada");

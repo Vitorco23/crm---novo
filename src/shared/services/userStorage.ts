@@ -512,28 +512,45 @@ export async function syncInboundLeads(): Promise<number> {
     
     // Proteção contra duplicação: verifica se o inbound id já foi processado 
     // ou se o lead já existe no storage local por algum motivo.
-    const converted = rows
-      .filter(row => !existing.some(l => (l as any).inboundId === row.id))
-      .map(row => {
-        const { lead, meeting } = inboundToLead(row);
-        (lead as any).inboundId = row.id;
-        return { lead, meeting };
-      });
+    const converted = rows.map(row => {
+      const localExisting = existing.find(l => (l as any).inboundId === row.id);
+      const { lead: incomingLead, meeting } = inboundToLead(row);
+      (incomingLead as any).inboundId = row.id;
 
-    if (converted.length === 0) {
-      // Se todos os registros já existirem localmente, apenas limpa a fila
+      if (localExisting) {
+        localExisting.niche = incomingLead.niche || localExisting.niche;
+        localExisting.notes = incomingLead.notes;
+        return { lead: localExisting, meeting, isUpdate: true };
+      }
+      return { lead: incomingLead, meeting, isUpdate: false };
+    });
+
+    const newEntries = converted.filter(c => !c.isUpdate);
+    const updatedEntries = converted.filter(c => c.isUpdate);
+
+    if (newEntries.length === 0 && updatedEntries.length === 0) {
       const ids = rows.map((r) => r.id);
       await supabase.from("leads_inbound").delete().in("id", ids);
       return 0;
     }
 
-    const newLeads = converted.map(c => c.lead);
-    usave<Lead[]>("p21_leads", [...newLeads, ...existing]);
+    if (newEntries.length > 0) {
+      const newLeads = newEntries.map(c => c.lead);
+      usave<Lead[]>("p21_leads", [...newLeads, ...existing]);
+    } else if (updatedEntries.length > 0) {
+      usave<Lead[]>("p21_leads", [...existing]);
+    }
 
     const newMeetings = converted.map(c => c.meeting).filter(Boolean);
     if (newMeetings.length > 0) {
       const existingMeetings = uload<any[]>("p21_meetings", []);
-      usave<any[]>("p21_meetings", [...newMeetings, ...existingMeetings]);
+      const meetingsToSave = [...existingMeetings];
+      for (const m of newMeetings) {
+        const idx = meetingsToSave.findIndex(em => em.googleEventId === m.googleEventId || (em.leadId === m.leadId && em.date === m.date && em.time === m.time));
+        if (idx >= 0) meetingsToSave[idx] = m;
+        else meetingsToSave.unshift(m);
+      }
+      usave<any[]>("p21_meetings", meetingsToSave);
     }
 
     const ids = rows.map((r) => r.id);
@@ -545,9 +562,9 @@ export async function syncInboundLeads(): Promise<number> {
     }
 
     window.dispatchEvent(new Event("p21:storage-synced"));
-    window.dispatchEvent(new CustomEvent("p21:leads-changed", { detail: { source: "inbound", count: newLeads.length } }));
+    window.dispatchEvent(new CustomEvent("p21:leads-changed", { detail: { source: "inbound", count: converted.length } }));
     window.dispatchEvent(new CustomEvent("p21:meetings-changed", { detail: { source: "inbound", count: newMeetings.length } }));
-    return newLeads.length;
+    return converted.length;
   } finally {
     inboundSyncRunning = false;
     if (inboundSyncPending) {
