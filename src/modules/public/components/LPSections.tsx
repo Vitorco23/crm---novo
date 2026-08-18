@@ -79,6 +79,9 @@ export function LPSections() {
             alt="Modelo Iceberg da Engenharia de Receita" 
             className="w-full h-auto rounded-3xl border border-[#caa55a]/20 shadow-2xl shadow-[#caa55a]/5 transition-transform duration-500 group-hover:scale-[1.01]"
             loading="lazy"
+            width="1000"
+            height="600"
+            decoding="async"
           />
         </div>
       </section>
@@ -146,6 +149,9 @@ export function LPSections() {
                alt="Interface CRM Performance21" 
                className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-700"
                loading="lazy"
+               width="600"
+               height="400"
+               decoding="async"
              />
           </div>
         </div>
@@ -160,6 +166,9 @@ export function LPSections() {
               alt="Vítor Oliveira" 
               className="w-full h-auto scale-105"
               loading="lazy"
+              width="450"
+              height="600"
+              decoding="async"
             />
           </div>
           <div className="lg:col-span-7">
