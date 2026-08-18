@@ -1,36 +1,39 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AppLayout } from "@/shared/components/AppLayout";
-import ColdCall from "@/modules/cold-call/pages/ColdCall";
-import Oportunidades from "@/modules/pipeline/pages/Oportunidades";
-import Onboarding from "@/modules/pipeline/pages/Onboarding";
-import Scrum from "@/modules/metas/pages/Scrum";
-import Pomodoro from "@/modules/cold-call/pages/Pomodoro";
-import Dashboard from "@/modules/dashboard/pages/Dashboard";
-import Metas from "@/modules/metas/pages/Metas";
-import Financeiro from "@/modules/financeiro/pages/Financeiro";
-import Integracoes from "@/modules/configuracoes/pages/Integracoes";
-import Lembretes from "@/modules/agenda/pages/Lembretes";
-import InteligenciaComercial from "@/modules/intelligence/pages/InteligenciaComercial";
-import CentralDecisao from "@/modules/intelligence/pages/CentralDecisao";
-import MissaoDoDia from "@/modules/intelligence/pages/MissaoDoDia";
-import { IntelligenceShell } from "@/modules/intelligence/components/IntelligenceShell";
-import { ManagementShell } from "@/modules/dashboard/components/ManagementShell";
-
-import Agenda from "@/modules/agenda/pages/Agenda";
-import MemoriaComercial from "@/modules/intelligence/pages/MemoriaComercial";
 import { lazy, Suspense } from "react";
 import { PublicRouteWrapper } from "./modules/public/components/PublicRouteWrapper";
 import { PrivateRouteWrapper } from "./modules/public/components/PrivateRouteWrapper";
+
+// Lazy-loaded Private Components
+const ColdCall = lazy(() => import("@/modules/cold-call/pages/ColdCall"));
+const Oportunidades = lazy(() => import("@/modules/pipeline/pages/Oportunidades"));
+const Onboarding = lazy(() => import("@/modules/pipeline/pages/Onboarding"));
+const Scrum = lazy(() => import("@/modules/metas/pages/Scrum"));
+const Pomodoro = lazy(() => import("@/modules/cold-call/pages/Pomodoro"));
+const Dashboard = lazy(() => import("@/modules/dashboard/pages/Dashboard"));
+const Metas = lazy(() => import("@/modules/metas/pages/Metas"));
+const Financeiro = lazy(() => import("@/modules/financeiro/pages/Financeiro"));
+const Integracoes = lazy(() => import("@/modules/configuracoes/pages/Integracoes"));
+const Lembretes = lazy(() => import("@/modules/agenda/pages/Lembretes"));
+const InteligenciaComercial = lazy(() => import("@/modules/intelligence/pages/InteligenciaComercial"));
+const CentralDecisao = lazy(() => import("@/modules/intelligence/pages/CentralDecisao"));
+const MissaoDoDia = lazy(() => import("@/modules/intelligence/pages/MissaoDoDia"));
+const Agenda = lazy(() => import("@/modules/agenda/pages/Agenda"));
+const MemoriaComercial = lazy(() => import("@/modules/intelligence/pages/MemoriaComercial"));
+
+// Shell components (can stay static if light, but IntelligenceShell/ManagementShell are used in private routes)
+const IntelligenceShell = lazy(() => import("@/modules/intelligence/components/IntelligenceShell").then(m => ({ default: m.IntelligenceShell })));
+const ManagementShell = lazy(() => import("@/modules/dashboard/components/ManagementShell").then(m => ({ default: m.ManagementShell })));
 
 const Laboratorio = lazy(() => import("@/modules/laboratorio/pages/Laboratorio"));
 const MetricasDiarias = lazy(() => import("@/modules/intelligence/pages/MetricasDiarias"));
 const SaudeSistema = lazy(() => import("@/modules/configuracoes/pages/SaudeSistema"));
 const LP01 = lazy(() => import("@/modules/public/pages/LP01"));
 
-import Auth from "@/pages/Auth";
-import OAuthConsent from "@/pages/OAuthConsent";
-import ResetPassword from "@/pages/ResetPassword";
-import NotFound from "@/pages/NotFound";
+const Auth = lazy(() => import("@/pages/Auth"));
+const OAuthConsent = lazy(() => import("@/pages/OAuthConsent"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+
 
 const App = () => (
   <BrowserRouter>
@@ -48,9 +51,9 @@ const App = () => (
       />
 
       {/* Outras rotas públicas/base */}
-      <Route path="/auth" element={<PublicRouteWrapper><Auth /></PublicRouteWrapper>} />
-      <Route path="/reset-password" element={<PublicRouteWrapper><ResetPassword /></PublicRouteWrapper>} />
-      <Route path="/.lovable/oauth/consent" element={<PublicRouteWrapper><OAuthConsent /></PublicRouteWrapper>} />
+      <Route path="/auth" element={<PublicRouteWrapper><Suspense fallback={null}><Auth /></Suspense></PublicRouteWrapper>} />
+      <Route path="/reset-password" element={<PublicRouteWrapper><Suspense fallback={null}><ResetPassword /></Suspense></PublicRouteWrapper>} />
+      <Route path="/.lovable/oauth/consent" element={<PublicRouteWrapper><Suspense fallback={null}><OAuthConsent /></Suspense></PublicRouteWrapper>} />
 
       {/* Rotas Privadas - Com Auth e Pomodoro Providers */}
       <Route
