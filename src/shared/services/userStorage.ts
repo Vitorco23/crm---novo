@@ -313,28 +313,6 @@ export async function syncFromCloud(): Promise<boolean> {
     console.warn("[userStorage] inbound sync failed", e);
   }
 
-  // NOVO: Verifica se há leads marcados para exclusão na nuvem.
-  try {
-    const { data: tombstoneRows } = await supabase
-      .from("user_storage")
-      .select("value")
-      .eq("user_id", uid)
-      .eq("key", "p21_deleted_leads_tombstones");
-    
-    if (tombstoneRows && tombstoneRows.length > 0 && tombstoneRows[0].value) {
-      const tombstones = tombstoneRows[0].value as string[];
-      if (tombstones.length > 0) {
-        const localLeads = uload<Lead[]>("p21_leads", []);
-        const filtered = localLeads.filter(l => !tombstones.includes(l.id));
-        if (filtered.length !== localLeads.length) {
-          usave("p21_leads", filtered);
-          console.info("[userStorage] removed", localLeads.length - filtered.length, "leads locally based on cloud tombstones");
-        }
-      }
-    }
-  } catch (e) {
-    console.warn("[userStorage] tombstone sync failed", e);
-  }
 
 
   // NOTA: a drenagem de `interactions_inbound` foi movida para DEPOIS do pull
