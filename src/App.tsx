@@ -31,6 +31,8 @@ import { lazy, Suspense } from "react";
 const Laboratorio = lazy(() => import("@/modules/laboratorio/pages/Laboratorio"));
 const MetricasDiarias = lazy(() => import("@/modules/intelligence/pages/MetricasDiarias"));
 const SaudeSistema = lazy(() => import("@/modules/configuracoes/pages/SaudeSistema"));
+const LP01 = lazy(() => import("@/modules/public/pages/LP01"));
+
 
 
 import Auth from "@/pages/Auth";
@@ -50,7 +52,13 @@ const App = () => (
         <AuthProvider>
           <PomodoroProvider>
             <Routes>
+              <Route path="/lp01" element={
+                <Suspense fallback={<div className="min-h-screen bg-[#0b0b0d] flex items-center justify-center text-[#caa55a]">Carregando...</div>}>
+                  <LP01 />
+                </Suspense>
+              } />
               <Route path="/auth" element={<Auth />} />
+
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route
