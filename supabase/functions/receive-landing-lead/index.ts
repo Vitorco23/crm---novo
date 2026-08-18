@@ -259,14 +259,12 @@ Deno.serve(async (req) => {
   }
 
   const provided = extractLandingSecret(req);
-  // Temporariamente aceitar se o segredo for enviado literalmente ou o valor correto
-  const secretMatches = provided && (safeEqual(provided, LANDING_WEBHOOK_SECRET) || provided === "$LANDING_WEBHOOK_SECRET");
+  const secretMatches = provided && safeEqual(provided, LANDING_WEBHOOK_SECRET);
   
   if (!secretMatches) {
     const headerDump = Object.fromEntries(req.headers.entries());
-    console.warn(`[receive-landing-lead] unauthorized. provided: ${provided ? provided : "MISSING"}`);
+    console.warn(`[receive-landing-lead] unauthorized. provided: ${provided ? "YES" : "NO"}`);
     console.log("[receive-landing-lead] Headers received:", JSON.stringify(headerDump));
-    console.log("[receive-landing-lead] Expected secret length:", LANDING_WEBHOOK_SECRET.length);
     return json(401, { error: "unauthorized" });
   }
 
