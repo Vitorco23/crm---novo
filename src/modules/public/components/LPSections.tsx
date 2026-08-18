@@ -2,9 +2,9 @@ import React from "react";
 import icebergAsset from "@/assets/iceberg-engenharia-receita.png.asset.json";
 import dashboardAsset from "@/assets/dashboard-hero.png.asset.json";
 import vitorAsset from "@/assets/vitor.png.asset.json";
-import caseEnergia from "@/assets/solar-investimento.png.asset.json";
-import caseAcademia from "@/assets/academia-crm.jpg.asset.json";
-import caseAcai from "@/assets/acai-report.asset.json";
+const caseEnergia = (await import("@/assets/solar-investimento.png.asset.json")).default;
+const caseAcademia = (await import("@/assets/academia-crm.jpg.asset.json")).default;
+const caseAcai = (await import("@/assets/acai-report.asset.json")).default;
 import { CheckCircle2 } from "lucide-react";
 
 export function LPSections() {
