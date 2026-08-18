@@ -39,6 +39,7 @@ interface LandingPayload {
 }
 
 function json(status: number, body: unknown) {
+  console.log(`[receive-landing-lead] Response: ${status}`, body);
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -273,16 +274,18 @@ Deno.serve(async (req) => {
 
   // === Lógica de PATCH (Update) ===
   if (method === "PATCH") {
+    console.log("[receive-landing-lead] Processing PATCH request");
     const updateLeadId = payload.leadId;
     if (!updateLeadId || typeof updateLeadId !== "string") {
+      console.error("[receive-landing-lead] PATCH error: missing leadId");
       return json(400, { error: "missing_leadId", message: "leadId é obrigatório para atualização." });
     }
 
+    console.log(`[receive-landing-lead] Searching for lead: ${updateLeadId}`);
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Buscar o lead existente
     const { data: existingLead, error: fetchErr } = await admin
       .from("leads_inbound")
       .select("id, dados")
@@ -290,18 +293,17 @@ Deno.serve(async (req) => {
       .single();
 
     if (fetchErr || !existingLead) {
-      console.warn(`[receive-landing-lead] lead not found for update: ${updateLeadId}`);
+      console.warn(`[receive-landing-lead] Lead not found: ${updateLeadId}`, fetchErr);
       return json(404, { error: "lead_not_found", message: "Lead não encontrado." });
     }
 
-    const currentDados = existingLead.dados || {};
+    const currentDados = (existingLead.dados as any) || {};
     const fat = payload.faturamento || payload.billing || "";
     const func = payload.funcionarios || payload.employees || "";
     const nicho = payload.segmento || payload.nicho || payload.niche || "";
     const desafio = payload.desafio || payload.challenge || "";
     const periodo = payload.periodo_contato || payload.period || "";
 
-    // Construir o bloco de diagnóstico formatado
     const diagBlock = [
       "--- Diagnóstico P21 ---",
       nicho ? `Segmento: ${nicho}` : "",
@@ -312,34 +314,33 @@ Deno.serve(async (req) => {
       `Atualizado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
     ].filter(Boolean).join("\n");
 
-    // Preservar notas existentes
     const oldNotes = currentDados.notes || "";
     const newNotes = oldNotes ? `${oldNotes}\n\n${diagBlock}` : diagBlock;
 
-    // Atualizar apenas os campos permitidos no objeto 'dados'
     const updatedDados = {
       ...currentDados,
       niche: nicho || currentDados.niche,
       notes: newNotes,
-      // Persistir os dados brutos da atualização também
       lastUpdatePayload: rawPayload,
       updatedAt: new Date().toISOString()
     };
 
+    console.log(`[receive-landing-lead] Updating database for lead: ${updateLeadId}`);
     const { error: updErr } = await admin
       .from("leads_inbound")
       .update({ dados: updatedDados })
       .eq("id", updateLeadId);
 
     if (updErr) {
-      console.error("[receive-landing-lead] update failed", updErr);
+      console.error("[receive-landing-lead] Update failed", updErr);
       return json(500, { error: "update_failed", details: updErr.message });
     }
 
+    console.log(`[receive-landing-lead] PATCH success for lead: ${updateLeadId}`);
     return json(200, {
       ok: true,
-      leadId: updateLeadId,
-      updated: true
+      updated: true,
+      leadId: updateLeadId
     });
   }
 
