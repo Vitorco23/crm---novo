@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import logoAsset from "@/assets/logo-p21.png.asset.json";
+import logoAssetImport from "@/assets/logo-p21.png.asset.json";
+const logoAsset = logoAssetImport as any;
 
 export function LPNavbar() {
   const [scrolled, setScrolled] = useState(false);
