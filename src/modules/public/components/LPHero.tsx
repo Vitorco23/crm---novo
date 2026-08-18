@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { getAvailability } from "../utils/availability";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { CheckCircle2 } from "lucide-react";
 
 export function LPHero() {
   const [availability, setAvailability] = useState(30);
@@ -24,7 +25,6 @@ export function LPHero() {
     setLoading(true);
 
     try {
-      // Usando a Edge Function via client do Supabase (que aponta para a URL base correta)
       const { data, error } = await supabase.functions.invoke("receive-landing-lead", {
         body: {
           ...formData,
@@ -72,20 +72,16 @@ export function LPHero() {
           </p>
           
           <div className="flex flex-col gap-3 mt-4">
-            {["Diagnóstico dos gargalos comerciais", "Atendimento, vendas e recorrência analisados em conjunto", "Foco em previsibilidade de receita"].map((item) => (
+            {[
+              "Diagnóstico dos gargalos comerciais", 
+              "Atendimento, vendas e recorrência analisados em conjunto", 
+              "Foco em previsibilidade de receita"
+            ].map((item) => (
               <div key={item} className="flex items-center gap-3 text-[#f5f5f5]">
-                <div className="w-5 h-5 rounded-full bg-[#caa55a]/20 flex items-center justify-center text-[#caa55a] text-xs">
-                  ✓
-                </div>
+                <CheckCircle2 className="w-5 h-5 text-[#caa55a] shrink-0" />
                 <span>{item}</span>
               </div>
             ))}
-          </div>
-
-          <div className="mt-4">
-            <a href="#metodo" className="text-[#b8b8b8] hover:text-[#f5f5f5] text-sm font-medium underline underline-offset-4 transition-colors">
-              Conhecer o Método
-            </a>
           </div>
         </div>
 
@@ -142,7 +138,7 @@ export function LPHero() {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-4 bg-gradient-to-r from-[#caa55a] to-[#e2c589] text-[#0b0b0d] py-4 rounded-lg font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="mt-4 bg-[#caa55a] text-[#0b0b0d] py-4 rounded-lg font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {loading ? "ENVIANDO..." : "CONTINUAR DIAGNÓSTICO"}
               </button>
