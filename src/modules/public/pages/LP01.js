@@ -1,11 +1,9 @@
-import React, { lazy, Suspense } from "react";
+import React from "react";
 import { LPNavbar } from "../components/LPNavbar";
 import { LPHero } from "../components/LPHero";
 import { LPSections } from "../components/LPSections";
-
 const LP01 = () => {
-  return (
-    <div className="min-h-screen bg-[#0b0b0d] text-[#f5f5f5] selection:bg-[#caa55a]/30 selection:text-[#caa55a] font-sans">
+    return (<div className="min-h-screen bg-[#0b0b0d] text-[#f5f5f5] selection:bg-[#caa55a]/30 selection:text-[#caa55a] font-sans">
       <LPNavbar />
       <main id="top">
         <LPHero />
@@ -30,8 +28,6 @@ const LP01 = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>);
 };
-
 export default LP01;

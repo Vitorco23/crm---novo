@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import logoAssetImport from "@/assets/logo-p21.png.asset.json";
+const logoAsset = logoAssetImport as any;
 
 export function LPNavbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -9,48 +11,77 @@ export function LPNavbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollToHero = () => {
-    document.getElementById("hero")?.scrollIntoView({ behavior: "smooth" });
+  const links = [
+    { href: "#metodo", label: "Método" },
+    { href: "#servicos", label: "Serviços" },
+    { href: "#cases", label: "Cases" },
+    { href: "#sobre", label: "Sobre" },
+    { href: "#faq", label: "FAQ" },
+  ];
+
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    const id = href.replace("#", "");
+    const element = document.getElementById(id);
+    if (element) {
+      const offset = 80;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = element.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    }
   };
 
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
-        scrolled
-          ? "bg-[#0b0b0d]/80 backdrop-blur-md border-[#2d2d2d] py-3"
-          : "bg-transparent border-transparent py-5"
+    <header 
+      className={`fixed inset-x-0 top-0 z-50 border-b transition-all duration-300 ${
+        scrolled 
+          ? "bg-[#0b0b0d]/70 backdrop-blur-xl border-[#2d2d2d]" 
+          : "bg-transparent border-transparent"
       }`}
     >
-      <div className="max-w-[1180px] mx-auto px-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded bg-gradient-to-br from-[#caa55a] to-[#e2c589] flex items-center justify-center font-bold text-[#0b0b0d]">
-            P
-          </div>
-          <span className="font-bold text-[#f5f5f5] text-lg tracking-tight">
-            Performance21
+      <div className="max-w-[1180px] mx-auto flex h-20 items-center justify-between px-6">
+        <a href="#top" onClick={(e) => scrollToSection(e, "#top")} className="flex items-center gap-2">
+          <img 
+            src={logoAsset.url} 
+            alt="Performance21 Logo" 
+            className="h-8 w-auto rounded-lg brightness-125"
+          />
+          <span className="hidden text-sm font-medium tracking-wide text-[#f5f5f5] sm:block">
+            Performance<span className="text-[#caa55a]">21</span>
           </span>
-        </div>
+        </a>
 
-        <div className="hidden md:flex items-center gap-8">
-          {["Método", "Serviços", "Cases", "Sobre", "FAQ"].map((item) => (
+        <nav className="flex items-center gap-4 sm:gap-8">
+          {links.map((l) => (
             <a
-              key={item}
-              href={`#${item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}
-              className="text-sm font-medium text-[#b8b8b8] hover:text-[#caa55a] transition-colors"
+              key={l.href}
+              href={l.href}
+              onClick={(e) => scrollToSection(e, l.href)}
+              className="text-[10px] sm:text-xs uppercase tracking-[0.14em] text-[#b8b8b8] transition-colors hover:text-[#f5f5f5]"
             >
-              {item}
+              {l.label}
             </a>
           ))}
-        </div>
+        </nav>
 
-
-        <button
-          onClick={scrollToHero}
-          className="bg-gradient-to-r from-[#caa55a] to-[#e2c589] text-[#0b0b0d] px-5 py-2 rounded font-semibold text-sm hover:opacity-90 transition-opacity"
+        <a
+          href="#hero"
+          onClick={(e) => {
+            e.preventDefault();
+            document.getElementById("hero")?.scrollIntoView({ behavior: "smooth" });
+          }}
+          className="hidden items-center gap-2 rounded-full border border-[#caa55a]/40 px-6 py-2.5 text-[10px] sm:text-xs uppercase tracking-[0.14em] text-[#caa55a] transition-all hover:bg-[#caa55a] hover:text-[#0b0b0d] lg:inline-flex"
         >
           Solicitar Diagnóstico P21
-        </button>
+          <span aria-hidden>→</span>
+        </a>
       </div>
-    </nav>
+    </header>
   );
 }
