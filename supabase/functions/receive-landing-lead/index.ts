@@ -257,8 +257,15 @@ Deno.serve(async (req) => {
   }
 
   const provided = extractLandingSecret(req);
-  if (!provided || !safeEqual(provided, LANDING_WEBHOOK_SECRET)) {
-    console.warn("[receive-landing-lead] unauthorized");
+  const secretMatches = provided && safeEqual(provided, LANDING_WEBHOOK_SECRET);
+  
+  if (!secretMatches) {
+    console.warn("[receive-landing-lead] unauthorized", { 
+      provided: provided ? "PRESENT" : "MISSING",
+      providedLength: provided?.length,
+      expectedLength: LANDING_WEBHOOK_SECRET.length,
+      headers: Object.fromEntries(req.headers.entries())
+    });
     return json(401, { error: "unauthorized" });
   }
 
