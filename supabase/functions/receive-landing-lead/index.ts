@@ -228,6 +228,8 @@ function safeEqual(a: string, b: string): boolean {
 function extractLandingSecret(req: Request): string | null {
   const hook = req.headers.get("x-webhook-secret");
   if (hook && hook.trim()) return hook.trim();
+  const underscoreHook = req.headers.get("x_webhook_secret");
+  if (underscoreHook && underscoreHook.trim()) return underscoreHook.trim();
   const sig = req.headers.get("x-landing-signature");
   if (sig && sig.trim()) return sig.trim();
   const auth = req.headers.get("authorization");
