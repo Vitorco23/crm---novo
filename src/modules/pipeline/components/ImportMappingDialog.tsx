@@ -12,6 +12,7 @@ export type LeadFieldKey =
   | "company"
   | "contact"
   | "phone"
+  | "website"
   | "niche"
   | "city"
   | "gmnLink"
@@ -31,6 +32,7 @@ export const LEAD_FIELDS: LeadFieldDef[] = [
   { key: "company", label: "Nome da Empresa", required: true, hints: ["empresa", "company", "nome", "razao", "razão"] },
   { key: "contact", label: "Contato (pessoa)", hints: ["contato", "contact", "responsavel", "responsável"] },
   { key: "phone", label: "Telefone", hints: ["telefone", "phone", "tel", "celular", "whatsapp"] },
+  { key: "website", label: "Site / URL", hints: ["site", "website", "url", "www", "página", "pagina"] },
   { key: "gmnLink", label: "Link Google Meu Negócio", hints: ["gmn", "google", "maps", "gmb"] },
   { key: "instagramLink", label: "Link Instagram", hints: ["instagram", "insta", "ig"] },
   { key: "niche", label: "Nicho", hints: ["nicho", "niche", "segmento", "categoria"] },
