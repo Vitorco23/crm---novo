@@ -267,9 +267,83 @@ Deno.serve(async (req) => {
   } catch {
     return json(400, { error: "invalid_json" });
   }
-  console.log("[receive-landing-lead] payload received");
+  console.log(`[receive-landing-lead] ${method} payload received`);
 
   const payload = rawPayload as LandingPayload & Record<string, any>;
+
+  // === Lógica de PATCH (Update) ===
+  if (method === "PATCH") {
+    const updateLeadId = payload.leadId;
+    if (!updateLeadId || typeof updateLeadId !== "string") {
+      return json(400, { error: "missing_leadId", message: "leadId é obrigatório para atualização." });
+    }
+
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Buscar o lead existente
+    const { data: existingLead, error: fetchErr } = await admin
+      .from("leads_inbound")
+      .select("id, dados")
+      .eq("id", updateLeadId)
+      .single();
+
+    if (fetchErr || !existingLead) {
+      console.warn(`[receive-landing-lead] lead not found for update: ${updateLeadId}`);
+      return json(404, { error: "lead_not_found", message: "Lead não encontrado." });
+    }
+
+    const currentDados = existingLead.dados || {};
+    const fat = payload.faturamento || payload.billing || "";
+    const func = payload.funcionarios || payload.employees || "";
+    const nicho = payload.segmento || payload.nicho || payload.niche || "";
+    const desafio = payload.desafio || payload.challenge || "";
+    const periodo = payload.periodo_contato || payload.period || "";
+
+    // Construir o bloco de diagnóstico formatado
+    const diagBlock = [
+      "--- Diagnóstico P21 ---",
+      nicho ? `Segmento: ${nicho}` : "",
+      fat ? `Faturamento: ${fat}` : "",
+      func ? `Funcionários: ${func}` : "",
+      desafio ? `Principal desafio: ${desafio}` : "",
+      periodo ? `Melhor período para contato: ${periodo}` : "",
+      `Atualizado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
+    ].filter(Boolean).join("\n");
+
+    // Preservar notas existentes
+    const oldNotes = currentDados.notes || "";
+    const newNotes = oldNotes ? `${oldNotes}\n\n${diagBlock}` : diagBlock;
+
+    // Atualizar apenas os campos permitidos no objeto 'dados'
+    const updatedDados = {
+      ...currentDados,
+      niche: nicho || currentDados.niche,
+      notes: newNotes,
+      // Persistir os dados brutos da atualização também
+      lastUpdatePayload: rawPayload,
+      updatedAt: new Date().toISOString()
+    };
+
+    const { error: updErr } = await admin
+      .from("leads_inbound")
+      .update({ dados: updatedDados })
+      .eq("id", updateLeadId);
+
+    if (updErr) {
+      console.error("[receive-landing-lead] update failed", updErr);
+      return json(500, { error: "update_failed", details: updErr.message });
+    }
+
+    return json(200, {
+      ok: true,
+      leadId: updateLeadId,
+      updated: true
+    });
+  }
+
+  // === Lógica de POST (Create) continua abaixo ===
 
   const contact = (payload.nome || payload.name || "").toString().trim();
   const company = (payload.empresa || payload.company || "").toString().trim();
