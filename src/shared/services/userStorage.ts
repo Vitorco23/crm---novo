@@ -535,7 +535,7 @@ export async function syncInboundLeads(): Promise<number> {
     
     // Proteção contra duplicação: verifica se o inbound id já foi processado 
     // ou se o lead já existe no storage local por algum motivo.
-    const converted = rows.filter(row => !tombstoneSet.has(row.id)).map(row => {
+    const converted = rows.filter(row => !tombstoneSet.has(row.id) && !tombstoneSet.has((inboundToLead(row).lead as any).id)).map(row => {
       const localExisting = existing.find(l => (l as any).inboundId === row.id);
 
       const { lead: incomingLead, meeting } = inboundToLead(row);
