@@ -669,6 +669,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           company,
           contact: get("contact"),
           phone,
+          website: get("website"),
           niche: get("niche"),
           city: get("city"),
           gmnLink,
