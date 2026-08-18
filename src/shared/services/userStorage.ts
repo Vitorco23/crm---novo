@@ -52,7 +52,9 @@ const SCOPED_KEYS = [
   "p21_scripts",
   "p21_activity_ledger",
   "p21_daily_metrics_reports",
+  "p21_deleted_leads_tombstones",
 ];
+
 
 
 
@@ -311,6 +313,8 @@ export async function syncFromCloud(): Promise<boolean> {
     console.warn("[userStorage] inbound sync failed", e);
   }
 
+
+
   // NOTA: a drenagem de `interactions_inbound` foi movida para DEPOIS do pull
   // do `user_storage` (ver final desta função). Antes ela rodava aqui, quando o
   // cache local `p21_leads` ainda estava vazio na primeira sincronização — por
@@ -328,6 +332,10 @@ export async function syncFromCloud(): Promise<boolean> {
     const cloudMap = new Map<string, unknown>();
     (data ?? []).forEach((r: any) => cloudMap.set(r.key, r.value));
 
+    // Tombstones: IDs de leads deletados que não devem ser re-sincronizados.
+    const tombstones = (cloudMap.get("p21_deleted_leads_tombstones") as string[]) || [];
+    const tombstoneSet = new Set(tombstones);
+
     const isEmpty = (v: unknown) =>
       v == null ||
       (Array.isArray(v) && v.length === 0) ||
@@ -336,8 +344,6 @@ export async function syncFromCloud(): Promise<boolean> {
     for (const k of SCOPED_KEYS) {
       const heavy = isHeavy(k);
       const scoped = `u:${uid}:${k}`;
-      // Best local candidate: scoped store (mem for heavy, LS for light).
-      // Also check legacy unprefixed LS as a fallback.
       const scopedRaw = readScoped(scoped, heavy);
       const legacyRaw = localStorage.getItem(k);
 
@@ -358,7 +364,20 @@ export async function syncFromCloud(): Promise<boolean> {
       try { localParsed = localRaw ? JSON.parse(localRaw) : null; } catch {}
       const localEmpty = isEmpty(localParsed);
 
-      if (!cloudEmpty && cloudHas) {
+      // Especial para leads: aplica tombstones antes de comparar com a nuvem
+      if (k === "p21_leads" && !cloudEmpty && Array.isArray(cloudVal)) {
+        const filteredCloud = cloudVal.filter((l: any) => !tombstoneSet.has(l.id));
+        const cloudStr = JSON.stringify(filteredCloud);
+        if (scopedRaw !== cloudStr) {
+          writeScoped(scoped, cloudStr, heavy);
+          changed = true;
+          // Se mudamos localmente por causa dos tombstones, atualizamos a nuvem também
+          // para limpar o registro principal p21_leads.
+          if (filteredCloud.length < cloudVal.length) {
+            scheduleCloudPush(k, filteredCloud);
+          }
+        }
+      } else if (!cloudEmpty && cloudHas) {
         const cloudStr = JSON.stringify(cloudVal);
         if (scopedRaw !== cloudStr) {
           writeScoped(scoped, cloudStr, heavy);
@@ -379,6 +398,7 @@ export async function syncFromCloud(): Promise<boolean> {
         }
       }
     }
+
   } catch (e) {
     console.warn("[userStorage] sync failed", e);
   }
@@ -508,12 +528,16 @@ export async function syncInboundLeads(): Promise<number> {
     if (rows.length === 0) return 0;
 
     const existing = uload<Lead[]>("p21_leads", []);
+    const tombstones = uload<string[]>("p21_deleted_leads_tombstones", []);
+    const tombstoneSet = new Set(tombstones);
+
     
     
     // Proteção contra duplicação: verifica se o inbound id já foi processado 
     // ou se o lead já existe no storage local por algum motivo.
-    const converted = rows.map(row => {
+    const converted = rows.filter(row => !tombstoneSet.has(row.id)).map(row => {
       const localExisting = existing.find(l => (l as any).inboundId === row.id);
+
       const { lead: incomingLead, meeting } = inboundToLead(row);
       (incomingLead as any).inboundId = row.id;
 

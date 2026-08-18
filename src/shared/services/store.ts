@@ -547,7 +547,14 @@ export function updateLeadStage(id: string, stage: PipelineStage) {
 export function deleteLead(id: string) {
   const leads = getLeads().filter((l) => l.id !== id);
   saveLeads(leads);
+  
+  // Marca para exclusão na nuvem (Tombstone)
+  const tombstones = loadFromStorage<string[]>("p21_deleted_leads_tombstones", []);
+  if (!tombstones.includes(id)) {
+    saveToStorage("p21_deleted_leads_tombstones", [...tombstones, id]);
+  }
 }
+
 
 // ===== Batch APIs (1 read + 1 write for N leads) =====
 
@@ -581,7 +588,15 @@ export function deleteLeadsBatch(ids: Set<string> | string[]) {
   if (idSet.size === 0) return;
   const leads = getLeads().filter((l) => !idSet.has(l.id));
   saveLeads(leads);
+
+  // Marca para exclusão na nuvem (Tombstone)
+  const tombstones = loadFromStorage<string[]>("p21_deleted_leads_tombstones", []);
+  const newTombstones = Array.from(idSet).filter(id => !tombstones.includes(id));
+  if (newTombstones.length > 0) {
+    saveToStorage("p21_deleted_leads_tombstones", [...tombstones, ...newTombstones]);
+  }
 }
+
 
 /** Move N leads to the same stage in a single read+write. */
 export function moveLeadsToStageBatch(
