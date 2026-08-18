@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import logoAssetImport from "@/assets/logo-p21.png.asset.json";
-const logoAsset = logoAssetImport as any;
+const logoUrl = "/assets/lp01/logo-p21.webp";
 
 export function LPNavbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -48,7 +47,7 @@ export function LPNavbar() {
       <div className="max-w-[1180px] mx-auto flex h-20 items-center justify-between px-6">
         <a href="#top" onClick={(e) => scrollToSection(e, "#top")} className="flex items-center gap-2">
           <img 
-            src={logoAsset.url} 
+            src={logoUrl}
             alt="Performance21 Logo" 
             className="h-8 w-auto rounded-lg brightness-125"
           />

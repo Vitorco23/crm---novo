@@ -1,37 +1,31 @@
 import React from "react";
-import icebergAssetImport from "@/assets/iceberg-engenharia-receita.png.asset.json";
-import dashboardAssetImport from "@/assets/dashboard-hero.png.asset.json";
-import vitorAssetImport from "@/assets/vitor.png.asset.json";
-import caseEnergiaImport from "@/assets/solar-investimento.png.asset.json";
-import caseAcademiaImport from "@/assets/academia-crm.jpg.asset.json";
-import caseAcaiImport from "@/assets/acai-report.asset.json";
 import { CheckCircle2 } from "lucide-react";
 
-const icebergAsset = icebergAssetImport as any;
-const dashboardAsset = dashboardAssetImport as any;
-const vitorAsset = vitorAssetImport as any;
-const caseEnergia = caseEnergiaImport as any;
-const caseAcademia = caseAcademiaImport as any;
-const caseAcai = caseAcaiImport as any;
+const icebergUrl = "/assets/lp01/iceberg-engenharia-receita.webp";
+const dashboardUrl = "/assets/lp01/dashboard-hero.webp";
+const vitorUrl = "/assets/lp01/vitor.webp";
+const caseEnergiaUrl = "/assets/lp01/solar-investimento.webp";
+const caseAcademiaUrl = "/assets/lp01/academia-crm.webp";
+const caseAcaiUrl = "/assets/lp01/acai-report.webp";
 
 export function LPSections() {
   const cases = [
     {
       cat: "Energia Solar",
       headline: "R$ 186,80 investidos → R$ 14.200 em venda",
-      image: caseEnergia.url,
+      image: caseEnergiaUrl,
       results: ["Investimento em mídia: R$ 186,80", "Venda registrada: R$ 14.200,00"]
     },
     {
       cat: "Academia",
       headline: "AQUISIÇÃO → COMERCIAL → VENDA",
-      image: caseAcademia.url,
+      image: caseAcademiaUrl,
       results: ["Investimento em mídia: R$ 200,00", "Negociações vendidas: 46", "Receita registrada: R$ 9.328,80"]
     },
     {
       cat: "Açaíteria",
       headline: "ROAS 30,6 com +46% de crescimento semanal",
-      image: caseAcai.url,
+      image: caseAcaiUrl,
       results: ["Investimento em mídia: R$ 156,53", "ROAS atribuído: 30,6", "Valor de conversão: R$ 4.753,00"]
     }
   ];
@@ -75,7 +69,7 @@ export function LPSections() {
         </div>
         <div className="max-w-[1000px] mx-auto relative group">
           <img 
-            src={icebergAsset.url} 
+            src={icebergUrl} 
             alt="Modelo Iceberg da Engenharia de Receita" 
             className="w-full h-auto rounded-3xl border border-[#caa55a]/20 shadow-2xl shadow-[#caa55a]/5 transition-transform duration-500 group-hover:scale-[1.01]"
             loading="lazy"
@@ -145,7 +139,7 @@ export function LPSections() {
           </div>
           <div className="rounded-3xl border border-[#2d2d2d] shadow-3xl overflow-hidden relative group">
              <img 
-               src={dashboardAsset.url} 
+               src={dashboardUrl} 
                alt="Interface CRM Performance21" 
                className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-700"
                loading="lazy"
@@ -162,7 +156,7 @@ export function LPSections() {
         <div className="max-w-[1180px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
           <div className="lg:col-span-5 rounded-3xl border border-[#2d2d2d] overflow-hidden grayscale hover:grayscale-0 transition-all duration-500 shadow-2xl">
             <img 
-              src={vitorAsset.url} 
+              src={vitorUrl} 
               alt="Vítor Oliveira" 
               className="w-full h-auto scale-105"
               loading="lazy"
