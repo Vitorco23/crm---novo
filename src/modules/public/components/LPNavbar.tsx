@@ -35,13 +35,14 @@ export function LPNavbar() {
           {["Método", "Serviços", "Cases", "Sobre", "FAQ"].map((item) => (
             <a
               key={item}
-              href={`#${item.toLowerCase()}`}
+              href={`#${item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}
               className="text-sm font-medium text-[#b8b8b8] hover:text-[#caa55a] transition-colors"
             >
               {item}
             </a>
           ))}
         </div>
+
 
         <button
           onClick={scrollToHero}

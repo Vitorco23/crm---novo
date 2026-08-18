@@ -4,7 +4,7 @@ export function LPSections() {
   return (
     <div className="flex flex-col">
       {/* O Diagnóstico */}
-      <section id="diagnóstico" className="py-24 px-6 bg-[#0b0b0d]">
+      <section id="diagnostico" className="py-24 px-6 bg-[#0b0b0d]">
         <div className="max-w-[1180px] mx-auto text-center mb-16">
           <p className="text-[#caa55a] text-sm font-semibold tracking-widest uppercase mb-4">O Diagnóstico</p>
           <h2 className="text-3xl md:text-5xl font-bold text-[#f5f5f5] mb-6">
@@ -100,7 +100,7 @@ export function LPSections() {
       </section>
 
       {/* Serviços */}
-      <section id="serviços" className="py-24 px-6 bg-[#0b0b0d] border-t border-[#2d2d2d]">
+      <section id="servicos" className="py-24 px-6 bg-[#0b0b0d] border-t border-[#2d2d2d]">
         <div className="max-w-[1180px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
           <div className="lg:col-span-5">
             <p className="text-[#caa55a] text-sm font-semibold tracking-widest uppercase mb-4">Escopo de Atuação</p>
@@ -134,7 +134,7 @@ export function LPSections() {
       </section>
 
       {/* Método */}
-      <section id="método" className="py-24 px-6 bg-[#0b0b0d] border-t border-[#2d2d2d]">
+      <section id="metodo" className="py-24 px-6 bg-[#0b0b0d] border-t border-[#2d2d2d]">
         <div className="max-w-[1180px] mx-auto text-center mb-16">
           <p className="text-[#caa55a] text-sm font-semibold tracking-widest uppercase mb-4">O Método</p>
           <h2 className="text-3xl md:text-5xl font-bold text-[#f5f5f5] mb-6">Os 5 Fundamentos da Engenharia de Receita.</h2>
