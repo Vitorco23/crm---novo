@@ -39,6 +39,7 @@ interface LandingPayload {
 }
 
 function json(status: number, body: unknown) {
+  console.log(`[receive-landing-lead] Response: ${status}`, body);
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -227,6 +228,8 @@ function safeEqual(a: string, b: string): boolean {
 function extractLandingSecret(req: Request): string | null {
   const hook = req.headers.get("x-webhook-secret");
   if (hook && hook.trim()) return hook.trim();
+  const underscoreHook = req.headers.get("x_webhook_secret");
+  if (underscoreHook && underscoreHook.trim()) return underscoreHook.trim();
   const sig = req.headers.get("x-landing-signature");
   if (sig && sig.trim()) return sig.trim();
   const auth = req.headers.get("authorization");
@@ -256,33 +259,47 @@ Deno.serve(async (req) => {
   }
 
   const provided = extractLandingSecret(req);
-  if (!provided || !safeEqual(provided, LANDING_WEBHOOK_SECRET)) {
-    console.warn("[receive-landing-lead] unauthorized");
+  const secretMatches = provided && safeEqual(provided, LANDING_WEBHOOK_SECRET);
+  
+  if (!secretMatches) {
+    const headerDump = Object.fromEntries(req.headers.entries());
+    console.warn(`[receive-landing-lead] unauthorized. provided: ${provided ? "YES" : "NO"}`);
+    console.log("[receive-landing-lead] Headers received:", JSON.stringify(headerDump));
     return json(401, { error: "unauthorized" });
   }
 
   let rawPayload: any;
   try {
-    rawPayload = await req.json();
-  } catch {
-    return json(400, { error: "invalid_json" });
+    const text = await req.text();
+    console.log(`[receive-landing-lead] Raw body length: ${text.length}`);
+    rawPayload = JSON.parse(text);
+  } catch (err) {
+    console.error("[receive-landing-lead] JSON parse error", err);
+    return json(400, { error: "invalid_json", message: err.message });
   }
-  console.log(`[receive-landing-lead] ${method} payload received`);
+  console.log(`[receive-landing-lead] ${method} payload received`, { 
+    hasLeadId: !!rawPayload.leadId,
+    leadId: rawPayload.leadId
+  });
 
   const payload = rawPayload as LandingPayload & Record<string, any>;
 
   // === Lógica de PATCH (Update) ===
   if (method === "PATCH") {
+    console.log("[receive-landing-lead] Processing PATCH request");
     const updateLeadId = payload.leadId;
     if (!updateLeadId || typeof updateLeadId !== "string") {
+      console.error("[receive-landing-lead] PATCH error: missing leadId");
       return json(400, { error: "missing_leadId", message: "leadId é obrigatório para atualização." });
     }
 
+    console.log(`[receive-landing-lead] Searching for lead: ${updateLeadId}`);
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Buscar o lead existente
+    console.log(`[receive-landing-lead] Searching for lead: ${updateLeadId}`);
+    // Tenta buscar o lead em leads_inbound (fila)
     const { data: existingLead, error: fetchErr } = await admin
       .from("leads_inbound")
       .select("id, dados")
@@ -290,18 +307,78 @@ Deno.serve(async (req) => {
       .single();
 
     if (fetchErr || !existingLead) {
-      console.warn(`[receive-landing-lead] lead not found for update: ${updateLeadId}`);
-      return json(404, { error: "lead_not_found", message: "Lead não encontrado." });
+      console.warn(`[receive-landing-lead] Lead not found in leads_inbound: ${updateLeadId}`, fetchErr);
+      
+      // Tentar buscar em user_storage (p21_leads) se não estiver na fila
+      console.log("[receive-landing-lead] Checking user_storage for lead...");
+      const { data: storageRows, error: storageErr } = await admin
+        .from("user_storage")
+        .select("value")
+        .eq("key", "p21_leads");
+
+      if (!storageErr && storageRows) {
+        for (const row of storageRows) {
+          const leads = (row.value as any[]) || [];
+          const leadIdx = leads.findIndex(l => l.id === updateLeadId || l.inboundId === updateLeadId);
+          
+          if (leadIdx !== -1) {
+            console.log(`[receive-landing-lead] Lead found in user_storage! Index: ${leadIdx}`);
+            const lead = leads[leadIdx];
+            
+            const fat = payload.faturamento || payload.billing || "";
+            const func = payload.funcionarios || payload.employees || "";
+            const nicho = payload.segmento || payload.nicho || payload.niche || "";
+            const desafio = payload.desafio || payload.challenge || "";
+            const periodo = payload.periodo_contato || payload.period || "";
+
+            const diagBlock = [
+              "--- Diagnóstico P21 ---",
+              nicho ? `Segmento: ${nicho}` : "",
+              fat ? `Faturamento: ${fat}` : "",
+              func ? `Funcionários: ${func}` : "",
+              desafio ? `Principal desafio: ${desafio}` : "",
+              periodo ? `Melhor período para contato: ${periodo}` : "",
+              `Atualizado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
+            ].filter(Boolean).join("\n");
+
+            const oldNotes = lead.notes || "";
+            lead.notes = oldNotes ? `${oldNotes}\n\n${diagBlock}` : diagBlock;
+            lead.niche = nicho || lead.niche;
+            lead.updatedAt = new Date().toISOString();
+            
+            leads[leadIdx] = lead;
+            
+            const { error: updStorageErr } = await admin
+              .from("user_storage")
+              .update({ value: leads })
+              .eq("key", "p21_leads");
+
+            if (updStorageErr) {
+              console.error("[receive-landing-lead] user_storage update failed", updStorageErr);
+              return json(500, { error: "storage_update_failed", details: updStorageErr.message });
+            }
+
+            console.log(`[receive-landing-lead] PATCH success (user_storage) for lead: ${updateLeadId}`);
+            return json(200, {
+              ok: true,
+              updated: true,
+              leadId: updateLeadId,
+              source: "user_storage"
+            });
+          }
+        }
+      }
+
+      return json(404, { error: "lead_not_found", message: "Lead não encontrado nos registros." });
     }
 
-    const currentDados = existingLead.dados || {};
+    const currentDados = (existingLead.dados as any) || {};
     const fat = payload.faturamento || payload.billing || "";
     const func = payload.funcionarios || payload.employees || "";
     const nicho = payload.segmento || payload.nicho || payload.niche || "";
     const desafio = payload.desafio || payload.challenge || "";
     const periodo = payload.periodo_contato || payload.period || "";
 
-    // Construir o bloco de diagnóstico formatado
     const diagBlock = [
       "--- Diagnóstico P21 ---",
       nicho ? `Segmento: ${nicho}` : "",
@@ -312,34 +389,33 @@ Deno.serve(async (req) => {
       `Atualizado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
     ].filter(Boolean).join("\n");
 
-    // Preservar notas existentes
     const oldNotes = currentDados.notes || "";
     const newNotes = oldNotes ? `${oldNotes}\n\n${diagBlock}` : diagBlock;
 
-    // Atualizar apenas os campos permitidos no objeto 'dados'
     const updatedDados = {
       ...currentDados,
       niche: nicho || currentDados.niche,
       notes: newNotes,
-      // Persistir os dados brutos da atualização também
       lastUpdatePayload: rawPayload,
       updatedAt: new Date().toISOString()
     };
 
+    console.log(`[receive-landing-lead] Updating database for lead: ${updateLeadId}`);
     const { error: updErr } = await admin
       .from("leads_inbound")
       .update({ dados: updatedDados })
       .eq("id", updateLeadId);
 
     if (updErr) {
-      console.error("[receive-landing-lead] update failed", updErr);
+      console.error("[receive-landing-lead] Update failed", updErr);
       return json(500, { error: "update_failed", details: updErr.message });
     }
 
+    console.log(`[receive-landing-lead] PATCH success for lead: ${updateLeadId}`);
     return json(200, {
       ok: true,
-      leadId: updateLeadId,
-      updated: true
+      updated: true,
+      leadId: updateLeadId
     });
   }
 
