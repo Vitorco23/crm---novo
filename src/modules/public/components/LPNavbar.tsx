@@ -47,7 +47,7 @@ export function LPNavbar() {
       <div className="max-w-[1180px] mx-auto flex h-20 items-center justify-between px-6">
         <a href="#top" onClick={(e) => scrollToSection(e, "#top")} className="flex items-center gap-2">
           <img 
-            src={logoUrl} Constants 
+            src={logoUrl}
             alt="Performance21 Logo" 
             className="h-8 w-auto rounded-lg brightness-125"
           />

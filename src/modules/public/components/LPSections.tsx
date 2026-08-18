@@ -1,4 +1,6 @@
 import React from "react";
+import { CheckCircle2 } from "lucide-react";
+
 const icebergUrl = "/assets/lp01/iceberg-engenharia-receita.webp";
 const dashboardUrl = "/assets/lp01/dashboard-hero.webp";
 const vitorUrl = "/assets/lp01/vitor.webp";
@@ -67,7 +69,7 @@ export function LPSections() {
         </div>
         <div className="max-w-[1000px] mx-auto relative group">
           <img 
-            src={icebergAsset.url} 
+            src={icebergUrl} 
             alt="Modelo Iceberg da Engenharia de Receita" 
             className="w-full h-auto rounded-3xl border border-[#caa55a]/20 shadow-2xl shadow-[#caa55a]/5 transition-transform duration-500 group-hover:scale-[1.01]"
             loading="lazy"
@@ -137,7 +139,7 @@ export function LPSections() {
           </div>
           <div className="rounded-3xl border border-[#2d2d2d] shadow-3xl overflow-hidden relative group">
              <img 
-               src={dashboardAsset.url} 
+               src={dashboardUrl} 
                alt="Interface CRM Performance21" 
                className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-700"
                loading="lazy"
@@ -154,7 +156,7 @@ export function LPSections() {
         <div className="max-w-[1180px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
           <div className="lg:col-span-5 rounded-3xl border border-[#2d2d2d] overflow-hidden grayscale hover:grayscale-0 transition-all duration-500 shadow-2xl">
             <img 
-              src={vitorAsset.url} 
+              src={vitorUrl} 
               alt="Vítor Oliveira" 
               className="w-full h-auto scale-105"
               loading="lazy"
