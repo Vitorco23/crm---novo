@@ -29,6 +29,8 @@ serve(async (req) => {
     const challenge = url.searchParams.get('hub.challenge')
 
     const verifyToken = Deno.env.get('WHATSAPP_WEBHOOK_VERIFY_TOKEN')
+    
+    console.log(`[WhatsApp Webhook] Verification request. Mode: ${mode}, Token: ${token}, Expected: ${verifyToken?.slice(0, 4)}...`)
 
     if (mode === 'subscribe' && token === verifyToken) {
       console.log('[WhatsApp Webhook] Verification success')
@@ -60,13 +62,6 @@ serve(async (req) => {
           const value = change.value
           if (!value) continue
 
-          // O Phone Number ID da conta que recebeu a mensagem
-          // (Poderia ser usado para identificar o user_id se tivéssemos mapeamento)
-          // Por enquanto, como o CRM é multi-tenant via user_storage, precisamos 
-          // de uma estratégia para associar ao user_id correto.
-          // PREMISSÃO: O sistema é usado por um admin ou os números são únicos.
-          // Para esta sprint, vamos buscar o usuário que "possui" o lead com este telefone.
-
           // Processar Mensagens
           if (value.messages) {
             for (const msg of value.messages) {
@@ -85,15 +80,10 @@ serve(async (req) => {
               console.log(`[WhatsApp Webhook] Message from ${fromPhone}: ${bodyText}`)
 
               // Tentar localizar o Lead e o User_ID
-              // Buscamos no user_storage onde o valor (JSON) contenha um lead com este telefone.
-              // Como os leads estão dentro de um array 'p21_leads' no user_storage, 
-              // usamos a busca por JSONB.
-              
               const { data: storageRows, error: storageError } = await supabaseClient
                 .from('user_storage')
                 .select('user_id, value')
                 .eq('key', 'p21_leads')
-                // Esta query busca o telefone normalizado dentro do array de objetos
                 .contains('value', [{ phoneNormalized: fromPhone }])
 
               if (storageError) {
@@ -102,7 +92,7 @@ serve(async (req) => {
 
               const targetUserId = storageRows?.[0]?.user_id
               const leads = storageRows?.[0]?.value as any[] | undefined
-              const targetLead = leads?.find(l => l.phoneNormalized === fromPhone)
+              const targetLead = leads?.find((l: any) => l.phoneNormalized === fromPhone)
 
               if (targetUserId) {
                 console.log(`[WhatsApp Webhook] Lead matched: ${targetLead?.id} for user ${targetUserId}`)
@@ -127,7 +117,6 @@ serve(async (req) => {
                 }
               } else {
                 console.warn(`[WhatsApp Webhook] No lead/user found for phone ${fromPhone}`)
-                // Opcional: Salvar mesmo sem lead se tivéssemos um user_id padrão ou sistema global
               }
             }
           }
@@ -157,7 +146,7 @@ serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error('[WhatsApp Webhook] Error processing POST:', err)
       return new Response(JSON.stringify({ error: err.message }), { 
         status: 500,
