@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, QrCode, Smartphone, RefreshCcw } from "lucide-react";
+import { Loader2, QrCode, Smartphone, RefreshCcw, AlertCircle } from "lucide-react";
 import { WhatsAppStatus, whatsappService } from "../services/whatsappService";
 import { WhatsAppQRCode } from "./WhatsAppQRCode";
 
