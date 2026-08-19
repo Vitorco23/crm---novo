@@ -119,12 +119,12 @@ export const whatsappService = {
 
     const eventSource = new EventSource(`${API_URL}/whatsapp/events?token=${token}`);
     
-    eventSource.addEventListener('status', (e) => onMessage('status', JSON.parse(e.data)));
-    eventSource.addEventListener('qr', (e) => onMessage('qr', JSON.parse(e.data)));
-    eventSource.addEventListener('ready', (e) => onMessage('ready', JSON.parse(e.data)));
-    eventSource.addEventListener('authenticated', (e) => onMessage('authenticated', JSON.parse(e.data)));
-    eventSource.addEventListener('disconnected', (e) => onMessage('disconnected', JSON.parse(e.data)));
-    eventSource.addEventListener('error', (e) => onMessage('error', JSON.parse(e.data)));
+    eventSource.addEventListener('status', (e: any) => onMessage('status', JSON.parse(e.data)));
+    eventSource.addEventListener('qr', (e: any) => onMessage('qr', JSON.parse(e.data)));
+    eventSource.addEventListener('ready', (e: any) => onMessage('ready', JSON.parse(e.data)));
+    eventSource.addEventListener('authenticated', (e: any) => onMessage('authenticated', JSON.parse(e.data)));
+    eventSource.addEventListener('disconnected', (e: any) => onMessage('disconnected', JSON.parse(e.data)));
+    eventSource.addEventListener('error', (e: any) => onMessage('error', JSON.parse(e.data)));
 
     return () => eventSource.close();
   }
