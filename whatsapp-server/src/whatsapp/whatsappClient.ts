@@ -142,8 +142,8 @@ class WhatsAppClientManager {
 
   private updateStatus(status: WhatsAppStatus) {
     this.status = status;
-    this.sessionInfo.status = status;
-    this.emit('status', { status, ...this.sessionInfo });
+    this.sessionInfo = { ...this.sessionInfo, status };
+    this.emit('status', this.sessionInfo);
   }
 
   public getStatus(): WhatsAppSessionInfo {
