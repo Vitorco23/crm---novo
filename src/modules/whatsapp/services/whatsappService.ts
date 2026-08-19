@@ -113,19 +113,58 @@ export const whatsappService = {
   subscribeToEvents: async (onMessage: (event: string, data: any) => void) => {
     if (!API_URL) return () => {};
 
-    const { supabase } = await import("@/integrations/supabase/client");
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || '';
+    const headers = await getAuthHeaders();
+    const abortController = new AbortController();
 
-    const eventSource = new EventSource(`${API_URL}/whatsapp/events?token=${token}`);
-    
-    eventSource.addEventListener('status', (e: any) => onMessage('status', JSON.parse(e.data)));
-    eventSource.addEventListener('qr', (e: any) => onMessage('qr', JSON.parse(e.data)));
-    eventSource.addEventListener('ready', (e: any) => onMessage('ready', JSON.parse(e.data)));
-    eventSource.addEventListener('authenticated', (e: any) => onMessage('authenticated', JSON.parse(e.data)));
-    eventSource.addEventListener('disconnected', (e: any) => onMessage('disconnected', JSON.parse(e.data)));
-    eventSource.addEventListener('error', (e: any) => onMessage('error', JSON.parse(e.data)));
+    const connect = async () => {
+      try {
+        const response = await fetch(`${API_URL}/whatsapp/events`, {
+          headers,
+          signal: abortController.signal
+        });
 
-    return () => eventSource.close();
+        if (!response.ok) {
+          throw new Error(`SSE connection failed: ${response.statusText}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) return;
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          let currentEvent = 'message';
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              currentEvent = line.slice(7).trim();
+            } else if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              try {
+                onMessage(currentEvent, JSON.parse(data));
+              } catch (e) {
+                console.error("Error parsing SSE data:", e);
+              }
+            }
+          }
+        }
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error("SSE Error, reconnecting in 5s...", error);
+          setTimeout(connect, 5000);
+        }
+      }
+    };
+
+    connect();
+
+    return () => abortController.abort();
   }
 };
