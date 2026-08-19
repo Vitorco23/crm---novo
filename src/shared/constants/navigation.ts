@@ -69,6 +69,13 @@ export const NAV_ITEMS: NavItem[] = [
       { title: "Pomodoro", url: "/pomodoro" }
     ]
   },
+  { 
+    title: "WhatsApp",          
+    url: "/whatsapp",      
+    icon: MessageCircle, 
+    group: "operacao",   
+    description: "Comunicação via WhatsApp" 
+  },
 
   // INTELIGÊNCIA
   { 

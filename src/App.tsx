@@ -27,6 +27,7 @@ import { ManagementShell } from "@/modules/dashboard/components/ManagementShell"
 
 import Agenda from "@/modules/agenda/pages/Agenda";
 import MemoriaComercial from "@/modules/intelligence/pages/MemoriaComercial";
+import WhatsAppPage from "@/modules/whatsapp/pages/WhatsAppPage";
 import { lazy, Suspense } from "react";
 const Laboratorio = lazy(() => import("@/modules/laboratorio/pages/Laboratorio"));
 const MetricasDiarias = lazy(() => import("@/modules/intelligence/pages/MetricasDiarias"));
@@ -81,7 +82,7 @@ const App = () => (
                         <Route path="/inteligencia/knowledge" element={<Navigate to="/inteligencia" replace />} />
                         <Route path="/central" element={<IntelligenceShell title="Decisão" description="Comando operacional e o que fazer agora"><CentralDecisao /></IntelligenceShell>} />
                         <Route path="/missao" element={<MissaoDoDia />} />
-
+                        <Route path="/whatsapp" element={<WhatsAppPage />} />
                         <Route path="/agenda" element={<Agenda />} />
                         <Route path="/memoria" element={<IntelligenceShell title="Memória" description="Aprendizados históricos e padrões identificados"><MemoriaComercial /></IntelligenceShell>} />
                         <Route path="/saude-sistema" element={
