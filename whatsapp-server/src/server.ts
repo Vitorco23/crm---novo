@@ -17,7 +17,7 @@ const supabase = createClient(
 
 // Middleware
 app.use(cors({
-  origin: process.env.CRM_ALLOWED_ORIGIN || '*',
+  origin: process.env.CRM_ALLOWED_ORIGIN || 'http://localhost:8080',
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -27,11 +27,6 @@ app.use(express.json());
 const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   let token = authHeader && authHeader.split(' ')[1];
-
-  // SSE might pass token in query string if headers are limited
-  if (!token && req.query.token) {
-    token = req.query.token as string;
-  }
 
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
