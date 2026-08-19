@@ -8,6 +8,15 @@
 
 const API_URL = import.meta.env.VITE_WHATSAPP_API_URL;
 
+const getAuthHeaders = async () => {
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data: { session } } = await supabase.auth.getSession();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': session ? `Bearer ${session.access_token}` : ''
+  };
+};
+
 export type WhatsAppStatus = 
   | 'DISCONNECTED' 
   | 'INITIALIZING' 
@@ -43,7 +52,8 @@ export const whatsappService = {
   getStatus: async (): Promise<WhatsAppSessionStatus> => {
     if (!API_URL) throw new Error("WhatsApp API URL not configured");
     
-    const response = await fetch(`${API_URL}/whatsapp/status`);
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_URL}/whatsapp/status`, { headers });
     if (!response.ok) throw new Error("Failed to fetch WhatsApp status");
     
     return await response.json();
@@ -56,8 +66,10 @@ export const whatsappService = {
   startSession: async (): Promise<{ ok: boolean }> => {
     if (!API_URL) throw new Error("WhatsApp API URL not configured");
     
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_URL}/whatsapp/session/start`, {
-      method: 'POST'
+      method: 'POST',
+      headers
     });
     
     if (!response.ok) throw new Error("Failed to start WhatsApp session");
@@ -71,8 +83,10 @@ export const whatsappService = {
   logout: async (): Promise<{ ok: boolean }> => {
     if (!API_URL) throw new Error("WhatsApp API URL not configured");
     
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_URL}/whatsapp/session/logout`, {
-      method: 'POST'
+      method: 'POST',
+      headers
     });
     
     if (!response.ok) throw new Error("Failed to logout WhatsApp session");
@@ -86,9 +100,32 @@ export const whatsappService = {
   getQR: async (): Promise<QRCodeResponse> => {
     if (!API_URL) throw new Error("WhatsApp API URL not configured");
     
-    const response = await fetch(`${API_URL}/whatsapp/qr`);
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_URL}/whatsapp/qr`, { headers });
     if (!response.ok) throw new Error("Failed to fetch WhatsApp QR Code");
     
     return await response.json();
+  },
+
+  /**
+   * Subscribe to real-time events via SSE
+   */
+  subscribeToEvents: async (onMessage: (event: string, data: any) => void) => {
+    if (!API_URL) return () => {};
+
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+
+    const eventSource = new EventSource(`${API_URL}/whatsapp/events?token=${token}`);
+    
+    eventSource.addEventListener('status', (e: any) => onMessage('status', JSON.parse(e.data)));
+    eventSource.addEventListener('qr', (e: any) => onMessage('qr', JSON.parse(e.data)));
+    eventSource.addEventListener('ready', (e: any) => onMessage('ready', JSON.parse(e.data)));
+    eventSource.addEventListener('authenticated', (e: any) => onMessage('authenticated', JSON.parse(e.data)));
+    eventSource.addEventListener('disconnected', (e: any) => onMessage('disconnected', JSON.parse(e.data)));
+    eventSource.addEventListener('error', (e: any) => onMessage('error', JSON.parse(e.data)));
+
+    return () => eventSource.close();
   }
 };

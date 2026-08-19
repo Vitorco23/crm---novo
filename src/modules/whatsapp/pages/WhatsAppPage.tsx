@@ -34,10 +34,31 @@ export default function WhatsAppPage() {
   useEffect(() => {
     checkStatus();
     
-    // In a real implementation, we would set up SSE/WebSocket here.
-    // For Sprint 1, we'll just do a basic poll or manual refresh.
-    const interval = setInterval(checkStatus, 10000);
-    return () => clearInterval(interval);
+    let unsubscribe: () => void = () => {};
+    
+    const setupEvents = async () => {
+      unsubscribe = await whatsappService.subscribeToEvents((event, data) => {
+        if (event === 'status' || event === 'ready' || event === 'authenticated' || event === 'disconnected') {
+          setStatus(data.status);
+          if (data.status === 'CONNECTED') {
+            setSessionInfo(data);
+          }
+        } else if (event === 'qr') {
+          // The QR logic is handled inside WhatsAppConnection component via polling for now, 
+          // but could be optimized to listen here.
+          checkStatus();
+        }
+      });
+    };
+
+    setupEvents();
+    
+    // Fallback poll every 30s instead of 10s since we have SSE
+    const interval = setInterval(checkStatus, 30000);
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
   }, [checkStatus]);
 
   const handleConnect = async () => {
