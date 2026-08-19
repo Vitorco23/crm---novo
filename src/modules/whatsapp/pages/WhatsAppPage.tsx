@@ -68,7 +68,7 @@ export default function WhatsAppPage() {
       <PageHeader 
         title="WhatsApp" 
         description="Gerencie sua conexão e comunicações via WhatsApp"
-        icon={<MessageSquare className="h-5 w-5 text-accent" />}
+        icon={MessageSquare}
       />
 
       <div className="max-w-4xl mx-auto space-y-6">
