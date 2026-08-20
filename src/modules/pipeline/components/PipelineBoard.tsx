@@ -233,6 +233,9 @@ function LeadCard({
                <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${lead.phoneNormalized || lead.phone?.replace(/\D/g, '')}`, '_blank'); }} className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground">
                   <MessageSquare className="h-3 w-3" />
                </button>
+               <button onClick={(e) => { e.stopPropagation(); window.open(mapsUrlFor(lead), '_blank'); }} className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground" title="Abrir Google Meu Negócio">
+                  <MapPin className="h-3 w-3" />
+               </button>
             </div>
           </div>
         </div>
