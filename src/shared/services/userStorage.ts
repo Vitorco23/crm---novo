@@ -367,19 +367,8 @@ export async function syncFromCloud(): Promise<boolean> {
   const uid = getCurrentUserId();
   if (!uid) return false;
 
-  // Drena a caixa de entrada de leads vindos da Landing Page antes de puxar o resto.
-  try {
-    await syncInboundLeads();
-  } catch (e) {
-    console.warn("[userStorage] inbound sync failed", e);
-  }
-
-
-
-  // NOTA: a drenagem de `interactions_inbound` foi movida para DEPOIS do pull
-  // do `user_storage` (ver final desta função). Antes ela rodava aqui, quando o
-  // cache local `p21_leads` ainda estava vazio na primeira sincronização — por
-  // isso `phoneIndex.size` chegava sempre como 0 e nenhum Lead era encontrado.
+  // Pull the cloud snapshot before draining inbound queues. On a fresh device,
+  // processing a queue against an empty cache could overwrite existing leads.
 
 
   let changed = false;
@@ -461,11 +450,18 @@ export async function syncFromCloud(): Promise<boolean> {
     console.warn("[userStorage] sync failed", e);
   }
 
-  // Agora que o cache local `p21_leads` está populado a partir da nuvem, drena
-  // a fila de interações comerciais (n8n/Matteline). Rodar isso antes do pull
-  // fazia `phoneIndex` ficar vazio na primeira sincronização de cada sessão.
+  // With the complete lead snapshot available locally, drain both queues.
+  // Each queue item is acknowledged only after its cloud write succeeds.
   try {
-    await syncInboundInteractions();
+    const inboundLeads = await syncInboundLeads();
+    if (inboundLeads > 0) changed = true;
+  } catch (e) {
+    console.warn("[userStorage] inbound leads sync failed", e);
+  }
+
+  try {
+    const inboundInteractions = await syncInboundInteractions();
+    if (inboundInteractions > 0) changed = true;
   } catch (e) {
     console.warn("[userStorage] inbound interactions sync failed", e);
   }
