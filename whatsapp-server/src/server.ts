@@ -36,8 +36,8 @@ const authenticateToken = async (req: Request, res: Response, next: NextFunction
     return res.status(401).json({ error: 'Invalid token' });
   }
 
-  // @ts-ignore
-  req.user = user;
+  // Token validation is sufficient for the current routes; avoid mutating
+  // Express Request with an undeclared property.
   next();
 };
 
