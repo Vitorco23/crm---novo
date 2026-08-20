@@ -1,16 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  upsert: vi.fn(async () => ({ error: null })),
-  deleteEq: vi.fn(async () => ({ error: null })),
+  upsert: vi.fn(),
+  deleteEq: vi.fn(),
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: vi.fn(() => ({
-      upsert: mocks.upsert,
+      upsert: (row: any) => mocks.upsert(row),
       delete: vi.fn(() => ({
-        eq: vi.fn(() => ({ eq: mocks.deleteEq })),
+        eq: vi.fn(() => ({ 
+          eq: (k: string, v: any) => mocks.deleteEq(k, v) 
+        })),
       })),
     })),
   },
@@ -32,7 +34,10 @@ describe("userStorage cloud isolation", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     localStorage.clear();
-    mocks.upsert.mockClear();
+    mocks.upsert.mockReset();
+    mocks.upsert.mockResolvedValue({ error: null });
+    mocks.deleteEq.mockReset();
+    mocks.deleteEq.mockResolvedValue({ error: null });
     setCurrentUser(null);
   });
 
@@ -49,18 +54,20 @@ describe("userStorage cloud isolation", () => {
     await vi.advanceTimersByTimeAsync(800);
 
     expect(mocks.upsert).toHaveBeenCalledTimes(1);
-    expect(mocks.upsert.mock.calls[0][0]).toMatchObject({
+    expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
       user_id: "user-a",
       key: "p21_goals_settings",
       value: { target: 10 },
-    });
+    }));
   });
 
   it("keeps an immediate confirmed write bound across a session change", async () => {
-    let release!: () => void;
-    mocks.upsert.mockImplementationOnce(async (row) => {
-      await new Promise<void>((resolve) => { release = resolve; });
-      return { error: null, row };
+    let release!: (v: any) => void;
+    const releasePromise = new Promise((resolve) => { release = resolve; });
+    
+    mocks.upsert.mockImplementationOnce(async () => {
+      await releasePromise;
+      return { error: null };
     });
 
     setCurrentUser("user-a", "a@example.test");
@@ -68,12 +75,12 @@ describe("userStorage cloud isolation", () => {
     setCurrentUser("user-b", "b@example.test");
 
     await vi.waitFor(() => expect(mocks.upsert).toHaveBeenCalledTimes(1));
-    release();
+    release({ error: null });
     await write;
 
-    expect(mocks.upsert.mock.calls[0][0]).toMatchObject({
+    expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
       user_id: "user-a",
       key: "p21_leads",
-    });
+    }));
   });
 });
