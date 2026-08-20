@@ -13,6 +13,7 @@ const LEGACY_ADMIN_EMAIL = "vitorco23@gmail.com";
 
 import { supabase } from "@/integrations/supabase/client";
 import { idbGet, idbSet, idbDelete } from "@/shared/services/idbCache";
+import { ScopedWriteQueue, withRetry } from "@/shared/services/cloudWriteQueue";
 
 
 
@@ -174,8 +175,14 @@ export function usave<T>(key: string, data: T) {
 }
 
 export function uremove(key: string) {
+  const uid = getCurrentUserId();
   deleteScoped(scopedKey(key), isHeavy(key));
-  if (SCOPED_KEYS.includes(key)) cloudDelete(key);
+  if (!uid || !SCOPED_KEYS.includes(key)) return;
+
+  cancelPendingPush(uid, key);
+  void cloudDelete(uid, key).catch((error) => {
+    reportCloudSyncError("delete", uid, key, error);
+  });
 }
 
 
@@ -208,18 +215,58 @@ export async function hydrateLocal(): Promise<void> {
 
 // ===== Cloud sync (debounced) =====
 
-const pendingPushes = new Map<string, { data: unknown; timer: ReturnType<typeof setTimeout> }>();
+type PendingPush = {
+  userId: string;
+  key: string;
+  data: unknown;
+  timer: ReturnType<typeof setTimeout>;
+};
+
+const pendingPushes = new Map<string, PendingPush>();
+const cloudWrites = new ScopedWriteQueue();
 const PUSH_DEBOUNCE_MS = 800;
 
-function scheduleCloudPush(key: string, data: unknown) {
-  const existing = pendingPushes.get(key);
+function cloudScope(userId: string, key: string): string {
+  return `${userId}:${key}`;
+}
+
+function cancelPendingPush(userId: string, key: string) {
+  const scope = cloudScope(userId, key);
+  const existing = pendingPushes.get(scope);
   if (existing) clearTimeout(existing.timer);
+  pendingPushes.delete(scope);
+}
+
+function hasLocalWritePending(userId: string, key: string): boolean {
+  const scope = cloudScope(userId, key);
+  return pendingPushes.has(scope) || cloudWrites.hasPending(scope);
+}
+
+function reportCloudSyncError(operation: "push" | "delete", userId: string, key: string, error: unknown) {
+  console.warn(`[userStorage] cloud ${operation} failed`, { key, error });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("p21:cloud-sync-error", {
+      detail: { operation, userId, key },
+    }));
+  }
+}
+
+function scheduleCloudPush(key: string, data: unknown) {
+  const userId = getCurrentUserId();
+  if (!userId) return;
+  const scope = cloudScope(userId, key);
+  cancelPendingPush(userId, key);
+
   const timer = setTimeout(() => {
-    const entry = pendingPushes.get(key);
-    pendingPushes.delete(key);
-    if (entry) cloudPush(key, entry.data);
+    const entry = pendingPushes.get(scope);
+    pendingPushes.delete(scope);
+    if (!entry) return;
+    void cloudPush(entry.userId, entry.key, entry.data).catch((error) => {
+      reportCloudSyncError("push", entry.userId, entry.key, error);
+    });
   }, PUSH_DEBOUNCE_MS);
-  pendingPushes.set(key, { data, timer });
+
+  pendingPushes.set(scope, { userId, key, data, timer });
 }
 
 if (typeof window !== "undefined") {
@@ -230,11 +277,14 @@ if (typeof window !== "undefined") {
 }
 
 function flushPendingPushes() {
-  pendingPushes.forEach((entry, key) => {
-    clearTimeout(entry.timer);
-    cloudPush(key, entry.data);
-  });
+  const entries = Array.from(pendingPushes.values());
   pendingPushes.clear();
+  for (const entry of entries) {
+    clearTimeout(entry.timer);
+    void cloudPush(entry.userId, entry.key, entry.data).catch((error) => {
+      reportCloudSyncError("push", entry.userId, entry.key, error);
+    });
+  }
 }
 
 /**
@@ -255,6 +305,9 @@ export async function pullKeysFromCloud(keys: string[]): Promise<string[]> {
       .in("key", keys);
     if (error) throw error;
     for (const row of (data ?? []) as Array<{ key: string; value: unknown }>) {
+      // Never let an older cloud snapshot replace a local edit that is queued
+      // or currently being persisted.
+      if (hasLocalWritePending(uid, row.key)) continue;
       if (isEmptyValue(row.value)) continue;
       const scoped = `u:${uid}:${row.key}`;
       const heavy = isHeavy(row.key);
@@ -273,28 +326,44 @@ export async function pullKeysFromCloud(keys: string[]): Promise<string[]> {
   return changed;
 }
 
-async function cloudPush(key: string, data: unknown) {
-
-  const uid = getCurrentUserId();
-  if (!uid) return;
-  try {
-    await supabase.from("user_storage").upsert(
-      { user_id: uid, key, value: data as any, updated_at: new Date().toISOString() },
+async function cloudPush(userId: string, key: string, data: unknown): Promise<void> {
+  const scope = cloudScope(userId, key);
+  return cloudWrites.enqueue(scope, () => withRetry(async () => {
+    const { error } = await supabase.from("user_storage").upsert(
+      { user_id: userId, key, value: data as any, updated_at: new Date().toISOString() },
       { onConflict: "user_id,key" }
     );
-  } catch (e) {
-    console.warn("[userStorage] cloud push failed", key, e);
-  }
+    if (error) throw error;
+  }));
 }
 
-async function cloudDelete(key: string) {
-  const uid = getCurrentUserId();
-  if (!uid) return;
-  try {
-    await supabase.from("user_storage").delete().eq("user_id", uid).eq("key", key);
-  } catch (e) {
-    console.warn("[userStorage] cloud delete failed", key, e);
-  }
+async function cloudDelete(userId: string, key: string): Promise<void> {
+  const scope = cloudScope(userId, key);
+  return cloudWrites.enqueue(scope, () => withRetry(async () => {
+    const { error } = await supabase
+      .from("user_storage")
+      .delete()
+      .eq("user_id", userId)
+      .eq("key", key);
+    if (error) throw error;
+  }));
+}
+
+/**
+ * Persists locally and waits for the matching cloud write. Queue consumers use
+ * this before acknowledging/deleting inbound rows, preventing data loss.
+ */
+export async function saveAndConfirm<T>(key: string, data: T): Promise<void> {
+  const userId = getCurrentUserId();
+  if (!userId) throw new Error("Cannot persist without an authenticated user");
+
+  const str = JSON.stringify(data);
+  writeScoped(`u:${userId}:${key}`, str, isHeavy(key));
+  cancelPendingPush(userId, key);
+
+  if (!SCOPED_KEYS.includes(key)) return;
+  if (PROTECTED_CONFIG_KEYS.has(key) && isEmptyValue(data)) return;
+  await cloudPush(userId, key, data);
 }
 
 /**
@@ -306,19 +375,8 @@ export async function syncFromCloud(): Promise<boolean> {
   const uid = getCurrentUserId();
   if (!uid) return false;
 
-  // Drena a caixa de entrada de leads vindos da Landing Page antes de puxar o resto.
-  try {
-    await syncInboundLeads();
-  } catch (e) {
-    console.warn("[userStorage] inbound sync failed", e);
-  }
-
-
-
-  // NOTA: a drenagem de `interactions_inbound` foi movida para DEPOIS do pull
-  // do `user_storage` (ver final desta função). Antes ela rodava aqui, quando o
-  // cache local `p21_leads` ainda estava vazio na primeira sincronização — por
-  // isso `phoneIndex.size` chegava sempre como 0 e nenhum Lead era encontrado.
+  // Pull the cloud snapshot before draining inbound queues. On a fresh device,
+  // processing a queue against an empty cache could overwrite existing leads.
 
 
   let changed = false;
@@ -342,6 +400,9 @@ export async function syncFromCloud(): Promise<boolean> {
       (typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0);
 
     for (const k of SCOPED_KEYS) {
+      // The queued value is newer than this cloud snapshot. It will become the
+      // source of truth when its serialized write completes.
+      if (hasLocalWritePending(uid, k)) continue;
       const heavy = isHeavy(k);
       const scoped = `u:${uid}:${k}`;
       const scopedRaw = readScoped(scoped, heavy);
@@ -388,13 +449,10 @@ export async function syncFromCloud(): Promise<boolean> {
         writeScoped(scoped, localRaw!, heavy);
         changed = true;
         try {
-          await supabase.from("user_storage").upsert(
-            { user_id: uid, key: k, value: localParsed as any, updated_at: new Date().toISOString() },
-            { onConflict: "user_id,key" }
-          );
+          await cloudPush(uid, k, localParsed);
           console.info("[userStorage] restored", k, "from local/legacy to cloud");
         } catch (e) {
-          console.warn("[userStorage] restore push failed", k, e);
+          reportCloudSyncError("push", uid, k, e);
         }
       }
     }
@@ -403,11 +461,18 @@ export async function syncFromCloud(): Promise<boolean> {
     console.warn("[userStorage] sync failed", e);
   }
 
-  // Agora que o cache local `p21_leads` está populado a partir da nuvem, drena
-  // a fila de interações comerciais (n8n/Matteline). Rodar isso antes do pull
-  // fazia `phoneIndex` ficar vazio na primeira sincronização de cada sessão.
+  // With the complete lead snapshot available locally, drain both queues.
+  // Each queue item is acknowledged only after its cloud write succeeds.
   try {
-    await syncInboundInteractions();
+    const inboundLeads = await syncInboundLeads();
+    if (inboundLeads > 0) changed = true;
+  } catch (e) {
+    console.warn("[userStorage] inbound leads sync failed", e);
+  }
+
+  try {
+    const inboundInteractions = await syncInboundInteractions();
+    if (inboundInteractions > 0) changed = true;
   } catch (e) {
     console.warn("[userStorage] inbound interactions sync failed", e);
   }
@@ -560,9 +625,9 @@ export async function syncInboundLeads(): Promise<number> {
 
     if (newEntries.length > 0) {
       const newLeads = newEntries.map(c => c.lead);
-      usave<Lead[]>("p21_leads", [...newLeads, ...existing]);
+      await saveAndConfirm<Lead[]>("p21_leads", [...newLeads, ...existing]);
     } else if (updatedEntries.length > 0) {
-      usave<Lead[]>("p21_leads", [...existing]);
+      await saveAndConfirm<Lead[]>("p21_leads", [...existing]);
     }
 
     const newMeetings = converted.map(c => c.meeting).filter(Boolean);
@@ -574,7 +639,7 @@ export async function syncInboundLeads(): Promise<number> {
         if (idx >= 0) meetingsToSave[idx] = m;
         else meetingsToSave.unshift(m);
       }
-      usave<any[]>("p21_meetings", meetingsToSave);
+      await saveAndConfirm<any[]>("p21_meetings", meetingsToSave);
     }
 
     const ids = rows.map((r) => r.id);
@@ -762,6 +827,7 @@ export async function syncInboundInteractions(): Promise<number> {
   }
 
   let appended = 0;
+  let needsLeadPersistence = false;
   const okIds: string[] = [];
   const affectedLeadIds = new Set<string>();
   const failed: Array<{ id: string; error: string; dados: any }> = [];
@@ -784,17 +850,28 @@ export async function syncInboundInteractions(): Promise<number> {
         continue;
       }
 
+      const interactionId = `inbound:${row.id}`;
+      const existingInteractions = (lead.interactions as any[]) || [];
+      if (existingInteractions.some((item) => item.id === interactionId || item.inboundId === row.id)) {
+        // A previous attempt may have updated the local cache but failed before
+        // acknowledging the queue row. Re-persist the same lead before acking.
+        needsLeadPersistence = true;
+        okIds.push(row.id);
+        continue;
+      }
+
       const interaction = buildInteractionFromInbound(row, lead);
       const withId = {
-        id: (globalThis.crypto?.randomUUID?.() as string | undefined) ??
-          `int_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        id: interactionId,
+        inboundId: row.id,
         ...interaction,
       };
-      lead.interactions = [...((lead.interactions as any[]) || []), withId];
+      lead.interactions = [...existingInteractions, withId];
       appended++;
+      needsLeadPersistence = true;
       okIds.push(row.id);
       affectedLeadIds.add(lead.id);
-      ledgerEntries.push({ leadId: lead.id, at: interaction.date, externalKey: `inbound:${row.id}` });
+      ledgerEntries.push({ leadId: lead.id, at: interaction.date, externalKey: interactionId });
     } catch (e: any) {
       console.error("[inbound-int] row failed", { id: row.id, error: e?.message || String(e) });
       failed.push({ id: row.id, error: e?.message || String(e), dados: row.dados });
@@ -802,8 +879,8 @@ export async function syncInboundInteractions(): Promise<number> {
   }
 
 
-  if (appended > 0) {
-    usave<Lead[]>("p21_leads", leads);
+  if (needsLeadPersistence) {
+    await saveAndConfirm<Lead[]>("p21_leads", leads);
   }
 
   // Ledger de atividade estimada — import dinâmico evita ciclo de módulos.
