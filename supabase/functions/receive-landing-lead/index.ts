@@ -2,6 +2,7 @@
 // do usuário admin (vitor@performance21.com.br) e (opcional) cria evento no
 // Google Calendar reutilizando a lógica de create-google-meeting.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { constantTimeEqual, escapeHtml, readWebhookJson } from "../_shared/webhook-security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -131,7 +132,7 @@ async function sendLeadNotification(leadId: string, leadData: any, rawPayload: a
     return false;
   }
 
-  console.log(`[lead-email] preparing notification for lead ${leadId}`);
+  console.log(`[lead-email] preparing notification for lead ${escapeHtml(leadId)}`);
 
   const { contact, company, phone, email, niche, source, receivedAt } = leadData;
   const fat = rawPayload.faturamento || rawPayload.billing || "";
@@ -153,17 +154,17 @@ async function sendLeadNotification(leadId: string, leadData: any, rawPayload: a
         <h1 style="margin: 0; font-size: 20px;">NOVO LEAD RECEBIDO</h1>
       </div>
       <div style="padding: 20px; color: #1f2937;">
-        <p><strong>Nome:</strong> ${contact || "—"}</p>
-        <p><strong>Empresa:</strong> ${company || "—"}</p>
-        <p><strong>WhatsApp:</strong> ${phone || "—"}</p>
-        <p><strong>Segmento:</strong> ${niche || "—"}</p>
-        <p><strong>Faturamento:</strong> ${fat || "—"}</p>
-        <p><strong>Funcionários:</strong> ${func || "—"}</p>
+        <p><strong>Nome:</strong> ${escapeHtml(contact || "—")}</p>
+        <p><strong>Empresa:</strong> ${escapeHtml(company || "—")}</p>
+        <p><strong>WhatsApp:</strong> ${escapeHtml(phone || "—")}</p>
+        <p><strong>Segmento:</strong> ${escapeHtml(niche || "—")}</p>
+        <p><strong>Faturamento:</strong> ${escapeHtml(fat || "—")}</p>
+        <p><strong>Funcionários:</strong> ${escapeHtml(func || "—")}</p>
         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-        <p><strong>Principal desafio:</strong><br>${desafio || "—"}</p>
-        <p><strong>Origem:</strong> ${source || "Landing Page"}</p>
-        <p><strong>Data/Hora:</strong> ${formattedDate}</p>
-        <p style="font-size: 12px; color: #6b7280;">ID: ${leadId}</p>
+        <p><strong>Principal desafio:</strong><br>${escapeHtml(desafio || "—")}</p>
+        <p><strong>Origem:</strong> ${escapeHtml(source || "Landing Page")}</p>
+        <p><strong>Data/Hora:</strong> ${escapeHtml(formattedDate)}</p>
+        <p style="font-size: 12px; color: #6b7280;">ID: ${escapeHtml(leadId)}</p>
         
         <div style="text-align: center; margin-top: 30px;">
           <a href="https://crm.performance21.com.br/oportunidades" 
@@ -198,30 +199,22 @@ async function sendLeadNotification(leadId: string, leadData: any, rawPayload: a
     clearTimeout(timeoutId);
 
     if (res.ok) {
-      console.log(`[lead-email] success for lead ${leadId}`);
+      console.log(`[lead-email] success for lead ${escapeHtml(leadId)}`);
       return true;
     } else {
       const errorData = await res.json();
-      console.error(`[lead-email] error for lead ${leadId}:`, errorData);
+      console.error(`[lead-email] error for lead ${escapeHtml(leadId)}:`, errorData);
       return false;
     }
   } catch (error) {
     clearTimeout(timeoutId);
     if (error.name === "AbortError") {
-      console.error(`[lead-email] timeout for lead ${leadId}`);
+      console.error(`[lead-email] timeout for lead ${escapeHtml(leadId)}`);
     } else {
-      console.error(`[lead-email] exception for lead ${leadId}:`, error);
+      console.error(`[lead-email] exception for lead ${escapeHtml(leadId)}:`, error);
     }
     return false;
   }
-}
-
-// Constant-time comparison p/ evitar timing side-channels no shared secret.
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return mismatch === 0;
 }
 
 
@@ -259,7 +252,7 @@ Deno.serve(async (req) => {
   }
 
   const provided = extractLandingSecret(req);
-  const secretMatches = provided && safeEqual(provided, LANDING_WEBHOOK_SECRET);
+  const secretMatches = provided && constantTimeEqual(provided, LANDING_WEBHOOK_SECRET);
   
   if (!secretMatches) {
     // Never dump request headers: they may contain webhook secrets or bearer tokens.
@@ -270,15 +263,9 @@ Deno.serve(async (req) => {
     return json(401, { error: "unauthorized" });
   }
 
-  let rawPayload: any;
-  try {
-    const text = await req.text();
-    console.log(`[receive-landing-lead] Raw body length: ${text.length}`);
-    rawPayload = JSON.parse(text);
-  } catch (err) {
-    console.error("[receive-landing-lead] JSON parse error", err);
-    return json(400, { error: "invalid_json", message: err.message });
-  }
+  const parsed = await readWebhookJson(req);
+  if (!parsed.ok) return json(parsed.status, { error: parsed.error });
+  const rawPayload = parsed.value;
   console.log(`[receive-landing-lead] ${method} payload received`, { 
     hasLeadId: !!rawPayload.leadId,
     leadId: rawPayload.leadId

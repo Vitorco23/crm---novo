@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { readWebhookJson } from "../_shared/webhook-security.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,7 +52,9 @@ serve(async (req) => {
     const token = url.searchParams.get('hub.verify_token')
     const challenge = url.searchParams.get('hub.challenge')
 
-    const verifyToken = "tmBoItC47EDrcJOXoVoQqtrUZB4si5bJ"
+    // Prefer the environment secret. The legacy fallback preserves the current
+    // Meta verification until WHATSAPP_VERIFY_TOKEN is configured in production.
+    const verifyToken = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "tmBoItC47EDrcJOXoVoQqtrUZB4si5bJ"
     
     console.log("[WhatsApp Webhook] Verification request", { mode, hasToken: Boolean(token) })
 
@@ -67,7 +70,14 @@ serve(async (req) => {
   // 2. Receber Eventos (POST)
   if (method === 'POST') {
     try {
-      const rawBody = await req.text()
+      const parsed = await readWebhookJson(req)
+      if (!parsed.ok) {
+        return new Response(JSON.stringify({ error: parsed.error }), {
+          status: parsed.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        })
+      }
+      const rawBody = parsed.raw
       const appSecret = Deno.env.get("WHATSAPP_APP_SECRET")
       const signature = req.headers.get("x-hub-signature-256") ?? ""
 
@@ -82,7 +92,7 @@ serve(async (req) => {
         console.warn("[WhatsApp Webhook] WHATSAPP_APP_SECRET is not configured; signature validation is disabled")
       }
 
-      const body = JSON.parse(rawBody)
+      const body = parsed.value
       console.log("[WhatsApp Webhook] Received event", {
         object: body?.object,
         entries: Array.isArray(body?.entry) ? body.entry.length : 0,
@@ -118,7 +128,7 @@ serve(async (req) => {
                 bodyText = `[${type}]`
               }
 
-              console.log(`[WhatsApp Webhook] Message from ${fromPhone}: ${bodyText}`)
+              console.log("[WhatsApp Webhook] Inbound message", { type, hasBody: Boolean(bodyText) })
 
               // Tentar localizar o Lead e o User_ID
               const { data: storageRows, error: storageError } = await supabaseClient
@@ -136,7 +146,7 @@ serve(async (req) => {
               const targetLead = leads?.find((l: any) => l.phoneNormalized === fromPhone)
 
               if (targetUserId) {
-                console.log(`[WhatsApp Webhook] Lead matched: ${targetLead?.id} for user ${targetUserId}`)
+                console.log("[WhatsApp Webhook] Lead matched", { hasLeadId: Boolean(targetLead?.id) })
                 
                 // Salvar a mensagem
                 const { error: insertError } = await supabaseClient
@@ -157,7 +167,7 @@ serve(async (req) => {
                   console.error('[WhatsApp Webhook] Error inserting message:', insertError)
                 }
               } else {
-                console.warn(`[WhatsApp Webhook] No lead/user found for phone ${fromPhone}`)
+                console.warn("[WhatsApp Webhook] No lead/user match for inbound message")
               }
             }
           }
@@ -188,8 +198,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     } catch (err: any) {
-      console.error('[WhatsApp Webhook] Error processing POST:', err)
-      return new Response(JSON.stringify({ error: err.message }), { 
+      console.error('[WhatsApp Webhook] Error processing POST:', err instanceof Error ? err.message : 'unknown_error')
+      return new Response(JSON.stringify({ error: 'internal_error' }), { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })

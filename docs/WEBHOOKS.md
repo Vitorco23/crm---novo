@@ -117,6 +117,7 @@ Equivalências: `name`/`nome`, `phone`/`telefone`/`whatsapp`, `company`/`empresa
 
 - Reenvie com o mesmo `call_id` para aproveitar a idempotência.
 - Envie `Content-Type: application/json`; requisições `OPTIONS` recebem CORS liberado.
+- O corpo deve ser um objeto JSON e pode ter no máximo 256 KiB; formatos inválidos retornam `400`, tipo de conteúdo incorreto retorna `415` e excesso de tamanho retorna `413`.
 - Códigos de resposta: `200` sucesso · `400` payload inválido · `401` segredo inválido ·
-  `500` erro interno (detalhes ficam apenas nos logs do servidor).
+  `413` payload acima do limite · `415` tipo de conteúdo inválido · `500` erro interno (detalhes ficam apenas nos logs do servidor).
 - Ao rotacionar um segredo, atualize a secret no backend e faça novo deploy da função.
