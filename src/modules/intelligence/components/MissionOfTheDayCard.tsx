@@ -121,8 +121,9 @@ export default function MissionOfTheDayCard() {
 
                   <p className="text-[11px] text-muted-foreground mt-2 flex items-center gap-1.5">
                     <Clock className="h-3 w-3" />
-                    Tempo estimado para resolver as prioridades:{" "}
+                    Tempo produtivo de hoje:{" "}
                     <span className="font-semibold text-foreground">{formatMinutes(mission.estimatedMinutes)}</span>
+
                     <span className="text-muted-foreground/70">
                       · {mission.totalLeadsWithPriority} lead(s) exigem ação
                     </span>

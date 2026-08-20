@@ -20,7 +20,10 @@ import {
   getMeetings,
   type Lead,
   type Meeting,
+  type PomodoroSession,
 } from "@/shared/services/store";
+import { uload } from "@/shared/services/userStorage";
+
 import { getReminders } from "@/modules/agenda/services/reminders";
 import { getTasks, type LeadTask } from "@/modules/leads/services/leadTasks";
 import { displayTemperature } from "@/modules/intelligence/services/leadInsights";
@@ -470,7 +473,16 @@ export function buildDailyMission(): DailyMission {
   const list = computePriorities();
   const queue = list.slice(0, 6);
   const actionable = list.filter((p) => p.tier === "critica" || p.tier === "alta");
-  const estimatedMinutes = (actionable.length ? actionable : queue).reduce((s, p) => s + p.estimatedMinutes, 0);
+  
+  // Usar sessões reais para o tempo produtivo
+  const sessions = uload<PomodoroSession[]>("p21_pomodoro_sessions", []);
+  const today = new Date().toISOString().slice(0, 10);
+  const totalMinutes = sessions
+    .filter(s => s.startTime.slice(0, 10) === today)
+    .reduce((acc, s) => acc + (s.durationMinutes || 0), 0);
+  
+  const estimatedMinutes = totalMinutes;
+
 
   return {
     generatedAt: new Date().toISOString(),
@@ -492,8 +504,9 @@ export const TIER_META: Record<PriorityTier, { label: string; cls: string; dot: 
 
 export function formatMinutes(min: number): string {
   if (min <= 0) return "0 min";
-  if (min < 60) return `${Math.round(min)} minutos`;
+  if (min < 60) return `${Math.round(min)} min`;
   const h = Math.floor(min / 60);
   const m = Math.round(min % 60);
   return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
+
