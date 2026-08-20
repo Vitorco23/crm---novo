@@ -351,6 +351,13 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       }, 100);
     };
 
+    // Force load if we have a current user but haven't triggered a sync yet
+    const uid = localStorage.getItem("p21_current_user_id");
+    if (uid && leads.length === 0) {
+      onSync();
+    }
+
+
     // Initial load: ensures we don't wait for a sync event if data is already in memCache
     onSync();
 
