@@ -2,3 +2,13 @@ project_id = "mvfglrfcnzfrfgxsaagj"
 
 [functions.audit-transcript]
 verify_jwt = false
+
+# External providers authenticate inside each handler with their own secret or signature.
+[functions.receive-landing-lead]
+verify_jwt = false
+
+[functions.receive-matteline-call]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
