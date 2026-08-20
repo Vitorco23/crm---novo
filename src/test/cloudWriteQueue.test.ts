@@ -17,8 +17,7 @@ describe("ScopedWriteQueue", () => {
       events.push("second");
     });
 
-    await Promise.resolve();
-    expect(events).toEqual(["first:start"]);
+    await vi.waitFor(() => expect(events).toEqual(["first:start"]));
     releaseFirst();
     await Promise.all([first, second]);
     expect(events).toEqual(["first:start", "first:end", "second"]);
