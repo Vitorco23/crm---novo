@@ -87,6 +87,12 @@ function daysSince(iso: string) {
   return (Date.now() - new Date(iso).getTime()) / 86400000;
 }
 
+function mapsUrlFor(lead: Lead) {
+  if (lead.gmnLink) return lead.gmnLink;
+  const q = encodeURIComponent(`${lead.company} ${lead.city || ""}`.trim());
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+
 function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPStars) => void }) {
   return (
     <div className="flex gap-0.5">
