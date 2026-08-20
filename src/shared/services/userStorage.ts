@@ -237,6 +237,11 @@ function cancelPendingPush(userId: string, key: string) {
   pendingPushes.delete(scope);
 }
 
+function hasLocalWritePending(userId: string, key: string): boolean {
+  const scope = cloudScope(userId, key);
+  return pendingPushes.has(scope) || cloudWrites.hasPending(scope);
+}
+
 function reportCloudSyncError(operation: "push" | "delete", userId: string, key: string, error: unknown) {
   console.warn(`[userStorage] cloud ${operation} failed`, { key, error });
   if (typeof window !== "undefined") {
@@ -300,6 +305,9 @@ export async function pullKeysFromCloud(keys: string[]): Promise<string[]> {
       .in("key", keys);
     if (error) throw error;
     for (const row of (data ?? []) as Array<{ key: string; value: unknown }>) {
+      // Never let an older cloud snapshot replace a local edit that is queued
+      // or currently being persisted.
+      if (hasLocalWritePending(uid, row.key)) continue;
       if (isEmptyValue(row.value)) continue;
       const scoped = `u:${uid}:${row.key}`;
       const heavy = isHeavy(row.key);
@@ -392,6 +400,9 @@ export async function syncFromCloud(): Promise<boolean> {
       (typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0);
 
     for (const k of SCOPED_KEYS) {
+      // The queued value is newer than this cloud snapshot. It will become the
+      // source of truth when its serialized write completes.
+      if (hasLocalWritePending(uid, k)) continue;
       const heavy = isHeavy(k);
       const scoped = `u:${uid}:${k}`;
       const scopedRaw = readScoped(scoped, heavy);
