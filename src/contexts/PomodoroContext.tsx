@@ -7,6 +7,9 @@ interface TallyCounts {
   decisionMakers: number;
   messages: number;
   meetings: number;
+  r1: number;
+  followsToDo: number;
+  negatives: number;
 }
 
 interface PomodoroState {
@@ -21,7 +24,7 @@ interface PomodoroState {
 
 const STORAGE_KEY = "p21_pomodoro_state";
 
-const DEFAULT_TALLY: TallyCounts = { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0 };
+const DEFAULT_TALLY: TallyCounts = { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0, r1: 0, followsToDo: 0, negatives: 0 };
 
 const DEFAULT_STATE: PomodoroState = {
   startedAt: null,
@@ -61,7 +64,18 @@ interface PomodoroContextValue {
   stop: () => void;
   setDuration: (focusSec: number, breakSec: number) => void;
   setNiche: (niche: string) => void;
-  submitForm: (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string; scriptUsed?: string }) => void;
+  submitForm: (data: { 
+    calls: number; 
+    connections: number; 
+    decisionMakers: number; 
+    meetings: number; 
+    r1: number; 
+    followsToDo: number; 
+    negatives: number; 
+    niche?: string; 
+    scriptUsed?: string 
+  }) => void;
+
   dismissForm: () => void;
   showForm: boolean;
   incrementTally: (key: keyof TallyCounts) => void;
@@ -173,20 +187,36 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const setNiche = (niche: string) => setState({ ...state, niche });
 
-  const submitForm = (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string; scriptUsed?: string }) => {
-    const start = sessionStartRef.current ?? Date.now() - state.durationSec * 1000;
+  const submitForm = (data: { 
+    calls: number; 
+    connections: number; 
+    decisionMakers: number; 
+    meetings: number; 
+    r1: number; 
+    followsToDo: number; 
+    negatives: number; 
+    niche?: string; 
+    scriptUsed?: string 
+  }) => {
+
+    const start = sessionStartRef.current ?? Date.now() - state.actualDurationSec * 1000;
     const end = Date.now();
     addSession({
       startTime: new Date(start).toISOString(),
       endTime: new Date(end).toISOString(),
-      durationMinutes: Math.round(state.durationSec / 60),
+      durationMinutes: Math.round(state.actualDurationSec / 60),
       calls: data.calls,
       connections: data.connections,
       decisionMakers: data.decisionMakers,
       meetings: data.meetings,
+      r1: data.r1,
+      followsToDo: data.followsToDo,
+      negatives: data.negatives,
+
       niche: data.niche || state.niche || undefined,
       scriptUsed: data.scriptUsed || undefined,
     });
+
     sessionStartRef.current = null;
     setShowForm(false);
     // Start break automatically

@@ -5,13 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Phone, Users, UserCheck, CalendarCheck, FileText } from "lucide-react";
+import { Phone, Users, UserCheck, CalendarCheck, FileText, Ban, ListTodo, Zap } from "lucide-react";
 import { getScripts, getSelectedScript, setSelectedScript, type ScriptOption } from "@/modules/knowledge/services/scripts";
 
 export function PomodoroSessionFormDialog() {
   const { showForm, submitForm, dismissForm, state } = usePomodoro();
   const [scripts, setScripts] = useState<string[]>(() => getScripts());
-  const [form, setForm] = useState({ calls: 0, connections: 0, decisionMakers: 0, meetings: 0, niche: "", scriptUsed: getScripts()[0] as ScriptOption });
+  const [form, setForm] = useState({ 
+    calls: 0, 
+    connections: 0, 
+    decisionMakers: 0, 
+    meetings: 0, 
+    r1: 0, 
+    followsToDo: 0, 
+    negatives: 0, 
+    niche: "", 
+    scriptUsed: getScripts()[0] as ScriptOption 
+  });
+
 
   useEffect(() => {
     const refresh = () => setScripts(getScripts());
@@ -25,6 +36,10 @@ export function PomodoroSessionFormDialog() {
       connections: state.tally?.connections ?? 0,
       decisionMakers: state.tally?.decisionMakers ?? 0,
       meetings: state.tally?.meetings ?? 0,
+      r1: state.tally?.r1 ?? 0,
+      followsToDo: state.tally?.followsToDo ?? 0,
+      negatives: state.tally?.negatives ?? 0,
+
       niche: state.niche || "",
       scriptUsed: getSelectedScript(),
     });
@@ -36,7 +51,7 @@ export function PomodoroSessionFormDialog() {
         <DialogHeader>
           <DialogTitle>Registrar Sessão de Outreach</DialogTitle>
           <DialogDescription className="text-xs">
-            Pomodoro de {Math.round(state.durationSec / 60)}min finalizado. Registre os números para mapear seus melhores horários por nicho.
+            Pomodoro de {Math.round(state.actualDurationSec / 60)}min finalizado. Registre os números para mapear seus melhores horários por nicho.
           </DialogDescription>
         </DialogHeader>
 
@@ -90,6 +105,22 @@ export function PomodoroSessionFormDialog() {
               <Input type="number" min={0} value={form.meetings}
                 onChange={(e) => setForm({ ...form, meetings: +e.target.value })} />
             </div>
+            <div>
+              <Label className="text-xs flex items-center gap-1"><Zap className="h-3 w-3" /> R1</Label>
+              <Input type="number" min={0} value={form.r1}
+                onChange={(e) => setForm({ ...form, r1: +e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs flex items-center gap-1"><ListTodo className="h-3 w-3" /> Follows a fazer</Label>
+              <Input type="number" min={0} value={form.followsToDo}
+                onChange={(e) => setForm({ ...form, followsToDo: +e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs flex items-center gap-1"><Ban className="h-3 w-3" /> Nãos</Label>
+              <Input type="number" min={0} value={form.negatives}
+                onChange={(e) => setForm({ ...form, negatives: +e.target.value })} />
+            </div>
+
           </div>
 
           <div className="flex gap-2 pt-2">
