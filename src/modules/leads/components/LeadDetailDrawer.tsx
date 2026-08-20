@@ -449,6 +449,9 @@ export default function LeadDetailDrawer({
             {whatsUrl && (
               <a href={whatsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center h-7 w-7 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-500"><MessageCircle className="h-3.5 w-3.5" /></a>
             )}
+            <a href={mapsUrlFor(draft)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center h-7 w-7 rounded border border-border bg-card hover:bg-accent/10 text-muted-foreground hover:text-foreground" title="Abrir Google Meu Negócio">
+              <MapPin className="h-3.5 w-3.5" />
+            </a>
             <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setMeetingOpen(true)}><CalendarCheck className="h-3.5 w-3.5 mr-1" /> Agendar</Button>
             {isColdCall && step && (
               <Button size="sm" variant="outline" className="h-7 px-2" onClick={copyScript}><Copy className="h-3.5 w-3.5 mr-1" /> Script</Button>

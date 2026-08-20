@@ -87,6 +87,12 @@ function daysSince(iso: string) {
   return (Date.now() - new Date(iso).getTime()) / 86400000;
 }
 
+function mapsUrlFor(lead: Lead) {
+  if (lead.gmnLink) return lead.gmnLink;
+  const q = encodeURIComponent(`${lead.company} ${lead.city || ""}`.trim());
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+
 function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPStars) => void }) {
   return (
     <div className="flex gap-0.5">
@@ -232,6 +238,9 @@ function LeadCard({
                </button>
                <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${lead.phoneNormalized || lead.phone?.replace(/\D/g, '')}`, '_blank'); }} className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground">
                   <MessageSquare className="h-3 w-3" />
+               </button>
+               <button onClick={(e) => { e.stopPropagation(); window.open(mapsUrlFor(lead), '_blank'); }} className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground" title="Abrir Google Meu Negócio">
+                  <MapPin className="h-3 w-3" />
                </button>
             </div>
           </div>
