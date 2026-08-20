@@ -67,7 +67,7 @@ describe("userStorage cloud isolation", () => {
     const write = saveAndConfirm("p21_leads", [{ id: "lead-1" }]);
     setCurrentUser("user-b", "b@example.test");
 
-    await Promise.resolve();
+    await vi.waitFor(() => expect(mocks.upsert).toHaveBeenCalledTimes(1));
     release();
     await write;
 
