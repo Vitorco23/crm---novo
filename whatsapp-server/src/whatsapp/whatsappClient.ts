@@ -127,7 +127,9 @@ class WhatsAppClientManager {
       if (this.client) {
         try {
           await this.client.destroy();
-        } catch (e) {}
+        } catch (error) {
+          console.warn("[WhatsApp] Client cleanup failed after disconnect:", error);
+        }
         this.client = null;
       }
     });
@@ -170,7 +172,9 @@ class WhatsAppClientManager {
     if (fs.existsSync(sessionPath)) {
       try {
         fs.rmSync(sessionPath, { recursive: true, force: true });
-      } catch (e) {}
+      } catch (error) {
+        console.warn("[WhatsApp] Session directory cleanup failed:", error);
+      }
     }
 
     this.qrCode = null;

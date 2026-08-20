@@ -18,6 +18,29 @@ function normalizePhone(phone: string): string {
   return cleaned;
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
+async function isValidMetaSignature(rawBody: string, signature: string, appSecret: string): Promise<boolean> {
+  if (!signature.startsWith("sha256=")) return false;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(appSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+  const expected = "sha256=" + Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return timingSafeEqual(expected, signature);
+}
+
 serve(async (req) => {
   const { method } = req
   const url = new URL(req.url)
@@ -30,7 +53,7 @@ serve(async (req) => {
 
     const verifyToken = "tmBoItC47EDrcJOXoVoQqtrUZB4si5bJ"
     
-    console.log(`[WhatsApp Webhook] Verification request. Mode: ${mode}, Token: ${token}, Expected: ${verifyToken?.slice(0, 4)}...`)
+    console.log("[WhatsApp Webhook] Verification request", { mode, hasToken: Boolean(token) })
 
     if (mode === 'subscribe' && token === verifyToken) {
       console.log('[WhatsApp Webhook] Verification success')
@@ -44,8 +67,26 @@ serve(async (req) => {
   // 2. Receber Eventos (POST)
   if (method === 'POST') {
     try {
-      const body = await req.json()
-      console.log('[WhatsApp Webhook] Received payload:', JSON.stringify(body, null, 2))
+      const rawBody = await req.text()
+      const appSecret = Deno.env.get("WHATSAPP_APP_SECRET")
+      const signature = req.headers.get("x-hub-signature-256") ?? ""
+
+      // Enforce Meta's HMAC signature when the app secret is configured. The
+      // compatibility path keeps the existing integration alive until the
+      // secret is added to the Edge Function environment.
+      if (appSecret && !(await isValidMetaSignature(rawBody, signature, appSecret))) {
+        console.warn("[WhatsApp Webhook] Invalid Meta signature")
+        return new Response('Unauthorized', { status: 401 })
+      }
+      if (!appSecret) {
+        console.warn("[WhatsApp Webhook] WHATSAPP_APP_SECRET is not configured; signature validation is disabled")
+      }
+
+      const body = JSON.parse(rawBody)
+      console.log("[WhatsApp Webhook] Received event", {
+        object: body?.object,
+        entries: Array.isArray(body?.entry) ? body.entry.length : 0,
+      })
 
       // Validação básica da Meta
       if (body.object !== 'whatsapp_business_account') {
