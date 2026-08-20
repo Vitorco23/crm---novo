@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "include": [
+    "src/shared/services/cloudWriteQueue.ts",
+    "src/shared/services/inboundFormatting.ts",
+    "src/shared/services/storageConfig.ts"
+  ]
+}

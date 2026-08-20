@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck:strict": "tsc -p tsconfig.strict.json",
+    "lint:core": "eslint src/shared/services/cloudWriteQueue.ts src/shared/services/inboundFormatting.ts src/shared/services/storageConfig.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

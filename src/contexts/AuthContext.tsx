@@ -3,11 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { setCurrentUser, syncFromCloud, hydrateLocal } from "@/shared/services/userStorage";
 
-/** 
- * @deprecated Utilizado apenas para compatibilidade legada em fluxos de migração de dados.
- * Não deve ser usado para conceder autorização em novos componentes.
- */
-/** 
+/**
  * @deprecated Utilizado apenas para compatibilidade legada em fluxos de migração de dados.
  * Não deve ser usado para conceder autorização em novos componentes.
  */
