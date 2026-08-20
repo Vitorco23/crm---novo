@@ -7,13 +7,18 @@ interface TallyCounts {
   decisionMakers: number;
   messages: number;
   meetings: number;
+  r1: number;
+  followsToDo: number;
+  negatives: number;
 }
 
 interface PomodoroState {
   startedAt: number | null; // epoch ms when current focus phase started
   durationSec: number;
   breakSec: number;
+  actualDurationSec: number; // actual elapsed seconds in focus phase
   phase: "idle" | "focus" | "break" | "completed"; // completed = focus done, awaiting form
+
   pausedRemaining: number | null; // when paused
   niche: string;
   tally: TallyCounts;
@@ -21,7 +26,7 @@ interface PomodoroState {
 
 const STORAGE_KEY = "p21_pomodoro_state";
 
-const DEFAULT_TALLY: TallyCounts = { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0 };
+const DEFAULT_TALLY: TallyCounts = { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0, r1: 0, followsToDo: 0, negatives: 0 };
 
 const DEFAULT_STATE: PomodoroState = {
   startedAt: null,
@@ -29,7 +34,9 @@ const DEFAULT_STATE: PomodoroState = {
   breakSec: 10 * 60,
   phase: "idle",
   pausedRemaining: null,
+  actualDurationSec: 0,
   niche: "",
+
   tally: { ...DEFAULT_TALLY },
 };
 
@@ -61,7 +68,18 @@ interface PomodoroContextValue {
   stop: () => void;
   setDuration: (focusSec: number, breakSec: number) => void;
   setNiche: (niche: string) => void;
-  submitForm: (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string; scriptUsed?: string }) => void;
+  submitForm: (data: { 
+    calls: number; 
+    connections: number; 
+    decisionMakers: number; 
+    meetings: number; 
+    r1: number; 
+    followsToDo: number; 
+    negatives: number; 
+    niche?: string; 
+    scriptUsed?: string 
+  }) => void;
+
   dismissForm: () => void;
   showForm: boolean;
   incrementTally: (key: keyof TallyCounts) => void;
@@ -110,9 +128,16 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       const r = computeRemaining(state);
       if (r <= 0) {
         if (state.phase === "focus") {
-          setState((prev) => ({ ...prev, phase: "completed", pausedRemaining: null, startedAt: null }));
+          setState((prev) => ({ 
+            ...prev, 
+            phase: "completed", 
+            pausedRemaining: null, 
+            startedAt: null,
+            actualDurationSec: prev.durationSec // full time if reached 0
+          }));
           setShowForm(true);
         } else if (state.phase === "break") {
+
           setState((prev) => ({ ...prev, phase: "idle", pausedRemaining: null, startedAt: null }));
         }
       }
@@ -131,8 +156,10 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       phase: "focus",
       pausedRemaining: null,
       niche: niche ?? state.niche,
+      actualDurationSec: 0,
       tally: { ...DEFAULT_TALLY },
     });
+
   };
 
   const incrementTally = (key: keyof TallyCounts) => {
@@ -158,9 +185,11 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const stop = () => {
     if (state.phase === "focus") {
-      setState({ ...state, phase: "completed", startedAt: null, pausedRemaining: null });
+      const elapsed = state.durationSec - computeRemaining(state);
+      setState({ ...state, phase: "completed", startedAt: null, pausedRemaining: null, actualDurationSec: elapsed });
       setShowForm(true);
     } else {
+
       setState({ ...state, phase: "idle", startedAt: null, pausedRemaining: null });
       sessionStartRef.current = null;
     }
@@ -173,20 +202,36 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
 
   const setNiche = (niche: string) => setState({ ...state, niche });
 
-  const submitForm = (data: { calls: number; connections: number; decisionMakers: number; meetings: number; niche?: string; scriptUsed?: string }) => {
-    const start = sessionStartRef.current ?? Date.now() - state.durationSec * 1000;
+  const submitForm = (data: { 
+    calls: number; 
+    connections: number; 
+    decisionMakers: number; 
+    meetings: number; 
+    r1: number; 
+    followsToDo: number; 
+    negatives: number; 
+    niche?: string; 
+    scriptUsed?: string 
+  }) => {
+
+    const start = sessionStartRef.current ?? Date.now() - state.actualDurationSec * 1000;
     const end = Date.now();
     addSession({
       startTime: new Date(start).toISOString(),
       endTime: new Date(end).toISOString(),
-      durationMinutes: Math.round(state.durationSec / 60),
+      durationMinutes: Math.round(state.actualDurationSec / 60),
       calls: data.calls,
       connections: data.connections,
       decisionMakers: data.decisionMakers,
       meetings: data.meetings,
+      r1: data.r1,
+      followsToDo: data.followsToDo,
+      negatives: data.negatives,
+
       niche: data.niche || state.niche || undefined,
       scriptUsed: data.scriptUsed || undefined,
     });
+
     sessionStartRef.current = null;
     setShowForm(false);
     // Start break automatically

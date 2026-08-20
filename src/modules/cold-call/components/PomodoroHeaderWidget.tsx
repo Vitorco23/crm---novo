@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { usePomodoro } from "@/contexts/PomodoroContext";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Timer, Phone, Users, UserCheck, MessageSquare, CalendarCheck, FileText } from "lucide-react";
+import { Play, Pause, Square, Timer, Phone, Users, UserCheck, MessageSquare, CalendarCheck, FileText, Zap, ListTodo, Ban } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getScripts, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/modules/knowledge/services/scripts";
@@ -46,7 +46,7 @@ export function PomodoroHeaderWidget() {
 
   const isRunning = state.startedAt != null && (state.phase === "focus" || state.phase === "break");
   const isPaused = state.pausedRemaining != null;
-  const tally = state.tally ?? { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0 };
+  const tally = state.tally ?? { calls: 0, connections: 0, decisionMakers: 0, messages: 0, meetings: 0, r1: 0, followsToDo: 0, negatives: 0 };
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -139,6 +139,34 @@ export function PomodoroHeaderWidget() {
           <CalendarCheck className="h-3.5 w-3.5 text-accent" />
           <span className="text-xs font-bold tabular-nums text-foreground">{tally.meetings}</span>
         </button>
+        <button
+          type="button"
+          onClick={() => incrementTally("r1")}
+          title="Registrar R1"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <Zap className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.r1}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => incrementTally("followsToDo")}
+          title="Registrar Follows a fazer"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <ListTodo className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.followsToDo}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => incrementTally("negatives")}
+          title="Registrar Nãos (Negativas)"
+          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
+        >
+          <Ban className="h-3.5 w-3.5 text-accent" />
+          <span className="text-xs font-bold tabular-nums text-foreground">{tally.negatives}</span>
+        </button>
+
       </div>
     </div>
   );

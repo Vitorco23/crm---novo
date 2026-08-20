@@ -242,6 +242,10 @@ export interface PomodoroSession {
   meetings: number;
   niche?: string;
   scriptUsed?: string;
+  // Novos campos do SO Comercial
+  r1?: number;
+  followsToDo?: number;
+  negatives?: number;
   // legacy
   messages?: number;
 }
