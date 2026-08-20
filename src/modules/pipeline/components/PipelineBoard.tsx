@@ -341,15 +341,19 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
     const onSync = () => {
-      // Debounce refreshes to prevent "flashing" during rapid storage writes or sync bursts
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         const fresh = getLeads();
+        console.log(`[PipelineBoard] refresh: ${fresh.length} leads loaded from storage`);
         setLeads(fresh);
         setStages(getStagesForPipeline(pipeline));
         setSelectedLead((cur) => (cur ? fresh.find((l) => l.id === cur.id) ?? cur : cur));
       }, 100);
     };
+
+    // Initial load: ensures we don't wait for a sync event if data is already in memCache
+    onSync();
+
     window.addEventListener("p21:storage-synced", onSync);
     window.addEventListener("p21:leads-changed", onSync);
     return () => {
