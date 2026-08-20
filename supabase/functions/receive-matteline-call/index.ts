@@ -6,6 +6,7 @@
 //   2. Idempotent enqueue via `call_id` (unique partial index).
 //   3. Production-only logs (no payload/transcript dumps).
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { constantTimeEqual, readWebhookJson } from "../_shared/webhook-security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,14 +37,6 @@ function json(status: number, body: unknown) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-}
-
-// Constant-time comparison to avoid timing side-channels on the shared secret.
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return mismatch === 0;
 }
 
 // Aceita o segredo compartilhado em qualquer um dos headers usados por
@@ -144,21 +137,16 @@ Deno.serve(async (req) => {
   // 1) Shared-secret auth. Reject BEFORE parsing the body so an unauthenticated
   //    caller cannot force expensive JSON parsing or DB round trips.
   const provided = extractProvidedSecret(req);
-  if (!provided || !safeEqual(provided, WEBHOOK_SECRET)) {
-    console.warn(
-      "[receive-matteline-call] unauthorized; headers seen:",
-      [...req.headers.keys()].join(","),
-    );
-
+  if (!provided || !constantTimeEqual(provided, WEBHOOK_SECRET)) {
+    console.warn("[receive-matteline-call] unauthorized request", {
+      hasCredential: Boolean(provided),
+    });
     return json(401, { error: "unauthorized" });
   }
 
-  let raw: MattelinePayload & Record<string, unknown>;
-  try {
-    raw = await req.json();
-  } catch {
-    return json(400, { error: "invalid_json" });
-  }
+  const parsed = await readWebhookJson(req);
+  if (!parsed.ok) return json(parsed.status, { error: parsed.error });
+  const raw = parsed.value as MattelinePayload & Record<string, unknown>;
 
   const destination = (raw.destination_number || "").toString().trim();
   const phoneNormalized = normalizePhone(destination);
