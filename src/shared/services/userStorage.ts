@@ -820,6 +820,7 @@ export async function syncInboundInteractions(): Promise<number> {
   }
 
   let appended = 0;
+  let needsLeadPersistence = false;
   const okIds: string[] = [];
   const affectedLeadIds = new Set<string>();
   const failed: Array<{ id: string; error: string; dados: any }> = [];
@@ -842,17 +843,28 @@ export async function syncInboundInteractions(): Promise<number> {
         continue;
       }
 
+      const interactionId = `inbound:${row.id}`;
+      const existingInteractions = (lead.interactions as any[]) || [];
+      if (existingInteractions.some((item) => item.id === interactionId || item.inboundId === row.id)) {
+        // A previous attempt may have updated the local cache but failed before
+        // acknowledging the queue row. Re-persist the same lead before acking.
+        needsLeadPersistence = true;
+        okIds.push(row.id);
+        continue;
+      }
+
       const interaction = buildInteractionFromInbound(row, lead);
       const withId = {
-        id: (globalThis.crypto?.randomUUID?.() as string | undefined) ??
-          `int_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        id: interactionId,
+        inboundId: row.id,
         ...interaction,
       };
-      lead.interactions = [...((lead.interactions as any[]) || []), withId];
+      lead.interactions = [...existingInteractions, withId];
       appended++;
+      needsLeadPersistence = true;
       okIds.push(row.id);
       affectedLeadIds.add(lead.id);
-      ledgerEntries.push({ leadId: lead.id, at: interaction.date, externalKey: `inbound:${row.id}` });
+      ledgerEntries.push({ leadId: lead.id, at: interaction.date, externalKey: interactionId });
     } catch (e: any) {
       console.error("[inbound-int] row failed", { id: row.id, error: e?.message || String(e) });
       failed.push({ id: row.id, error: e?.message || String(e), dados: row.dados });
@@ -860,7 +872,7 @@ export async function syncInboundInteractions(): Promise<number> {
   }
 
 
-  if (appended > 0) {
+  if (needsLeadPersistence) {
     await saveAndConfirm<Lead[]>("p21_leads", leads);
   }
 
