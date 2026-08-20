@@ -1049,29 +1049,45 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
               >
                 <div className="p-2.5 border-b border-border/40 bg-muted/5">
                   <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                    <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
                       <div className="w-1 h-3 rounded-full shrink-0" style={{ backgroundColor: stageColors[stage]?.match(/bg-([a-z0-9-]+)/)?.[1] ? `var(--${stageColors[stage].match(/bg-([a-z0-9-]+)/)[1]})` : '#9ABD33' }} />
                       
-                      {editingStage === stage ? (
-                        <div className="flex items-center gap-0.5 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                          <Input
-                            autoFocus
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") commitEditStage(); if (e.key === "Escape") { setEditingStage(null); setEditingValue(""); } }}
-                            className="h-6 text-[11px] px-1.5 py-0 border-accent/40"
-                          />
-                        </div>
-                      ) : (
-                        <h3
-                          draggable
-                          onDragStart={(e) => onStageDragStart(e, stage)}
-                          onDoubleClick={() => startEditStage(stage)}
-                          className="text-[10px] font-bold text-foreground uppercase tracking-widest truncate cursor-grab active:cursor-grabbing select-none"
-                        >
-                          {stage}
-                        </h3>
-                      )}
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Checkbox 
+                          checked={stageLeads.length > 0 && stageLeads.every(l => selectedIds.has(l.id))}
+                          onCheckedChange={(checked) => {
+                            const next = new Set(selectedIds);
+                            if (checked) {
+                              stageLeads.forEach(l => next.add(l.id));
+                            } else {
+                              stageLeads.forEach(l => next.delete(l.id));
+                            }
+                            setSelectedIds(next);
+                          }}
+                          className="h-3 w-3 shrink-0"
+                        />
+
+                        {editingStage === stage ? (
+                          <div className="flex items-center gap-0.5 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                            <Input
+                              autoFocus
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Enter") commitEditStage(); if (e.key === "Escape") { setEditingStage(null); setEditingValue(""); } }}
+                              className="h-6 text-[11px] px-1.5 py-0 border-accent/40"
+                            />
+                          </div>
+                        ) : (
+                          <h3
+                            draggable
+                            onDragStart={(e) => onStageDragStart(e, stage)}
+                            onDoubleClick={() => startEditStage(stage)}
+                            className="text-[10px] font-bold text-foreground uppercase tracking-widest truncate cursor-grab active:cursor-grabbing select-none"
+                          >
+                            {stage}
+                          </h3>
+                        )}
+                      </div>
                       
                       <span className="text-[9px] font-bold text-muted-foreground/50 bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
                         {stageLeads.length}
