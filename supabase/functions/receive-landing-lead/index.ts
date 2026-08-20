@@ -262,9 +262,11 @@ Deno.serve(async (req) => {
   const secretMatches = provided && safeEqual(provided, LANDING_WEBHOOK_SECRET);
   
   if (!secretMatches) {
-    const headerDump = Object.fromEntries(req.headers.entries());
-    console.warn(`[receive-landing-lead] unauthorized. provided: ${provided ? "YES" : "NO"}`);
-    console.log("[receive-landing-lead] Headers received:", JSON.stringify(headerDump));
+    // Never dump request headers: they may contain webhook secrets or bearer tokens.
+    console.warn("[receive-landing-lead] unauthorized request", {
+      hasCredential: Boolean(provided),
+      userAgent: req.headers.get("user-agent")?.slice(0, 120) ?? "unknown",
+    });
     return json(401, { error: "unauthorized" });
   }
 
@@ -313,7 +315,7 @@ Deno.serve(async (req) => {
       console.log("[receive-landing-lead] Checking user_storage for lead...");
       const { data: storageRows, error: storageErr } = await admin
         .from("user_storage")
-        .select("value")
+        .select("user_id, value")
         .eq("key", "p21_leads");
 
       if (!storageErr && storageRows) {
@@ -350,7 +352,8 @@ Deno.serve(async (req) => {
             
             const { error: updStorageErr } = await admin
               .from("user_storage")
-              .update({ value: leads })
+              .update({ value: leads, updated_at: new Date().toISOString() })
+              .eq("user_id", row.user_id)
               .eq("key", "p21_leads");
 
             if (updStorageErr) {
