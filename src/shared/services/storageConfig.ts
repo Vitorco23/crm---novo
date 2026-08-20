@@ -41,7 +41,7 @@ export type ScopedStorageKey = (typeof SCOPED_KEYS)[number];
 
 const scopedKeySet = new Set<string>(SCOPED_KEYS);
 
-const HEAVY_KEYS = new Set<string>([
+export const HEAVY_KEYS = new Set<string>([
   "p21_leads",
   "p21_movements",
   "p21_sessions",

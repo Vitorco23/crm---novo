@@ -16,6 +16,7 @@ import { idbGet, idbSet, idbDelete } from "@/shared/services/idbCache";
 import { ScopedWriteQueue, withRetry } from "@/shared/services/cloudWriteQueue";
 import {
   SCOPED_KEYS,
+  HEAVY_KEYS,
   isEmptyStorageValue as isEmptyValue,
   isHeavyKey as isHeavy,
   isProtectedConfigKey,
@@ -34,6 +35,7 @@ export { normalizePhoneBR } from "@/shared/services/inboundFormatting";
 // In-memory cache for heavy keys so `uload` stays synchronous.
 // Values are JSON strings (same shape as localStorage).
 const memCache = new Map<string, string>();
+
 
 let currentUserId: string | null = null;
 
