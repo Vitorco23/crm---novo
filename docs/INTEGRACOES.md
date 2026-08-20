@@ -74,7 +74,8 @@ chave de casamento entre interações recebidas por webhook e leads existentes.
 | `LOVABLE_API_KEY` | Todas as funções de IA e connector gateway |
 | `MATTELINE_WEBHOOK_SECRET` | `receive-matteline-call` |
 | `LANDING_WEBHOOK_SECRET` | `receive-landing-lead` |
-| `WHATSAPP_APP_SECRET` | Validação HMAC opcional do webhook oficial da Meta |
+| `WHATSAPP_APP_SECRET` | Validação HMAC do webhook oficial da Meta |
+| `WHATSAPP_VERIFY_TOKEN` | Token usado pela Meta na verificação inicial do webhook |
 | `GOOGLE_CALENDAR_API_KEY` | Funções de calendário |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Injetados pela plataforma |
 
@@ -84,6 +85,6 @@ Secrets existem apenas no ambiente das Edge Functions e nunca são expostos ao c
 ### Segurança do webhook WhatsApp
 
 Quando `WHATSAPP_APP_SECRET` está configurado, `whatsapp-webhook` valida o header
-`x-hub-signature-256` antes de processar o evento. O caminho sem essa secret foi
-mantido temporariamente para compatibilidade; configure-a antes de exigir a assinatura
-em todos os ambientes.
+`x-hub-signature-256` antes de processar o evento. O caminho sem essa secret permanece temporariamente compatível para não interromper o
+ambiente publicado. Configure `WHATSAPP_APP_SECRET` para ativar a validação HMAC e
+`WHATSAPP_VERIFY_TOKEN` para retirar o token legado do código em um lote posterior.
