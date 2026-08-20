@@ -14,61 +14,22 @@ const LEGACY_ADMIN_EMAIL = "vitorco23@gmail.com";
 import { supabase } from "@/integrations/supabase/client";
 import { idbGet, idbSet, idbDelete } from "@/shared/services/idbCache";
 import { ScopedWriteQueue, withRetry } from "@/shared/services/cloudWriteQueue";
+import {
+  SCOPED_KEYS,
+  isEmptyStorageValue as isEmptyValue,
+  isHeavyKey as isHeavy,
+  isProtectedConfigKey,
+  isScopedKey,
+} from "@/shared/services/storageConfig";
+import {
+  formatDurationLabel,
+  formatSchedulingValue,
+  normalizePhoneBR,
+} from "@/shared/services/inboundFormatting";
+
+export { normalizePhoneBR } from "@/shared/services/inboundFormatting";
 
 
-
-const SCOPED_KEYS = [
-  "p21_leads",
-  "p21_movements",
-  "p21_sessions",
-  "p21_meetings",
-  "p21_goals_settings",
-  "p21_stages_cold_call",
-  "p21_stages_oportunidades",
-  "p21_stages_onboarding",
-  "p21_finance_tx",
-  "p21_scrum_tasks",
-  "p21_scrum_sprints",
-  "p21_daily_tasks",
-  "p21_daily_checks",
-  "p21_reminders",
-  "p21_reminder_templates",
-  "p21_filters_cold_call",
-  "p21_filters_oportunidades",
-  "p21_filters_onboarding",
-  "p21_selected_script",
-  "p21_call_logs",
-  "p21_insights",
-  "p21_rule_overrides",
-  "p21_insights_last_run",
-  "p21_history",
-  "p21_bottleneck_history",
-  "p21_central_filters",
-  "p21_lab_filters",
-  "p21_lab_experiments",
-  "p21_cadence_overrides",
-  "p21_lead_tasks",
-  "p21_diretor_ia_last_run",
-  "p21_diretor_ia_history",
-  "p21_scripts",
-  "p21_activity_ledger",
-  "p21_daily_metrics_reports",
-  "p21_deleted_leads_tombstones",
-];
-
-
-
-
-// Big / write-heavy keys — moved to IndexedDB to avoid the ~5MB localStorage
-// quota. Everything else stays in localStorage (small, low-churn).
-const HEAVY_KEYS = new Set([
-  "p21_leads",
-  "p21_movements",
-  "p21_sessions",
-  "p21_meetings",
-]);
-
-const isHeavy = (key: string) => HEAVY_KEYS.has(key);
 
 // In-memory cache for heavy keys so `uload` stays synchronous.
 // Values are JSON strings (same shape as localStorage).
@@ -145,31 +106,12 @@ export function uload<T>(key: string, fallback: T): T {
   }
 }
 
-// Config keys whose "empty" value must NEVER overwrite a non-empty cloud value.
-// Prevents a fresh device (with defaults / no data) from wiping cloud config.
-const PROTECTED_CONFIG_KEYS = new Set([
-  "p21_cadence_overrides",
-  "p21_reminder_templates",
-  "p21_diretor_ia_history",
-  "p21_diretor_ia_last_run",
-  "p21_scripts",
-]);
-
-
-function isEmptyValue(v: unknown): boolean {
-  return (
-    v == null ||
-    (Array.isArray(v) && v.length === 0) ||
-    (typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0)
-  );
-}
-
 export function usave<T>(key: string, data: T) {
   const str = JSON.stringify(data);
   writeScoped(scopedKey(key), str, isHeavy(key));
-  if (SCOPED_KEYS.includes(key)) {
+  if (isScopedKey(key)) {
     // Guard: never push an empty value for protected config keys.
-    if (PROTECTED_CONFIG_KEYS.has(key) && isEmptyValue(data)) return;
+    if (isProtectedConfigKey(key) && isEmptyValue(data)) return;
     scheduleCloudPush(key, data);
   }
 }
@@ -177,7 +119,7 @@ export function usave<T>(key: string, data: T) {
 export function uremove(key: string) {
   const uid = getCurrentUserId();
   deleteScoped(scopedKey(key), isHeavy(key));
-  if (!uid || !SCOPED_KEYS.includes(key)) return;
+  if (!uid || !isScopedKey(key)) return;
 
   cancelPendingPush(uid, key);
   void cloudDelete(uid, key).catch((error) => {
@@ -361,8 +303,8 @@ export async function saveAndConfirm<T>(key: string, data: T): Promise<void> {
   writeScoped(`u:${userId}:${key}`, str, isHeavy(key));
   cancelPendingPush(userId, key);
 
-  if (!SCOPED_KEYS.includes(key)) return;
-  if (PROTECTED_CONFIG_KEYS.has(key) && isEmptyValue(data)) return;
+  if (!isScopedKey(key)) return;
+  if (isProtectedConfigKey(key) && isEmptyValue(data)) return;
   await cloudPush(userId, key, data);
 }
 
@@ -701,58 +643,8 @@ type InboundInteractionRow = {
  *
  * Comparações de telefone no CRM devem SEMPRE passar por esta função antes.
  */
-export function normalizePhoneBR(raw: string | undefined | null): string {
-  if (!raw) return "";
-  const digits = String(raw).replace(/\D+/g, "");
-  if (!digits) return "";
-  if (digits.startsWith("55") && digits.length >= 12) return digits;
-  if (digits.startsWith("0")) return `55${digits}`;
-  if (digits.length === 10 || digits.length === 11) return `550${digits}`;
-  return digits;
-}
-
 // Alias interno legado (mantido para não quebrar chamadas locais existentes).
 const normalizePhoneForMatch = normalizePhoneBR;
-
-function formatDurationLabel(sec: number | null | undefined): string {
-  if (!sec || !Number.isFinite(sec) || sec <= 0) return "";
-  const s = Math.round(sec);
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return m > 0 ? `${m}m${r.toString().padStart(2, "0")}s` : `${r}s`;
-}
-
-/** Converte o objeto/valor de agendamento vindo da Matteline em texto legível.
- *  Nunca retorna "[object Object]"; retorna "" quando não há dado válido. */
-function formatSchedulingValue(sch: any): string {
-  if (sch == null) return "";
-  if (typeof sch === "string") return sch.trim();
-  if (typeof sch === "number") return String(sch);
-  if (typeof sch !== "object") return "";
-  const rawDate = sch.data ?? sch.date ?? sch.dia ?? sch.day ?? "";
-  const rawTime = sch.hora ?? sch.time ?? sch.horario ?? sch.hour ?? "";
-  const obs = sch.observacoes ?? sch.observações ?? sch.observations ?? sch.notes ?? sch.note ?? "";
-  let dstr = "";
-  if (rawDate) {
-    const s = String(rawDate);
-    const iso = s.length <= 10 && /^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T00:00:00` : s;
-    const d = new Date(iso);
-    if (!isNaN(d.getTime())) {
-      const dd = String(d.getDate()).padStart(2, "0");
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      dstr = `${dd}/${mm}/${d.getFullYear()}`;
-    } else {
-      dstr = s;
-    }
-  }
-  const tstr = rawTime ? String(rawTime).slice(0, 5) : "";
-  const parts: string[] = [];
-  if (dstr && tstr) parts.push(`${dstr} às ${tstr}`);
-  else if (dstr) parts.push(dstr);
-  else if (tstr) parts.push(tstr);
-  if (obs) parts.push(`(${String(obs).trim()})`);
-  return parts.join(" ").trim();
-}
 
 function buildInteractionFromInbound(row: InboundInteractionRow, lead: Lead): {
   type: string; date: string; title: string; summary: string; sellerNotes?: string; createdAt: string;
