@@ -344,7 +344,6 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         const fresh = getLeads();
-        console.log(`[PipelineBoard] refresh: ${fresh.length} leads loaded from storage`);
         setLeads(fresh);
         setStages(getStagesForPipeline(pipeline));
         setSelectedLead((cur) => (cur ? fresh.find((l) => l.id === cur.id) ?? cur : cur));

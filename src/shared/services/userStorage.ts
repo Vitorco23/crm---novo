@@ -35,7 +35,7 @@ export { normalizePhoneBR } from "@/shared/services/inboundFormatting";
 // In-memory cache for heavy keys so `uload` stays synchronous.
 // Values are JSON strings (same shape as localStorage).
 const memCache = new Map<string, string>();
-(window as any).__p21_memCache = memCache;
+
 
 let currentUserId: string | null = null;
 
