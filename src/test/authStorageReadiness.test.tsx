@@ -93,6 +93,7 @@ describe("AuthProvider storage readiness", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
   });
 
   it("keeps the authenticated UI loading until IndexedDB and cloud sync are ready", async () => {
