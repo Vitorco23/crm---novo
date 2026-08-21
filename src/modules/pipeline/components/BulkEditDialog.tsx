@@ -21,7 +21,8 @@ type FieldKey =
   | "runsAds"
   | "serviceType"
   | "contractValue"
-  | "notes";
+  | "notes"
+  | "tags";
 
 const FIELD_LABELS: Record<FieldKey, string> = {
   niche: "Nicho",
@@ -31,6 +32,7 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   serviceType: "Tipo de Serviço",
   contractValue: "Valor do Contrato (R$)",
   notes: "Anotações (substitui)",
+  tags: "Tags de Origem",
 };
 
 export default function BulkEditDialog({
@@ -46,14 +48,16 @@ export default function BulkEditDialog({
 }) {
   const [enabled, setEnabled] = useState<Record<FieldKey, boolean>>({
     niche: false, city: false, icpStars: false, runsAds: false,
-    serviceType: false, contractValue: false, notes: false,
+    serviceType: false, contractValue: false, notes: false, tags: false,
   });
   const [values, setValues] = useState<{
     niche: string; city: string; icpStars: ICPStars; runsAds: boolean;
     serviceType: string; contractValue: string; notes: string;
+    tags: string;
   }>({
     niche: "", city: "", icpStars: 2, runsAds: false,
     serviceType: "", contractValue: "", notes: "",
+    tags: "",
   });
 
   const count = selectedIds.size;
@@ -72,6 +76,9 @@ export default function BulkEditDialog({
       if (!isNaN(n)) updates.contractValue = n;
     }
     if (enabled.notes) updates.notes = values.notes;
+    if (enabled.tags) {
+      updates.tags = values.tags.split(",").map(t => t.trim().toUpperCase()).filter(Boolean);
+    }
 
     if (Object.keys(updates).length === 0) {
       toast.error("Selecione ao menos um campo para alterar");
@@ -85,7 +92,7 @@ export default function BulkEditDialog({
     // reset
     setEnabled({
       niche: false, city: false, icpStars: false, runsAds: false,
-      serviceType: false, contractValue: false, notes: false,
+      serviceType: false, contractValue: false, notes: false, tags: false
     });
   };
 
@@ -147,6 +154,12 @@ export default function BulkEditDialog({
           <FieldRow enabled={enabled.notes} onToggle={() => toggle("notes")} label={FIELD_LABELS.notes}>
             <Input value={values.notes} onChange={(e) => setValues({ ...values, notes: e.target.value })}
               placeholder="Substitui as anotações atuais" disabled={!enabled.notes} />
+          </FieldRow>
+          
+          {/* Tags */}
+          <FieldRow enabled={enabled.tags} onToggle={() => toggle("tags")} label={FIELD_LABELS.tags}>
+            <Input value={values.tags} onChange={(e) => setValues({ ...values, tags: e.target.value })}
+              placeholder="GMN, LUPUS (separadas por vírgula)" disabled={!enabled.tags} />
           </FieldRow>
         </div>
 

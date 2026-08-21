@@ -70,6 +70,7 @@ export default function Oportunidades() {
         notes: form.notes.trim(),
         icpStars: 2 as ICPStars,
         runsAds: false,
+        stage: "Reunião Marcada"
       },
       "Reunião Marcada"
     );

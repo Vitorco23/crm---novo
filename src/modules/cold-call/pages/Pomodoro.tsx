@@ -246,6 +246,9 @@ function EditSessionDialog({
     if (session.id === "new") {
       addSession({
         ...data,
+        follows: 0,
+        noes: 0,
+        r1s: 0,
         startTime: form.startTime || new Date().toISOString(),
         endTime: form.endTime || new Date().toISOString(),
       });

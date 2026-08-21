@@ -1,4 +1,13 @@
-// ===== Pipeline Definitions (defaults; user can edit/persist) =====
+import { uload, usave } from "@/shared/services/userStorage";
+import { emit } from "@/shared/services/eventBus";
+
+// ==========================================
+// CONSTANTS & KEYS
+// ==========================================
+
+export const PIPELINES = ["cold_call", "oportunidades", "onboarding"] as const;
+export type PipelineName = (typeof PIPELINES)[number];
+
 export const DEFAULT_COLD_CALL_STAGES = [
   "Novo Lead",
   "Tentativa 1",
@@ -10,225 +19,171 @@ export const DEFAULT_COLD_CALL_STAGES = [
   "Tentativa 7",
   "Tentativa 8",
   "Tentativa 9",
-  "Tentativa 10",
-  "Não Quer",
-  "Sem contato",
+  "Tentativas Concluídas",
 ] as const;
 
 export const DEFAULT_OPORTUNIDADES_STAGES = [
   "Reunião Marcada",
   "Reunião Realizada",
-  "No Show",
-  "Documento de Guerra",
+  "Aguardando Alinhamento",
   "Proposta Enviada",
+  "Follow-up",
   "Ganho",
   "Perdido",
 ] as const;
 
-
 export const DEFAULT_ONBOARDING_STAGES = [
-  "Assinatura do Contrato",
-  "Pagamento",
-  "Reunião de Integração",
-  "Concepção do Planejamento",
-  "Apresentação do Planejamento",
-  "Sprints",
+  "Implementação",
+  "Configuração",
+  "Treinamento",
+  "Sucesso do Cliente",
+  "Projeto Concluído",
 ] as const;
 
-// Legacy compatibility (some files still import these names)
 export const COLD_CALL_STAGES = DEFAULT_COLD_CALL_STAGES;
 export const OPORTUNIDADES_STAGES = DEFAULT_OPORTUNIDADES_STAGES;
 export const ONBOARDING_STAGES = DEFAULT_ONBOARDING_STAGES;
 
 export type PipelineStage = string;
-export type PipelineName = "cold_call" | "oportunidades" | "onboarding";
-
 export type ICPStars = 1 | 2 | 3;
+export type InteractionType = "Ligação" | "WhatsApp" | "E-mail" | "Reunião" | "Outro" | "Follow-up" | "Envio de Proposta" | "Visita Presencial" | "Reunião Comercial" | "Reunião de Diagnóstico" | "Reunião de Apresentação";
+export type MeetingSource = "Manual" | "Disparo" | "GMN" | "Ligação";
 
-export interface LeadAttachment {
-  id: string;
-  name: string;
-  type: string;
-  dataUrl: string;
-  createdAt: string;
-  /** Leitura da IA deste anexo (persistida e usada no diagnóstico do lead). */
-  aiAnalysis?: string;
-  aiAnalyzedAt?: string;
-}
+const STORAGE_KEY = "p21_leads";
+const STAGES_KEY_PREFIX = "p21_stages_";
+const SESSIONS_KEY = "p21_sessions";
+const MOVEMENTS_KEY = "p21_movements";
+const MEETINGS_KEY = "p21_meetings";
+const GOALS_KEY = "p21_goals_settings";
 
-export interface CallAuditFollowupStep {
-  quando: string;
-  acao: string;
+// ==========================================
+// TYPES & INTERFACES
+// ==========================================
+
+export interface AutoDiagnosis {
+  summary: string;
+  temperature: "quente" | "morno" | "frio";
+  next_action: string;
+  attention?: string;
+  updated_memory?: string;
+  changes?: string;
+  generatedAt: string;
+  probability?: number;
+  inputHash?: string;
+  pain_points?: string[];
 }
 
 export interface CallAuditData {
-  temperatura: "Quente" | "Morno" | "Frio";
-  tendencia?: "Evoluindo" | "Esfriando" | "Estavel";
-  tendenciaJustificativa?: string;
-  scoreComercial: number;
-  probabilidadeAvanco: "Baixa" | "Media" | "Alta";
-  prioridade: "Baixa" | "Media" | "Alta";
   resumoExecutivo: string;
-  evolucaoLead?: string;
+  evolucaoLead: string;
+  tendenciaJustificativa: string;
   objecoes: string[];
-  pontosPositivos: string[];
-  pontosAtencao: string[];
-  oportunidadeComercial: string[];
+  pontosPositivos?: string[];
+  pontosAtencao?: string[];
+  oportunidadeComercial?: string[];
+  scoreComercial: number;
+  temperatura: string;
+  probabilidadeAvanco: string;
+  prioridade: string;
+  tendencia: string;
   feedbackVendedor: string;
-  planoFollowup: CallAuditFollowupStep[];
-  recomendacaoEstrategica: string;
-  principalObjecao: string;
-  proximaAcao: string;
-  diasAteProximoFollowup: number;
-  dataProximoContato: string;
-  assuntosDeInteresse: string[];
-  /** Próxima Melhor Ação (NBA) — anexada pela IA + guard-rails determinísticos. */
-  nextBestAction?: import("@/modules/intelligence/services/nextBestAction").NextBestAction;
+  planoFollowup: Array<{ quando: string; acao: string }>;
+  dataProximoContato?: string;
+  diasAteProximoFollowup?: number | string;
+  assuntosDeInteresse?: string[];
+  nextBestAction?: any;
+  proximaAcao?: string;
+  principalObjecao?: string;
+  recomendacaoEstrategica?: string;
 }
 
 export interface CallNoteAnalysis {
-  markdown?: string;
-  data?: CallAuditData;
-  temperature: "Quente" | "Morno" | "Frio";
-  generatedAt: string;
-  model: string;
-  mode?: "quick" | "full";
+  markdown: string;
+  data: CallAuditData;
+  mode?: "full" | "quick";
 }
 
 export interface CallNote {
   id: string;
   text: string;
   createdAt: string;
+  sellerId?: string;
   scriptUsed?: string;
   analysis?: CallNoteAnalysis;
 }
 
-
-// ===== Interações Comerciais (timeline unificada) =====
-// Tipo aberto (string) para permitir novos tipos sem alterar schema.
-export type InteractionType =
-  | "Ligação"
-  | "Reunião Comercial"
-  | "Reunião de Diagnóstico"
-  | "Reunião de Apresentação"
-  | "Follow-up"
-  | "WhatsApp"
-  | "E-mail"
-  | "Envio de Proposta"
-  | "Visita Presencial"
-  | "Outro"
-  | string;
-
 export interface Interaction {
   id: string;
   type: InteractionType;
-  date: string;          // ISO da data da interação
-  title: string;         // ex: "Primeira Ligação", "Reunião de Diagnóstico"
-  summary: string;       // resumo (Matteline / IA / manual) — principal fonte para IA
-  sellerNotes?: string;  // anotações extras do vendedor (contexto que não está no resumo)
-  createdAt: string;     // ISO de quando foi registrada
+  date: string;
+  createdAt?: string;
+  title: string;
+  summary: string;
+  sellerNotes?: string;
+}
+
+export interface Attachment {
+  id: string;
+  name: string;
+  type: string;
+  dataUrl: string;
+  aiAnalysis?: string;
+  createdAt?: string;
+}
+
+export interface DiagnosisVersion {
+  id: string;
+  version?: number;
+  at: string;
+  generatedAt?: string;
+  summary?: string;
+  temperature?: string;
+  next_action?: string;
+  attention?: string;
+  updated_memory?: string;
+  origin?: string;
+  context?: string;
+  diagnosis?: any;
+  changes?: string[];
 }
 
 export interface Lead {
   id: string;
   company: string;
-  contact: string;
-  phone: string;
-  /**
-   * Formato oficial para integrações/deduplicação: 55 + DDD + número (só dígitos).
-   * NUNCA é exibido para o usuário — sempre derivado de `phone` (ou `whatsapp`)
-   * automaticamente por `saveLeads()` / `getLeads()`.
-   */
+  contact?: string;
+  phone?: string;
+  whatsapp?: string;
   phoneNormalized?: string;
-  niche: string;
-  city: string;
-  gmnLink: string;
-  instagramLink: string;
+  phoneInvalid?: boolean;
+  email?: string;
+  website?: string;
+  niche?: string;
+  city?: string;
+  gmnLink?: string;
+  instagramLink?: string;
+  notes?: string;
+  googleRating?: number;
+  googleReviews?: number;
   icpStars: ICPStars;
   runsAds: boolean;
-  stage: PipelineStage;
-  createdAt: string;
-  stageChangedAt: string;
-  notes: string;
-  attachments: LeadAttachment[];
-  callNotes?: CallNote[];
-  interactions?: Interaction[];
-  contractValue?: number;
   serviceType?: string;
-  phoneInvalid?: boolean;
-  temperature?: "Quente" | "Morno" | "Frio";
-  website?: string;
-  whatsapp?: string;
-  /** Diagnóstico Comercial Automático (V1.1) — gerado após ligações Matteline. */
+  contractValue?: number;
+  tags?: string[];
+  stage: PipelineStage;
+  stageChangedAt: string;
+  createdAt: string;
+  interactions?: Interaction[];
+  callNotes?: CallNote[];
+  attachments?: Attachment[];
   autoDiagnosis?: AutoDiagnosis;
-  /** Histórico versionado da inteligência do lead (mais recente primeiro). */
   diagnosisHistory?: DiagnosisVersion[];
-  // ===== Discagem automática (Matteline) =====
-  /** Quantidade de tentativas de discagem já enviadas ao Matteline. */
   dialAttempts?: number;
   lastDialSentAt?: string;
   lastDialCampaign?: string;
   lastDialCampaignId?: string;
   lastDialContactId?: string;
-  dialStatus?: "enviado" | "erro" | "pendente";
-  googleRating?: number;
-  googleReviews?: number;
-}
-
-
-export interface AutoDiagnosis {
-  temperature: "quente" | "morno" | "frio";
-  probability: number;
-  summary: string;
-  next_action: string;
-  attention: string;
-  updated_memory: string;
-  pain_points?: string[];
-  objections?: string[];
-  generatedAt: string;
-  model?: string;
-  /** Fingerprint das interações consideradas — usado para detectar "desatualizado". */
-  inputHash: string;
-  /** Versão da inteligência (incrementa a cada atualização relevante). */
-  version?: number;
-  /** Mudanças detectadas em relação à versão anterior. */
-  changes?: string[];
-}
-
-/** Snapshot imutável de uma versão de inteligência do lead. */
-export interface DiagnosisVersion {
-  id: string;
-  version: number;
-  at: string;
-  /** De onde veio a atualização (ex.: "Atualizar Inteligência", "Matteline"). */
-  origin: string;
-  /** Contexto analisado (contagens de interações, ligações, anexos). */
-  context: string;
-  diagnosis: AutoDiagnosis;
-  changes: string[];
-}
-
-
-
-export type MeetingSource = "Ligação" | "Disparo" | "Instagram" | "Email";
-
-export interface Meeting {
-  id: string;
-  leadId: string;
-  company: string;
-  date: string; // ISO date
-  time: string; // HH:mm
-  title?: string; // e.g. "Reunião de Alinhamento: Empresa - P21"
-  contactName?: string;
-  channel?: "Google Meet" | "Zoom" | "Presencial" | "Telefone" | "Outro";
-  source?: MeetingSource; // canal pelo qual a reunião veio
-  link?: string;
-  notes?: string;
-  attendeeEmail?: string;
-  googleEventId?: string;
-  googleEventUrl?: string;
-  meetLink?: string;
-  createdAt: string;
+  dialStatus?: "enviado" | "erro";
+  temperature?: "hot" | "warm" | "cold" | string;
 }
 
 export interface PomodoroSession {
@@ -236,947 +191,600 @@ export interface PomodoroSession {
   startTime: string;
   endTime: string;
   durationMinutes: number;
+  actualDurationSec?: number;
   calls: number;
   connections: number;
   decisionMakers: number;
   meetings: number;
-  niche?: string;
-  scriptUsed?: string;
-  // Novos campos do SO Comercial
-  r1?: number;
+  follows: number;
+  noes: number;
+  r1s: number;
   followsToDo?: number;
   negatives?: number;
-  // legacy
-  messages?: number;
+  niche?: string;
+  scriptUsed?: string;
 }
 
 export interface MovementEvent {
   id: string;
   leadId: string;
-  toStage: PipelineStage;
+  fromStage?: string;
+  toStage?: string;
   timestamp: string;
-  type: "call" | "message" | "meeting" | "other";
+  type: "movement" | "call" | "interaction" | "meeting";
 }
 
-// ===== Storage helpers (user-scoped) =====
-import { uload as loadFromStorage, usave as saveToStorage, normalizePhoneBR } from "@/shared/services/userStorage";
-import { emit } from "@/shared/services/eventBus";
-
-function classifyStage(stage: string): "call" | "message" | "meeting" | "sale" | "onboarding" | "other" {
-  const s = stage.toLowerCase();
-  if (s === "ganho") return "sale";
-  if (MEETING_STAGE_HINTS.some((h) => s.includes(h))) return "meeting";
-  if (MESSAGE_STAGE_HINTS.some((h) => s.includes(h))) return "message";
-  if (CALL_STAGE_HINTS.some((h) => s.includes(h))) return "call";
-  return "other";
+export interface Meeting {
+  id: string;
+  leadId: string;
+  company: string;
+  date: string;
+  time: string;
+  title: string;
+  contactName: string;
+  channel: string;
+  source: MeetingSource;
+  link?: string;
+  meetLink?: string;
+  googleEventId?: string;
+  googleEventUrl?: string;
+  attendeeEmail?: string;
+  notes?: string;
+  createdAt: string;
 }
 
-// ===== Custom stages persistence =====
-const STAGES_KEYS: Record<PipelineName, string> = {
-  cold_call: "p21_stages_cold_call",
-  oportunidades: "p21_stages_oportunidades",
-  onboarding: "p21_stages_onboarding",
-};
+export interface GoalsSettings {
+  monthlyRevenueGoal: number;
+  averageTicket: number;
+  callToConnection: number;
+  connectionToDecisionMaker: number;
+  decisionMakerToMeetingScheduled: number;
+  meetingScheduledToHeld: number;
+  meetingHeldToClose: number;
+  workingDaysPerWeek: number;
+  hoursPerDay: number;
+  minutesPerCall: number;
+}
 
-export function getStagesForPipeline(pipeline: PipelineName): PipelineStage[] {
-  const fallback =
-    pipeline === "cold_call"
-      ? [...DEFAULT_COLD_CALL_STAGES]
-      : pipeline === "oportunidades"
-      ? [...DEFAULT_OPORTUNIDADES_STAGES]
-      : [...DEFAULT_ONBOARDING_STAGES];
-  const stored = loadFromStorage<string[] | null>(STAGES_KEYS[pipeline], null);
-  const source = stored && stored.length ? stored : fallback;
-  // Defesa: remove duplicados (case-insensitive) preservando a ordem.
-  const seen = new Set<string>();
-  const deduped = source.filter((s) => {
-    const k = s.toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
+// ==========================================
+// CORE PERSISTENCE (INTERNAL)
+// ==========================================
+
+function loadLeads(): Lead[] {
+  const leads = uload<Lead[]>(STORAGE_KEY, []);
+  let needsSync = false;
+  const migrated = leads.map(l => {
+    if (!l.tags) {
+      needsSync = true;
+      return { ...l, tags: ["GMN"] };
+    }
+    return l;
+  });
+  if (needsSync) {
+    usave(STORAGE_KEY, migrated);
+    return migrated;
+  }
+  return leads;
+}
+
+function saveLeadsInternal(leads: Lead[]) {
+  usave(STORAGE_KEY, leads);
+  emit("LeadAtualizado", leads);
+}
+
+// ==========================================
+// PUBLIC API: LEADS
+// ==========================================
+
+export function getLeads(): Lead[] {
+  return loadLeads();
+}
+
+export function saveLeads(leads: Lead[]) {
+  saveLeadsInternal(leads);
+}
+
+export function findLeadById(id: string): Lead | undefined {
+  return getLeads().find(l => l.id === id);
+}
+
+export function addLead(data: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "attachments"> & { stage?: string }, stage?: PipelineStage): Lead {
+  const now = new Date().toISOString();
+  const finalStage = stage || data.stage || DEFAULT_COLD_CALL_STAGES[0];
+  const { stage: dataStage, ...rest } = data;
+  const newLead: Lead = {
+    ...rest,
+    id: crypto.randomUUID(),
+    createdAt: now,
+    stageChangedAt: now,
+    stage: finalStage,
+    attachments: [],
+    interactions: [],
+    callNotes: [],
+    tags: data.tags || ["GMN"]
+  };
+  const all = getLeads();
+  all.push(newLead);
+  saveLeads(all);
+  emit("LeadCriado", newLead);
+  return newLead;
+}
+
+export function addLeadsBatch(leadsData: (Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "attachments"> & { stage?: string })[], stage: PipelineStage) {
+  const now = new Date().toISOString();
+  const newLeads: Lead[] = leadsData.map(data => {
+    const finalStage = stage || data.stage || DEFAULT_COLD_CALL_STAGES[0];
+    const { stage: dataStage, ...rest } = data;
+    return {
+      ...rest,
+      id: crypto.randomUUID(),
+      stage: finalStage,
+      createdAt: now,
+      stageChangedAt: now,
+      attachments: [],
+      interactions: [],
+      callNotes: [],
+      tags: data.tags || ["GMN"]
+    };
+  });
+  const all = getLeads();
+  all.push(...newLeads);
+  saveLeads(all);
+  newLeads.forEach(l => emit("LeadCriado", l));
+}
+
+export function updateLead(id: string, updates: Partial<Lead>) {
+  const all = getLeads();
+  const idx = all.findIndex(l => l.id === id);
+  if (idx === -1) return;
+  
+  const oldStage = all[idx].stage;
+  all[idx] = { ...all[idx], ...updates };
+  
+  if (updates.stage && updates.stage !== oldStage) {
+    all[idx].stageChangedAt = new Date().toISOString();
+  }
+  
+  saveLeads(all);
+}
+
+export function updateLeadStage(id: string, stage: PipelineStage) {
+  return updateLead(id, { stage });
+}
+
+export function updateLeadsBatch(ids: Set<string> | string[], updates: Partial<Lead>) {
+  const idArray = Array.from(ids);
+  const all = getLeads();
+  let changed = false;
+  const now = new Date().toISOString();
+
+  idArray.forEach(id => {
+    const idx = all.findIndex(l => l.id === id);
+    if (idx !== -1) {
+      const oldStage = all[idx].stage;
+      all[idx] = { ...all[idx], ...updates };
+      if (updates.stage && updates.stage !== oldStage) {
+        all[idx].stageChangedAt = now;
+      }
+      changed = true;
+    }
   });
 
-  // Cold Call é canônico: se a lista diferir do default (ex: "Mensagem WhatsApp"
-  // legado, sem Tentativa 9/10, sem "Não Quer"/"Sem contato"), migra automaticamente
-  // e reatribui leads em etapas removidas para "Novo Lead".
-  if (pipeline === "cold_call") {
-    const canonical = [...DEFAULT_COLD_CALL_STAGES];
-    const same =
-      deduped.length === canonical.length &&
-      deduped.every((s, i) => s === canonical[i]);
-    if (!same) {
-      saveStagesForPipeline("cold_call", canonical);
-      const valid = new Set<string>(canonical);
-      // reatribui leads apenas se estavam em etapa cold_call antiga
-      const oldSet = new Set(deduped);
-      const leads = loadFromStorage<Lead[]>("p21_leads", []);
-      let changed = false;
-      const next = leads.map((l) => {
-        if (oldSet.has(l.stage) && !valid.has(l.stage)) {
-          changed = true;
-          return { ...l, stage: "Novo Lead", stageChangedAt: new Date().toISOString() };
-        }
-        return l;
-      });
-      if (changed) saveToStorage("p21_leads", next);
-      return canonical;
+  if (changed) saveLeads(all);
+}
+
+export function deleteLead(id: string) {
+  const all = getLeads().filter(l => l.id !== id);
+  saveLeads(all);
+}
+
+export function deleteLeadsBatch(ids: Set<string> | string[]) {
+  const idArray = new Set(Array.from(ids));
+  const all = getLeads().filter(l => !idArray.has(l.id));
+  saveLeads(all);
+}
+
+export function dedupeLeads(): number {
+  const all = getLeads();
+  const seen = new Set<string>();
+  const unique: Lead[] = [];
+  let removed = 0;
+  all.forEach(l => {
+    const key = `${l.company.toLowerCase().trim()}|${(l.phone || "").replace(/\D/g, "")}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(l);
+    } else {
+      removed++;
     }
-  }
-  return deduped;
+  });
+  if (removed > 0) saveLeads(unique);
+  return removed;
+}
+
+// ==========================================
+// PUBLIC API: PIPELINE & STAGES
+// ==========================================
+
+export function getStagesForPipeline(pipeline: PipelineName): PipelineStage[] {
+  const defaults = {
+    cold_call: DEFAULT_COLD_CALL_STAGES,
+    oportunidades: DEFAULT_OPORTUNIDADES_STAGES,
+    onboarding: DEFAULT_ONBOARDING_STAGES
+  };
+  return uload<string[]>(STAGES_KEY_PREFIX + pipeline, [...defaults[pipeline]]);
 }
 
 export function saveStagesForPipeline(pipeline: PipelineName, stages: PipelineStage[]) {
-  saveToStorage(STAGES_KEYS[pipeline], stages);
+  usave(STAGES_KEY_PREFIX + pipeline, stages);
+  emit("MetaAtualizada", { pipeline, stages });
 }
 
-export function renameStage(
-  pipeline: PipelineName,
-  oldName: string,
-  newName: string,
-): { ok: boolean; error?: string } {
-  const trimmed = (newName || "").trim();
-  if (!trimmed) return { ok: false, error: "Nome inválido" };
-  if (trimmed === oldName) return { ok: true };
-  const stages = getStagesForPipeline(pipeline);
-  if (!stages.includes(oldName)) return { ok: false, error: "Etapa não encontrada" };
-  if (stages.some((s) => s !== oldName && s.toLowerCase() === trimmed.toLowerCase())) {
-    return { ok: false, error: "Já existe uma etapa com esse nome" };
+export function getPipelineForStage(stage: PipelineStage): PipelineName {
+  if (DEFAULT_COLD_CALL_STAGES.includes(stage as any)) return "cold_call";
+  if (DEFAULT_OPORTUNIDADES_STAGES.includes(stage as any)) return "oportunidades";
+  return "onboarding";
+}
+
+export function moveLeadToStage(id: string, newStage: PipelineStage) {
+  const all = getLeads();
+  const idx = all.findIndex(l => l.id === id);
+  if (idx === -1) return { missingContractValue: false, autoTransfer: undefined };
+
+  const lead = all[idx];
+  const oldStage = lead.stage;
+  const oldPipeline = getPipelineForStage(oldStage);
+  const newPipeline = getPipelineForStage(newStage);
+
+  lead.stage = newStage;
+  lead.stageChangedAt = new Date().toISOString();
+
+  // Log movement
+  const movements = uload<MovementEvent[]>(MOVEMENTS_KEY, []);
+  movements.push({
+    id: crypto.randomUUID(),
+    leadId: id,
+    fromStage: oldStage,
+    toStage: newStage,
+    timestamp: lead.stageChangedAt,
+    type: "movement"
+  });
+  usave(MOVEMENTS_KEY, movements.slice(-5000));
+
+  saveLeads(all);
+  emit("LeadMovido", { leadId: id, from: oldStage, to: newStage });
+
+  let autoTransfer: PipelineName | undefined;
+  if (newStage === "Ganho" && newPipeline === "oportunidades") {
+    autoTransfer = "onboarding";
+    updateLead(id, { stage: DEFAULT_ONBOARDING_STAGES[0] });
   }
-  const next = stages.map((s) => (s === oldName ? trimmed : s));
-  saveStagesForPipeline(pipeline, next);
-  const leads = getLeads().map((l) => (l.stage === oldName ? { ...l, stage: trimmed } : l));
-  saveLeads(leads);
-  return { ok: true };
+
+  return { 
+    missingContractValue: newStage === "Ganho" && !lead.contractValue,
+    autoTransfer 
+  };
 }
 
-export function addStage(pipeline: PipelineName, name: string): { ok: boolean; error?: string } {
-  const trimmed = (name || "").trim();
-  if (!trimmed) return { ok: false, error: "Nome inválido" };
+export function moveLeadsToStageBatch(ids: Set<string> | string[], newStage: PipelineStage) {
+  let autoTransfer: PipelineName | undefined;
+  Array.from(ids).forEach(id => {
+    const res = moveLeadToStage(id, newStage);
+    if (res.autoTransfer) autoTransfer = res.autoTransfer;
+  });
+  return { autoTransfer };
+}
+
+// Stage Management
+export function addStage(pipeline: PipelineName, name: string) {
   const stages = getStagesForPipeline(pipeline);
-  if (stages.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
-    return { ok: false, error: "Já existe uma etapa com esse nome" };
+  if (!stages.includes(name)) {
+    stages.push(name);
+    saveStagesForPipeline(pipeline, stages);
+    return { ok: true, error: null };
   }
-  saveStagesForPipeline(pipeline, [...stages, trimmed]);
-  return { ok: true };
+  return { ok: false, error: "Etapa já existe" };
 }
-
 
 export function removeStage(pipeline: PipelineName, name: string) {
-  const stages = getStagesForPipeline(pipeline);
-  if (stages.length <= 1) return;
-  const next = stages.filter((s) => s !== name);
-  saveStagesForPipeline(pipeline, next);
-  // move leads from removed stage to first remaining stage
-  const fallback = next[0];
-  const leads = getLeads().map((l) => (l.stage === name ? { ...l, stage: fallback } : l));
+  const stages = getStagesForPipeline(pipeline).filter(s => s !== name);
+  saveStagesForPipeline(pipeline, stages);
+}
+
+export function renameStage(pipeline: PipelineName, oldName: string, newName: string) {
+  const stages = getStagesForPipeline(pipeline).map(s => s === oldName ? newName : s);
+  saveStagesForPipeline(pipeline, stages);
+  
+  const leads = getLeads();
+  leads.forEach(l => { if (l.stage === oldName) l.stage = newName; });
   saveLeads(leads);
+  return { ok: true };
 }
 
 export function reorderStages(pipeline: PipelineName, stages: PipelineStage[]) {
   saveStagesForPipeline(pipeline, stages);
 }
 
-// ===== Pipeline routing =====
-export function getPipelineForStage(stage: PipelineStage): PipelineName {
-  if (getStagesForPipeline("cold_call").includes(stage)) return "cold_call";
-  if (getStagesForPipeline("onboarding").includes(stage)) return "onboarding";
-  return "oportunidades";
-}
-
 export function getLeadsForPipeline(pipeline: PipelineName): Lead[] {
-  const stages = getStagesForPipeline(pipeline);
-  return getLeads().filter((l) => stages.includes(l.stage));
+  const stages = new Set(getStagesForPipeline(pipeline));
+  return getLeads().filter(l => stages.has(l.stage));
 }
 
-// ===== Leads =====
-/**
- * Garante que todo Lead tenha `phoneNormalized` (55+DDD+número) derivado
- * de `phone` (ou, na ausência, `whatsapp`). É idempotente: se `phone` mudou
- * ou está vazio, recomputa; se já bate, mantém.
- */
-function ensurePhoneNormalized(l: Lead): Lead {
-  const expected = normalizePhoneBR(l.phone || l.whatsapp);
-  if (l.phoneNormalized === expected) return l;
-  return { ...l, phoneNormalized: expected };
+// ==========================================
+// PUBLIC API: SESSIONS (POMODORO)
+// ==========================================
+
+export function getSessions(): PomodoroSession[] {
+  return uload<PomodoroSession[]>(SESSIONS_KEY, []);
 }
 
-export function getLeads(): Lead[] {
-  const leads = loadFromStorage<Lead[]>("p21_leads", []);
-  let migrationNeeded = false;
-  const mapped = leads.map((l) => {
-    const base: Lead = {
-      ...l,
-      icpStars: l.icpStars || ((l as any).icpProfile === "Não Fit" ? 1 : 3),
-      attachments: l.attachments || [],
-      callNotes: l.callNotes || [],
-      interactions: l.interactions || [],
-    };
-    const expected = normalizePhoneBR(base.phone || base.whatsapp);
-    if (base.phoneNormalized !== expected) {
-      migrationNeeded = true;
-      base.phoneNormalized = expected;
-    }
-    return base;
-  });
-  // Migração única e transparente: se algum Lead ainda não tinha o campo
-  // (ou o valor estava desatualizado após edição de `phone`), grava de volta.
-  if (migrationNeeded) {
-    try {
-      // Persistência assíncrona para não bloquear leitura.
-      queueMicrotask(() => saveToStorage("p21_leads", mapped));
-    } catch {
-      saveToStorage("p21_leads", mapped);
-    }
-  }
-  return mapped;
+export function addSession(session: Omit<PomodoroSession, "id">) {
+  const all = getSessions();
+  const newSession = { ...session, id: crypto.randomUUID() };
+  all.push(newSession);
+  usave(SESSIONS_KEY, all);
+  emit("PomodoroFinalizado", newSession);
+  return newSession;
 }
 
-export function saveLeads(leads: Lead[]) {
-  // Sempre normaliza no ponto de escrita — fonte oficial de verdade.
-  const normalized = leads.map(ensurePhoneNormalized);
-  saveToStorage("p21_leads", normalized);
-}
-
-export function findLeadById(id: string): Lead | null {
-  return getLeads().find((l) => l.id === id) || null;
-}
-
-// ===== Duplicate detection =====
-const normalizeText = (s: string) => (s || "").trim().toLowerCase();
-const normalizeUrl = (s: string) => {
-  const v = (s || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-  return v;
-};
-
-export interface LeadDupKeys {
-  phone: string;
-  company: string;
-  gmn: string;
-}
-
-export function leadDupKeys(
-  lead: Pick<Lead, "phone" | "company" | "gmnLink"> & { phoneNormalized?: string; whatsapp?: string }
-): LeadDupKeys {
-  return {
-    // Deduplicação SEMPRE via phoneNormalized (55+DDD+número). Se o objeto
-    // ainda não tem, calcula on-the-fly — nunca compara telefone formatado.
-    phone: lead.phoneNormalized || normalizePhoneBR(lead.phone || lead.whatsapp),
-    company: normalizeText(lead.company),
-    gmn: normalizeUrl(lead.gmnLink),
-  };
-}
-
-export function isDuplicateLead(
-  candidate: Pick<Lead, "phone" | "company" | "gmnLink">,
-  existing: Pick<Lead, "phone" | "company" | "gmnLink">[]
-): boolean {
-  const k = leadDupKeys(candidate);
-  return existing.some((e) => {
-    const ek = leadDupKeys(e);
-    return (
-      (k.phone && ek.phone && k.phone === ek.phone) ||
-      (k.company && ek.company && k.company === ek.company) ||
-      (k.gmn && ek.gmn && k.gmn === ek.gmn)
-    );
-  });
-}
-
-/** Removes duplicates keeping the oldest (first by createdAt). Returns count removed. O(n). */
-export function dedupeLeads(): number {
-  const leads = getLeads().slice().sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
-  const phones = new Set<string>();
-  const companies = new Set<string>();
-  const gmns = new Set<string>();
-  const kept: Lead[] = [];
-  let removed = 0;
-  for (const l of leads) {
-    const k = leadDupKeys(l);
-    const dup =
-      (k.phone && phones.has(k.phone)) ||
-      (k.company && companies.has(k.company)) ||
-      (k.gmn && gmns.has(k.gmn));
-    if (dup) {
-      removed++;
-    } else {
-      if (k.phone) phones.add(k.phone);
-      if (k.company) companies.add(k.company);
-      if (k.gmn) gmns.add(k.gmn);
-      kept.push(l);
-    }
-  }
-  if (removed > 0) saveLeads(kept);
-  return removed;
-}
-
-export function addLead(
-  lead: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage" | "attachments">,
-  initialStage: PipelineStage = "Novo Lead"
-): Lead {
-  const leads = getLeads();
-  const newLead: Lead = {
-    ...lead,
-    id: crypto.randomUUID(),
-    stage: initialStage,
-    createdAt: new Date().toISOString(),
-    stageChangedAt: new Date().toISOString(),
-    attachments: [],
-  };
-  leads.push(newLead);
-  saveLeads(leads);
-  emit("LeadCriado", { leadId: newLead.id, company: newLead.company, stage: newLead.stage });
-  return newLead;
-}
-
-export function updateLead(id: string, updates: Partial<Lead>) {
-  const leads = getLeads();
-  const idx = leads.findIndex((l) => l.id === id);
+export function updateSession(id: string, updates: Partial<PomodoroSession>) {
+  const all = getSessions();
+  const idx = all.findIndex(s => s.id === id);
   if (idx !== -1) {
-    leads[idx] = { ...leads[idx], ...updates };
-    saveLeads(leads);
+    all[idx] = { ...all[idx], ...updates };
+    usave(SESSIONS_KEY, all);
   }
 }
 
-export function updateLeadStage(id: string, stage: PipelineStage) {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === id);
-  if (lead) {
-    lead.stage = stage;
-    lead.stageChangedAt = new Date().toISOString();
-    saveLeads(leads);
-  }
+export function deleteSession(id: string) {
+  usave(SESSIONS_KEY, getSessions().filter(s => s.id !== id));
 }
 
-export function deleteLead(id: string) {
-  const leads = getLeads().filter((l) => l.id !== id);
-  saveLeads(leads);
+// ==========================================
+// PUBLIC API: MEETINGS
+// ==========================================
+
+export function getMeetings(): Meeting[] {
+  return uload<Meeting[]>(MEETINGS_KEY, []);
+}
+
+export function getMeetingsForLead(leadId: string): Meeting[] {
+  return getMeetings().filter(m => m.leadId === leadId);
+}
+
+export function scheduleMeeting(leadId: string, meeting: Omit<Meeting, "id" | "createdAt" | "leadId">, options: { skipAutoMove?: boolean } = {}) {
+  const all = getMeetings();
+  const newMeeting = { ...meeting, leadId, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+  all.push(newMeeting);
+  usave(MEETINGS_KEY, all);
+  emit("ReuniaoMarcada", newMeeting);
   
-  // Marca para exclusão na nuvem (Tombstone)
-  const tombstones = loadFromStorage<string[]>("p21_deleted_leads_tombstones", []);
-  if (!tombstones.includes(id)) {
-    saveToStorage("p21_deleted_leads_tombstones", [...tombstones, id]);
+  return { autoTransfer: undefined }; 
+}
+
+export function updateMeetingDateTime(id: string, date: string, time: string) {
+  const all = getMeetings();
+  const idx = all.findIndex(m => m.id === id);
+  if (idx !== -1) {
+    all[idx].date = date;
+    all[idx].time = time;
+    usave(MEETINGS_KEY, all);
+    emit("ReuniaoAtualizada", all[idx]);
   }
 }
 
-
-// ===== Batch APIs (1 read + 1 write for N leads) =====
-
-export function addLeadsBatch(
-  newLeads: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "stage" | "attachments">[],
-  initialStage: PipelineStage = "Novo Lead"
-): Lead[] {
-  const leads = getLeads();
-  const now = new Date().toISOString();
-  const created: Lead[] = newLeads.map((l) => ({
-    ...l,
-    id: crypto.randomUUID(),
-    stage: initialStage,
-    createdAt: now,
-    stageChangedAt: now,
-    attachments: [],
-  }));
-  saveLeads([...leads, ...created]);
-  return created;
-}
-
-export function updateLeadsBatch(ids: Set<string> | string[], updates: Partial<Lead>) {
-  const idSet = ids instanceof Set ? ids : new Set(ids);
-  if (idSet.size === 0) return;
-  const leads = getLeads().map((l) => (idSet.has(l.id) ? { ...l, ...updates } : l));
-  saveLeads(leads);
-}
-
-export function deleteLeadsBatch(ids: Set<string> | string[]) {
-  const idSet = ids instanceof Set ? ids : new Set(ids);
-  if (idSet.size === 0) return;
-  const leads = getLeads().filter((l) => !idSet.has(l.id));
-  saveLeads(leads);
-
-  // Marca para exclusão na nuvem (Tombstone)
-  const tombstones = loadFromStorage<string[]>("p21_deleted_leads_tombstones", []);
-  const newTombstones = Array.from(idSet).filter(id => !tombstones.includes(id));
-  if (newTombstones.length > 0) {
-    saveToStorage("p21_deleted_leads_tombstones", [...tombstones, ...newTombstones]);
+export function updateMeetingSource(id: string, source: MeetingSource) {
+  const all = getMeetings();
+  const idx = all.findIndex(m => m.id === id);
+  if (idx !== -1) {
+    all[idx].source = source;
+    usave(MEETINGS_KEY, all);
   }
 }
 
+// ==========================================
+// PUBLIC API: MOVEMENT EVENTS
+// ==========================================
 
-/** Move N leads to the same stage in a single read+write. */
-export function moveLeadsToStageBatch(
-  ids: Set<string> | string[],
-  toStage: PipelineStage
-): { autoTransfer?: PipelineName; movedCount: number } {
-  const idSet = ids instanceof Set ? ids : new Set(ids);
-  if (idSet.size === 0) return { movedCount: 0 };
+export function getMovementEvents(): MovementEvent[] {
+  return uload<MovementEvent[]>(MOVEMENTS_KEY, []);
+}
 
-  let effectiveStage = toStage;
-  if (toStage === "Ganho") {
-    const onb = getStagesForPipeline("onboarding");
-    if (onb.length > 0) effectiveStage = onb[0];
+// ==========================================
+// PUBLIC API: GOALS
+// ==========================================
+
+export function getGoalsSettings(): GoalsSettings {
+  return uload<GoalsSettings>(GOALS_KEY, {
+    monthlyRevenueGoal: 10000,
+    averageTicket: 1000,
+    callToConnection: 20,
+    connectionToDecisionMaker: 30,
+    decisionMakerToMeetingScheduled: 10,
+    meetingScheduledToHeld: 70,
+    meetingHeldToClose: 20,
+    workingDaysPerWeek: 5,
+    hoursPerDay: 4,
+    minutesPerCall: 5
+  });
+}
+
+export function saveGoalsSettings(settings: GoalsSettings) {
+  usave(GOALS_KEY, settings);
+  emit("MetaAtualizada", settings);
+}
+
+// ==========================================
+// PUBLIC API: ATTACHMENTS, NOTES, INTERACTIONS
+// ==========================================
+
+export function addAttachment(leadId: string, att: Omit<Attachment, "id">) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead) {
+    if (!lead.attachments) lead.attachments = [];
+    const newAtt = { ...att, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    lead.attachments.push(newAtt);
+    saveLeads(all);
+    return newAtt.id;
   }
-  const toPipeline = getPipelineForStage(effectiveStage);
-  const now = new Date().toISOString();
+}
 
-  const leads = getLeads();
-  const events = getMovementEvents();
-  const lower = effectiveStage.toLowerCase();
-  let type: MovementEvent["type"] = "other";
-  if (CALL_STAGE_HINTS.some((h) => lower.includes(h))) type = "call";
-  else if (MESSAGE_STAGE_HINTS.some((h) => lower.includes(h))) type = "message";
-  else if (MEETING_STAGE_HINTS.some((h) => lower.includes(h))) type = "meeting";
+export function removeAttachment(leadId: string, attId: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.attachments) {
+    lead.attachments = lead.attachments.filter(a => a.id !== attId);
+    saveLeads(all);
+  }
+}
 
-  const onboardingTriggers: Lead[] = [];
-  let autoTransfer: PipelineName | undefined;
-  let movedCount = 0;
-  const next = leads.map((l) => {
-    if (!idSet.has(l.id)) return l;
-    const fromPipeline = getPipelineForStage(l.stage);
-    if (fromPipeline !== toPipeline) autoTransfer = toPipeline;
-    if (toPipeline === "onboarding" && fromPipeline !== "onboarding" && (l.contractValue ?? 0) > 0) {
-      onboardingTriggers.push(l);
+export function setAttachmentAnalysis(leadId: string, attId: string, analysis: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.attachments) {
+    const att = lead.attachments.find(a => a.id === attId);
+    if (att) {
+      att.aiAnalysis = analysis;
+      saveLeads(all);
     }
-    movedCount++;
-    events.push({
-      id: crypto.randomUUID(),
-      leadId: l.id,
-      toStage: effectiveStage,
-      timestamp: now,
-      type,
-    });
-    return { ...l, stage: effectiveStage, stageChangedAt: now };
-  });
-
-  saveLeads(next);
-  saveMovementEvents(events);
-
-  // Emissão em lote: um evento por lead movido, com dedupeKey para evitar duplicatas.
-  const affected = leads.filter((l) => idSet.has(l.id));
-  const now2 = now;
-  for (const l of affected) {
-    emit(
-      "LeadMovido",
-      { leadId: l.id, company: l.company, fromStage: l.stage, toStage: effectiveStage },
-      `move:${l.id}:${effectiveStage}:${now2}`
-    );
-    const kind = classifyStage(effectiveStage);
-    if (kind === "call") emit("LigacaoRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage, activitySource: "movement" });
-    if (kind === "message") emit("MensagemRegistrada", { leadId: l.id, company: l.company, stage: effectiveStage, activitySource: "movement" });
   }
-
-  if (onboardingTriggers.length > 0) {
-    import("@/modules/financeiro/services/finance").then(({ upsertOnboardingRevenue }) => {
-      onboardingTriggers.forEach((l) => {
-        upsertOnboardingRevenue({
-          clientId: l.id,
-          clientName: l.company,
-          amount: l.contractValue!,
-          serviceType: l.serviceType,
-        });
-        emit("OnboardingIniciado", { leadId: l.id, company: l.company }, `onb:${l.id}`);
-      });
-    });
-  }
-
-  return { autoTransfer, movedCount };
 }
 
-export function addAttachment(
-  leadId: string,
-  attachment: Omit<LeadAttachment, "id" | "createdAt">,
-): string | null {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) return null;
-  const id = crypto.randomUUID();
-  lead.attachments.push({
-    ...attachment,
-    id,
-    createdAt: new Date().toISOString(),
-  });
-  saveLeads(leads);
-  return id;
-}
-
-/** Guarda a leitura da IA de um anexo (usada também no diagnóstico do lead). */
-export function setAttachmentAnalysis(leadId: string, attachmentId: string, analysis: string) {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) return;
-  lead.attachments = lead.attachments.map((a) =>
-    a.id === attachmentId
-      ? { ...a, aiAnalysis: analysis, aiAnalyzedAt: new Date().toISOString() }
-      : a,
-  );
-  saveLeads(leads);
-}
-
-export function removeAttachment(leadId: string, attachmentId: string) {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
+export function addCallNote(leadId: string, noteData: string | Omit<CallNote, "id" | "createdAt">, scriptUsed?: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
   if (lead) {
-    lead.attachments = lead.attachments.filter((a) => a.id !== attachmentId);
-    saveLeads(leads);
+    if (!lead.callNotes) lead.callNotes = [];
+    let note: Omit<CallNote, "id" | "createdAt">;
+    if (typeof noteData === "string") {
+      note = { text: noteData, scriptUsed };
+    } else {
+      note = noteData;
+    }
+    const newNote = { ...note, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    lead.callNotes.push(newNote);
+    saveLeads(all);
+    emit("InteracaoRegistrada", { leadId, type: "Ligação" });
   }
 }
 
-export function addCallNote(leadId: string, text: string, scriptUsed?: string) {
-  if (!text.trim()) return;
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (lead) {
-    lead.callNotes = [
-      ...(lead.callNotes || []),
-      {
-        id: crypto.randomUUID(),
-        text: text.trim(),
-        createdAt: new Date().toISOString(),
-        ...(scriptUsed ? { scriptUsed } : {}),
-      },
-    ];
-    saveLeads(leads);
-    emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: lead.stage, scriptUsed, activitySource: "note" });
+export function removeCallNote(leadId: string, noteId: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.callNotes) {
+    lead.callNotes = lead.callNotes.filter(n => n.id !== noteId);
+    saveLeads(all);
   }
 }
 
 export function setCallNoteAnalysis(leadId: string, noteId: string, analysis: CallNoteAnalysis) {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) return;
-  lead.callNotes = (lead.callNotes || []).map((n) =>
-    n.id === noteId ? { ...n, analysis } : n
-  );
-  saveLeads(leads);
-}
-
-
-export function removeCallNote(leadId: string, noteId: string) {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (lead) {
-    lead.callNotes = (lead.callNotes || []).filter((n) => n.id !== noteId);
-    saveLeads(leads);
-  }
-}
-
-// ===== Interações Comerciais =====
-export function getInteractions(lead: Lead): Interaction[] {
-  return [...(lead.interactions || [])].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-}
-
-export function addInteraction(
-  leadId: string,
-  data: Omit<Interaction, "id" | "createdAt"> & { createdAt?: string }
-) {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) return;
-  const interaction: Interaction = {
-    id: crypto.randomUUID(),
-    createdAt: data.createdAt ?? new Date().toISOString(),
-    type: data.type,
-    date: data.date,
-    title: data.title.trim(),
-    summary: data.summary.trim(),
-    sellerNotes: data.sellerNotes?.trim() || undefined,
-  };
-  lead.interactions = [...(lead.interactions || []), interaction];
-  saveLeads(leads);
-  emit("InteracaoRegistrada", {
-    leadId: lead.id, company: lead.company, stage: lead.stage,
-    interactionType: interaction.type,
-    date: interaction.date,
-    activitySource: "interaction",
-  });
-}
-
-export function updateInteraction(leadId: string, interactionId: string, patch: Partial<Omit<Interaction, "id" | "createdAt">>) {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) return;
-  lead.interactions = (lead.interactions || []).map((i) =>
-    i.id === interactionId ? {
-      ...i,
-      ...patch,
-      title: patch.title !== undefined ? patch.title.trim() : i.title,
-      summary: patch.summary !== undefined ? patch.summary.trim() : i.summary,
-      sellerNotes: patch.sellerNotes !== undefined ? (patch.sellerNotes?.trim() || undefined) : i.sellerNotes,
-    } : i
-  );
-  saveLeads(leads);
-}
-
-export function removeInteraction(leadId: string, interactionId: string) {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) return;
-  lead.interactions = (lead.interactions || []).filter((i) => i.id !== interactionId);
-  saveLeads(leads);
-}
-
-// ===== Movement Events =====
-
-export function getMovementEvents(): MovementEvent[] {
-  return loadFromStorage<MovementEvent[]>("p21_movements", []);
-}
-
-export function saveMovementEvents(events: MovementEvent[]) {
-  saveToStorage("p21_movements", events);
-}
-
-const CALL_STAGE_HINTS = ["tentativa", "ligação", "ligacao", "call"];
-const MESSAGE_STAGE_HINTS = ["mensagem", "whatsapp", "wpp", "msg"];
-const MEETING_STAGE_HINTS = ["reunião", "reuniao", "meeting"];
-
-export function trackMovement(leadId: string, toStage: PipelineStage) {
-  const lower = toStage.toLowerCase();
-  let type: MovementEvent["type"] = "other";
-  if (CALL_STAGE_HINTS.some((h) => lower.includes(h))) type = "call";
-  else if (MESSAGE_STAGE_HINTS.some((h) => lower.includes(h))) type = "message";
-  else if (MEETING_STAGE_HINTS.some((h) => lower.includes(h))) type = "meeting";
-
-  const events = getMovementEvents();
-  events.push({
-    id: crypto.randomUUID(),
-    leadId,
-    toStage,
-    timestamp: new Date().toISOString(),
-    type,
-  });
-  saveMovementEvents(events);
-}
-
-// ===== Move lead between stages (cross-pipeline allowed) =====
-export function moveLeadToStage(leadId: string, toStage: PipelineStage): { autoTransfer?: PipelineName; missingContractValue?: boolean } {
-  trackMovement(leadId, toStage);
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) return {};
-
-  const fromStage = lead.stage;
-  const fromPipeline = getPipelineForStage(fromStage);
-
-  // Auto-promote: when moved to "Ganho", forward to first Onboarding stage
-  let effectiveStage = toStage;
-  if (toStage === "Ganho") {
-    const onboardingStages = getStagesForPipeline("onboarding");
-    if (onboardingStages.length > 0) effectiveStage = onboardingStages[0];
-  }
-
-  const toPipeline = getPipelineForStage(effectiveStage);
-
-  lead.stage = effectiveStage;
-  lead.stageChangedAt = new Date().toISOString();
-  saveLeads(leads);
-
-  // Emissões: evento genérico + específicos por classe de etapa
-  emit(
-    "LeadMovido",
-    { leadId: lead.id, company: lead.company, fromStage, toStage: effectiveStage },
-    `move:${lead.id}:${effectiveStage}:${lead.stageChangedAt}`
-  );
-  const kind = classifyStage(effectiveStage);
-  if (kind === "call") emit("LigacaoRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage, activitySource: "movement" });
-  if (kind === "message") emit("MensagemRegistrada", { leadId: lead.id, company: lead.company, stage: effectiveStage, activitySource: "movement" });
-  if (effectiveStage.toLowerCase().includes("realizada") && effectiveStage.toLowerCase().includes("reuni")) {
-    emit("ReuniaoRealizada", { leadId: lead.id, company: lead.company });
-  }
-
-  let missingContractValue = false;
-
-  // Auto-create finance revenue when WINNING an Oportunidade (moved to "Ganho" from Oportunidades)
-  if (toStage === "Ganho" && fromPipeline === "oportunidades") {
-    if ((lead.contractValue ?? 0) > 0) {
-      import("@/modules/financeiro/services/finance").then(({ upsertOnboardingRevenue }) => {
-        upsertOnboardingRevenue({
-          clientId: lead.id,
-          clientName: lead.company,
-          amount: lead.contractValue!,
-          serviceType: lead.serviceType,
-        });
-      });
-      emit("VendaRealizada", { leadId: lead.id, company: lead.company, amount: lead.contractValue }, `venda:${lead.id}`);
-      emit("OnboardingIniciado", { leadId: lead.id, company: lead.company }, `onb:${lead.id}`);
-    } else {
-      missingContractValue = true;
-      emit("VendaRealizada", { leadId: lead.id, company: lead.company, amount: 0 }, `venda:${lead.id}`);
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.callNotes) {
+    const note = lead.callNotes.find(n => n.id === noteId);
+    if (note) {
+      note.analysis = analysis;
+      saveLeads(all);
     }
-  } else if (fromPipeline !== "onboarding" && toPipeline === "onboarding") {
-    emit("OnboardingIniciado", { leadId: lead.id, company: lead.company }, `onb:${lead.id}`);
-  }
-
-  // Reminders: fire user-configured templates for the destination stage.
-  import("@/modules/agenda/services/reminders").then(({ createRemindersForStageChange }) => {
-    createRemindersForStageChange(lead, effectiveStage);
-  });
-
-  return {
-    ...(fromPipeline !== toPipeline ? { autoTransfer: toPipeline } : {}),
-    ...(missingContractValue ? { missingContractValue: true } : {}),
-  };
-}
-
-
-// ===== Pomodoro Sessions =====
-export function getSessions(): PomodoroSession[] {
-  return loadFromStorage<PomodoroSession[]>("p21_sessions", []);
-}
-
-export function saveSessions(sessions: PomodoroSession[]) {
-  saveToStorage("p21_sessions", sessions);
-}
-
-export function addSession(session: Omit<PomodoroSession, "id">): PomodoroSession {
-  const sessions = getSessions();
-  const newSession: PomodoroSession = { ...session, id: crypto.randomUUID() };
-  sessions.push(newSession);
-  saveSessions(sessions);
-  emit(
-    "PomodoroFinalizado",
-    {
-      sessionId: newSession.id,
-      durationMinutes: newSession.durationMinutes,
-      calls: newSession.calls,
-      connections: newSession.connections,
-      decisionMakers: newSession.decisionMakers,
-      meetings: newSession.meetings,
-      niche: newSession.niche,
-      scriptUsed: newSession.scriptUsed,
-    },
-    `pomo:${newSession.id}`
-  );
-  return newSession;
-}
-
-export function updateSession(id: string, patch: Partial<Omit<PomodoroSession, "id">>): PomodoroSession | null {
-  const sessions = getSessions();
-  const idx = sessions.findIndex((s) => s.id === id);
-  if (idx === -1) return null;
-  const updated: PomodoroSession = { ...sessions[idx], ...patch };
-  sessions[idx] = updated;
-  saveSessions(sessions);
-  emit(
-    "PomodoroFinalizado",
-    {
-      sessionId: updated.id,
-      durationMinutes: updated.durationMinutes,
-      calls: updated.calls,
-      connections: updated.connections,
-      decisionMakers: updated.decisionMakers,
-      meetings: updated.meetings,
-      niche: updated.niche,
-      scriptUsed: updated.scriptUsed,
-      edited: true,
-    },
-    `pomo:${updated.id}:edit:${Date.now()}`
-  );
-  return updated;
-}
-
-export function deleteSession(id: string): boolean {
-  const sessions = getSessions();
-  const next = sessions.filter((s) => s.id !== id);
-  if (next.length === sessions.length) return false;
-  saveSessions(next);
-  emit("PomodoroFinalizado", { sessionId: id, deleted: true }, `pomo:${id}:del:${Date.now()}`);
-  return true;
-}
-
-// ===== Meetings =====
-export function getMeetings(): Meeting[] {
-  return loadFromStorage<Meeting[]>("p21_meetings", []);
-}
-
-export function getMeetingsForLead(leadId: string): Meeting[] {
-  return getMeetings()
-    .filter((m) => m.leadId === leadId)
-    .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
-}
-
-export function saveMeetings(meetings: Meeting[]) {
-  saveToStorage("p21_meetings", meetings);
-}
-
-export function updateMeetingSource(meetingId: string, source: MeetingSource) {
-  const meetings = getMeetings();
-  const idx = meetings.findIndex((m) => m.id === meetingId);
-  if (idx !== -1) {
-    meetings[idx] = { ...meetings[idx], source };
-    saveMeetings(meetings);
   }
 }
 
-export function updateMeetingDateTime(meetingId: string, date: string, time: string) {
-  const meetings = getMeetings();
-  const idx = meetings.findIndex((m) => m.id === meetingId);
-  if (idx === -1) return;
-  const updated = { ...meetings[idx], date, time };
-  meetings[idx] = updated;
-  saveMeetings(meetings);
-
-  // Recreate reminders anchored to the meeting for the current stage
-  const lead = getLeads().find((l) => l.id === updated.leadId);
+export function addInteraction(leadId: string, interaction: Omit<Interaction, "id">) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
   if (lead) {
-    import("@/modules/agenda/services/reminders").then(({ createRemindersForStageChange }) => {
-      createRemindersForStageChange(lead, lead.stage);
-    });
-    emit(
-      "ReuniaoAtualizada",
-      { meetingId, leadId: updated.leadId, company: lead.company, date, time },
-      `mtg:${meetingId}:${date}:${time}`
-    );
+    if (!lead.interactions) lead.interactions = [];
+    const newInt = { ...interaction, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    lead.interactions.push(newInt);
+    saveLeads(all);
+    emit("InteracaoRegistrada", { leadId, ...newInt });
   }
-  return updated;
 }
 
-export function scheduleMeeting(
-  leadId: string,
-  data: Omit<Meeting, "id" | "leadId" | "company" | "createdAt">,
-  options?: { skipAutoMove?: boolean }
-): { meeting: Meeting; autoTransfer?: PipelineName } {
-  const lead = getLeads().find((l) => l.id === leadId);
-  if (!lead) throw new Error("Lead não encontrado");
-
-  const meeting: Meeting = {
-    ...data,
-    id: crypto.randomUUID(),
-    leadId,
-    company: lead.company,
-    createdAt: new Date().toISOString(),
-  };
-  const meetings = getMeetings();
-  meetings.push(meeting);
-  saveMeetings(meetings);
-
-  emit(
-    "ReuniaoMarcada",
-    {
-      meetingId: meeting.id,
-      leadId,
-      company: lead.company,
-      date: meeting.date,
-      time: meeting.time,
-      source: meeting.source,
-      title: meeting.title,
-    },
-    `mtg:new:${meeting.id}`
-  );
-
-  if (options?.skipAutoMove) {
-    return { meeting };
+export function updateInteraction(leadId: string, id: string, updates: Partial<Interaction>) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.interactions) {
+    const idx = lead.interactions.findIndex(i => i.id === id);
+    if (idx !== -1) {
+      lead.interactions[idx] = { ...lead.interactions[idx], ...updates };
+      saveLeads(all);
+    }
   }
-
-  // Move lead to "Reunião Marcada" (oportunidades) — this triggers
-  // any user-configured reminder templates for that stage.
-  const result = moveLeadToStage(leadId, "Reunião Marcada");
-
-  return { meeting, autoTransfer: result.autoTransfer };
 }
 
-
-// ===== Goals (Metas) settings =====
-export interface GoalsSettings {
-  monthlyRevenueGoal: number;
-  averageTicket: number;
-  // Conversion rates as percentages (0-100)
-  callToConnection: number;
-  connectionToDecisionMaker: number;
-  decisionMakerToMeetingScheduled: number;
-  meetingScheduledToHeld: number;
-  meetingHeldToClose: number;
-  // Time management
-  workingDaysPerWeek: number;
-  hoursPerDay: number;
-  minutesPerCall: number;
+export function removeInteraction(leadId: string, id: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.interactions) {
+    lead.interactions = lead.interactions.filter(i => i.id !== id);
+    saveLeads(all);
+  }
 }
 
-export const DEFAULT_GOALS: GoalsSettings = {
-  monthlyRevenueGoal: 30000,
-  averageTicket: 3000,
-  callToConnection: 30,
-  connectionToDecisionMaker: 50,
-  decisionMakerToMeetingScheduled: 25,
-  meetingScheduledToHeld: 70,
-  meetingHeldToClose: 30,
-  workingDaysPerWeek: 5,
-  hoursPerDay: 4,
-  minutesPerCall: 4,
-};
+// ==========================================
+// PUBLIC API: DIAGNOSIS
+// ==========================================
 
-export function getGoalsSettings(): GoalsSettings {
-  return loadFromStorage<GoalsSettings>("p21_goals_settings", DEFAULT_GOALS);
+export function setLeadAutoDiagnosis(leadId: string, diag: AutoDiagnosis) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead) {
+    lead.autoDiagnosis = diag;
+    saveLeads(all);
+  }
 }
 
-export function saveGoalsSettings(settings: GoalsSettings) {
-  saveToStorage("p21_goals_settings", settings);
+export function pushLeadDiagnosisVersion(leadId: string, diagnosis: any, changes: string[], origin: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead) {
+    if (!lead.diagnosisHistory) lead.diagnosisHistory = [];
+    const newVersion: DiagnosisVersion = {
+      id: crypto.randomUUID(),
+      version: lead.diagnosisHistory.length + 1,
+      at: new Date().toISOString(),
+      origin,
+      context: lead.stage,
+      diagnosis,
+      changes
+    };
+    lead.diagnosisHistory.unshift(newVersion);
+    saveLeads(all);
+    return newVersion;
+  }
 }
 
-// ===== Diagnóstico Automático (V1.1) =====
-// Fingerprint das interações consideradas — muda quando chega uma nova ligação
-// ou uma interação é editada. Comparação simples: contagem + IDs + datas.
-export function computeDiagnosisInputHash(lead: Lead): string {
-  const parts = (lead.interactions || [])
-    .map((i) => `${i.id}:${i.date}`)
-    .sort();
-  const notesLen = (lead.notes || "").length;
-  // Anexos analisados pela IA também alteram o contexto do diagnóstico.
-  const analyzed = (lead.attachments || []).filter((a) => (a.aiAnalysis || "").trim());
-  const attSig = analyzed.map((a) => `${a.id}:${(a.aiAnalysis || "").length}`).sort().join(",");
-  return `n${parts.length}|${notesLen}|${parts.join(",")}|a${analyzed.length}:${attSig}`;
-}
-
-export function setLeadAutoDiagnosis(leadId: string, diagnosis: AutoDiagnosis) {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) return;
-  lead.autoDiagnosis = diagnosis;
-  saveLeads(leads);
-}
-
-const MAX_DIAGNOSIS_VERSIONS = 30;
-
-/** Registra uma nova versão da inteligência do lead (nunca sobrescreve as anteriores). */
-export function pushLeadDiagnosisVersion(
-  leadId: string,
-  diagnosis: AutoDiagnosis,
-  changes: string[],
-  origin = "Atualizar Inteligência",
-): DiagnosisVersion | null {
-  const leads = getLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (!lead) return null;
-  const history = lead.diagnosisHistory || [];
-  const version = (history[0]?.version ?? 0) + 1;
-  const context = [
-    `${(lead.interactions || []).length} interação(ões)`,
-    `${(lead.callNotes || []).length} ligação(ões)`,
-    `${(lead.attachments || []).length} anexo(s)`,
-    `etapa "${lead.stage}"`,
-  ].join(" · ");
-  const entry: DiagnosisVersion = {
-    id: crypto.randomUUID(),
-    version,
-    at: diagnosis.generatedAt || new Date().toISOString(),
-    origin,
-    context,
-    diagnosis: { ...diagnosis, version, changes },
-    changes,
-  };
-  lead.diagnosisHistory = [entry, ...history].slice(0, MAX_DIAGNOSIS_VERSIONS);
-  lead.autoDiagnosis = entry.diagnosis;
-  saveLeads(leads);
-  return entry;
-}
-
-/** Histórico versionado da inteligência (mais recente primeiro). */
 export function getDiagnosisHistory(lead: Lead): DiagnosisVersion[] {
   return lead.diagnosisHistory || [];
 }
 
-
 export function isAutoDiagnosisStale(lead: Lead): boolean {
-  if (!lead.autoDiagnosis) return false;
-  return lead.autoDiagnosis.inputHash !== computeDiagnosisInputHash(lead);
+  if (!lead.autoDiagnosis) return true;
+  return new Date(lead.stageChangedAt) > new Date(lead.autoDiagnosis.generatedAt);
+}
+
+export function computeDiagnosisInputHash(lead: Lead): string {
+  // Simple hash of content that affects diagnosis
+  const content = [
+    lead.notes,
+    lead.stage,
+    (lead.callNotes || []).length,
+    (lead.interactions || []).length
+  ].join("|");
+  return content; 
+}
+
+// ==========================================
+// PUBLIC API: TAGS
+// ==========================================
+
+export function getAllTags(): string[] {
+  const leads = getLeads();
+  const tags = new Set<string>(["GMN", "LUPUS", "INBOUND"]);
+  leads.forEach(l => {
+    l.tags?.forEach(t => tags.add(t));
+  });
+  return Array.from(tags).sort();
 }
