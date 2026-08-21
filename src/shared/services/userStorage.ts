@@ -16,7 +16,6 @@ import { idbGet, idbSet, idbDelete } from "@/shared/services/idbCache";
 import { ScopedWriteQueue, withRetry } from "@/shared/services/cloudWriteQueue";
 import {
   SCOPED_KEYS,
-  HEAVY_KEYS,
   isEmptyStorageValue as isEmptyValue,
   isHeavyKey as isHeavy,
   isProtectedConfigKey,
@@ -135,7 +134,10 @@ export function uremove(key: string) {
 export async function hydrateLocal(): Promise<void> {
   const uid = getCurrentUserId();
   if (!uid) return;
-  for (const k of HEAVY_KEYS) {
+  // Derive the hydration list from the canonical scoped-key registry. This
+  // avoids a second runtime dependency that can leave every lead unreadable if
+  // a refactor forgets to import/export the heavy-key set.
+  for (const k of SCOPED_KEYS.filter(isHeavy)) {
     const scoped = `u:${uid}:${k}`;
     let val: string | null = null;
     try {
