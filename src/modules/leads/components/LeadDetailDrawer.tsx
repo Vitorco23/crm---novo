@@ -264,6 +264,48 @@ export default function LeadDetailDrawer({
     return () => window.removeEventListener("paste", onPaste);
   }, [open]);
 
+  useEffect(() => {
+    if (open && lead?.id) {
+      const suggest = async () => {
+        try {
+          const context = [
+            lead.company && `Empresa: ${lead.company}`,
+            lead.niche && `Nicho: ${lead.niche}`,
+            lead.city && `Cidade: ${lead.city}`,
+            lead.notes && `Notas: ${lead.notes}`,
+            lead.website && `Site: ${lead.website}`,
+            lead.instagramLink && `Instagram: ${lead.instagramLink}`,
+          ].filter(Boolean).join("\n");
+          
+          const result = await IntelligenceRepository.suggestICP({
+            leadContext: context,
+            currentICP: lead.icpStars,
+            additionalInfo: lead.notes,
+            websiteContent: lead.website,
+            instagramContent: lead.instagramLink
+          });
+
+          if (result.suggestedICP !== lead.icpStars) {
+            toast.info(`Sugestão de ICP: ${result.suggestedICP} estrelas`, {
+              description: result.reasoning,
+              action: {
+                label: "Aplicar",
+                onClick: () => {
+                  persist({ icpStars: result.suggestedICP as ICPStars });
+                  toast.success("ICP atualizado com sucesso!");
+                }
+              },
+              duration: 8000,
+            });
+          }
+        } catch (e) {
+          console.error("Sugestão de ICP falhou:", e);
+        }
+      };
+      suggest();
+    }
+  }, [open, lead?.id]);
+
   if (!lead || !draft) return null;
 
   const pipeline = getPipelineForStage(lead.stage);
