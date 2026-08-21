@@ -264,11 +264,9 @@ export default function LeadDetailDrawer({
     return () => window.removeEventListener("paste", onPaste);
   }, [open]);
 
-  useEffect(() => {
   const runIcpSuggestion = async () => {
     if (!lead?.id) return;
     try {
-      // Coleta o máximo de contexto possível para uma análise fria e completa
       const context = [
         lead.company && `Empresa: ${lead.company}`,
         lead.contact && `Decisor: ${lead.contact}`,
@@ -279,7 +277,6 @@ export default function LeadDetailDrawer({
         lead.instagramLink && `Instagram: ${lead.instagramLink}`,
       ].filter(Boolean).join("\n");
       
-      // Inclui análise de anexos se houver
       const attachmentsContext = Object.values(aiReadResults).join("\n---\n");
       
       const result = await IntelligenceRepository.suggestICP({
@@ -312,6 +309,14 @@ export default function LeadDetailDrawer({
       toast.error("Não foi possível obter sugestão da IA agora.");
     }
   };
+
+  useEffect(() => {
+    if (open && lead?.id) {
+      if (!lead.icpStars || lead.icpStars === 2) {
+        runIcpSuggestion();
+      }
+    }
+  }, [open, lead?.id]);
 
   useEffect(() => {
     if (open && lead?.id) {
