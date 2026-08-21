@@ -265,44 +265,61 @@ export default function LeadDetailDrawer({
   }, [open]);
 
   useEffect(() => {
-    if (open && lead?.id) {
-      const suggest = async () => {
-        try {
-          const context = [
-            lead.company && `Empresa: ${lead.company}`,
-            lead.niche && `Nicho: ${lead.niche}`,
-            lead.city && `Cidade: ${lead.city}`,
-            lead.notes && `Notas: ${lead.notes}`,
-            lead.website && `Site: ${lead.website}`,
-            lead.instagramLink && `Instagram: ${lead.instagramLink}`,
-          ].filter(Boolean).join("\n");
-          
-          const result = await IntelligenceRepository.suggestICP({
-            leadContext: context,
-            currentICP: lead.icpStars,
-            additionalInfo: lead.notes,
-            websiteContent: lead.website,
-            instagramContent: lead.instagramLink
-          });
+  const runIcpSuggestion = async () => {
+    if (!lead?.id) return;
+    try {
+      // Coleta o máximo de contexto possível para uma análise fria e completa
+      const context = [
+        lead.company && `Empresa: ${lead.company}`,
+        lead.contact && `Decisor: ${lead.contact}`,
+        lead.niche && `Nicho: ${lead.niche}`,
+        lead.city && `Cidade: ${lead.city}`,
+        lead.notes && `Notas: ${lead.notes}`,
+        lead.website && `Site: ${lead.website}`,
+        lead.instagramLink && `Instagram: ${lead.instagramLink}`,
+      ].filter(Boolean).join("\n");
+      
+      // Inclui análise de anexos se houver
+      const attachmentsContext = Object.values(aiReadResults).join("\n---\n");
+      
+      const result = await IntelligenceRepository.suggestICP({
+        leadContext: context,
+        currentICP: lead.icpStars,
+        additionalInfo: (lead.notes || "") + (attachmentsContext ? `\nAnexos analisados:\n${attachmentsContext}` : ""),
+        websiteContent: lead.website,
+        instagramContent: lead.instagramLink
+      });
 
-          if (result.suggestedICP !== lead.icpStars) {
-            toast.info(`Sugestão de ICP: ${result.suggestedICP} estrelas`, {
-              description: result.reasoning,
-              action: {
-                label: "Aplicar",
-                onClick: () => {
-                  persist({ icpStars: result.suggestedICP as ICPStars });
-                  toast.success("ICP atualizado com sucesso!");
-                }
-              },
-              duration: 8000,
-            });
-          }
-        } catch (e) {
-          console.error("Sugestão de ICP falhou:", e);
-        }
-      };
-      suggest();
+      if (result.suggestedICP !== lead.icpStars) {
+        toast.info(`Sugestão de ICP: ${result.suggestedICP} estrelas`, {
+          description: result.reasoning,
+          action: {
+            label: "Aplicar",
+            onClick: () => {
+              persist({ icpStars: result.suggestedICP as ICPStars });
+              toast.success("ICP atualizado com sucesso!");
+            }
+          },
+          duration: 10000,
+        });
+      } else {
+        toast.success(`ICP validado: ${lead.icpStars} estrelas`, {
+          description: "A IA concorda com a classificação atual baseada nas informações disponíveis."
+        });
+      }
+    } catch (e) {
+      console.error("Sugestão de ICP falhou:", e);
+      toast.error("Não foi possível obter sugestão da IA agora.");
+    }
+  };
+
+  useEffect(() => {
+    if (open && lead?.id) {
+      // Só executa automaticamente se for um lead novo ou sem ICP definido (ou padrão 2)
+      // Evita incomodar o usuário em todo lead aberto se ele já classificou
+      if (!lead.icpStars || lead.icpStars === 2) {
+        runIcpSuggestion();
+      }
     }
   }, [open, lead?.id]);
 
