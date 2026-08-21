@@ -199,6 +199,8 @@ export interface PomodoroSession {
   follows: number;
   noes: number;
   r1s: number;
+  followsToDo?: number;
+  negatives?: number;
   niche?: string;
   scriptUsed?: string;
 }
@@ -286,14 +288,16 @@ export function findLeadById(id: string): Lead | undefined {
   return getLeads().find(l => l.id === id);
 }
 
-export function addLead(data: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "attachments">, stage?: PipelineStage): Lead {
+export function addLead(data: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "attachments"> & { stage?: string }, stage?: PipelineStage): Lead {
   const now = new Date().toISOString();
+  const finalStage = stage || data.stage || DEFAULT_COLD_CALL_STAGES[0];
+  const { stage: dataStage, ...rest } = data;
   const newLead: Lead = {
-    ...data,
+    ...rest,
     id: crypto.randomUUID(),
     createdAt: now,
     stageChangedAt: now,
-    stage: stage || data.stage || DEFAULT_COLD_CALL_STAGES[0],
+    stage: finalStage,
     attachments: [],
     interactions: [],
     callNotes: [],
@@ -306,19 +310,23 @@ export function addLead(data: Omit<Lead, "id" | "createdAt" | "stageChangedAt" |
   return newLead;
 }
 
-export function addLeadsBatch(leadsData: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "attachments">[], stage: PipelineStage) {
+export function addLeadsBatch(leadsData: (Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "attachments"> & { stage?: string })[], stage: PipelineStage) {
   const now = new Date().toISOString();
-  const newLeads: Lead[] = leadsData.map(data => ({
-    ...data,
-    id: crypto.randomUUID(),
-    stage,
-    createdAt: now,
-    stageChangedAt: now,
-    attachments: [],
-    interactions: [],
-    callNotes: [],
-    tags: data.tags || ["GMN"]
-  }));
+  const newLeads: Lead[] = leadsData.map(data => {
+    const finalStage = stage || data.stage || DEFAULT_COLD_CALL_STAGES[0];
+    const { stage: dataStage, ...rest } = data;
+    return {
+      ...rest,
+      id: crypto.randomUUID(),
+      stage: finalStage,
+      createdAt: now,
+      stageChangedAt: now,
+      attachments: [],
+      interactions: [],
+      callNotes: [],
+      tags: data.tags || ["GMN"]
+    };
+  });
   const all = getLeads();
   all.push(...newLeads);
   saveLeads(all);
@@ -544,7 +552,7 @@ export function getMeetingsForLead(leadId: string): Meeting[] {
   return getMeetings().filter(m => m.leadId === leadId);
 }
 
-export function scheduleMeeting(leadId: string, meeting: Omit<Meeting, "id" | "createdAt" | "leadId">) {
+export function scheduleMeeting(leadId: string, meeting: Omit<Meeting, "id" | "createdAt" | "leadId">, options: { skipAutoMove?: boolean } = {}) {
   const all = getMeetings();
   const newMeeting = { ...meeting, leadId, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
   all.push(newMeeting);

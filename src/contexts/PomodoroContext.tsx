@@ -224,7 +224,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
       connections: data.connections,
       decisionMakers: data.decisionMakers,
       meetings: data.meetings,
-      r1: data.r1,
+      r1s: data.r1,
+      follows: data.followsToDo || 0,
+      noes: data.negatives || 0,
       followsToDo: data.followsToDo,
       negatives: data.negatives,
 

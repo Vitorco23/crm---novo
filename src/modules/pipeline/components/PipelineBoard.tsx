@@ -517,7 +517,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     if (editingStage && editingValue.trim() && editingValue !== editingStage) {
       const r = renameStage(pipeline, editingStage, editingValue.trim());
       if (!r.ok) {
-        toast.error(r.error || "Não foi possível renomear");
+        toast.error((r as any).error || "Não foi possível renomear");
         return; // mantém o input aberto para o usuário corrigir
       }
     }
@@ -528,6 +528,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     const name = newStageName.trim();
     if (name) {
       const r = addStage(pipeline, name);
+      if (!(r as any).ok) {
+        toast.error((r as any).error || "Erro ao adicionar etapa");
+        return;
+      }
       if (!r.ok) {
         toast.error(r.error || "Não foi possível adicionar");
         return;
@@ -545,7 +549,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
   const handleAdd = () => {
     if (!form.company.trim()) return;
-    addLead(form, stages[0]);
+    addLead({ ...form, stage: stages[0] }, stages[0]);
     setForm({ company: "", contact: "", phone: "", notes: "", niche: "", city: "", gmnLink: "", instagramLink: "", icpStars: 3, runsAds: false });
     setDialogOpen(false);
     refresh();
@@ -727,7 +731,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         return;
       }
 
-      if (toCreate.length > 0) addLeadsBatch(toCreate, initialStage);
+      if (toCreate.length > 0) {
+        const withStage = toCreate.map(l => ({ ...l, stage: initialStage }));
+        addLeadsBatch(withStage, initialStage);
+      }
       const count = toCreate.length;
       setMappingOpen(false);
       setImportHeaders([]);
