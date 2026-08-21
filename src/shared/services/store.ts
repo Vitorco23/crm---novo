@@ -1,6 +1,5 @@
 import { uload, usave } from "@/shared/services/userStorage";
 import { emit } from "@/shared/services/eventBus";
-import { type LeadFieldKey } from "@/modules/pipeline/components/ImportMappingDialog";
 
 // ==========================================
 // CONSTANTS & KEYS
@@ -47,7 +46,7 @@ export const ONBOARDING_STAGES = DEFAULT_ONBOARDING_STAGES;
 
 export type PipelineStage = string;
 export type ICPStars = 1 | 2 | 3;
-export type InteractionType = "Ligação" | "WhatsApp" | "E-mail" | "Reunião" | "Outro";
+export type InteractionType = "Ligação" | "WhatsApp" | "E-mail" | "Reunião" | "Outro" | "Follow-up" | "Envio de Proposta" | "Visita Presencial" | "Reunião Comercial" | "Reunião de Diagnóstico" | "Reunião de Apresentação";
 export type MeetingSource = "Manual" | "Disparo" | "GMN";
 
 const STORAGE_KEY = "p21_leads";
@@ -69,19 +68,34 @@ export interface AutoDiagnosis {
   updated_memory?: string;
   changes?: string;
   generatedAt: string;
+  probability?: number;
 }
 
 export interface CallAuditData {
   resumoExecutivo: string;
   evolucaoLead: string;
   tendenciaJustificativa: string;
-  objecoes: string;
-  [key: string]: string;
+  objecoes: string | string[];
+  pontosPositivos?: string | string[];
+  pontosAtencao?: string | string[];
+  oportunidadeComercial?: string | string[];
+  scoreComercial: number;
+  temperatura: string;
+  probabilidadeAvanco: string;
+  prioridade: string;
+  tendencia: string;
+  feedbackVendedor: string;
+  planoFollowup: Array<{ quando: string; acao: string }>;
+  dataProximoContato?: string;
+  diasAteProximoFollowup?: number | string;
+  assuntosDeInteresse?: string[];
+  nextBestAction?: import("@/modules/intelligence/services/nextBestAction").NextBestAction | string;
 }
 
 export interface CallNoteAnalysis {
   markdown: string;
   data: CallAuditData;
+  mode?: "full" | "quick";
 }
 
 export interface CallNote {
@@ -97,6 +111,7 @@ export interface Interaction {
   id: string;
   type: InteractionType;
   date: string;
+  createdAt?: string;
   title: string;
   summary: string;
   sellerNotes?: string;
@@ -112,12 +127,18 @@ export interface Attachment {
 
 export interface DiagnosisVersion {
   id: string;
-  generatedAt: string;
-  summary: string;
-  temperature: string;
-  next_action: string;
+  version?: number;
+  at: string;
+  generatedAt?: string;
+  summary?: string;
+  temperature?: string;
+  next_action?: string;
   attention?: string;
   updated_memory?: string;
+  origin?: string;
+  context?: string;
+  diagnosis?: any;
+  changes?: string | string[];
 }
 
 export interface Lead {
@@ -125,6 +146,7 @@ export interface Lead {
   company: string;
   contact?: string;
   phone?: string;
+  whatsapp?: string;
   phoneNormalized?: string;
   phoneInvalid?: boolean;
   email?: string;
@@ -155,7 +177,7 @@ export interface Lead {
   lastDialCampaignId?: string;
   lastDialContactId?: string;
   dialStatus?: "enviado" | "erro";
-  temperature?: "hot" | "warm" | "cold";
+  temperature?: "hot" | "warm" | "cold" | string;
 }
 
 export interface PomodoroSession {
@@ -178,8 +200,8 @@ export interface PomodoroSession {
 export interface MovementEvent {
   id: string;
   leadId: string;
-  fromStage: string;
-  toStage: string;
+  fromStage?: string;
+  toStage?: string;
   timestamp: string;
   type: "movement" | "call" | "interaction";
 }
@@ -335,7 +357,6 @@ export function updateLeadsBatch(ids: Set<string> | string[], updates: Partial<L
 export function deleteLead(id: string) {
   const all = getLeads().filter(l => l.id !== id);
   saveLeads(all);
-  // Tombstones handle physical deletion sync via userStorage.ts
 }
 
 export function deleteLeadsBatch(ids: Set<string> | string[]) {
@@ -674,24 +695,32 @@ export function setLeadAutoDiagnosis(leadId: string, diag: AutoDiagnosis) {
   }
 }
 
-export function pushLeadDiagnosisVersion(leadId: string, version: DiagnosisVersion) {
+export function pushLeadDiagnosisVersion(leadId: string, diagnosis: any, changes: string[], origin: string) {
   const all = getLeads();
   const lead = all.find(l => l.id === leadId);
   if (lead) {
     if (!lead.diagnosisHistory) lead.diagnosisHistory = [];
-    lead.diagnosisHistory.push(version);
+    const newVersion: DiagnosisVersion = {
+      id: crypto.randomUUID(),
+      version: lead.diagnosisHistory.length + 1,
+      at: new Date().toISOString(),
+      origin,
+      context: lead.stage,
+      diagnosis,
+      changes
+    };
+    lead.diagnosisHistory.unshift(newVersion);
     saveLeads(all);
+    return newVersion;
   }
 }
 
-export function getDiagnosisHistory(leadId: string): DiagnosisVersion[] {
-  return findLeadById(leadId)?.diagnosisHistory || [];
+export function getDiagnosisHistory(lead: Lead): DiagnosisVersion[] {
+  return lead.diagnosisHistory || [];
 }
 
-export function isAutoDiagnosisStale(leadId: string): boolean {
-  const lead = findLeadById(leadId);
-  if (!lead || !lead.autoDiagnosis) return true;
-  // Simplification: check if stage changed after diagnosis
+export function isAutoDiagnosisStale(lead: Lead): boolean {
+  if (!lead.autoDiagnosis) return true;
   return new Date(lead.stageChangedAt) > new Date(lead.autoDiagnosis.generatedAt);
 }
 
