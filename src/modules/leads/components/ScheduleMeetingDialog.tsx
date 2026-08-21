@@ -120,9 +120,10 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
       const { autoTransfer } = scheduleMeeting(
         lead.id,
         {
+          company: lead.company,
           date,
           time,
-          contactName: contactName.trim() || lead.contact,
+          contactName: contactName.trim() || lead.contact || "",
           channel,
           source,
           link: googleData.meetLink || link.trim(),
@@ -131,7 +132,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
           googleEventId: googleData.eventId,
           googleEventUrl: googleData.htmlLink,
           meetLink: googleData.meetLink,
-          title: isAlinhamento ? `Reunião de Alinhamento: ${lead.company} - P21` : undefined,
+          title: isAlinhamento ? `Reunião de Alinhamento: ${lead.company} - P21` : (isAlinhamento ? undefined : `Reunião: ${lead.company}`),
         },
         { skipAutoMove: isAlinhamento }
       );
