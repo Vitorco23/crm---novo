@@ -91,12 +91,13 @@ export default function ImportMappingDialog({ open, onOpenChange, headers, rows,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl h-[90vh] max-h-[900px] overflow-hidden flex flex-col p-0">
         <div className="p-6 pb-2">
-        <DialogHeader>
-          <DialogTitle>Mapear Colunas da Planilha</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            Selecione qual coluna da sua planilha corresponde a cada campo do lead.
-            Detectamos {rows.length} linha(s) e {headers.length} coluna(s).
-          </p>
+          <DialogHeader>
+            <DialogTitle>Mapear Colunas da Planilha</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Selecione qual coluna da sua planilha corresponde a cada campo do lead.
+              Detectamos {rows.length} linha(s) e {headers.length} coluna(s).
+            </p>
+          </DialogHeader>
         </div>
 
         <ScrollArea className="flex-1 px-6">
