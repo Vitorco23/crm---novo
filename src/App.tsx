@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { PomodoroSessionFormDialog } from "@/modules/cold-call/components/PomodoroSessionFormDialog";
 import { IntelligenceShell } from "@/modules/intelligence/components/IntelligenceShell";
 import { ManagementShell } from "@/modules/dashboard/components/ManagementShell";
+import { ConnectivityNotifier } from "@/shared/components/ConnectivityNotifier";
 
 const ColdCall = lazy(() => import("@/modules/cold-call/pages/ColdCall"));
 const Oportunidades = lazy(() => import("@/modules/pipeline/pages/Oportunidades"));
@@ -55,6 +56,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <ConnectivityNotifier />
             <PomodoroProvider>
               <Suspense fallback={<RouteFallback />}>
                 <Routes>

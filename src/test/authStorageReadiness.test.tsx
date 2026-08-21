@@ -93,6 +93,7 @@ describe("AuthProvider storage readiness", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
   });
 
   it("keeps the authenticated UI loading until IndexedDB and cloud sync are ready", async () => {
@@ -121,7 +122,7 @@ describe("AuthProvider storage readiness", () => {
     });
     expect(mocks.hydrateLocal).toHaveBeenCalledTimes(1);
     expect(mocks.syncFromCloud).toHaveBeenCalledTimes(1);
-    expect(storageReady).toHaveBeenCalledTimes(1);
+    expect(storageReady).toHaveBeenCalledTimes(2);
 
     window.removeEventListener("p21:storage-synced", storageReady);
   });
@@ -162,6 +163,34 @@ describe("AuthProvider storage readiness", () => {
     });
     expect(mocks.hydrateLocal).toHaveBeenCalledTimes(1);
     expect(mocks.syncFromCloud).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases locally hydrated leads when Lovable Cloud exceeds the startup timeout", async () => {
+    vi.useFakeTimers();
+    const cloudSync = deferred<boolean>();
+    const session = sessionFor("slow-cloud-user");
+    const delayed = vi.fn();
+
+    mocks.getSession.mockResolvedValue({ data: { session } });
+    mocks.hydrateLocal.mockResolvedValue(undefined);
+    mocks.syncFromCloud.mockReturnValue(cloudSync.promise);
+    window.addEventListener("p21:cloud-sync-delayed", delayed);
+
+    renderProvider();
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+
+    expect(screen.getByTestId("auth-status")).toHaveTextContent("ready:slow-cloud-user");
+    expect(mocks.hydrateLocal).toHaveBeenCalledTimes(1);
+    expect(mocks.syncFromCloud).toHaveBeenCalledTimes(1);
+    expect(delayed).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("p21:cloud-sync-delayed", delayed);
+    vi.useRealTimers();
   });
 
   it("releases the login screen safely when storage initialization fails", async () => {

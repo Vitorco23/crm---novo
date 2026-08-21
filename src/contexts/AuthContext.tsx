@@ -2,6 +2,11 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import { setCurrentUser, syncFromCloud, hydrateLocal } from "@/shared/services/userStorage";
+import {
+  CLOUD_SYNC_DELAYED_EVENT,
+  CLOUD_SYNC_RECOVERED_EVENT,
+  INITIAL_CLOUD_SYNC_TIMEOUT_MS,
+} from "@/shared/services/syncStatus";
 
 /**
  * @deprecated Utilizado apenas para compatibilidade legada em fluxos de migração de dados.
@@ -42,12 +47,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       storageUserId = authenticatedUser.id;
       storageReadyPromise = (async () => {
         await hydrateLocal();
-        await syncFromCloud();
 
-        // hydrateLocal may populate the in-memory cache even when the cloud
-        // snapshot is identical. Always notify mounted consumers after both
-        // sources are ready so they never remain stuck with an empty first read.
+        // Local leads are usable as soon as IndexedDB hydration finishes.
+        // Never keep the CRM blocked only because Lovable Cloud is slow.
         window.dispatchEvent(new Event("p21:storage-synced"));
+
+        let timedOut = false;
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+        const cloudSync = syncFromCloud().then(() => {
+          window.dispatchEvent(new Event("p21:storage-synced"));
+          if (timedOut) {
+            window.dispatchEvent(new Event(CLOUD_SYNC_RECOVERED_EVENT));
+          }
+        });
+
+        await Promise.race([
+          cloudSync,
+          new Promise<void>((resolve) => {
+            timeoutId = setTimeout(() => {
+              timedOut = true;
+              window.dispatchEvent(new Event(CLOUD_SYNC_DELAYED_EVENT));
+              resolve();
+            }, INITIAL_CLOUD_SYNC_TIMEOUT_MS);
+          }),
+        ]);
+
+        if (timeoutId) clearTimeout(timeoutId);
       })();
 
       return storageReadyPromise;
