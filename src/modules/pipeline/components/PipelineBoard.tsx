@@ -277,12 +277,15 @@ function parseCSVText(text: string): { headers: string[]; rows: Record<string, s
     return out.map((s) => s.trim());
   };
   const headers = splitLine(lines[0]);
-  const rows = lines.slice(1).map((line) => {
-    const vals = splitLine(line);
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => (obj[h] = vals[i] || ""));
-    return obj;
-  });
+  const rows = lines.slice(1)
+    .map((line) => {
+      const vals = splitLine(line);
+      if (vals.every(v => !v)) return null;
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => (obj[h] = vals[i] || ""));
+      return obj;
+    })
+    .filter((row): row is Record<string, string> => row !== null);
   return { headers, rows };
 }
 
@@ -648,11 +651,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", blankrows: false });
           if (aoa.length === 0) throw new Error("empty");
           headers = (aoa[0] as unknown[]).map((h) => String(h ?? "").trim()).filter(Boolean);
-          rows = (aoa.slice(1) as unknown[][]).map((arr) => {
-            const obj: Record<string, string> = {};
-            headers.forEach((h, i) => { obj[h] = String(arr[i] ?? "").trim(); });
-            return obj;
-          });
+          rows = (aoa.slice(1) as unknown[][])
+            .map((arr) => {
+              if (arr.every(v => v === undefined || v === null || String(v).trim() === "")) return null;
+              const obj: Record<string, string> = {};
+              headers.forEach((h, i) => { obj[h] = String(arr[i] ?? "").trim(); });
+              return obj;
+            })
+            .filter((row): row is Record<string, string> => row !== null);
         }
         if (headers.length === 0 || rows.length === 0) {
           toast.error("Arquivo vazio ou sem cabeçalho.");
