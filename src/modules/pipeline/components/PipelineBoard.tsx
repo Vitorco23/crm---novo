@@ -97,7 +97,7 @@ function mapsUrlFor(lead: Lead) {
 function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPStars) => void }) {
   return (
     <div className="flex gap-0.5">
-      {([1, 2, 3] as ICPStars[]).map((s) => (
+      {([1, 2, 3, 4, 5] as ICPStars[]).map((s) => (
         <button
           key={s}
           type="button"
@@ -719,8 +719,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           notes: get("notes"),
           googleRating: parseFloat(get("googleRating").replace(",", ".")) || undefined,
           googleReviews: parseInt(get("googleReviews").replace(/\D/g, ""), 10) || undefined,
-          icpStars: 2 as ICPStars,
-          runsAds: false,
+        icpStars: (mapping.icpStars && mapping.icpStars !== "__none__" && row[mapping.icpStars]) 
+          ? (Math.min(5, Math.max(1, parseInt(row[mapping.icpStars]))) as ICPStars)
+          : 2,
+        runsAds: false,
           tags: [tag],
         });
       });

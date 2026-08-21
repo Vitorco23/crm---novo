@@ -144,7 +144,7 @@ export default function PipelineListView({
                 </td>
                 <td className="px-3 py-1.5">
                   <div className="flex gap-0.5">
-                    {[1, 2, 3].map((s) => (
+                    {[1, 2, 3, 4, 5].map((s) => (
                       <Star key={s} className={`h-3 w-3 ${s <= lead.icpStars ? "fill-accent text-accent" : "text-muted-foreground/30"}`} />
                     ))}
                   </div>

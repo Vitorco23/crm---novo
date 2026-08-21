@@ -45,7 +45,7 @@ export const OPORTUNIDADES_STAGES = DEFAULT_OPORTUNIDADES_STAGES;
 export const ONBOARDING_STAGES = DEFAULT_ONBOARDING_STAGES;
 
 export type PipelineStage = string;
-export type ICPStars = 1 | 2 | 3;
+export type ICPStars = 1 | 2 | 3 | 4 | 5;
 export type InteractionType = "Ligação" | "WhatsApp" | "E-mail" | "Reunião" | "Outro" | "Follow-up" | "Envio de Proposta" | "Visita Presencial" | "Reunião Comercial" | "Reunião de Diagnóstico" | "Reunião de Apresentação";
 export type MeetingSource = "Manual" | "Disparo" | "GMN" | "Ligação";
 
