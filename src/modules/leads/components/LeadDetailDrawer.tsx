@@ -409,6 +409,7 @@ export default function LeadDetailDrawer({
   };
 
   const whats = draft.whatsapp || draft.phone;
+  const leadTags = draft.tags || [];
   const whatsUrl = whats ? `https://wa.me/${whats.replace(/\D/g, "")}` : "";
 
   return (
@@ -601,6 +602,41 @@ export default function LeadDetailDrawer({
                     <div className="space-y-1">
                       <Label className="text-[10px] text-muted-foreground">Cidade</Label>
                       <Input className="h-8 text-xs" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} onBlur={() => commitOnBlur({ city: draft.city })} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 p-2 rounded bg-muted/20">
+                    <Label className="text-[10px] text-muted-foreground uppercase">Tag de Origem</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["GMN", "LUPUS", "INBOUND"].map(tag => (
+                        <Badge
+                          key={tag}
+                          variant={leadTags.includes(tag) ? "default" : "outline"}
+                          className={`text-[10px] cursor-pointer transition-all ${leadTags.includes(tag) ? "bg-accent hover:bg-accent/90 border-transparent" : "hover:border-accent/40"}`}
+                          onClick={() => {
+                            const newTags = leadTags.includes(tag) 
+                              ? leadTags.filter(t => t !== tag)
+                              : [...leadTags, tag];
+                            persist({ tags: newTags });
+                            onRefresh();
+                          }}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                      <Input 
+                        placeholder="Nova tag..." 
+                        className="h-5 w-20 text-[10px] py-0 px-1 inline-flex bg-transparent border-dashed"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = e.currentTarget.value.trim().toUpperCase();
+                            if (val && !leadTags.includes(val)) {
+                              persist({ tags: [...leadTags, val] });
+                              onRefresh();
+                              e.currentTarget.value = "";
+                            }
+                          }
+                        }}
+                      />
                     </div>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded bg-muted/20">

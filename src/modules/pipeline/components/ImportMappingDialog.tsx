@@ -69,11 +69,12 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   headers: string[];
   rows: Record<string, string>[];
-  onConfirm: (mapping: Record<LeadFieldKey, string>) => void;
+  onConfirm: (mapping: Record<LeadFieldKey, string>, tag: string) => void;
 }
 
 export default function ImportMappingDialog({ open, onOpenChange, headers, rows, onConfirm }: Props) {
   const [mapping, setMapping] = useState<Record<LeadFieldKey, string>>(() => autoDetect(headers));
+  const [selectedTag, setSelectedTag] = useState<string>("GMN");
 
   // reset when a new file is opened (headers change)
   useEffect(() => {
@@ -161,20 +162,37 @@ export default function ImportMappingDialog({ open, onOpenChange, headers, rows,
           )}
         </ScrollArea>
 
-        <DialogFooter className="border-t pt-3">
-          {!companyMapped && (
-            <p className="text-xs text-destructive mr-auto self-center">
-              Selecione a coluna de "Nome da Empresa" para continuar.
-            </p>
-          )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button
-            disabled={!companyMapped}
-            onClick={() => onConfirm(mapping)}
-            className="bg-accent text-accent-foreground hover:bg-accent/90"
-          >
-            Importar {rows.length} leads
-          </Button>
+        <DialogFooter className="border-t pt-3 flex-col sm:flex-row gap-3">
+          <div className="flex flex-col gap-1.5 mr-auto">
+            <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Tag dos leads importados</Label>
+            <Select value={selectedTag} onValueChange={setSelectedTag}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="GMN">GMN</SelectItem>
+                <SelectItem value="LUPUS">LUPUS</SelectItem>
+                <SelectItem value="INBOUND">INBOUND</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {!companyMapped && (
+              <p className="text-xs text-destructive self-center">
+                Selecione "Nome da Empresa"
+              </p>
+            )}
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button
+              disabled={!companyMapped}
+              onClick={() => onConfirm(mapping, selectedTag)}
+              size="sm"
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+            >
+              Importar {rows.length} leads
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

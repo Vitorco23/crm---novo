@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useRef, useMemo, useEffect, useDeferredValue } from "react";
+import { getAvailableOptions, getCorrelatedOptions } from "@/modules/pipeline/services/correlatedFilters";
 import { uload, usave } from "@/shared/services/userStorage";
 import * as XLSX from "xlsx";
 import {
@@ -192,6 +193,11 @@ const LeadCard = memo(function LeadCard({
             <StarRating value={lead.icpStars} />
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {lead.tags && lead.tags.length > 0 && (
+              <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-accent/30 text-accent/80 bg-accent/5 uppercase leading-none">
+                {lead.tags[0]}
+              </Badge>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className={`text-xs ${temp.cls}`}>{temp.emoji}</span>
@@ -318,19 +324,22 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const [importRows, setImportRows] = useState<Record<string, string>[]>([]);
   const filtersKey = `p21_filters_${pipeline}`;
   const [filterNiches, setFilterNiches] = useState<string[]>(
-    () => uload<{ niches?: string[]; cities?: string[]; search?: string }>(filtersKey, {}).niches ?? []
+    () => uload<{ niches?: string[]; cities?: string[]; search?: string; tags?: string[] }>(filtersKey, {}).niches ?? []
   );
   const [filterCities, setFilterCities] = useState<string[]>(
-    () => uload<{ niches?: string[]; cities?: string[]; search?: string }>(filtersKey, {}).cities ?? []
+    () => uload<{ niches?: string[]; cities?: string[]; search?: string; tags?: string[] }>(filtersKey, {}).cities ?? []
+  );
+  const [filterTags, setFilterTags] = useState<string[]>(
+    () => uload<{ niches?: string[]; cities?: string[]; search?: string; tags?: string[] }>(filtersKey, {}).tags ?? []
   );
   const [searchQuery, setSearchQuery] = useState<string>(
-    () => uload<{ niches?: string[]; cities?: string[]; search?: string }>(filtersKey, {}).search ?? ""
+    () => uload<{ niches?: string[]; cities?: string[]; search?: string; tags?: string[] }>(filtersKey, {}).search ?? ""
   );
 
   useEffect(() => {
-    usave(filtersKey, { niches: filterNiches, cities: filterCities, search: searchQuery });
+    usave(filtersKey, { niches: filterNiches, cities: filterCities, search: searchQuery, tags: filterTags });
     usave(`p21_sort_${pipeline}`, sortBy);
-  }, [filtersKey, filterNiches, filterCities, searchQuery, sortBy, pipeline]);
+  }, [filtersKey, filterNiches, filterCities, searchQuery, filterTags, sortBy, pipeline]);
 
   const viewKey = `p21_view_${pipeline}`;
   const [view, setView] = useState<"kanban" | "list">(
@@ -658,7 +667,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     e.target.value = "";
   };
 
-  const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>) => {
+  const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>, tag: string) => {
     try {
       let skipped = 0;
       const existing = getLeads();
@@ -708,6 +717,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           googleReviews: parseInt(get("googleReviews").replace(/\D/g, ""), 10) || undefined,
           icpStars: 2 as ICPStars,
           runsAds: false,
+          tags: [tag],
         });
       });
 
@@ -929,7 +939,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             </PopoverTrigger>
             <PopoverContent className="w-[200px] p-2" align="start">
               <div className="max-h-[240px] overflow-y-auto space-y-0.5">
-                {niches.map((n) => (
+                {getCorrelatedOptions(leads, "niche", { city: filterCities }).map((n) => (
                   <label key={n} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
                     <Checkbox
                       checked={filterNiches.includes(n)}
@@ -954,7 +964,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             </PopoverTrigger>
             <PopoverContent className="w-[200px] p-2" align="start">
               <div className="max-h-[240px] overflow-y-auto space-y-0.5">
-                {cities.map((c) => (
+                {getCorrelatedOptions(leads, "city", { niche: filterNiches }).map((c) => (
                   <label key={c} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
                     <Checkbox
                       checked={filterCities.includes(c)}
@@ -967,6 +977,32 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
               </div>
             </PopoverContent>
           </Popover>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-[11px] font-normal border-border/60 bg-background/50 gap-2 min-w-[140px] justify-between">
+                <span className="truncate">
+                  {filterTags.length === 0 ? "Tags" : `${filterTags.length} tag(s)`}
+                </span>
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-2" align="start">
+              <div className="max-h-[240px] overflow-y-auto space-y-0.5">
+                {getAvailableOptions(leads, "tags").map((t) => (
+                  <label key={t} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                    <Checkbox
+                      checked={filterTags.includes(t)}
+                      onCheckedChange={() => setFilterTags((prev) => toggleFilterValue(prev, t))}
+                      className="h-3.5 w-3.5"
+                    />
+                    <span className="truncate">{t}</span>
+                  </label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
 
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="h-8 text-[11px] font-normal w-[160px] border-border/60 bg-background/50">

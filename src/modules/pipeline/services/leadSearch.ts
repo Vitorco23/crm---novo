@@ -23,7 +23,7 @@ function push(out: string[], v: unknown) {
 /** Concatena todo o conteúdo textual do lead. */
 function collectText(lead: Lead): string {
   const parts: string[] = [];
-  push(parts, [lead.company, lead.contact, lead.phone, lead.niche, lead.city, lead.notes]);
+  push(parts, [lead.company, lead.contact, lead.phone, lead.niche, lead.city, lead.notes, lead.tags]);
   push(parts, [lead.serviceType, lead.website, lead.whatsapp, lead.stage, lead.temperature]);
 
   for (const n of lead.callNotes ?? []) {
