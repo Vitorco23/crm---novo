@@ -47,7 +47,7 @@ export const ONBOARDING_STAGES = DEFAULT_ONBOARDING_STAGES;
 export type PipelineStage = string;
 export type ICPStars = 1 | 2 | 3;
 export type InteractionType = "Ligação" | "WhatsApp" | "E-mail" | "Reunião" | "Outro" | "Follow-up" | "Envio de Proposta" | "Visita Presencial" | "Reunião Comercial" | "Reunião de Diagnóstico" | "Reunião de Apresentação";
-export type MeetingSource = "Manual" | "Disparo" | "GMN";
+export type MeetingSource = "Manual" | "Disparo" | "GMN" | "Ligação";
 
 const STORAGE_KEY = "p21_leads";
 const STAGES_KEY_PREFIX = "p21_stages_";
@@ -69,6 +69,8 @@ export interface AutoDiagnosis {
   changes?: string;
   generatedAt: string;
   probability?: number;
+  inputHash?: string;
+  pain_points?: string[];
 }
 
 export interface CallAuditData {
@@ -89,7 +91,10 @@ export interface CallAuditData {
   dataProximoContato?: string;
   diasAteProximoFollowup?: number | string;
   assuntosDeInteresse?: string[];
-  nextBestAction?: import("@/modules/intelligence/services/nextBestAction").NextBestAction | string;
+  nextBestAction?: any;
+  proximaAcao?: string;
+  principalObjecao?: string;
+  recomendacaoEstrategica?: string;
 }
 
 export interface CallNoteAnalysis {
@@ -123,6 +128,7 @@ export interface Attachment {
   type: string;
   dataUrl: string;
   aiAnalysis?: string;
+  createdAt?: string;
 }
 
 export interface DiagnosisVersion {
@@ -280,13 +286,14 @@ export function findLeadById(id: string): Lead | undefined {
   return getLeads().find(l => l.id === id);
 }
 
-export function addLead(data: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "attachments">) {
+export function addLead(data: Omit<Lead, "id" | "createdAt" | "stageChangedAt" | "attachments">, stage?: PipelineStage): Lead {
   const now = new Date().toISOString();
   const newLead: Lead = {
     ...data,
     id: crypto.randomUUID(),
     createdAt: now,
     stageChangedAt: now,
+    stage: stage || data.stage || DEFAULT_COLD_CALL_STAGES[0],
     attachments: [],
     interactions: [],
     callNotes: [],
@@ -333,6 +340,10 @@ export function updateLead(id: string, updates: Partial<Lead>) {
   saveLeads(all);
 }
 
+export function updateLeadStage(id: string, stage: PipelineStage) {
+  return updateLead(id, { stage });
+}
+
 export function updateLeadsBatch(ids: Set<string> | string[], updates: Partial<Lead>) {
   const idArray = Array.from(ids);
   const all = getLeads();
@@ -365,18 +376,22 @@ export function deleteLeadsBatch(ids: Set<string> | string[]) {
   saveLeads(all);
 }
 
-export function dedupeLeads() {
+export function dedupeLeads(): number {
   const all = getLeads();
   const seen = new Set<string>();
   const unique: Lead[] = [];
+  let removed = 0;
   all.forEach(l => {
     const key = `${l.company.toLowerCase().trim()}|${(l.phone || "").replace(/\D/g, "")}`;
     if (!seen.has(key)) {
       seen.add(key);
       unique.push(l);
+    } else {
+      removed++;
     }
   });
-  if (unique.length !== all.length) saveLeads(unique);
+  if (removed > 0) saveLeads(unique);
+  return removed;
 }
 
 // ==========================================
@@ -406,7 +421,7 @@ export function getPipelineForStage(stage: PipelineStage): PipelineName {
 export function moveLeadToStage(id: string, newStage: PipelineStage) {
   const all = getLeads();
   const idx = all.findIndex(l => l.id === id);
-  if (idx === -1) return { missingContractValue: false };
+  if (idx === -1) return { missingContractValue: false, autoTransfer: undefined };
 
   const lead = all[idx];
   const oldStage = lead.stage;
@@ -444,7 +459,12 @@ export function moveLeadToStage(id: string, newStage: PipelineStage) {
 }
 
 export function moveLeadsToStageBatch(ids: Set<string> | string[], newStage: PipelineStage) {
-  Array.from(ids).forEach(id => moveLeadToStage(id, newStage));
+  let autoTransfer: PipelineName | undefined;
+  Array.from(ids).forEach(id => {
+    const res = moveLeadToStage(id, newStage);
+    if (res.autoTransfer) autoTransfer = res.autoTransfer;
+  });
+  return { autoTransfer };
 }
 
 // Stage Management
@@ -453,7 +473,9 @@ export function addStage(pipeline: PipelineName, name: string) {
   if (!stages.includes(name)) {
     stages.push(name);
     saveStagesForPipeline(pipeline, stages);
+    return { ok: true };
   }
+  return { ok: false, error: "Etapa já existe" };
 }
 
 export function removeStage(pipeline: PipelineName, name: string) {
@@ -468,6 +490,7 @@ export function renameStage(pipeline: PipelineName, oldName: string, newName: st
   const leads = getLeads();
   leads.forEach(l => { if (l.stage === oldName) l.stage = newName; });
   saveLeads(leads);
+  return { ok: true };
 }
 
 export function reorderStages(pipeline: PipelineName, stages: PipelineStage[]) {
@@ -521,13 +544,15 @@ export function getMeetingsForLead(leadId: string): Meeting[] {
   return getMeetings().filter(m => m.leadId === leadId);
 }
 
-export function scheduleMeeting(meeting: Omit<Meeting, "id" | "createdAt">) {
+export function scheduleMeeting(leadId: string, meeting: Omit<Meeting, "id" | "createdAt" | "leadId">) {
   const all = getMeetings();
-  const newMeeting = { ...meeting, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+  const newMeeting = { ...meeting, leadId, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
   all.push(newMeeting);
   usave(MEETINGS_KEY, all);
   emit("ReuniaoMarcada", newMeeting);
-  return newMeeting;
+  
+  // Logic from existing scheduleMeeting to match component expectations
+  return { autoTransfer: undefined }; 
 }
 
 export function updateMeetingDateTime(id: string, date: string, time: string) {
@@ -591,8 +616,10 @@ export function addAttachment(leadId: string, att: Omit<Attachment, "id">) {
   const lead = all.find(l => l.id === leadId);
   if (lead) {
     if (!lead.attachments) lead.attachments = [];
-    lead.attachments.push({ ...att, id: crypto.randomUUID() });
+    const newAtt = { ...att, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    lead.attachments.push(newAtt);
     saveLeads(all);
+    return newAtt.id;
   }
 }
 
@@ -617,12 +644,19 @@ export function setAttachmentAnalysis(leadId: string, attId: string, analysis: s
   }
 }
 
-export function addCallNote(leadId: string, note: Omit<CallNote, "id" | "createdAt">) {
+export function addCallNote(leadId: string, noteData: string | Omit<CallNote, "id" | "createdAt">, scriptUsed?: string) {
   const all = getLeads();
   const lead = all.find(l => l.id === leadId);
   if (lead) {
     if (!lead.callNotes) lead.callNotes = [];
-    lead.callNotes.push({ ...note, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
+    let note: Omit<CallNote, "id" | "createdAt">;
+    if (typeof noteData === "string") {
+      note = { text: noteData, scriptUsed };
+    } else {
+      note = noteData;
+    }
+    const newNote = { ...note, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    lead.callNotes.push(newNote);
     saveLeads(all);
     emit("InteracaoRegistrada", { leadId, type: "Ligação" });
   }
@@ -654,7 +688,7 @@ export function addInteraction(leadId: string, interaction: Omit<Interaction, "i
   const lead = all.find(l => l.id === leadId);
   if (lead) {
     if (!lead.interactions) lead.interactions = [];
-    const newInt = { ...interaction, id: crypto.randomUUID() };
+    const newInt = { ...interaction, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     lead.interactions.push(newInt);
     saveLeads(all);
     emit("InteracaoRegistrada", { leadId, ...newInt });
