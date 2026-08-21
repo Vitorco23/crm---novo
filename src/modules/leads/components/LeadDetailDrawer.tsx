@@ -318,16 +318,6 @@ export default function LeadDetailDrawer({
     }
   }, [open, lead?.id]);
 
-  useEffect(() => {
-    if (open && lead?.id) {
-      // Só executa automaticamente se for um lead novo ou sem ICP definido (ou padrão 2)
-      // Evita incomodar o usuário em todo lead aberto se ele já classificou
-      if (!lead.icpStars || lead.icpStars === 2) {
-        runIcpSuggestion();
-      }
-    }
-  }, [open, lead?.id]);
-
   if (!lead || !draft) return null;
 
   const pipeline = getPipelineForStage(lead.stage);
