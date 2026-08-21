@@ -907,7 +907,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                       <div className="flex items-center gap-1 mt-1.5">
                         <StarRating value={form.icpStars} onChange={(v) => setForm({ ...form, icpStars: v })} />
                         <span className="text-xs text-muted-foreground ml-1">
-                          {form.icpStars === 1 ? "Baixa" : form.icpStars === 2 ? "Média" : "Alta"}
+                          {form.icpStars === 1 ? "Baixa" : form.icpStars === 2 ? "Média" : form.icpStars === 3 ? "Alta" : "Muito Alta"}
                         </span>
                       </div>
                     </div>

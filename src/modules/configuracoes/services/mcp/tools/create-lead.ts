@@ -41,7 +41,7 @@ export default defineTool({
     city: z.string().optional(),
     pipeline: z.enum(["cold_call", "oportunidades", "onboarding"]).optional(),
     stage: z.string().optional().describe("Nome da etapa (sobrescreve o default do pipeline)."),
-    icpStars: z.number().int().min(1).max(3).optional(),
+    icpStars: z.number().int().min(1).max(5).optional(),
     contractValue: z.number().optional(),
     serviceType: z.string().optional(),
     notes: z.string().optional(),
