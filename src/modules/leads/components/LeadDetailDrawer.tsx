@@ -464,6 +464,18 @@ export default function LeadDetailDrawer({
     setNewCallNote(""); onRefresh(); toast.success("Anotação adicionada!");
   };
 
+  const handleRefreshAI = async () => {
+    setAnalyzingNoteId("ai-global");
+    try {
+      await runIcpSuggestion();
+      toast.success("Inteligência do lead atualizada");
+    } catch (e) {
+      toast.error("Erro ao atualizar inteligência");
+    } finally {
+      setAnalyzingNoteId(null);
+    }
+  };
+
   const meetings = getMeetingsForLead(lead.id);
 
   const copyScript = async () => {
@@ -522,8 +534,19 @@ export default function LeadDetailDrawer({
             {isColdCall && step && (
               <Button size="sm" variant="outline" className="h-7 px-2" onClick={copyScript}><Copy className="h-3.5 w-3.5 mr-1" /> Script</Button>
             )}
-            <Button size="sm" variant="ghost" className="h-7 px-2 ml-auto text-accent" onClick={() => { setTab("interacoes"); setAutoRunDiagnosis(true); }}>
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" /> IA
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-7 px-2 ml-auto text-accent" 
+              onClick={handleRefreshAI}
+              disabled={analyzingNoteId === "ai-global"}
+            >
+              {analyzingNoteId === "ai-global" ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              IA
             </Button>
           </div>
           {meetings.length > 0 && (
