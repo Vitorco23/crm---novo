@@ -77,10 +77,10 @@ export interface CallAuditData {
   resumoExecutivo: string;
   evolucaoLead: string;
   tendenciaJustificativa: string;
-  objecoes: string | string[];
-  pontosPositivos?: string | string[];
-  pontosAtencao?: string | string[];
-  oportunidadeComercial?: string | string[];
+  objecoes: string[];
+  pontosPositivos?: string[];
+  pontosAtencao?: string[];
+  oportunidadeComercial?: string[];
   scoreComercial: number;
   temperatura: string;
   probabilidadeAvanco: string;
@@ -144,7 +144,7 @@ export interface DiagnosisVersion {
   origin?: string;
   context?: string;
   diagnosis?: any;
-  changes?: string | string[];
+  changes?: string[];
 }
 
 export interface Lead {
@@ -209,7 +209,7 @@ export interface MovementEvent {
   fromStage?: string;
   toStage?: string;
   timestamp: string;
-  type: "movement" | "call" | "interaction";
+  type: "movement" | "call" | "interaction" | "meeting";
 }
 
 export interface Meeting {
@@ -473,7 +473,7 @@ export function addStage(pipeline: PipelineName, name: string) {
   if (!stages.includes(name)) {
     stages.push(name);
     saveStagesForPipeline(pipeline, stages);
-    return { ok: true };
+    return { ok: true, error: null };
   }
   return { ok: false, error: "Etapa já existe" };
 }
@@ -551,7 +551,6 @@ export function scheduleMeeting(leadId: string, meeting: Omit<Meeting, "id" | "c
   usave(MEETINGS_KEY, all);
   emit("ReuniaoMarcada", newMeeting);
   
-  // Logic from existing scheduleMeeting to match component expectations
   return { autoTransfer: undefined }; 
 }
 
