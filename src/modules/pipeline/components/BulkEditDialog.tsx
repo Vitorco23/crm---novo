@@ -92,7 +92,7 @@ export default function BulkEditDialog({
     // reset
     setEnabled({
       niche: false, city: false, icpStars: false, runsAds: false,
-      serviceType: false, contractValue: false, notes: false,
+      serviceType: false, contractValue: false, notes: false, tags: false
     });
   };
 

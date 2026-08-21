@@ -121,8 +121,8 @@ function InteractionForm({ open, onOpenChange, leadId, editing, onSaved }: { ope
     if (!title.trim()) { toast.error("Informe um título."); return; }
     if (!summary.trim()) { toast.error("Informe um resumo."); return; }
     const isoDate = new Date(date).toISOString();
-    if (editing) updateInteraction(leadId, editing.id, { type: finalType, date: isoDate, title, summary, sellerNotes });
-    else addInteraction(leadId, { type: finalType, date: isoDate, title, summary, sellerNotes });
+    if (editing) updateInteraction(leadId, editing.id, { type: finalType as InteractionType, date: isoDate, title, summary, sellerNotes });
+    else addInteraction(leadId, { type: finalType as InteractionType, date: isoDate, title, summary, sellerNotes });
     onSaved(); onOpenChange(false); reset();
   };
   return (
