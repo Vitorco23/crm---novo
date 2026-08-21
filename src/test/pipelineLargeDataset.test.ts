@@ -10,7 +10,7 @@ function makeLead(index: number): Lead {
     phone: `(11) 9${String(index).padStart(8, "0")}`,
     niche: index % 2 === 0 ? "Restaurante" : "Varejo",
     city: index % 3 === 0 ? "São Paulo" : "Campinas",
-    notes: `codigo-${String(index).padStart(4, "0")}`,
+    notes: index === 42 ? "marcador-exclusivo" : `codigo-${String(index).padStart(4, "0")}`,
     stage: index % 2 === 0 ? "Novo Lead" : "Tentativa 1",
     createdAt: "2026-01-01T00:00:00.000Z",
     stageChangedAt: "2026-01-01T00:00:00.000Z",
@@ -30,7 +30,7 @@ describe("pipeline performance with the production-sized dataset", () => {
     const matches = leads.filter((lead) =>
       lead.niche === "Restaurante" &&
       lead.city === "São Paulo" &&
-      leadMatchesQuery(lead, "cafe codigo-0042")
+      leadMatchesQuery(lead, "cafe marcador-exclusivo")
     );
 
     const byStage = new Map<string, Lead[]>();
@@ -47,6 +47,6 @@ describe("pipeline performance with the production-sized dataset", () => {
     expect(leads[0]).toBe(originalFirst);
 
     // A segunda busca reutiliza o índice textual memoizado.
-    expect(leads.filter((lead) => leadMatchesQuery(lead, "codigo-0042"))).toHaveLength(1);
+    expect(leads.filter((lead) => leadMatchesQuery(lead, "marcador-exclusivo"))).toHaveLength(1);
   });
 });
