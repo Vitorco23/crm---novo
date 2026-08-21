@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { memo, useState, useCallback, useRef, useMemo, useEffect, useDeferredValue } from "react";
 import { uload, usave } from "@/shared/services/userStorage";
 import * as XLSX from "xlsx";
 import {
@@ -112,7 +112,7 @@ function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPSt
   );
 }
 
-function LeadCard({
+const LeadCard = memo(function LeadCard({
   lead, pipeline, onDragStart, onDelete, onRefresh, onClick, selected, onToggleSelect,
 }: {
   lead: Lead;
@@ -149,7 +149,7 @@ function LeadCard({
         draggable
         onDragStart={(e) => onDragStart(e, lead.id)}
         onClick={() => onClick(lead)}
-        className="group rounded-lg border border-border/60 p-2.5 bg-card shadow-sm cursor-pointer hover:border-accent/50 hover:shadow transition-all space-y-2 relative"
+        className="group rounded-lg border border-border/60 p-2.5 bg-card shadow-sm cursor-pointer hover:border-accent/50 hover:shadow transition-all space-y-2 relative [content-visibility:auto] [contain-intrinsic-size:120px]"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -250,7 +250,7 @@ function LeadCard({
   );
 
 
-}
+});
 
 function parseCSVText(text: string): { headers: string[]; rows: Record<string, string>[] } {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -458,8 +458,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       ).sort(),
     [allPipelineLeads, filterNicheSet]
   );
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
   const pipelineLeads = useMemo(() => {
-    const q = searchQuery.trim();
+    const q = deferredSearchQuery.trim();
     let filtered = allPipelineLeads.filter((l) => {
       const matchesNiche = filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche));
       const matchesCity = filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city));
@@ -487,7 +489,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     }
 
     return filtered;
-  }, [allPipelineLeads, filterNicheSet, filterCitySet, searchQuery, sortBy]);
+  }, [allPipelineLeads, filterNicheSet, filterCitySet, deferredSearchQuery, sortBy]);
   const leadsByStage = useMemo(() => {
     const map = new Map<string, Lead[]>();
     for (const s of stages) map.set(s, []);
@@ -540,20 +542,28 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     refresh();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     deleteLead(id);
-    selectedIds.delete(id);
-    setSelectedIds(new Set(selectedIds));
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
     refresh();
-  };
+  }, [refresh]);
 
-  const handleCardClick = (lead: Lead) => { setSelectedLead(lead); setDrawerOpen(true); };
+  const handleCardClick = useCallback((lead: Lead) => {
+    setSelectedLead(lead);
+    setDrawerOpen(true);
+  }, []);
 
-  const handleToggleSelect = (id: string) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    setSelectedIds(next);
-  };
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
 
   const maybePromptAlignment = useCallback((leadId: string) => {
     const fresh = getLeads().find((l) => l.id === leadId);
@@ -739,10 +749,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     else toast.success(`${removed} duplicata(s) removida(s)`);
   };
 
-  const onDragStart = (e: React.DragEvent, id: string) => {
+  const onDragStart = useCallback((e: React.DragEvent, id: string) => {
     e.dataTransfer.setData("text/plain", id);
     e.dataTransfer.setData("application/x-lead", id);
-  };
+  }, []);
 
   const onStageDragStart = (e: React.DragEvent, stage: PipelineStage) => {
     e.dataTransfer.setData("application/x-stage", stage);
