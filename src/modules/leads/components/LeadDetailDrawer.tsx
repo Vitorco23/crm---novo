@@ -264,45 +264,57 @@ export default function LeadDetailDrawer({
     return () => window.removeEventListener("paste", onPaste);
   }, [open]);
 
+  const runIcpSuggestion = async () => {
+    if (!lead?.id) return;
+    try {
+      const context = [
+        lead.company && `Empresa: ${lead.company}`,
+        lead.contact && `Decisor: ${lead.contact}`,
+        lead.niche && `Nicho: ${lead.niche}`,
+        lead.city && `Cidade: ${lead.city}`,
+        lead.notes && `Notas: ${lead.notes}`,
+        lead.website && `Site: ${lead.website}`,
+        lead.instagramLink && `Instagram: ${lead.instagramLink}`,
+      ].filter(Boolean).join("\n");
+      
+      const attachmentsContext = Object.values(aiReadResults).join("\n---\n");
+      
+      const result = await IntelligenceRepository.suggestICP({
+        leadContext: context,
+        currentICP: lead.icpStars,
+        additionalInfo: (lead.notes || "") + (attachmentsContext ? `\nAnexos analisados:\n${attachmentsContext}` : ""),
+        websiteContent: lead.website,
+        instagramContent: lead.instagramLink
+      });
+
+      if (result.suggestedICP !== lead.icpStars) {
+        toast.info(`Sugestão de ICP: ${result.suggestedICP} estrelas`, {
+          description: result.reasoning,
+          action: {
+            label: "Aplicar",
+            onClick: () => {
+              persist({ icpStars: result.suggestedICP as ICPStars });
+              toast.success("ICP atualizado com sucesso!");
+            }
+          },
+          duration: 10000,
+        });
+      } else {
+        toast.success(`ICP validado: ${lead.icpStars} estrelas`, {
+          description: "A IA concorda com a classificação atual baseada nas informações disponíveis."
+        });
+      }
+    } catch (e) {
+      console.error("Sugestão de ICP falhou:", e);
+      toast.error("Não foi possível obter sugestão da IA agora.");
+    }
+  };
+
   useEffect(() => {
     if (open && lead?.id) {
-      const suggest = async () => {
-        try {
-          const context = [
-            lead.company && `Empresa: ${lead.company}`,
-            lead.niche && `Nicho: ${lead.niche}`,
-            lead.city && `Cidade: ${lead.city}`,
-            lead.notes && `Notas: ${lead.notes}`,
-            lead.website && `Site: ${lead.website}`,
-            lead.instagramLink && `Instagram: ${lead.instagramLink}`,
-          ].filter(Boolean).join("\n");
-          
-          const result = await IntelligenceRepository.suggestICP({
-            leadContext: context,
-            currentICP: lead.icpStars,
-            additionalInfo: lead.notes,
-            websiteContent: lead.website,
-            instagramContent: lead.instagramLink
-          });
-
-          if (result.suggestedICP !== lead.icpStars) {
-            toast.info(`Sugestão de ICP: ${result.suggestedICP} estrelas`, {
-              description: result.reasoning,
-              action: {
-                label: "Aplicar",
-                onClick: () => {
-                  persist({ icpStars: result.suggestedICP as ICPStars });
-                  toast.success("ICP atualizado com sucesso!");
-                }
-              },
-              duration: 8000,
-            });
-          }
-        } catch (e) {
-          console.error("Sugestão de ICP falhou:", e);
-        }
-      };
-      suggest();
+      if (!lead.icpStars || lead.icpStars === 2) {
+        runIcpSuggestion();
+      }
     }
   }, [open, lead?.id]);
 
@@ -442,6 +454,18 @@ export default function LeadDetailDrawer({
     setNewCallNote(""); onRefresh(); toast.success("Anotação adicionada!");
   };
 
+  const handleRefreshAI = async () => {
+    setAnalyzingNoteId("ai-global");
+    try {
+      await runIcpSuggestion();
+      toast.success("Inteligência do lead atualizada");
+    } catch (e) {
+      toast.error("Erro ao atualizar inteligência");
+    } finally {
+      setAnalyzingNoteId(null);
+    }
+  };
+
   const meetings = getMeetingsForLead(lead.id);
 
   const copyScript = async () => {
@@ -500,8 +524,19 @@ export default function LeadDetailDrawer({
             {isColdCall && step && (
               <Button size="sm" variant="outline" className="h-7 px-2" onClick={copyScript}><Copy className="h-3.5 w-3.5 mr-1" /> Script</Button>
             )}
-            <Button size="sm" variant="ghost" className="h-7 px-2 ml-auto text-accent" onClick={() => { setTab("interacoes"); setAutoRunDiagnosis(true); }}>
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" /> IA
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-7 px-2 ml-auto text-accent" 
+              onClick={handleRefreshAI}
+              disabled={analyzingNoteId === "ai-global"}
+            >
+              {analyzingNoteId === "ai-global" ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              IA
             </Button>
           </div>
           {meetings.length > 0 && (
