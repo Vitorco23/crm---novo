@@ -122,7 +122,7 @@ export default function BulkEditDialog({
           {/* ICP */}
           <FieldRow enabled={enabled.icpStars} onToggle={() => toggle("icpStars")} label={FIELD_LABELS.icpStars}>
             <div className="flex gap-1">
-              {([1, 2, 3] as ICPStars[]).map((s) => (
+              {([1, 2, 3, 4, 5] as ICPStars[]).map((s) => (
                 <button key={s} type="button" disabled={!enabled.icpStars}
                   onClick={() => setValues({ ...values, icpStars: s })}>
                   <Star className={`h-5 w-5 ${s <= values.icpStars ? "fill-accent text-accent" : "text-muted-foreground/30"}`} />

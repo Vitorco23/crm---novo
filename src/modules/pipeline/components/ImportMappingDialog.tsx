@@ -19,7 +19,8 @@ export type LeadFieldKey =
   | "instagramLink"
   | "notes"
   | "googleRating"
-  | "googleReviews";
+  | "googleReviews"
+  | "icpStars";
 
 export interface LeadFieldDef {
   key: LeadFieldKey;
@@ -40,6 +41,7 @@ export const LEAD_FIELDS: LeadFieldDef[] = [
   { key: "notes", label: "Informações Adicionais", hints: ["observ", "notes", "nota", "info", "adicional", "descricao", "descrição"] },
   { key: "googleRating", label: "Nota Google", hints: ["nota", "rating", "estrelas", "google rating", "google score"] },
   { key: "googleReviews", label: "Quantidade de Avaliações", hints: ["avaliações", "avaliacoes", "reviews", "total reviews", "google reviews", "número de avaliações", "numero de avaliacoes"] },
+  { key: "icpStars", label: "ICP (1-5 estrelas)", hints: ["icp", "estrelas", "score", "qualificação", "ipc"] },
 ];
 
 const NONE = "__none__";
@@ -87,16 +89,18 @@ export default function ImportMappingDialog({ open, onOpenChange, headers, rows,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Mapear Colunas da Planilha</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            Selecione qual coluna da sua planilha corresponde a cada campo do lead.
-            Detectamos {rows.length} linha(s) e {headers.length} coluna(s).
-          </p>
-        </DialogHeader>
+      <DialogContent className="max-w-3xl h-[90vh] max-h-[900px] overflow-hidden flex flex-col p-0">
+        <div className="p-6 pb-2">
+          <DialogHeader>
+            <DialogTitle>Mapear Colunas da Planilha</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Selecione qual coluna da sua planilha corresponde a cada campo do lead.
+              Detectamos {rows.length} linha(s) e {headers.length} coluna(s).
+            </p>
+          </DialogHeader>
+        </div>
 
-        <ScrollArea className="flex-1 pr-4">
+        <ScrollArea className="flex-1 px-6">
           <div className="space-y-3">
             {LEAD_FIELDS.map((field) => {
               const value = mapping[field.key] || NONE;
@@ -162,7 +166,7 @@ export default function ImportMappingDialog({ open, onOpenChange, headers, rows,
           )}
         </ScrollArea>
 
-        <DialogFooter className="border-t pt-3 flex-col sm:flex-row gap-3">
+        <DialogFooter className="border-t p-6 flex-col sm:flex-row gap-3 bg-muted/20">
           <div className="flex flex-col gap-1.5 mr-auto">
             <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Tag dos leads importados</Label>
             <Select value={selectedTag} onValueChange={setSelectedTag}>

@@ -62,7 +62,7 @@ function StarRating({
 }: { value: ICPStars; onChange?: (v: ICPStars) => void }) {
   return (
     <div className="flex gap-1">
-      {([1, 2, 3] as ICPStars[]).map((s) => (
+      {([1, 2, 3, 4, 5] as ICPStars[]).map((s) => (
         <button
           key={s} type="button"
           onClick={() => onChange?.(s)}
@@ -160,9 +160,10 @@ function MeetingRow({ lead, draft, meeting, onChanged }: { lead: Lead; draft: Le
 }
 
 function priorityLabel(icp: ICPStars) {
-  return icp === 3 ? { label: "Alta", cls: "bg-accent/20 text-accent border-accent/40" }
-    : icp === 2 ? { label: "Média", cls: "bg-primary/20 text-primary-foreground border-primary/40" }
-    : { label: "Baixa", cls: "bg-muted text-muted-foreground border-border" };
+  if (icp >= 4) return { label: "Muito Alta", cls: "bg-accent/30 text-accent border-accent/50" };
+  if (icp === 3) return { label: "Alta", cls: "bg-accent/20 text-accent border-accent/40" };
+  if (icp === 2) return { label: "Média", cls: "bg-primary/20 text-primary-foreground border-primary/40" };
+  return { label: "Baixa", cls: "bg-muted text-muted-foreground border-border" };
 }
 
 function mapsUrlFor(lead: Lead) {
