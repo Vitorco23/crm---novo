@@ -3,6 +3,7 @@ import * as Mutations from "./IntelMutations";
 
 export const IntelligenceRepository = {
   analyzeAttachment: Mutations.analyzeAttachment,
+  suggestICP: Mutations.suggestICP,
 };
 
 export type IntelligenceRepositoryType = typeof IntelligenceRepository;

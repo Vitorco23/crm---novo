@@ -482,7 +482,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       return leadMatchesQuery(l, q);
     });
 
-    if (sortBy === "name_asc") filtered.sort((a, b) => a.company.localeCompare(b.company));
+    if (sortBy === "icp_desc") filtered.sort((a, b) => (b.icpStars || 0) - (a.icpStars || 0));
+    else if (sortBy === "name_asc") filtered.sort((a, b) => a.company.localeCompare(b.company));
     else if (sortBy === "name_desc") filtered.sort((a, b) => b.company.localeCompare(a.company));
     else if (sortBy === "rating_desc") filtered.sort((a, b) => (b.googleRating || 0) - (a.googleRating || 0));
     else if (sortBy === "rating_asc") filtered.sort((a, b) => (a.googleRating || 0) - (b.googleRating || 0));
@@ -1025,6 +1026,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="default" className="text-xs">Padrão</SelectItem>
+              <SelectItem value="icp_desc" className="text-xs">ICP (↓)</SelectItem>
               <SelectItem value="name_asc" className="text-xs">A → Z</SelectItem>
               <SelectItem value="name_desc" className="text-xs">Z → A</SelectItem>
               <SelectItem value="rating_desc" className="text-xs">Nota (↓)</SelectItem>
