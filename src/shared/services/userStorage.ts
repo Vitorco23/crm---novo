@@ -134,29 +134,38 @@ export function uremove(key: string) {
 export async function hydrateLocal(): Promise<void> {
   const uid = getCurrentUserId();
   if (!uid) return;
-  // Derive the hydration list from the canonical scoped-key registry. This
-  // avoids a second runtime dependency that can leave every lead unreadable if
-  // a refactor forgets to import/export the heavy-key set.
-  for (const k of SCOPED_KEYS.filter(isHeavy)) {
-    const scoped = `u:${uid}:${k}`;
-    let val: string | null = null;
-    try {
-      val = await idbGet(scoped);
-    } catch {}
-    // First-run migration: pull existing localStorage payload into IDB,
-    // then free the localStorage slot to unblock quota.
-    if (val == null) {
-      const ls = localStorage.getItem(scoped);
-      if (ls != null) {
-        val = ls;
-        try {
-          await idbSet(scoped, ls);
-          localStorage.removeItem(scoped);
-        } catch {}
+
+  const hydrateTask = (async () => {
+    for (const k of SCOPED_KEYS.filter(isHeavy)) {
+      const scoped = `u:${uid}:${k}`;
+      let val: string | null = null;
+      try {
+        val = await idbGet(scoped);
+      } catch (e) {
+        console.warn("[userStorage] idbGet failed during hydration", scoped, e);
       }
+
+      if (val == null) {
+        const ls = localStorage.getItem(scoped);
+        if (ls != null) {
+          val = ls;
+          try {
+            await idbSet(scoped, ls);
+            localStorage.removeItem(scoped);
+          } catch (e) {
+            console.warn("[userStorage] LS->IDB migration failed", scoped, e);
+          }
+        }
+      }
+      if (val != null) memCache.set(scoped, val);
     }
-    if (val != null) memCache.set(scoped, val);
-  }
+  })();
+
+  // Safely race hydration against a 10s timeout to ensure the app never hangs here.
+  await Promise.race([
+    hydrateTask,
+    new Promise<void>((resolve) => setTimeout(resolve, 10000))
+  ]);
 }
 
 // ===== Cloud sync (debounced) =====

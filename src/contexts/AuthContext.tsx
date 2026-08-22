@@ -108,12 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         if (s?.user) {
           // Do not release the authenticated UI until IndexedDB hydration and
-          // the initial cloud sync have both completed.
+          // the initial cloud sync have both completed (or timed out).
           await ensureUserStorageReady(s.user);
         }
       } catch (error) {
-        console.warn("[AuthContext] initial user storage sync failed", error);
+        console.warn("[AuthContext] initial user storage synchronization failed", error);
       } finally {
+        // ALWAYS release the loading state, even if storage preparation failed.
         setLoading(false);
       }
     });
