@@ -7,22 +7,44 @@ const STORE = "kv";
 const VERSION = 1;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
+const IDB_OPEN_TIMEOUT = 5000;
 
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
+  
   dbPromise = new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
       reject(new Error("IndexedDB not available"));
       return;
     }
-    const req = indexedDB.open(DB_NAME, VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+
+    const timeout = setTimeout(() => {
+      reject(new Error("IndexedDB open timeout"));
+    }, IDB_OPEN_TIMEOUT);
+
+    try {
+      const req = indexedDB.open(DB_NAME, VERSION);
+      
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      };
+      
+      req.onsuccess = () => {
+        clearTimeout(timeout);
+        resolve(req.result);
+      };
+      
+      req.onerror = () => {
+        clearTimeout(timeout);
+        reject(req.error);
+      };
+    } catch (err) {
+      clearTimeout(timeout);
+      reject(err);
+    }
   });
+  
   return dbPromise;
 }
 
