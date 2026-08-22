@@ -794,7 +794,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         }
       });
 
-      saveLeads(allLeads);
+      setLeads(allLeads);
       
       setMappingOpen(false);
       setImportHeaders([]);
