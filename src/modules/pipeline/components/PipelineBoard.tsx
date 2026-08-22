@@ -793,7 +793,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         }
       });
 
-      saveLeads(allLeads);
+      import { saveLeads as persistLeads } from "@/shared/services/store";
+      persistLeads(allLeads);
       
       setMappingOpen(false);
       setImportHeaders([]);
