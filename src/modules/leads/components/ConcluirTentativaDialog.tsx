@@ -166,7 +166,7 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
     } else if (outcome === "sem_interesse") {
       note(labelFor(outcome));
       const oppStages = new Set(getStagesForPipeline("oportunidades"));
-      const lostStage = oppStages.has(lead.stage) ? "Perdido" : "Não Quer";
+      const lostStage = "Perdido";
       if (reminderDays !== "none") {
         const when = new Date();
         when.setDate(when.getDate() + parseInt(reminderDays, 10));
@@ -205,11 +205,11 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
       note(labelFor(outcome));
       if (channel === "Ligação" || channel === "WhatsApp") {
         updateLead(lead.id, { phoneInvalid: true });
-        updateLeadStage(lead.id, "Sem contato");
-        toast.success("Lead marcado como telefone inválido");
+        updateLeadStage(lead.id, "Tentativas Concluídas");
+        toast.success("Lead marcado como telefone inválido e movido para Tentativas Concluídas");
       } else {
-        updateLeadStage(lead.id, "Sem contato");
-        toast.success("Lead movido para Sem contato");
+        updateLeadStage(lead.id, "Tentativas Concluídas");
+        toast.success("Lead movido para Tentativas Concluídas");
       }
     } else if (outcome === "outro") {
       if (!freeText.trim()) { toast.error("Descreva o desfecho"); return; }

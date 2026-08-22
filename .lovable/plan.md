@@ -1,41 +1,25 @@
-# Plan: Lead Import - Upsert Logic for Duplicates
+# Plan - Fix Pipeline Disappearances and Tag Filtering
 
-Enhance the lead import process to support "upsert" behavior. Instead of ignoring duplicates, the CRM will now merge new information into existing leads while preserving their current pipeline stage.
+## Problem 1: Leads vanish when marked "sem interesse" or "contato inválido"
+The pipeline stages "Não Quer" and "Sem contato" were previously removed from the default stage lists, but `ConcluirTentativaDialog.tsx` was still moving leads to these non-existent stages. Since the pipeline board only displays leads that belong to a stage in its current configuration, these leads would "vanish".
 
-## User Review Required
-
-> [!IMPORTANT]
-> The duplicate detection logic uses three identifiers: **Phone**, **Company Name**, and **Google Meu Negócio Link**. If *any* of these match an existing lead, it will be considered a duplicate and updated instead of skipped.
+## Problem 2: Tag filter on the pipeline board does nothing
+The "Tags" filter UI was implemented in `PipelineBoard.tsx`, but the actual filtering logic in the `useMemo` hook was missing the tag check, causing the filter to have no effect on the visible cards.
 
 ## Proposed Changes
 
-### CRM Core Logic
-#### [PipelineBoard.tsx](src/modules/pipeline/components/PipelineBoard.tsx)
-- Refactor `handleConfirmMapping` to:
-    - Identify existing leads by Normalized Phone, Company Name, or GMN Link.
-    - If a match is found:
-        - Prepare an update object with the new information from the spreadsheet.
-        - Merge tags (add the new tag to existing ones if not present).
-        - **Keep the current `stage`** (do not move the lead back to "Novo Lead" if it's already in "Tentativa 3", for example).
-        - Update the `icpStars` if provided in the spreadsheet.
-    - If no match is found:
-        - Create a new lead as before.
-- Update the success/warning toast messages to reflect "updated" counts instead of "ignored" counts.
+### Lead Management & Navigation
+- **`ConcluirTentativaDialog.tsx`**:
+    - Update "Sem Interesse" logic to move leads to the "Perdido" stage (which exists in the Opportunities pipeline) instead of the non-existent "Não Quer".
+    - Update "Contato Inválido" logic to move leads to "Tentativas Concluídas" (the final stage of the Cold Call pipeline) instead of the non-existent "Sem contato".
+    - This ensures leads remain visible in the CRM and can be recovered or audited.
 
-#### [store.ts](src/shared/services/store.ts)
-- Add a new helper function `upsertLeadsBatch` to handle the batch update/creation efficiently, or simply use `updateLead` and `addLeadsBatch` sequentially within `PipelineBoard`. (Refactoring `PipelineBoard` directly is safer to ensure stage preservation logic remains local to the import context).
+### Pipeline Board
+- **`PipelineBoard.tsx`**:
+    - Update the `pipelineLeads` filtering logic to include a check for the selected tags.
+    - Update the `pipelineLeads` dependency array to include `filterTags`.
+    - Fix the "Clear Filters" button to also reset the selected tags.
 
 ## Technical Details
-- **Normalization**: Use `normalizePhoneBR` for phone comparison and `.trim().toLowerCase()` for text fields.
-- **Fields to Update**: All mapped fields (contact, website, niche, city, notes, googleRating, googleReviews, icpStars) will overwrite existing data if present in the spreadsheet.
-- **Tags**: The new import tag will be appended to the lead's `tags` array (deduplicated).
-
-## Verification Plan
-
-### Manual Verification
-1. Prepare a CSV with a lead that already exists in the CRM (same phone or company).
-2. Move the existing lead to a specific stage (e.g., "Tentativa 3").
-3. Import the CSV.
-4. Verify that the lead remains in "Tentativa 3".
-5. Verify that any new info (e.g., a new note or updated niche) appears in the lead details.
-6. Verify the toast message says "X leads importados • Y atualizados".
+- Using `l.tags.some(t => filterTags.includes(t))` for tag filtering to support multiple tag selection (OR logic).
+- Ensuring compatibility with existing lead data by defaulting to the "Perdido" stage for lost leads.
