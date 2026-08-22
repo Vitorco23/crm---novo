@@ -477,7 +477,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     let filtered = allPipelineLeads.filter((l) => {
       const matchesNiche = filterNicheSet.size === 0 || (l.niche && filterNicheSet.has(l.niche));
       const matchesCity = filterCitySet.size === 0 || (l.city && filterCitySet.has(l.city));
-      if (!matchesNiche || !matchesCity) return false;
+      const matchesTags = filterTags.length === 0 || (l.tags && l.tags.some(t => filterTags.includes(t)));
+      if (!matchesNiche || !matchesCity || !matchesTags) return false;
       if (!q) return true;
       return leadMatchesQuery(l, q);
     });
@@ -502,7 +503,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     }
 
     return filtered;
-  }, [allPipelineLeads, filterNicheSet, filterCitySet, deferredSearchQuery, sortBy]);
+  }, [allPipelineLeads, filterNicheSet, filterCitySet, filterTags, deferredSearchQuery, sortBy]);
   const leadsByStage = useMemo(() => {
     const map = new Map<string, Lead[]>();
     for (const s of stages) map.set(s, []);
@@ -1083,9 +1084,9 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             </SelectContent>
           </Select>
 
-          {(filterNiches.length > 0 || filterCities.length > 0 || searchQuery) && (
+          {(filterNiches.length > 0 || filterCities.length > 0 || filterTags.length > 0 || searchQuery) && (
             <Button size="sm" variant="ghost" className="h-8 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-              onClick={() => { setFilterNiches([]); setFilterCities([]); setSearchQuery(""); }}>
+              onClick={() => { setFilterNiches([]); setFilterCities([]); setFilterTags([]); setSearchQuery(""); }}>
               <XIcon className="h-3.5 w-3.5 mr-1" /> Limpar
             </Button>
           )}
