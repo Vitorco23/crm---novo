@@ -264,8 +264,8 @@ export default function LeadDetailDrawer({
     return () => window.removeEventListener("paste", onPaste);
   }, [open]);
 
-  const runIcpSuggestion = async () => {
-    if (!lead?.id) return;
+  const runIcpSuggestion = async (showSuccessToast = true) => {
+    if (!lead?.id) return false;
     try {
       const context = [
         lead.company && `Empresa: ${lead.company}`,
@@ -299,21 +299,24 @@ export default function LeadDetailDrawer({
           },
           duration: 10000,
         });
-      } else {
+        return true;
+      } else if (showSuccessToast) {
         toast.success(`ICP validado: ${lead.icpStars} estrelas`, {
           description: "A IA concorda com a classificação atual baseada nas informações disponíveis."
         });
       }
+      return false;
     } catch (e) {
       console.error("Sugestão de ICP falhou:", e);
-      toast.error("Não foi possível obter sugestão da IA agora.");
+      if (showSuccessToast) toast.error("Não foi possível obter sugestão da IA agora.");
+      return false;
     }
   };
 
   useEffect(() => {
     if (open && lead?.id) {
       if (!lead.icpStars || lead.icpStars === 2) {
-        runIcpSuggestion();
+        runIcpSuggestion(false);
       }
     }
   }, [open, lead?.id]);
@@ -457,8 +460,10 @@ export default function LeadDetailDrawer({
   const handleRefreshAI = async () => {
     setAnalyzingNoteId("ai-global");
     try {
-      await runIcpSuggestion();
-      toast.success("Inteligência do lead atualizada");
+      const hadSuggestion = await runIcpSuggestion(false);
+      if (!hadSuggestion) {
+        toast.success("Inteligência do lead atualizada");
+      }
     } catch (e) {
       toast.error("Erro ao atualizar inteligência");
     } finally {
