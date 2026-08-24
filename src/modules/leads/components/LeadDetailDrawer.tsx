@@ -614,6 +614,21 @@ export default function LeadDetailDrawer({
               </div>
             </section>
 
+            {/* SPRINT 14 — Leitura comercial objetiva */}
+            <section className="rounded-lg border border-primary/25 bg-primary/5 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Leitura comercial</p>
+              </div>
+              <LeadExecutiveSummary lead={lead} />
+              {draft.notes && (
+                <div className="rounded bg-background/50 px-2.5 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Contexto registrado</p>
+                  <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-foreground/80">{draft.notes}</p>
+                </div>
+              )}
+            </section>
+
             {/* NÍVEL 1 - Essencial: Próxima Ação */}
             {isColdCall && step && (
               <section className="rounded-lg border border-accent/30 bg-accent/5 p-3">
