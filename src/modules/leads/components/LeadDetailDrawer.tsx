@@ -644,9 +644,10 @@ export default function LeadDetailDrawer({
                </div>
             </div>
 
-            {/* NÍVEL 2 - Complementar: Contatos e Negócio */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            {/* CONTATO */}
+            <section className="space-y-2">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1">Contato</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                 <div className="space-y-1">
                    <Label className="text-[10px] text-muted-foreground">Decisor / Contato</Label>
                    <Input size={1} className="h-8 text-xs" value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} onBlur={() => commitOnBlur({ contact: draft.contact })} />
@@ -664,9 +665,90 @@ export default function LeadDetailDrawer({
                    <Input size={1} className="h-8 text-xs" value={draft.instagramLink} onChange={(e) => setDraft({ ...draft, instagramLink: e.target.value })} onBlur={() => commitOnBlur({ instagramLink: draft.instagramLink })} />
                 </div>
               </div>
+            </section>
 
-              {(isOnboarding || isOportunidades) && (
-                <div className="p-3 rounded border border-border/40 bg-muted/10 grid grid-cols-2 gap-3">
+            {/* EMPRESA */}
+            <section className="space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1 flex items-center gap-1.5">
+                <Building2 className="h-3 w-3" /> Empresa
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Nicho</Label>
+                  <Input className="h-8 text-xs" value={draft.niche} onChange={(e) => setDraft({ ...draft, niche: e.target.value })} onBlur={() => commitOnBlur({ niche: draft.niche })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Cidade</Label>
+                  <Input className="h-8 text-xs" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} onBlur={() => commitOnBlur({ city: draft.city })} />
+                </div>
+                <div className="flex items-center justify-between p-2 rounded bg-muted/20">
+                  <span className="text-xs">Prioridade ICP</span>
+                  <StarRating value={draft.icpStars} onChange={(v) => { persist({ icpStars: v }); onRefresh(); }} />
+                </div>
+                <div className="flex items-center justify-between p-2 rounded bg-muted/20">
+                  <span className="text-xs">Faz Anúncios?</span>
+                  <Switch checked={draft.runsAds} onCheckedChange={(v) => { persist({ runsAds: v }); onRefresh(); }} />
+                </div>
+              </div>
+              <div className="space-y-1.5 p-2 rounded bg-muted/20">
+                <Label className="text-[10px] text-muted-foreground uppercase">Tag de Origem</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {["GMN", "LUPUS", "INBOUND"].map(tag => (
+                    <Badge
+                      key={tag}
+                      variant={leadTags.includes(tag) ? "default" : "outline"}
+                      className={`text-[10px] cursor-pointer transition-all ${leadTags.includes(tag) ? "bg-accent hover:bg-accent/90 border-transparent" : "hover:border-accent/40"}`}
+                      onClick={() => {
+                        const newTags = leadTags.includes(tag)
+                          ? leadTags.filter(t => t !== tag)
+                          : [...leadTags, tag];
+                        persist({ tags: newTags });
+                        onRefresh();
+                      }}
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                  <Input
+                    placeholder="Nova tag..."
+                    className="h-5 w-20 text-[10px] py-0 px-1 inline-flex bg-transparent border-dashed"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = e.currentTarget.value.trim().toUpperCase();
+                        if (val && !leadTags.includes(val)) {
+                          persist({ tags: [...leadTags, val] });
+                          onRefresh();
+                          e.currentTarget.value = "";
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* LINKS */}
+            <section className="space-y-2">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1 flex items-center gap-1.5">
+                <Globe className="h-3 w-3" /> Links e Localização
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Website</Label>
+                  <Input className="h-8 text-xs" value={draft.website ?? ""} onChange={(e) => setDraft({ ...draft, website: e.target.value })} onBlur={() => commitOnBlur({ website: draft.website })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Google Maps</Label>
+                  <Input className="h-8 text-xs" value={draft.gmnLink} onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })} onBlur={() => commitOnBlur({ gmnLink: draft.gmnLink })} />
+                </div>
+              </div>
+            </section>
+
+            {/* NEGÓCIO */}
+            {(isOnboarding || isOportunidades) && (
+              <section className="space-y-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1">Negócio</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                   <div className="space-y-1">
                     <Label className="text-[10px] text-muted-foreground uppercase">Valor Contrato</Label>
                     <Input type="number" className="h-8 text-xs" value={draft.contractValue ?? ""} onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })} onBlur={() => commitOnBlur({ contractValue: draft.contractValue })} />
@@ -676,88 +758,8 @@ export default function LeadDetailDrawer({
                     <Input className="h-8 text-xs" value={draft.serviceType ?? ""} onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })} onBlur={() => commitOnBlur({ serviceType: draft.serviceType })} />
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* NÍVEL 3 - Avançado: Seções Recolhíveis */}
-            <Accordion type="multiple" className="w-full">
-              <AccordionItem value="empresa" className="border-border/40">
-                <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
-                  <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Detalhes da Empresa</span>
-                </AccordionTrigger>
-                <AccordionContent className="pt-2 pb-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Nicho</Label>
-                      <Input className="h-8 text-xs" value={draft.niche} onChange={(e) => setDraft({ ...draft, niche: e.target.value })} onBlur={() => commitOnBlur({ niche: draft.niche })} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Cidade</Label>
-                      <Input className="h-8 text-xs" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} onBlur={() => commitOnBlur({ city: draft.city })} />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5 p-2 rounded bg-muted/20">
-                    <Label className="text-[10px] text-muted-foreground uppercase">Tag de Origem</Label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {["GMN", "LUPUS", "INBOUND"].map(tag => (
-                        <Badge
-                          key={tag}
-                          variant={leadTags.includes(tag) ? "default" : "outline"}
-                          className={`text-[10px] cursor-pointer transition-all ${leadTags.includes(tag) ? "bg-accent hover:bg-accent/90 border-transparent" : "hover:border-accent/40"}`}
-                          onClick={() => {
-                            const newTags = leadTags.includes(tag) 
-                              ? leadTags.filter(t => t !== tag)
-                              : [...leadTags, tag];
-                            persist({ tags: newTags });
-                            onRefresh();
-                          }}
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
-                      <Input 
-                        placeholder="Nova tag..." 
-                        className="h-5 w-20 text-[10px] py-0 px-1 inline-flex bg-transparent border-dashed"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            const val = e.currentTarget.value.trim().toUpperCase();
-                            if (val && !leadTags.includes(val)) {
-                              persist({ tags: [...leadTags, val] });
-                              onRefresh();
-                              e.currentTarget.value = "";
-                            }
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded bg-muted/20">
-                    <span className="text-xs">Prioridade ICP</span>
-                    <StarRating value={draft.icpStars} onChange={(v) => { persist({ icpStars: v }); onRefresh(); }} />
-                  </div>
-                  <div className="flex items-center justify-between p-2 rounded bg-muted/20">
-                    <span className="text-xs">Faz Anúncios?</span>
-                    <Switch checked={draft.runsAds} onCheckedChange={(v) => { persist({ runsAds: v }); onRefresh(); }} />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="links" className="border-border/40">
-                <AccordionTrigger className="py-2 text-xs font-semibold uppercase text-muted-foreground hover:no-underline">
-                   <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> Links e Localização</span>
-                </AccordionTrigger>
-                <AccordionContent className="pt-2 pb-4 space-y-3">
-                   <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Website</Label>
-                      <Input className="h-8 text-xs" value={draft.website ?? ""} onChange={(e) => setDraft({ ...draft, website: e.target.value })} onBlur={() => commitOnBlur({ website: draft.website })} />
-                   </div>
-                   <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Google Maps</Label>
-                      <Input className="h-8 text-xs" value={draft.gmnLink} onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })} onBlur={() => commitOnBlur({ gmnLink: draft.gmnLink })} />
-                   </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+              </section>
+            )}
           </TabsContent>
 
 
