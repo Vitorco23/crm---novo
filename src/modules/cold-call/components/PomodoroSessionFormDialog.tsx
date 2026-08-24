@@ -103,11 +103,6 @@ export function PomodoroSessionFormDialog() {
                 onChange={(e) => setForm({ ...form, meetings: +e.target.value })} />
             </div>
             <div>
-              <Label className="text-xs flex items-center gap-1"><Zap className="h-3 w-3" /> R1</Label>
-              <Input type="number" min={0} value={form.r1}
-                onChange={(e) => setForm({ ...form, r1: +e.target.value })} />
-            </div>
-            <div>
               <Label className="text-xs flex items-center gap-1"><ListTodo className="h-3 w-3" /> Follows a fazer</Label>
               <Input type="number" min={0} value={form.followsToDo}
                 onChange={(e) => setForm({ ...form, followsToDo: +e.target.value })} />
