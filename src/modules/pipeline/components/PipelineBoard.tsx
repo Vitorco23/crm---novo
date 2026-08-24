@@ -722,14 +722,15 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         
         const phone = get("phone");
         const gmnLink = get("gmnLink");
+        const cityVal = get("city");
         const kPhone = phone.replace(/\D+/g, "");
-        const kCompany = company.trim().toLowerCase();
+        const kCompany = cityVal ? `${company.trim().toLowerCase()}|${cityVal.trim().toLowerCase()}` : "";
         const kGmn = gmnLink.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
 
-        // Find existing match
+        // Find existing match (phone > gmn > empresa+cidade)
         const existingLead = (kPhone && leadsByPhone.get(kPhone)) || 
-                             (kCompany && leadsByCompany.get(kCompany)) || 
-                             (kGmn && leadsByGmn.get(kGmn));
+                             (kGmn && leadsByGmn.get(kGmn)) ||
+                             (kCompany && leadsByCompany.get(kCompany));
 
         const icpStars = (mapping.icpStars && mapping.icpStars !== "__none__" && row[mapping.icpStars]) 
           ? (Math.min(5, Math.max(1, parseInt(row[mapping.icpStars]))) as ICPStars)
@@ -740,7 +741,9 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           const idx = allLeads.findIndex(l => l.id === existingLead.id);
           if (idx !== -1) {
             const currentTags = allLeads[idx].tags || [];
-            const newTags = Array.from(new Set([...currentTags, tag]));
+            // Tag da importação sempre em primeiro (é a que aparece no card)
+            const newTags = Array.from(new Set([tag, ...currentTags]));
+
             
             allLeads[idx] = {
               ...allLeads[idx],
