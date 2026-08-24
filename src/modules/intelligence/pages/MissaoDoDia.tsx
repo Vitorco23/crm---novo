@@ -10,18 +10,40 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import {
-  Check, Clock, Compass, ExternalLink, Phone, Users, Target, FileText,
-  Flame, ListChecks, RotateCcw, Undo2, Plus, BarChart3, Sparkles,
+  BarChart3,
+  Check,
+  Clock,
+  Compass,
+  ExternalLink,
+  FileText,
+  Flame,
+  ListChecks,
+  Phone,
+  Plus,
+  RotateCcw,
+  Sparkles,
+  Target,
+  Undo2,
+  Users,
 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/shared/components/shell";
 import {
-  getMissionEntries, getMissionProgress, completeMissionEntry, reopenMissionEntry,
-  removeMissionEntry, resetMissionDay, runOneTimeMissionReset,
-  MISSION_UPDATED_EVENT, type MissionEntry,
+  MISSION_UPDATED_EVENT,
+  completeMissionEntry,
+  getMissionEntries,
+  getMissionProgress,
+  removeMissionEntry,
+  reopenMissionEntry,
+  resetMissionDay,
+  runOneTimeMissionReset,
+  type MissionEntry,
 } from "@/modules/intelligence/services/missionStore";
 import {
-  buildMissionPlan, addMissionTask, addFollowupTask,
-  type FollowupPick, type MissionItem,
+  addFollowupTask,
+  addMissionTask,
+  buildMissionPlan,
+  type FollowupPick,
+  type MissionItem,
 } from "@/modules/intelligence/services/missionPlanner";
 import { OperationalCapacityCard } from "@/modules/intelligence/components/OperationalCapacityCard";
 import ColdCallOpsPanel from "@/modules/cold-call/components/ColdCallOpsPanel";
@@ -46,6 +68,8 @@ const PRIORITY_WEIGHT: Record<TaskPriority, number> = {
   baixa: 3,
 };
 
+type ActionSource = "mission" | "suggestion" | "followup";
+
 type CommandCenterAction = {
   id: string;
   title: string;
@@ -57,17 +81,39 @@ type CommandCenterAction = {
   company?: string | null;
   recommendedTime?: string | null;
   badges: string[];
-  source: "mission" | "suggestion" | "followup";
+  source: ActionSource;
   missionEntry?: MissionEntry;
   missionItem?: MissionItem;
   followup?: FollowupPick;
 };
 
+const SOURCE_LABEL: Record<ActionSource, string> = {
+  mission: "Na missão",
+  followup: "Follow-up inteligente",
+  suggestion: "Planejamento do dia",
+};
+
+const SOURCE_REASON: Record<ActionSource, string> = {
+  mission: "Ação já selecionada para executar hoje.",
+  followup: "Lead puxado da cadência e dos sinais comerciais do dia.",
+  suggestion: "Ação recomendada pelo planejamento operacional.",
+};
+
+function sourceLabel(action: CommandCenterAction) {
+  return SOURCE_LABEL[action.source];
+}
+
+function evidenceLine(action: CommandCenterAction) {
+  const base = action.reason || SOURCE_REASON[action.source];
+  const time = action.recommendedTime ? ` Melhor horário: ${action.recommendedTime}.` : "";
+  return `${base}${time}`;
+}
+
 function missionEntryToAction(entry: MissionEntry): CommandCenterAction {
   return {
     id: `mission:${entry.id}`,
     title: entry.title,
-    reason: entry.reason || "Atividade já está na sua missão de hoje.",
+    reason: entry.reason || SOURCE_REASON.mission,
     priority: entry.priority,
     kind: entry.kind,
     estimatedMinutes: entry.estimatedMinutes,
@@ -84,7 +130,7 @@ function missionItemToAction(item: MissionItem): CommandCenterAction {
   return {
     id: `suggestion:${item.id}`,
     title: item.title,
-    reason: item.reason || "Prioridade recomendada pelo planejamento comercial do dia.",
+    reason: item.reason || SOURCE_REASON.suggestion,
     priority: item.priority,
     kind: item.kind,
     estimatedMinutes: item.estimatedMinutes,
@@ -102,7 +148,7 @@ function followupToAction(followup: FollowupPick): CommandCenterAction {
   return {
     id: `followup:${followup.leadId}`,
     title: `${followup.action} — ${followup.company}`,
-    reason: followup.motivo || "Follow-up recomendado para manter a cadência do lead.",
+    reason: followup.motivo || SOURCE_REASON.followup,
     priority,
     kind: "lead",
     estimatedMinutes: followup.priority?.estimatedMinutes ?? 8,
@@ -131,9 +177,14 @@ export default function MissaoDoDia() {
 
   useEffect(() => {
     const offs = [
-      on("TarefaCriada", bump), on("TarefaConcluida", bump), on("TarefaAtualizada", bump),
-      on("LigacaoRegistrada", bump), on("MensagemRegistrada", bump),
-      on("LeadAtualizado", bump), on("LeadMovido", bump), on("MetaAtualizada", bump),
+      on("TarefaCriada", bump),
+      on("TarefaConcluida", bump),
+      on("TarefaAtualizada", bump),
+      on("LigacaoRegistrada", bump),
+      on("MensagemRegistrada", bump),
+      on("LeadAtualizado", bump),
+      on("LeadMovido", bump),
+      on("MetaAtualizada", bump),
     ];
     window.addEventListener(MISSION_UPDATED_EVENT, bump);
     window.addEventListener("p21:priority-leads-updated", bump);
@@ -174,9 +225,9 @@ export default function MissaoDoDia() {
 
   const primaryAction = commandActions[0];
 
-  const handleComplete = (e: MissionEntry) => {
-    completeMissionEntry(e.id);
-    toast({ title: "Atividade concluída", description: e.title });
+  const handleComplete = (entry: MissionEntry) => {
+    completeMissionEntry(entry.id);
+    toast({ title: "Atividade concluída", description: entry.title });
     bump();
   };
 
@@ -197,6 +248,51 @@ export default function MissaoDoDia() {
     toast({ title: "Missão do dia reiniciada", description: "Nenhum dado comercial foi alterado." });
     bump();
   };
+
+  const renderActionButtons = (action: CommandCenterAction, compact = false) => (
+    <div className="flex items-center gap-1 shrink-0">
+      {action.leadId && (
+        <Button
+          size="sm"
+          variant={compact ? "ghost" : "outline"}
+          className={`${compact ? "h-7 px-2 text-[11px]" : ""} gap-1`}
+          onClick={() => openLead(action.leadId!, { tab: "interacoes" })}
+        >
+          <ExternalLink className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /> {compact ? "Abrir" : "Abrir lead"}
+        </Button>
+      )}
+      {action.source === "mission" && action.missionEntry && (
+        <Button
+          size="sm"
+          variant={compact ? "secondary" : "default"}
+          className={`${compact ? "h-7 px-2 text-[11px]" : ""} gap-1 ${compact ? "" : "bg-accent text-accent-foreground hover:bg-accent/90"}`}
+          onClick={() => handleComplete(action.missionEntry!)}
+        >
+          <Check className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /> Concluir
+        </Button>
+      )}
+      {action.source === "suggestion" && action.missionItem && (
+        <Button
+          size="sm"
+          variant={compact ? "secondary" : "default"}
+          className={`${compact ? "h-7 px-2 text-[11px]" : ""} gap-1 ${compact ? "" : "bg-accent text-accent-foreground hover:bg-accent/90"}`}
+          onClick={() => handleAddSuggestion(action.missionItem!)}
+        >
+          <Plus className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /> {compact ? "Missão" : "Colocar na missão"}
+        </Button>
+      )}
+      {action.source === "followup" && action.followup && (
+        <Button
+          size="sm"
+          variant={compact ? "secondary" : "default"}
+          className={`${compact ? "h-7 px-2 text-[11px]" : ""} gap-1 ${compact ? "" : "bg-accent text-accent-foreground hover:bg-accent/90"}`}
+          onClick={() => handleAddFollowup(action.followup!)}
+        >
+          <Plus className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /> {compact ? "Missão" : "Colocar na missão"}
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <PageContainer>
@@ -223,16 +319,16 @@ export default function MissaoDoDia() {
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Badge className="gap-1 bg-accent text-accent-foreground hover:bg-accent">
-                  <Sparkles className="h-3 w-3" /> Sprint 10
-                </Badge>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
                 <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                   Central Inteligente do Dia
                 </span>
               </div>
               <CardTitle className="text-xl md:text-2xl">Comece por aqui</CardTitle>
               <p className="text-sm text-muted-foreground max-w-3xl">
-                As próximas ações foram organizadas a partir da missão, prioridades e follow-ups do dia. A ideia é reduzir leitura e colocar execução na frente.
+                Uma fila única reúne missão, follow-ups e planejamento do dia para mostrar a próxima ação com mais impacto agora.
               </p>
             </div>
             <div className="rounded-xl border border-border/60 bg-background/70 px-4 py-3 text-right">
@@ -254,42 +350,21 @@ export default function MissaoDoDia() {
                     <Badge variant="outline" className={`text-[10px] ${PRIORITY_CLASSES[primaryAction.priority]}`}>
                       {PRIORITY_LABEL[primaryAction.priority]}
                     </Badge>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {sourceLabel(primaryAction)}
+                    </Badge>
                     {primaryAction.recommendedTime && (
                       <Badge variant="outline" className="text-[10px] gap-1">
                         <Clock className="h-2.5 w-2.5" /> {primaryAction.recommendedTime}
                       </Badge>
                     )}
-                    <Badge variant="secondary" className="text-[10px]">
-                      {primaryAction.source === "mission" ? "Já está na missão" : "Recomendado"}
-                    </Badge>
                   </div>
                   <h2 className="text-base md:text-lg font-semibold text-foreground">{primaryAction.title}</h2>
-                  <p className="text-sm text-muted-foreground">Por quê: {primaryAction.reason}</p>
+                  <p className="text-sm text-muted-foreground">Por quê: {evidenceLine(primaryAction)}</p>
                   <p className="text-xs text-muted-foreground/80">Tempo estimado: {formatMinutes(primaryAction.estimatedMinutes)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {primaryAction.leadId && (
-                  <Button size="sm" variant="outline" className="gap-1" onClick={() => openLead(primaryAction.leadId!, { tab: "interacoes" })}>
-                    <ExternalLink className="h-3.5 w-3.5" /> Abrir lead
-                  </Button>
-                )}
-                {primaryAction.source === "mission" && primaryAction.missionEntry && (
-                  <Button size="sm" className="gap-1 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleComplete(primaryAction.missionEntry!)}>
-                    <Check className="h-3.5 w-3.5" /> Concluir
-                  </Button>
-                )}
-                {primaryAction.source === "suggestion" && primaryAction.missionItem && (
-                  <Button size="sm" className="gap-1 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleAddSuggestion(primaryAction.missionItem!)}>
-                    <Plus className="h-3.5 w-3.5" /> Colocar na missão
-                  </Button>
-                )}
-                {primaryAction.source === "followup" && primaryAction.followup && (
-                  <Button size="sm" className="gap-1 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleAddFollowup(primaryAction.followup!)}>
-                    <Plus className="h-3.5 w-3.5" /> Colocar na missão
-                  </Button>
-                )}
-              </div>
+              {renderActionButtons(primaryAction)}
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border/70 bg-background/60 p-4">
@@ -308,8 +383,9 @@ export default function MissaoDoDia() {
                       {PRIORITY_LABEL[action.priority]}
                     </Badge>
                   </div>
+                  <Badge variant="secondary" className="w-fit text-[10px] font-normal">{sourceLabel(action)}</Badge>
                   <p className="text-sm font-semibold text-foreground line-clamp-2">{action.title}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{action.reason}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{evidenceLine(action)}</p>
                   {action.badges.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {action.badges.slice(0, 2).map((badge) => (
@@ -317,28 +393,7 @@ export default function MissaoDoDia() {
                       ))}
                     </div>
                   )}
-                  <div className="flex items-center gap-1 pt-1">
-                    {action.leadId && (
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] gap-1" onClick={() => openLead(action.leadId!, { tab: "interacoes" })}>
-                        <ExternalLink className="h-3 w-3" /> Abrir
-                      </Button>
-                    )}
-                    {action.source === "mission" && action.missionEntry && (
-                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] gap-1" onClick={() => handleComplete(action.missionEntry!)}>
-                        <Check className="h-3 w-3" /> Concluir
-                      </Button>
-                    )}
-                    {action.source === "suggestion" && action.missionItem && (
-                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] gap-1" onClick={() => handleAddSuggestion(action.missionItem!)}>
-                        <Plus className="h-3 w-3" /> Missão
-                      </Button>
-                    )}
-                    {action.source === "followup" && action.followup && (
-                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] gap-1" onClick={() => handleAddFollowup(action.followup!)}>
-                        <Plus className="h-3 w-3" /> Missão
-                      </Button>
-                    )}
-                  </div>
+                  <div className="flex items-center gap-1 pt-1">{renderActionButtons(action, true)}</div>
                 </div>
               ))}
             </div>
@@ -380,41 +435,41 @@ export default function MissaoDoDia() {
               Nenhuma atividade na missão de hoje. Adicione prioridades abaixo ou pela Central de Decisão.
             </p>
           )}
-          {pending.map((e) => (
-            <div key={e.id} className="rounded-md border border-border/60 bg-card/50 px-3 py-2.5 flex items-start gap-3">
-              <span className="mt-0.5 text-accent shrink-0">{KIND_ICON[e.kind]}</span>
+          {pending.map((entry) => (
+            <div key={entry.id} className="rounded-md border border-border/60 bg-card/50 px-3 py-2.5 flex items-start gap-3">
+              <span className="mt-0.5 text-accent shrink-0">{KIND_ICON[entry.kind]}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold text-foreground">{e.title}</p>
-                  <Badge variant="outline" className={`text-[10px] ${PRIORITY_CLASSES[e.priority]}`}>
-                    {PRIORITY_LABEL[e.priority]}
+                  <p className="text-sm font-semibold text-foreground">{entry.title}</p>
+                  <Badge variant="outline" className={`text-[10px] ${PRIORITY_CLASSES[entry.priority]}`}>
+                    {PRIORITY_LABEL[entry.priority]}
                   </Badge>
-                  {e.recommendedTime && (
+                  {entry.recommendedTime && (
                     <Badge variant="outline" className="text-[10px] gap-1">
-                      <Clock className="h-2.5 w-2.5" /> {e.recommendedTime}
+                      <Clock className="h-2.5 w-2.5" /> {entry.recommendedTime}
                     </Badge>
                   )}
-                  {e.niche && <Badge variant="outline" className="text-[10px]">{e.niche}</Badge>}
-                  {e.city && <Badge variant="outline" className="text-[10px]">{e.city}</Badge>}
+                  {entry.niche && <Badge variant="outline" className="text-[10px]">{entry.niche}</Badge>}
+                  {entry.city && <Badge variant="outline" className="text-[10px]">{entry.city}</Badge>}
                 </div>
-                {e.company && <p className="text-xs text-muted-foreground mt-0.5">Empresa: {e.company}</p>}
-                {e.bullets.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-0.5">Priorizar: {e.bullets.join(" · ")}</p>
+                {entry.company && <p className="text-xs text-muted-foreground mt-0.5">Empresa: {entry.company}</p>}
+                {entry.bullets.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-0.5">Priorizar: {entry.bullets.join(" · ")}</p>
                 )}
-                {e.reason && <p className="text-xs text-muted-foreground/80 mt-0.5">Motivo: {e.reason}</p>}
+                {entry.reason && <p className="text-xs text-muted-foreground/80 mt-0.5">Motivo: {entry.reason}</p>}
                 <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                  Tempo estimado: {formatMinutes(e.estimatedMinutes)}
+                  Tempo estimado: {formatMinutes(entry.estimatedMinutes)}
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                {e.leadId && (
+                {entry.leadId && (
                   <Button size="sm" variant="ghost" className="h-8 px-2 text-xs gap-1"
-                    onClick={() => openLead(e.leadId!, { tab: "interacoes" })}>
+                    onClick={() => openLead(entry.leadId!, { tab: "interacoes" })}>
                     <ExternalLink className="h-3.5 w-3.5" /> Abrir Lead
                   </Button>
                 )}
                 <Button size="sm" className="h-8 px-2 text-xs gap-1 bg-accent text-accent-foreground hover:bg-accent/90"
-                  onClick={() => handleComplete(e)}>
+                  onClick={() => handleComplete(entry)}>
                   <Check className="h-3.5 w-3.5" /> Concluir
                 </Button>
               </div>
@@ -447,16 +502,16 @@ export default function MissaoDoDia() {
                 </Button>
               </div>
             ))}
-            {followupSuggestions.map((f) => (
-              <div key={f.leadId} className="flex items-center gap-2 rounded-md px-2.5 py-1.5 hover:bg-muted/50">
-                <span className="text-xs">{f.temperature.emoji}</span>
+            {followupSuggestions.map((followup) => (
+              <div key={followup.leadId} className="flex items-center gap-2 rounded-md px-2.5 py-1.5 hover:bg-muted/50">
+                <span className="text-xs">{followup.temperature.emoji}</span>
                 <button className="text-xs font-medium text-foreground truncate flex-1 text-left hover:underline"
-                  onClick={() => openLead(f.leadId, { tab: "interacoes" })}>
-                  {f.company}
+                  onClick={() => openLead(followup.leadId, { tab: "interacoes" })}>
+                  {followup.company}
                 </button>
-                <span className="text-[11px] text-muted-foreground truncate hidden md:block max-w-[35%]">{f.motivo}</span>
+                <span className="text-[11px] text-muted-foreground truncate hidden md:block max-w-[35%]">{followup.motivo}</span>
                 <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] gap-1"
-                  onClick={() => handleAddFollowup(f)}>
+                  onClick={() => handleAddFollowup(followup)}>
                   <Plus className="h-3 w-3" /> Adicionar
                 </Button>
               </div>
@@ -471,16 +526,16 @@ export default function MissaoDoDia() {
             <CardTitle className="text-base">Concluídas hoje ({done.length})</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {done.map((e) => (
-              <div key={e.id} className="flex items-center gap-2 rounded-md px-2 py-1.5">
+            {done.map((entry) => (
+              <div key={entry.id} className="flex items-center gap-2 rounded-md px-2 py-1.5">
                 <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                <span className="text-xs text-muted-foreground line-through truncate flex-1">{e.title}</span>
+                <span className="text-xs text-muted-foreground line-through truncate flex-1">{entry.title}</span>
                 <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] gap-1"
-                  onClick={() => { reopenMissionEntry(e.id); bump(); }}>
+                  onClick={() => { reopenMissionEntry(entry.id); bump(); }}>
                   <Undo2 className="h-3 w-3" /> Reabrir
                 </Button>
                 <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]"
-                  onClick={() => { removeMissionEntry(e.id); bump(); }}>
+                  onClick={() => { removeMissionEntry(entry.id); bump(); }}>
                   Remover
                 </Button>
               </div>
