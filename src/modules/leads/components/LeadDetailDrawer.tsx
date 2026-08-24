@@ -788,6 +788,30 @@ export default function LeadDetailDrawer({
 
           {/* OBSERVAÇÕES - Reorganizado */}
           <TabsContent value="observacoes" className="flex-1 overflow-y-auto px-5 py-4 mt-0 space-y-4">
+            {icpSuggestion && icpSuggestion.leadId === lead.id && (
+              <section className="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] uppercase tracking-wider text-accent font-bold flex items-center gap-1.5">
+                    <Sparkles className="h-3 w-3" /> Sugestão de ICP da IA
+                  </span>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span>Atual: {draft.icpStars}★</span>
+                    <span>→</span>
+                    <span className="text-accent font-bold">Sugerido: {icpSuggestion.stars}★</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">{icpSuggestion.reasoning}</p>
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 text-xs bg-accent text-accent-foreground" onClick={applyIcpSuggestion}>
+                    Aplicar {icpSuggestion.stars}★
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIcpSuggestion(null)}>
+                    Dispensar
+                  </Button>
+                </div>
+              </section>
+            )}
+
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <FileText className="h-3.5 w-3.5" /> Notas Permanentes
