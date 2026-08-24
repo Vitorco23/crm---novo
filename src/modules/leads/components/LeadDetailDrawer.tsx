@@ -462,7 +462,10 @@ export default function LeadDetailDrawer({
     setAnalyzingNoteId("ai-global");
     try {
       const hadSuggestion = await runIcpSuggestion(false);
-      if (!hadSuggestion) {
+      if (hadSuggestion) {
+        setTab("observacoes");
+        toast.success("Sugestão de ICP disponível na aba Notas");
+      } else {
         toast.success("Inteligência do lead atualizada");
       }
     } catch (e) {
