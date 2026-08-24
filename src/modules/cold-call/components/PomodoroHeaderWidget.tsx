@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { usePomodoro } from "@/contexts/PomodoroContext";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Timer, Phone, Users, UserCheck, MessageSquare, CalendarCheck, FileText, Zap, ListTodo, Ban } from "lucide-react";
+import { Play, Pause, Square, Timer, Phone, Users, UserCheck, MessageSquare, CalendarCheck, FileText, ListTodo, Ban } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getScripts, getSelectedScript, setSelectedScript, logCall, type ScriptOption } from "@/modules/knowledge/services/scripts";
@@ -138,15 +138,6 @@ export function PomodoroHeaderWidget() {
         >
           <CalendarCheck className="h-3.5 w-3.5 text-accent" />
           <span className="text-xs font-bold tabular-nums text-foreground">{tally.meetings}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => incrementTally("r1")}
-          title="Registrar R1"
-          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
-        >
-          <Zap className="h-3.5 w-3.5 text-accent" />
-          <span className="text-xs font-bold tabular-nums text-foreground">{tally.r1}</span>
         </button>
         <button
           type="button"
