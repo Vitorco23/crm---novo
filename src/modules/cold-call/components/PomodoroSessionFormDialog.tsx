@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Phone, Users, UserCheck, CalendarCheck, FileText, Ban, ListTodo, Zap } from "lucide-react";
+import { Phone, Users, UserCheck, CalendarCheck, FileText, Ban, ListTodo } from "lucide-react";
 import { getScripts, getSelectedScript, setSelectedScript, type ScriptOption } from "@/modules/knowledge/services/scripts";
 
 export function PomodoroSessionFormDialog() {
@@ -16,7 +16,6 @@ export function PomodoroSessionFormDialog() {
     connections: 0, 
     decisionMakers: 0, 
     meetings: 0, 
-    r1: 0, 
     followsToDo: 0, 
     negatives: 0, 
     niche: "", 
@@ -36,10 +35,8 @@ export function PomodoroSessionFormDialog() {
       connections: state.tally?.connections ?? 0,
       decisionMakers: state.tally?.decisionMakers ?? 0,
       meetings: state.tally?.meetings ?? 0,
-      r1: state.tally?.r1 ?? 0,
       followsToDo: state.tally?.followsToDo ?? 0,
       negatives: state.tally?.negatives ?? 0,
-
       niche: state.niche || "",
       scriptUsed: getSelectedScript(),
     });
@@ -106,11 +103,6 @@ export function PomodoroSessionFormDialog() {
                 onChange={(e) => setForm({ ...form, meetings: +e.target.value })} />
             </div>
             <div>
-              <Label className="text-xs flex items-center gap-1"><Zap className="h-3 w-3" /> R1</Label>
-              <Input type="number" min={0} value={form.r1}
-                onChange={(e) => setForm({ ...form, r1: +e.target.value })} />
-            </div>
-            <div>
               <Label className="text-xs flex items-center gap-1"><ListTodo className="h-3 w-3" /> Follows a fazer</Label>
               <Input type="number" min={0} value={form.followsToDo}
                 onChange={(e) => setForm({ ...form, followsToDo: +e.target.value })} />
@@ -124,7 +116,7 @@ export function PomodoroSessionFormDialog() {
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button onClick={() => submitForm(form)} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button onClick={() => submitForm({ ...form, r1: 0 })} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
               Salvar e iniciar pausa
             </Button>
             <Button variant="ghost" onClick={dismissForm}>Descartar</Button>
