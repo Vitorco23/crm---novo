@@ -193,11 +193,12 @@ const LeadCard = memo(function LeadCard({
             <StarRating value={lead.icpStars} />
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {lead.tags && lead.tags.length > 0 && (
-              <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-accent/30 text-accent/80 bg-accent/5 uppercase leading-none">
-                {lead.tags[0]}
+            {lead.tags && lead.tags.length > 0 && lead.tags.slice(0, 2).map((t) => (
+              <Badge key={t} variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-accent/30 text-accent/80 bg-accent/5 uppercase leading-none">
+                {t}
               </Badge>
-            )}
+            ))}
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className={`text-xs ${temp.cls}`}>{temp.emoji}</span>
