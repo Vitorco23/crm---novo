@@ -193,11 +193,12 @@ const LeadCard = memo(function LeadCard({
             <StarRating value={lead.icpStars} />
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {lead.tags && lead.tags.length > 0 && (
-              <Badge variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-accent/30 text-accent/80 bg-accent/5 uppercase leading-none">
-                {lead.tags[0]}
+            {lead.tags && lead.tags.length > 0 && lead.tags.slice(0, 2).map((t) => (
+              <Badge key={t} variant="outline" className="text-[8px] px-1 py-0 h-3.5 border-accent/30 text-accent/80 bg-accent/5 uppercase leading-none">
+                {t}
               </Badge>
-            )}
+            ))}
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className={`text-xs ${temp.cls}`}>{temp.emoji}</span>
@@ -692,13 +693,15 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
       for (const l of existing) {
         const kPhone = (l.phoneNormalized || (l.phone ? l.phone.replace(/\D+/g, "") : "")).trim();
-        const kCompany = (l.company || "").trim().toLowerCase();
+        const lCity = (l.city || "").trim().toLowerCase();
+        const kCompany = lCity ? `${(l.company || "").trim().toLowerCase()}|${lCity}` : "";
         const kGmn = (l.gmnLink || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
         
         if (kPhone) leadsByPhone.set(kPhone, l);
-        if (kCompany) leadsByCompany.set(kCompany, l);
+        if (kCompany && kCompany !== "|") leadsByCompany.set(kCompany, l);
         if (kGmn) leadsByGmn.set(kGmn, l);
       }
+
 
       const allLeads = [...existing];
       const initialStage = stages[0];
@@ -720,14 +723,15 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         
         const phone = get("phone");
         const gmnLink = get("gmnLink");
+        const cityVal = get("city");
         const kPhone = phone.replace(/\D+/g, "");
-        const kCompany = company.trim().toLowerCase();
+        const kCompany = cityVal ? `${company.trim().toLowerCase()}|${cityVal.trim().toLowerCase()}` : "";
         const kGmn = gmnLink.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
 
-        // Find existing match
+        // Find existing match (phone > gmn > empresa+cidade)
         const existingLead = (kPhone && leadsByPhone.get(kPhone)) || 
-                             (kCompany && leadsByCompany.get(kCompany)) || 
-                             (kGmn && leadsByGmn.get(kGmn));
+                             (kGmn && leadsByGmn.get(kGmn)) ||
+                             (kCompany && leadsByCompany.get(kCompany));
 
         const icpStars = (mapping.icpStars && mapping.icpStars !== "__none__" && row[mapping.icpStars]) 
           ? (Math.min(5, Math.max(1, parseInt(row[mapping.icpStars]))) as ICPStars)
@@ -738,7 +742,9 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           const idx = allLeads.findIndex(l => l.id === existingLead.id);
           if (idx !== -1) {
             const currentTags = allLeads[idx].tags || [];
-            const newTags = Array.from(new Set([...currentTags, tag]));
+            // Tag da importação sempre em primeiro (é a que aparece no card)
+            const newTags = Array.from(new Set([tag, ...currentTags]));
+
             
             allLeads[idx] = {
               ...allLeads[idx],
