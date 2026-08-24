@@ -565,7 +565,12 @@ export default function LeadDetailDrawer({
           <TabsList className="mx-5 mt-2 self-start sticky top-0 bg-background z-20 w-[calc(100%-2.5rem)]">
             <TabsTrigger value="geral" className="text-xs">📋 Info</TabsTrigger>
             <TabsTrigger value="interacoes" className="text-xs">💬 Interações</TabsTrigger>
-            <TabsTrigger value="observacoes" className="text-xs">📝 Notas</TabsTrigger>
+            <TabsTrigger value="observacoes" className="text-xs">
+              📝 Notas
+              {icpSuggestion && icpSuggestion.leadId === lead.id && (
+                <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-accent inline-block" />
+              )}
+            </TabsTrigger>
             <TabsTrigger value="anexos" className="text-xs">📎 Anexos</TabsTrigger>
             
             <div className="ml-auto flex items-center gap-2 pr-2">
