@@ -207,7 +207,7 @@ describe("AuthProvider storage readiness", () => {
     });
     expect(mocks.syncFromCloud).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith(
-      "[AuthContext] initial user storage sync failed",
+      "[AuthContext] initial user storage synchronization failed",
       expect.any(Error)
     );
 
