@@ -202,6 +202,7 @@ export default function LeadDetailDrawer({
   const [autoNewInteraction, setAutoNewInteraction] = useState(false);
   const [autoRunDiagnosis, setAutoRunDiagnosis] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [icpSuggestion, setIcpSuggestion] = useState<{ leadId: string; stars: ICPStars; reasoning: string } | null>(null);
   const attachFilesRef = useRef<((files: File[], autoAnalyze?: boolean) => Promise<void>) | null>(null);
 
 
