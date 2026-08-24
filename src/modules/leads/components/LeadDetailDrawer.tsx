@@ -212,6 +212,7 @@ export default function LeadDetailDrawer({
     setScripts(getScripts());
     setCallScript(getSelectedScript());
     setTab(initialTab || "geral");
+    setIcpSuggestion(null);
   }, [lead?.id, initialTab]);
 
   // Executa ação inicial após montar/abrir (vindo da Próxima Melhor Ação).
