@@ -49,6 +49,31 @@ const filterLabels: Record<Filter, string> = {
   day: "Hoje", week: "Semana", month: "Mês", custom: "Personalizado",
 };
 
+function normalizeStageName(stage: string) {
+  return String(stage || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function countUniqueMeetingMovements(events: Array<{ id: string; leadId?: string; toStage?: string; timestamp?: string }>) {
+  const unique = new Set<string>();
+  let withoutLeadId = 0;
+
+  for (const event of events) {
+    if (!normalizeStageName(event.toStage || "").includes("reuniao marcada")) continue;
+
+    if (event.leadId) {
+      unique.add(event.leadId);
+      continue;
+    }
+
+    withoutLeadId += 1;
+  }
+
+  return unique.size + withoutLeadId;
+}
+
 // --- Funil Helper ---
 function getPeriodRange(filter: Filter, custom?: CustomRange): { start: Date; end: Date } {
   const now = new Date();
@@ -213,11 +238,10 @@ const Dashboard = () => {
 
   const totalCalls = filteredSessions.reduce((sum, s) => sum + (s.calls || 0), 0);
   // Reuniões podem vir de 3 fontes: agenda, movimentação do pipeline e registro no Pomodoro.
-  // Usamos o maior valor entre elas para não duplicar a mesma reunião.
+  // Usamos o maior valor entre elas, mas deduplicamos movimentos por lead para não contar
+  // o mesmo card duas vezes quando ele é atualizado/movido mais de uma vez para Reunião Marcada.
   const sessionMeetings = filteredSessions.reduce((sum, s) => sum + (s.meetings || 0), 0);
-  const movedMeetings = filteredEvents.filter(e =>
-    String(e.toStage).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes("reuniao marcada")
-  ).length;
+  const movedMeetings = countUniqueMeetingMovements(filteredEvents);
   const totalMeetings = Math.max(filteredMeetings.length, sessionMeetings, movedMeetings);
   const totalSales = filteredEvents.filter(e => e.toStage === "Ganho").length;
 
