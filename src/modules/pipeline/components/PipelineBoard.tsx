@@ -8,6 +8,7 @@ import {
   type PipelineName,
   type ICPStars,
   getLeads,
+  saveLeads,
   addLead,
   addLeadsBatch,
   deleteLead,
@@ -56,6 +57,7 @@ import BulkActionsBar from "@/modules/pipeline/components/BulkActionsBar";
 import BulkEditDialog from "@/modules/pipeline/components/BulkEditDialog";
 import ExportLeadsDialog from "@/modules/pipeline/components/ExportLeadsDialog";
 import ImportMappingDialog, { type LeadFieldKey } from "@/modules/pipeline/components/ImportMappingDialog";
+import { importLeadsWithTag } from "@/modules/pipeline/services/leadImport";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -682,137 +684,24 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
   const handleConfirmMapping = (mapping: Record<LeadFieldKey, string>, tag: string) => {
     try {
-      let created = 0;
-      let updatedCount = 0;
-      const existing = getLeads();
-      
-      // Build index for O(1) lookup
-      const leadsByPhone = new Map<string, Lead>();
-      const leadsByCompany = new Map<string, Lead>();
-      const leadsByGmn = new Map<string, Lead>();
-
-      for (const l of existing) {
-        const kPhone = (l.phoneNormalized || (l.phone ? l.phone.replace(/\D+/g, "") : "")).trim();
-        const lCity = (l.city || "").trim().toLowerCase();
-        const kCompany = lCity ? `${(l.company || "").trim().toLowerCase()}|${lCity}` : "";
-        const kGmn = (l.gmnLink || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-        
-        if (kPhone) leadsByPhone.set(kPhone, l);
-        if (kCompany && kCompany !== "|") leadsByCompany.set(kCompany, l);
-        if (kGmn) leadsByGmn.set(kGmn, l);
-      }
-
-
-      const allLeads = [...existing];
       const initialStage = stages[0];
-      
       if (!initialStage) {
         toast.error("Nenhuma etapa disponível neste pipeline. Crie uma etapa antes de importar.");
         return;
       }
-
-      importRows.forEach((row) => {
-        const get = (k: LeadFieldKey) => {
-          const col = mapping[k];
-          if (!col || col === "__none__") return "";
-          return (row[col] || "").trim();
-        };
-
-        const company = get("company");
-        if (!company) return;
-        
-        const phone = get("phone");
-        const gmnLink = get("gmnLink");
-        const cityVal = get("city");
-        const kPhone = phone.replace(/\D+/g, "");
-        const kCompany = cityVal ? `${company.trim().toLowerCase()}|${cityVal.trim().toLowerCase()}` : "";
-        const kGmn = gmnLink.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-
-        // Find existing match (phone > gmn > empresa+cidade)
-        const existingLead = (kPhone && leadsByPhone.get(kPhone)) || 
-                             (kGmn && leadsByGmn.get(kGmn)) ||
-                             (kCompany && leadsByCompany.get(kCompany));
-
-        const icpStars = (mapping.icpStars && mapping.icpStars !== "__none__" && row[mapping.icpStars]) 
-          ? (Math.min(5, Math.max(1, parseInt(row[mapping.icpStars]))) as ICPStars)
-          : 2;
-
-        if (existingLead) {
-          // Update existing lead
-          const idx = allLeads.findIndex(l => l.id === existingLead.id);
-          if (idx !== -1) {
-            const currentTags = allLeads[idx].tags || [];
-            // Tag da importação sempre em primeiro (é a que aparece no card)
-            const newTags = Array.from(new Set([tag, ...currentTags]));
-
-            
-            allLeads[idx] = {
-              ...allLeads[idx],
-              company: company || allLeads[idx].company,
-              contact: get("contact") || allLeads[idx].contact,
-              phone: phone || allLeads[idx].phone,
-              website: get("website") || allLeads[idx].website,
-              niche: get("niche") || allLeads[idx].niche,
-              city: get("city") || allLeads[idx].city,
-              gmnLink: gmnLink || allLeads[idx].gmnLink,
-              instagramLink: get("instagramLink") || allLeads[idx].instagramLink,
-              notes: get("notes") ? (allLeads[idx].notes ? `${allLeads[idx].notes}\n${get("notes")}` : get("notes")) : allLeads[idx].notes,
-              googleRating: parseFloat(get("googleRating").replace(",", ".")) || allLeads[idx].googleRating,
-              googleReviews: parseInt(get("googleReviews").replace(/\D/g, ""), 10) || allLeads[idx].googleReviews,
-              icpStars: mapping.icpStars && mapping.icpStars !== "__none__" ? icpStars : allLeads[idx].icpStars,
-              tags: newTags
-            };
-            updatedCount++;
-          }
-        } else {
-          // Create new lead
-          const now = new Date().toISOString();
-          const newLead: Lead = {
-            id: crypto.randomUUID(),
-            company,
-            contact: get("contact"),
-            phone,
-            website: get("website"),
-            niche: get("niche"),
-            city: get("city"),
-            gmnLink,
-            instagramLink: get("instagramLink"),
-            notes: get("notes"),
-            googleRating: parseFloat(get("googleRating").replace(",", ".")) || undefined,
-            googleReviews: parseInt(get("googleReviews").replace(/\D/g, ""), 10) || undefined,
-            icpStars,
-            runsAds: false,
-            tags: [tag],
-            stage: initialStage,
-            createdAt: now,
-            stageChangedAt: now,
-            attachments: [],
-            interactions: [],
-            callNotes: []
-          };
-          allLeads.push(newLead);
-          created++;
-          
-          // Update index for next rows in same import
-          if (kPhone) leadsByPhone.set(kPhone, newLead);
-          if (kCompany) leadsByCompany.set(kCompany, newLead);
-          if (kGmn) leadsByGmn.set(kGmn, newLead);
-        }
-      });
-
-      setLeads(allLeads);
-      
+      const result = importLeadsWithTag(getLeads(), importRows, mapping, tag, initialStage);
+      saveLeads(result.leads);
+      setLeads(result.leads);
       setMappingOpen(false);
       setImportHeaders([]);
       setImportRows([]);
-      refresh();
 
-      if (created === 0 && updatedCount === 0) {
+      if (result.created === 0 && result.updated === 0) {
         toast.warning("Nenhum lead válido encontrado.");
       } else {
         const parts = [];
-        if (created > 0) parts.push(`${created} novos`);
-        if (updatedCount > 0) parts.push(`${updatedCount} atualizados`);
+        if (result.created > 0) parts.push(`${result.created} novos`);
+        if (result.updated > 0) parts.push(`${result.updated} atualizados`);
         toast.success(`Importação concluída: ${parts.join(" • ")}`);
       }
     } catch (err) {
