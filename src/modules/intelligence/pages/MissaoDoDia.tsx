@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import {
   Check, Clock, Compass, ExternalLink, Phone, Users, Target, FileText,
-  Flame, ListChecks, RotateCcw, Undo2, Plus, BarChart3,
+  Flame, ListChecks, RotateCcw, Undo2, Plus, BarChart3, Sparkles,
 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/shared/components/shell";
 import {
@@ -19,12 +19,15 @@ import {
   removeMissionEntry, resetMissionDay, runOneTimeMissionReset,
   MISSION_UPDATED_EVENT, type MissionEntry,
 } from "@/modules/intelligence/services/missionStore";
-import { buildMissionPlan, addMissionTask, addFollowupTask } from "@/modules/intelligence/services/missionPlanner";
+import {
+  buildMissionPlan, addMissionTask, addFollowupTask,
+  type FollowupPick, type MissionItem,
+} from "@/modules/intelligence/services/missionPlanner";
 import { OperationalCapacityCard } from "@/modules/intelligence/components/OperationalCapacityCard";
 import ColdCallOpsPanel from "@/modules/cold-call/components/ColdCallOpsPanel";
 import { openLead } from "@/modules/leads/services/openLead";
 import { on } from "@/shared/services/eventBus";
-import { PRIORITY_CLASSES, PRIORITY_LABEL } from "@/modules/leads/services/leadTasks";
+import { PRIORITY_CLASSES, PRIORITY_LABEL, type TaskPriority } from "@/modules/leads/services/leadTasks";
 import { formatMinutes } from "@/modules/intelligence/services/priorityEngine";
 
 const KIND_ICON: Record<MissionEntry["kind"], JSX.Element> = {
@@ -35,6 +38,90 @@ const KIND_ICON: Record<MissionEntry["kind"], JSX.Element> = {
   script: <FileText className="h-4 w-4" />,
   lead: <Flame className="h-4 w-4" />,
 };
+
+const PRIORITY_WEIGHT: Record<TaskPriority, number> = {
+  urgente: 0,
+  alta: 1,
+  media: 2,
+  baixa: 3,
+};
+
+type CommandCenterAction = {
+  id: string;
+  title: string;
+  reason: string;
+  priority: TaskPriority;
+  kind: MissionEntry["kind"];
+  estimatedMinutes: number;
+  leadId?: string | null;
+  company?: string | null;
+  recommendedTime?: string | null;
+  badges: string[];
+  source: "mission" | "suggestion" | "followup";
+  missionEntry?: MissionEntry;
+  missionItem?: MissionItem;
+  followup?: FollowupPick;
+};
+
+function missionEntryToAction(entry: MissionEntry): CommandCenterAction {
+  return {
+    id: `mission:${entry.id}`,
+    title: entry.title,
+    reason: entry.reason || "Atividade já está na sua missão de hoje.",
+    priority: entry.priority,
+    kind: entry.kind,
+    estimatedMinutes: entry.estimatedMinutes,
+    leadId: entry.leadId,
+    company: entry.company,
+    recommendedTime: entry.recommendedTime,
+    badges: [entry.company || "", entry.niche || "", entry.city || ""].filter(Boolean),
+    source: "mission",
+    missionEntry: entry,
+  };
+}
+
+function missionItemToAction(item: MissionItem): CommandCenterAction {
+  return {
+    id: `suggestion:${item.id}`,
+    title: item.title,
+    reason: item.reason || "Prioridade recomendada pelo planejamento comercial do dia.",
+    priority: item.priority,
+    kind: item.kind,
+    estimatedMinutes: item.estimatedMinutes,
+    leadId: item.leadId,
+    company: item.company,
+    recommendedTime: item.recommendedTime,
+    badges: [item.company || "", item.niche || "", item.city || "", ...item.bullets.slice(0, 1)].filter(Boolean),
+    source: "suggestion",
+    missionItem: item,
+  };
+}
+
+function followupToAction(followup: FollowupPick): CommandCenterAction {
+  const priority: TaskPriority = followup.bucket === "urgente" ? "urgente" : followup.bucket === "quente" ? "alta" : "media";
+  return {
+    id: `followup:${followup.leadId}`,
+    title: `${followup.action} — ${followup.company}`,
+    reason: followup.motivo || "Follow-up recomendado para manter a cadência do lead.",
+    priority,
+    kind: "lead",
+    estimatedMinutes: followup.priority?.estimatedMinutes ?? 8,
+    leadId: followup.leadId,
+    company: followup.company,
+    badges: [followup.stage, followup.temperature.label].filter(Boolean),
+    source: "followup",
+    followup,
+  };
+}
+
+function orderCommandActions(a: CommandCenterAction, b: CommandCenterAction) {
+  const byPriority = PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority];
+  if (byPriority !== 0) return byPriority;
+  const sourceWeight = { mission: 0, followup: 1, suggestion: 2 } as const;
+  const bySource = sourceWeight[a.source] - sourceWeight[b.source];
+  if (bySource !== 0) return bySource;
+  return b.estimatedMinutes - a.estimatedMinutes;
+}
 
 export default function MissaoDoDia() {
   const [tick, setTick] = useState(0);
@@ -70,10 +157,38 @@ export default function MissaoDoDia() {
     (f) => !inMission.has(`${plan.generatedAt.slice(0, 10)}:followup:${f.leadId}`),
   );
 
+  const commandActions = useMemo(() => {
+    const actions = [
+      ...pending.map(missionEntryToAction),
+      ...followupSuggestions.slice(0, 8).map(followupToAction),
+      ...suggestions.map(missionItemToAction),
+    ];
+
+    const unique = new Map<string, CommandCenterAction>();
+    for (const action of actions.sort(orderCommandActions)) {
+      const key = action.leadId ? `lead:${action.leadId}` : action.id;
+      if (!unique.has(key)) unique.set(key, action);
+    }
+    return Array.from(unique.values()).slice(0, 5);
+  }, [pending, followupSuggestions, suggestions]);
+
+  const primaryAction = commandActions[0];
 
   const handleComplete = (e: MissionEntry) => {
     completeMissionEntry(e.id);
     toast({ title: "Atividade concluída", description: e.title });
+    bump();
+  };
+
+  const handleAddSuggestion = (item: MissionItem) => {
+    addMissionTask(item);
+    toast({ title: "Adicionado à missão", description: item.title });
+    bump();
+  };
+
+  const handleAddFollowup = (followup: FollowupPick) => {
+    addFollowupTask(followup);
+    toast({ title: "Follow-up adicionado", description: followup.company });
     bump();
   };
 
@@ -103,8 +218,133 @@ export default function MissaoDoDia() {
         }
       />
 
+      <Card className="border-accent/40 bg-gradient-to-br from-accent/10 via-card to-card shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Badge className="gap-1 bg-accent text-accent-foreground hover:bg-accent">
+                  <Sparkles className="h-3 w-3" /> Sprint 10
+                </Badge>
+                <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Central Inteligente do Dia
+                </span>
+              </div>
+              <CardTitle className="text-xl md:text-2xl">Comece por aqui</CardTitle>
+              <p className="text-sm text-muted-foreground max-w-3xl">
+                As próximas ações foram organizadas a partir da missão, prioridades e follow-ups do dia. A ideia é reduzir leitura e colocar execução na frente.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-background/70 px-4 py-3 text-right">
+              <p className="text-xs text-muted-foreground">Foco agora</p>
+              <p className="text-2xl font-bold text-foreground">{commandActions.length || pending.length}</p>
+              <p className="text-[11px] text-muted-foreground">ação(ões) priorizadas</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {primaryAction ? (
+            <div className="rounded-xl border border-accent/30 bg-background/80 p-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-start gap-3 min-w-0">
+                <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  {KIND_ICON[primaryAction.kind]}
+                </span>
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className={`text-[10px] ${PRIORITY_CLASSES[primaryAction.priority]}`}>
+                      {PRIORITY_LABEL[primaryAction.priority]}
+                    </Badge>
+                    {primaryAction.recommendedTime && (
+                      <Badge variant="outline" className="text-[10px] gap-1">
+                        <Clock className="h-2.5 w-2.5" /> {primaryAction.recommendedTime}
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="text-[10px]">
+                      {primaryAction.source === "mission" ? "Já está na missão" : "Recomendado"}
+                    </Badge>
+                  </div>
+                  <h2 className="text-base md:text-lg font-semibold text-foreground">{primaryAction.title}</h2>
+                  <p className="text-sm text-muted-foreground">Por quê: {primaryAction.reason}</p>
+                  <p className="text-xs text-muted-foreground/80">Tempo estimado: {formatMinutes(primaryAction.estimatedMinutes)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {primaryAction.leadId && (
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => openLead(primaryAction.leadId!, { tab: "interacoes" })}>
+                    <ExternalLink className="h-3.5 w-3.5" /> Abrir lead
+                  </Button>
+                )}
+                {primaryAction.source === "mission" && primaryAction.missionEntry && (
+                  <Button size="sm" className="gap-1 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleComplete(primaryAction.missionEntry!)}>
+                    <Check className="h-3.5 w-3.5" /> Concluir
+                  </Button>
+                )}
+                {primaryAction.source === "suggestion" && primaryAction.missionItem && (
+                  <Button size="sm" className="gap-1 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleAddSuggestion(primaryAction.missionItem!)}>
+                    <Plus className="h-3.5 w-3.5" /> Colocar na missão
+                  </Button>
+                )}
+                {primaryAction.source === "followup" && primaryAction.followup && (
+                  <Button size="sm" className="gap-1 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleAddFollowup(primaryAction.followup!)}>
+                    <Plus className="h-3.5 w-3.5" /> Colocar na missão
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border/70 bg-background/60 p-4">
+              <p className="text-sm font-semibold text-foreground">Nenhuma ação urgente agora.</p>
+              <p className="text-sm text-muted-foreground">Use os objetivos e prioridades abaixo para montar a missão do dia.</p>
+            </div>
+          )}
 
-
+          {commandActions.length > 1 && (
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              {commandActions.slice(1).map((action, index) => (
+                <div key={action.id} className="rounded-lg border border-border/60 bg-background/60 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-accent">#{index + 2}</span>
+                    <Badge variant="outline" className={`text-[10px] ${PRIORITY_CLASSES[action.priority]}`}>
+                      {PRIORITY_LABEL[action.priority]}
+                    </Badge>
+                  </div>
+                  <p className="text-sm font-semibold text-foreground line-clamp-2">{action.title}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{action.reason}</p>
+                  {action.badges.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {action.badges.slice(0, 2).map((badge) => (
+                        <Badge key={badge} variant="secondary" className="text-[10px] font-normal">{badge}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1 pt-1">
+                    {action.leadId && (
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] gap-1" onClick={() => openLead(action.leadId!, { tab: "interacoes" })}>
+                        <ExternalLink className="h-3 w-3" /> Abrir
+                      </Button>
+                    )}
+                    {action.source === "mission" && action.missionEntry && (
+                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] gap-1" onClick={() => handleComplete(action.missionEntry!)}>
+                        <Check className="h-3 w-3" /> Concluir
+                      </Button>
+                    )}
+                    {action.source === "suggestion" && action.missionItem && (
+                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] gap-1" onClick={() => handleAddSuggestion(action.missionItem!)}>
+                        <Plus className="h-3 w-3" /> Missão
+                      </Button>
+                    )}
+                    {action.source === "followup" && action.followup && (
+                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] gap-1" onClick={() => handleAddFollowup(action.followup!)}>
+                        <Plus className="h-3 w-3" /> Missão
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-foreground">Objetivos do Dia</h2>
@@ -202,7 +442,7 @@ export default function MissaoDoDia() {
                   <p className="text-[11px] text-muted-foreground line-clamp-1">{item.reason}</p>
                 </div>
                 <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] gap-1"
-                  onClick={() => { addMissionTask(item); bump(); }}>
+                  onClick={() => handleAddSuggestion(item)}>
                   <Plus className="h-3 w-3" /> Adicionar à Missão
                 </Button>
               </div>
@@ -216,7 +456,7 @@ export default function MissaoDoDia() {
                 </button>
                 <span className="text-[11px] text-muted-foreground truncate hidden md:block max-w-[35%]">{f.motivo}</span>
                 <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] gap-1"
-                  onClick={() => { addFollowupTask(f); bump(); }}>
+                  onClick={() => handleAddFollowup(f)}>
                   <Plus className="h-3 w-3" /> Adicionar
                 </Button>
               </div>
