@@ -212,8 +212,15 @@ const Dashboard = () => {
   const filteredMeetings = meetings.filter(m => filterByDate(m.date, filter, customRange));
 
   const totalCalls = filteredSessions.reduce((sum, s) => sum + (s.calls || 0), 0);
-  const totalMeetings = filteredMeetings.length;
+  // Reuniões podem vir de 3 fontes: agenda, movimentação do pipeline e registro no Pomodoro.
+  // Usamos o maior valor entre elas para não duplicar a mesma reunião.
+  const sessionMeetings = filteredSessions.reduce((sum, s) => sum + (s.meetings || 0), 0);
+  const movedMeetings = filteredEvents.filter(e =>
+    String(e.toStage).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes("reuniao marcada")
+  ).length;
+  const totalMeetings = Math.max(filteredMeetings.length, sessionMeetings, movedMeetings);
   const totalSales = filteredEvents.filter(e => e.toStage === "Ganho").length;
+
   const currentMonthRevenue = transactions.filter(t => t.kind === 'revenue' && isThisMonth(new Date(t.date))).reduce((sum, t) => sum + t.amount, 0);
 
   const stats = [
