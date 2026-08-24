@@ -289,30 +289,29 @@ export default function LeadDetailDrawer({
         instagramContent: lead.instagramLink
       });
 
-      if (result.suggestedICP !== lead.icpStars) {
-        toast.info(`Sugestão de ICP: ${result.suggestedICP} estrelas`, {
-          description: result.reasoning,
-          action: {
-            label: "Aplicar",
-            onClick: () => {
-              persist({ icpStars: result.suggestedICP as ICPStars });
-              toast.success("ICP atualizado com sucesso!");
-            }
-          },
-          duration: 10000,
-        });
+      const stars = Math.max(1, Math.min(5, Math.round(Number(result.suggestedICP) || 0))) as ICPStars;
+
+      if (stars !== lead.icpStars) {
+        setIcpSuggestion({ leadId: lead.id, stars, reasoning: result.reasoning });
         return true;
-      } else if (showSuccessToast) {
-        toast.success(`ICP validado: ${lead.icpStars} estrelas`, {
-          description: "A IA concorda com a classificação atual baseada nas informações disponíveis."
-        });
       }
+      setIcpSuggestion(null);
       return false;
     } catch (e) {
       console.error("Sugestão de ICP falhou:", e);
       if (showSuccessToast) toast.error("Não foi possível obter sugestão da IA agora.");
       return false;
     }
+  };
+
+  const applyIcpSuggestion = () => {
+    if (!icpSuggestion || !lead?.id || icpSuggestion.leadId !== lead.id) return;
+    const stars = icpSuggestion.stars;
+    updateLead(lead.id, { icpStars: stars });
+    setDraft((d) => (d ? { ...d, icpStars: stars } : d));
+    setIcpSuggestion(null);
+    onRefresh();
+    toast.success(`ICP atualizado para ${stars} estrelas`);
   };
 
   useEffect(() => {
