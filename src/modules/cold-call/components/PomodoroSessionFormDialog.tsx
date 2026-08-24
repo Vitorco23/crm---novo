@@ -116,7 +116,7 @@ export function PomodoroSessionFormDialog() {
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button onClick={() => submitForm(form)} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button onClick={() => submitForm({ ...form, r1: 0 })} className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">
               Salvar e iniciar pausa
             </Button>
             <Button variant="ghost" onClick={dismissForm}>Descartar</Button>
