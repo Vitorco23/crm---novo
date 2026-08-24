@@ -202,6 +202,8 @@ export default function MissaoDoDia() {
   const inMission = useMemo(() => new Set(entries.map((e) => e.ref)), [entries]);
   const pending = entries.filter((e) => e.status === "pendente");
   const done = entries.filter((e) => e.status === "concluida");
+  const meetingsDone = done.filter((e) => e.kind === "meetings").length;
+  const remainingCalls = Math.max(0, plan.callsGoal - plan.callsDone);
 
   const suggestions = plan.items.filter((i) => !inMission.has(i.id));
   const followupSuggestions = plan.followups.filter(
@@ -314,6 +316,21 @@ export default function MissaoDoDia() {
         }
       />
 
+      <section className="rounded-xl border border-border/60 bg-card/50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Situação do dia</p>
+            <p className="mt-1 text-sm font-medium text-foreground">
+              {plan.callsDone >= plan.callsGoal ? "No ritmo da meta de ligações." : "Abaixo do ritmo da meta de ligações."}
+            </p>
+          </div>
+          <div className="flex items-center gap-5 text-sm">
+            <div><span className="text-muted-foreground">Ligações</span><p className="font-semibold text-foreground">{plan.callsDone} / {plan.callsGoal}</p></div>
+            <div><span className="text-muted-foreground">Reuniões</span><p className="font-semibold text-foreground">{meetingsDone} / {plan.meetingsGoal}</p></div>
+          </div>
+        </div>
+      </section>
+
       <Card className="border-accent/40 bg-gradient-to-br from-accent/10 via-card to-card shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -368,8 +385,11 @@ export default function MissaoDoDia() {
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border/70 bg-background/60 p-4">
-              <p className="text-sm font-semibold text-foreground">Nenhuma ação urgente agora.</p>
-              <p className="text-sm text-muted-foreground">Use os objetivos e prioridades abaixo para montar a missão do dia.</p>
+              <p className="text-sm font-semibold text-foreground">Nenhuma prioridade definida agora.</p>
+              <p className="text-sm text-muted-foreground">Você ainda pode iniciar a prospecção para avançar a meta do dia.</p>
+              <Button asChild size="sm" className="mt-2 w-fit gap-1 bg-accent text-accent-foreground hover:bg-accent/90">
+                <Link to="/cold-call"><Phone className="h-3.5 w-3.5" /> Ir para prospecção</Link>
+              </Button>
             </div>
           )}
 
@@ -400,6 +420,18 @@ export default function MissaoDoDia() {
           )}
         </CardContent>
       </Card>
+
+      {remainingCalls > 0 && (
+        <Card className="border-border/60 bg-card/50">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Depois dessas prioridades</p>
+              <p className="text-sm text-muted-foreground">Faça mais {remainingCalls} ligações para alcançar a meta de hoje.</p>
+            </div>
+            <Button asChild variant="outline" size="sm" className="gap-1"><Link to="/cold-call"><Phone className="h-3.5 w-3.5" /> Iniciar Cold Call</Link></Button>
+          </CardContent>
+        </Card>
+      )}
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-foreground">Objetivos do Dia</h2>
