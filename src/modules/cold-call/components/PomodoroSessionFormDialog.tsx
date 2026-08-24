@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Phone, Users, UserCheck, CalendarCheck, FileText, Ban, ListTodo, Zap } from "lucide-react";
+import { Phone, Users, UserCheck, CalendarCheck, FileText, Ban, ListTodo } from "lucide-react";
 import { getScripts, getSelectedScript, setSelectedScript, type ScriptOption } from "@/modules/knowledge/services/scripts";
 
 export function PomodoroSessionFormDialog() {
