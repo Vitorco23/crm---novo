@@ -587,7 +587,33 @@ export default function LeadDetailDrawer({
 
           {/* GERAL - Reorganizado por Níveis */}
           <TabsContent value="geral" className="flex-1 overflow-y-auto px-5 py-4 mt-0 space-y-6">
-            
+
+            {/* SPRINT 13 — Resumo e atalhos diretamente no modal */}
+            <section className="rounded-lg border border-accent/30 bg-accent/5 p-3 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-[220px] flex-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Próximo melhor passo</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {step?.nextAction || "Revisar o lead e definir o próximo contato"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {isColdCall && step ? executionMoment(lead) : "Ação recomendada com base nos dados atuais do lead."}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {draft.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[10px]"><a href={`tel:${draft.phone}`} aria-label="Ligar para o lead" title="Ligar"><Phone className="h-3.5 w-3.5" /></a></Button>}
+                  {whatsUrl && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[10px] border-emerald-500/30 text-emerald-500"><a href={whatsUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp" title="WhatsApp"><MessageCircle className="h-3.5 w-3.5" /></a></Button>}
+                  <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[10px]"><a href={mapsUrlFor(draft)} target="_blank" rel="noopener noreferrer" aria-label="Abrir Google Maps" title="Google Maps"><MapPin className="h-3.5 w-3.5" /></a></Button>
+                  {draft.instagramLink && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[10px] border-pink-500/30 text-pink-500"><a href={draft.instagramLink} target="_blank" rel="noopener noreferrer" aria-label="Abrir Instagram" title="Instagram"><Instagram className="h-3.5 w-3.5" /></a></Button>}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                {draft.phone && <span className="rounded bg-background/60 px-2 py-1">Telefone: {draft.phone}</span>}
+                {draft.whatsapp && <span className="rounded bg-background/60 px-2 py-1">WhatsApp: {draft.whatsapp}</span>}
+                {draft.city && <span className="rounded bg-background/60 px-2 py-1">Cidade: {draft.city}</span>}
+              </div>
+            </section>
+
             {/* NÍVEL 1 - Essencial: Próxima Ação */}
             {isColdCall && step && (
               <section className="rounded-lg border border-accent/30 bg-accent/5 p-3">
