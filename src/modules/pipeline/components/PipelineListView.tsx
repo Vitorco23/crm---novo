@@ -5,7 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowDown, ArrowUp, ChevronsUpDown, Star, MapPin, Paperclip, AlertCircle } from "lucide-react";
+import {
+  ArrowDown, ArrowUp, ChevronsUpDown, Star, MapPin, Paperclip, AlertCircle,
+  Phone, MessageCircle, Instagram, ExternalLink,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -20,6 +23,36 @@ interface Props {
   onRowClick: (lead: Lead) => void;
   onChangeStage: (id: string, stage: PipelineStage) => void;
   showContractValue?: boolean;
+}
+
+function mapsUrlFor(lead: Lead) {
+  if (lead.gmnLink) return lead.gmnLink;
+  const q = encodeURIComponent(`${lead.company} ${lead.city || ""}`.trim());
+  return q ? `https://www.google.com/maps/search/?api=1&query=${q}` : "";
+}
+
+function QuickLink({
+  href, title, children, className = "",
+}: {
+  href?: string;
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target={href.startsWith("http") ? "_blank" : undefined}
+      rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+      title={title}
+      aria-label={title}
+      onClick={(e) => e.stopPropagation()}
+      className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background/70 text-muted-foreground transition-colors hover:border-accent/60 hover:bg-accent/10 hover:text-accent ${className}`}
+    >
+      {children}
+    </a>
+  );
 }
 
 export default function PipelineListView({
@@ -78,7 +111,7 @@ export default function PipelineListView({
             <Th k="company">Empresa</Th>
             <Th k="stage">Status</Th>
             <Th k="contact">Contato</Th>
-            <Th k="phone">Telefone</Th>
+            <Th k="phone">Telefone e atalhos</Th>
             <Th k="niche">Nicho</Th>
             <Th k="city">Cidade</Th>
             <Th k="icpStars">ICP</Th>
@@ -97,6 +130,10 @@ export default function PipelineListView({
           {sorted.map((lead) => {
             const isSelected = selectedIds.has(lead.id);
             const stale = (Date.now() - new Date(lead.stageChangedAt).getTime()) / 86400000 >= 1;
+            const whats = lead.whatsapp || lead.phone;
+            const whatsUrl = whats ? `https://wa.me/${whats.replace(/\D/g, "")}` : "";
+            const mapsUrl = mapsUrlFor(lead);
+
             return (
               <tr
                 key={lead.id}
@@ -131,7 +168,25 @@ export default function PipelineListView({
                   </Select>
                 </td>
                 <td className="px-3 py-1.5 text-muted-foreground max-w-[160px] truncate">{lead.contact || "—"}</td>
-                <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">{lead.phone || "—"}</td>
+                <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="max-w-[120px] truncate" title={lead.phone || undefined}>{lead.phone || "—"}</span>
+                    <div className="flex items-center gap-1">
+                      <QuickLink href={lead.phone ? `tel:${lead.phone}` : ""} title="Ligar para o lead">
+                        <Phone className="h-3.5 w-3.5" />
+                      </QuickLink>
+                      <QuickLink href={whatsUrl} title="Abrir WhatsApp" className="hover:text-emerald-500 hover:border-emerald-500/60 hover:bg-emerald-500/10">
+                        <MessageCircle className="h-3.5 w-3.5" />
+                      </QuickLink>
+                      <QuickLink href={mapsUrl} title="Abrir Google/Maps">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </QuickLink>
+                      <QuickLink href={lead.instagramLink} title="Abrir Instagram" className="hover:text-pink-500 hover:border-pink-500/60 hover:bg-pink-500/10">
+                        <Instagram className="h-3.5 w-3.5" />
+                      </QuickLink>
+                    </div>
+                  </div>
+                </td>
                 <td className="px-3 py-1.5">
                   {lead.niche ? <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{lead.niche}</Badge> : <span className="text-muted-foreground">—</span>}
                 </td>
