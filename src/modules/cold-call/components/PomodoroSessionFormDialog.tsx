@@ -16,7 +16,6 @@ export function PomodoroSessionFormDialog() {
     connections: 0, 
     decisionMakers: 0, 
     meetings: 0, 
-    r1: 0, 
     followsToDo: 0, 
     negatives: 0, 
     niche: "", 
