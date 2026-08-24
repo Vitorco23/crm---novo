@@ -35,10 +35,8 @@ export function PomodoroSessionFormDialog() {
       connections: state.tally?.connections ?? 0,
       decisionMakers: state.tally?.decisionMakers ?? 0,
       meetings: state.tally?.meetings ?? 0,
-      r1: state.tally?.r1 ?? 0,
       followsToDo: state.tally?.followsToDo ?? 0,
       negatives: state.tally?.negatives ?? 0,
-
       niche: state.niche || "",
       scriptUsed: getSelectedScript(),
     });
