@@ -692,13 +692,15 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
       for (const l of existing) {
         const kPhone = (l.phoneNormalized || (l.phone ? l.phone.replace(/\D+/g, "") : "")).trim();
-        const kCompany = (l.company || "").trim().toLowerCase();
+        const lCity = (l.city || "").trim().toLowerCase();
+        const kCompany = lCity ? `${(l.company || "").trim().toLowerCase()}|${lCity}` : "";
         const kGmn = (l.gmnLink || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
         
         if (kPhone) leadsByPhone.set(kPhone, l);
-        if (kCompany) leadsByCompany.set(kCompany, l);
+        if (kCompany && kCompany !== "|") leadsByCompany.set(kCompany, l);
         if (kGmn) leadsByGmn.set(kGmn, l);
       }
+
 
       const allLeads = [...existing];
       const initialStage = stages[0];
