@@ -50,7 +50,7 @@ export function importLeadsWithTag(
   selectedTag: string,
   initialStage: PipelineStage,
 ): LeadImportResult {
-  const leads = existing.map((lead) => ({ ...lead, tags: lead.tags ? [...lead.tags] : [] }));
+  const leads: Lead[] = existing.map((lead) => ({ ...lead, tags: lead.tags ? [...lead.tags] : [] }));
   const byPhone = new Map<string, Lead>();
   const byCompanyCity = new Map<string, Lead>();
   const byGmn = new Map<string, Lead>();
