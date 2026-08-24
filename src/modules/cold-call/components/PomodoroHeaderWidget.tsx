@@ -141,15 +141,6 @@ export function PomodoroHeaderWidget() {
         </button>
         <button
           type="button"
-          onClick={() => incrementTally("r1")}
-          title="Registrar R1"
-          className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
-        >
-          <Zap className="h-3.5 w-3.5 text-accent" />
-          <span className="text-xs font-bold tabular-nums text-foreground">{tally.r1}</span>
-        </button>
-        <button
-          type="button"
           onClick={() => incrementTally("followsToDo")}
           title="Registrar Follows a fazer"
           className="flex items-center gap-1 px-2 h-7 rounded-md border border-border bg-card hover:bg-accent/10 transition-colors"
