@@ -221,6 +221,8 @@ function OutboundFunnelCard({ filter, custom }: { filter: Filter; custom?: Custo
 const Dashboard = () => {
   const [filter, setFilter] = useState<Filter>("day");
   const [customRange, setCustomRange] = useState<CustomRange | undefined>();
+  const [customDraft, setCustomDraft] = useState<CustomRange | undefined>();
+  const [customOpen, setCustomOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   // Stats
@@ -276,21 +278,29 @@ const Dashboard = () => {
           ))}
           
           {filter === "custom" && (
-            <Popover>
+            <Popover open={customOpen} onOpenChange={setCustomOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs px-3 gap-2 border-accent/30 text-accent">
+                <Button variant="outline" size="sm" className="h-8 text-xs px-3 gap-2 border-accent/30 text-accent" onClick={() => setCustomDraft(customRange)}>
                   <CalendarIcon className="h-3.5 w-3.5" />
-                  {customRange ? `${format(customRange.start, "dd/MM")} - ${format(customRange.end, "dd/MM")}` : "Selecionar"}
+                  {customRange ? `${format(customRange.start, "dd/MM/yyyy")} — ${format(customRange.end, "dd/MM/yyyy")}` : "Selecionar período"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
+                <div className="border-b border-border/50 px-4 py-3">
+                  <p className="text-xs font-semibold text-foreground">Período personalizado</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Escolha a data inicial e a data final.</p>
+                </div>
                 <CalendarUI
                   mode="range"
-                  selected={customRange ? { from: customRange.start, to: customRange.end } : undefined}
-                  onSelect={(range) => range?.from && range?.to && setCustomRange({ start: range.from, end: range.to })}
+                  selected={customDraft ? { from: customDraft.start, to: customDraft.end } : undefined}
+                  onSelect={(range) => range?.from && setCustomDraft(range.to ? { start: range.from, end: range.to } : { start: range.from, end: range.from })}
                   numberOfMonths={2}
                   locale={ptBR}
                 />
+                <div className="flex items-center justify-between gap-2 border-t border-border/50 p-3">
+                  <Button size="sm" variant="ghost" onClick={() => { setCustomDraft(undefined); setCustomOpen(false); }}>Cancelar</Button>
+                  <Button size="sm" disabled={!customDraft} onClick={() => { if (customDraft) setCustomRange(customDraft); setCustomOpen(false); }}>Aplicar período</Button>
+                </div>
               </PopoverContent>
             </Popover>
           )}
