@@ -40,7 +40,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { 
     title: "Cold Call",          
-    url: "/",              
+    url: "/cold-call",      
     icon: PhoneCall,    
     group: "operacao",   
     end: true, 
