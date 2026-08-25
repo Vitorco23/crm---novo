@@ -18,9 +18,15 @@ function startOfToday(): number {
   return d.getTime();
 }
 
+function endOfToday(): number {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.getTime();
+}
+
 function isToday(iso: string): boolean {
   const t = new Date(iso).getTime();
-  return t >= startOfToday();
+  return Number.isFinite(t) && t >= startOfToday() && t <= endOfToday();
 }
 
 export interface DailyGoals {
@@ -60,7 +66,7 @@ export interface DailyTotals {
 }
 
 export function computeDailyTotals(): DailyTotals {
-  const sessions = getSessions().filter((s) => isToday(s.startTime));
+  const sessions = getSessions().filter((s) => isToday(s.startTime || s.endTime));
   const totals = sessions.reduce(
     (acc, s) => {
       acc.calls += s.calls || 0;
