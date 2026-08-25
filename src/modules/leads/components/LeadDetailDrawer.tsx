@@ -588,68 +588,34 @@ export default function LeadDetailDrawer({
           {/* GERAL - Reorganizado por Níveis */}
           <TabsContent value="geral" className="flex-1 overflow-y-auto px-5 py-4 mt-0 space-y-6">
 
-            {/* SPRINT 13 — Resumo e atalhos diretamente no modal */}
-            <section className="rounded-lg border border-accent/30 bg-accent/5 p-3 space-y-3">
+            {/* SPRINT 2 — Resumo executivo do lead */}
+            <section className="rounded-lg border border-accent/30 bg-accent/5 p-4 space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-[220px] flex-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Próximo melhor passo</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {step?.nextAction || "Revisar o lead e definir o próximo contato"}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {isColdCall && step ? executionMoment(lead) : "Ação recomendada com base nos dados atuais do lead."}
-                  </p>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Resumo executivo</p>
+                    <Badge variant="outline" className={`${prio.cls} text-[10px]`}>{prio.label}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{temp}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Próxima ação</p>
+                    <p className="mt-1 text-base font-semibold text-foreground">{step?.nextAction || "Revisar o lead e definir o próximo contato"}</p>
+                  </div>
+                  <div className="grid gap-2 text-xs sm:grid-cols-2">
+                    <div><p className="font-semibold text-muted-foreground">Motivo</p><p className="line-clamp-2 text-foreground/80">{step?.objective || draft.notes || "Sem motivo registrado."}</p></div>
+                    <div><p className="font-semibold text-muted-foreground">Última interação</p><p className="text-foreground/80">{callNotes.length ? "Interação registrada — veja a aba Interações." : "Sem contato registrado."}</p></div>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {draft.phone && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[10px]"><a href={`tel:${draft.phone}`} aria-label="Ligar para o lead" title="Ligar"><Phone className="h-3.5 w-3.5" /></a></Button>}
-                  {whatsUrl && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[10px] border-emerald-500/30 text-emerald-500"><a href={whatsUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp" title="WhatsApp"><MessageCircle className="h-3.5 w-3.5" /></a></Button>}
-                  <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[10px]"><a href={mapsUrlFor(draft)} target="_blank" rel="noopener noreferrer" aria-label="Abrir Google Maps" title="Google Maps"><MapPin className="h-3.5 w-3.5" /></a></Button>
-                  {draft.instagramLink && <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[10px] border-pink-500/30 text-pink-500"><a href={draft.instagramLink} target="_blank" rel="noopener noreferrer" aria-label="Abrir Instagram" title="Instagram"><Instagram className="h-3.5 w-3.5" /></a></Button>}
+                  {draft.phone && <Button asChild size="sm" className="h-8 gap-1 bg-accent px-2 text-[10px] text-accent-foreground hover:bg-accent/90"><a href={`tel:${draft.phone}`} aria-label="Ligar agora"><Phone className="h-3.5 w-3.5" /> Ligar</a></Button>}
+                  {whatsUrl && <Button asChild size="sm" variant="outline" className="h-8 px-2 text-[10px] border-emerald-500/30 text-emerald-500"><a href={whatsUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp"><MessageCircle className="h-3.5 w-3.5" /></a></Button>}
+                  <Button asChild size="sm" variant="outline" className="h-8 px-2 text-[10px]"><a href={mapsUrlFor(draft)} target="_blank" rel="noopener noreferrer" aria-label="Abrir Google Maps"><MapPin className="h-3.5 w-3.5" /></a></Button>
+                  {draft.instagramLink && <Button asChild size="sm" variant="outline" className="h-8 px-2 text-[10px] border-pink-500/30 text-pink-500"><a href={draft.instagramLink} target="_blank" rel="noopener noreferrer" aria-label="Abrir Instagram"><Instagram className="h-3.5 w-3.5" /></a></Button>}
+                  {isColdCall && step && <Button size="sm" variant="outline" className="h-8 gap-1 px-2 text-[10px]" onClick={() => setScriptOpen(true)}><FileText className="h-3.5 w-3.5" /> Script</Button>}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-                {draft.phone && <span className="rounded bg-background/60 px-2 py-1">Telefone: {draft.phone}</span>}
-                {draft.whatsapp && <span className="rounded bg-background/60 px-2 py-1">WhatsApp: {draft.whatsapp}</span>}
-                {draft.city && <span className="rounded bg-background/60 px-2 py-1">Cidade: {draft.city}</span>}
-              </div>
+              {isColdCall && step && <Button size="sm" className="h-8 w-full gap-1 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setConcluirOpen(true)}><CheckCircle2 className="h-3.5 w-3.5" /> Concluir próxima ação</Button>}
             </section>
-
-            {/* SPRINT 14 — Leitura comercial objetiva */}
-            <section className="rounded-lg border border-primary/25 bg-primary/5 p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Leitura comercial</p>
-              </div>
-              <LeadExecutiveSummary lead={lead} />
-              {draft.notes && (
-                <div className="rounded bg-background/50 px-2.5 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Contexto registrado</p>
-                  <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-foreground/80">{draft.notes}</p>
-                </div>
-              )}
-            </section>
-
-            {/* NÍVEL 1 - Essencial: Próxima Ação */}
-            {isColdCall && step && (
-              <section className="rounded-lg border border-accent/30 bg-accent/5 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] uppercase tracking-wider text-accent font-bold flex items-center gap-1">
-                    <Target className="h-3 w-3" /> Próxima Ação
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">{executionMoment(lead)}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs mb-2">
-                  <div className="bg-background/40 px-2 py-1 rounded">T{step.attempt} · {step.channel}</div>
-                  <div className="font-medium text-accent">{step.nextAction}</div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" className="h-7 text-xs bg-accent text-accent-foreground flex-1" onClick={() => setConcluirOpen(true)}>
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Concluir
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={copyScript}><Copy className="h-3 w-3" /></Button>
-                </div>
-              </section>
-            )}
 
             {/* NÍVEL 1 - Essencial: Mover e Marcar */}
             <div className="grid grid-cols-2 gap-3">
