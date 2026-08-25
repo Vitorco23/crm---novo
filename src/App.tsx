@@ -69,7 +69,8 @@ const App = () => (
                       <ProtectedRoute>
                         <AppLayout>
                           <Routes>
-                            <Route path="/" element={<ColdCall />} />
+                            <Route path="/" element={<Navigate to="/cold-call" replace />} />
+                            <Route path="/cold-call" element={<ColdCall />} />
                             <Route path="/oportunidades" element={<Oportunidades />} />
                             <Route path="/onboarding" element={<Onboarding />} />
                             <Route path="/scrum" element={<ManagementShell title="Plano de Ação" description="Gestão de tarefas e sprints"><Scrum /></ManagementShell>} />
