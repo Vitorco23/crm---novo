@@ -253,8 +253,14 @@ export default function CentralDecisao() {
         />
       </div>
 
-      {/* 1. DECISÃO OU PRIORIDADE PRINCIPAL (MISSÃO DO DIA) */}
-      <MissionOfTheDayCard />
+      {/* SPRINT 3 — Decisão explica; Missão do Dia executa */}
+      <Card className="border-accent/30 bg-accent/5">
+        <CardContent className="space-y-1.5 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Por que estas ações foram escolhidas?</p>
+          <p className="text-sm font-semibold text-foreground">Esta tela mostra evidências, riscos e oportunidades. Para executar a prioridade, use a Missão do Dia.</p>
+          <p className="text-xs text-muted-foreground">As recomendações detalhadas aparecem abaixo; a execução permanece concentrada na tela operacional.</p>
+        </CardContent>
+      </Card>
 
       {/* 2. EVIDÊNCIAS QUE SUSTENTAM A RECOMENDAÇÃO (DIRETOR COMERCIAL IA + ALERTAS) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
