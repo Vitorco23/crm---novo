@@ -169,6 +169,23 @@ export default function MetricasDiarias() {
 
   return (
     <div className="space-y-5">
+      {/* SPRINT 3 — Conclusão antes dos detalhes */}
+      <Card className="border-accent/30 bg-accent/5">
+        <CardContent className="space-y-2 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Conclusão do dia</p>
+          <p className="text-base font-semibold text-foreground">{diagnosis.summary}</p>
+          {diagnosis.priorities[0] ? (
+            <div className="rounded-md bg-background/50 p-3 text-sm">
+              <p className="font-semibold text-foreground">Principal gargalo: {diagnosis.priorities[0].stage}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{diagnosis.priorities[0].explanation}</p>
+              <p className="mt-1 text-xs font-medium text-accent">Próxima ação: {diagnosis.priorities[0].action}</p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Preencha e salve os dados para identificar o principal gargalo.</p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* 2. Campos gerais */}
       <Card>
         <CardHeader className="pb-3">
