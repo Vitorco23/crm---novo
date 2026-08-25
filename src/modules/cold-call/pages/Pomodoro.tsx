@@ -211,6 +211,7 @@ export default function Pomodoro() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
 
       <EditSessionDialog
