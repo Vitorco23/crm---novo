@@ -89,12 +89,17 @@ const TITLE_BY_CHANNEL: Record<CadenceChannel, string> = {
   "E-mail": "Como terminou esse e-mail?",
 };
 
+function terminalColdCallStage(): string {
+  const stages = getStagesForPipeline("cold_call");
+  return stages.find((stage) => /conclu|encerr|final/i.test(stage)) || stages[stages.length - 1] || "Tentativas Concluídas";
+}
+
 function nextAttemptStage(currentStage: string): string {
   const m = currentStage.match(/tentativa\s*(\d+)/i);
   if (/novo lead/i.test(currentStage)) return "Tentativa 1";
   if (!m) return "Tentativa 1";
   const n = parseInt(m[1], 10);
-  if (n >= 9) return "Tentativas Concluídas";
+  if (n >= 9) return terminalColdCallStage();
   return `Tentativa ${n + 1}`;
 }
 
@@ -205,11 +210,11 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
       note(labelFor(outcome));
       if (channel === "Ligação" || channel === "WhatsApp") {
         updateLead(lead.id, { phoneInvalid: true });
-        updateLeadStage(lead.id, "Tentativas Concluídas");
-        toast.success("Lead marcado como telefone inválido e movido para Tentativas Concluídas");
+        updateLeadStage(lead.id, terminalColdCallStage());
+        toast.success("Lead marcado como contato inválido e encerrado na cadência");
       } else {
         updateLeadStage(lead.id, "Tentativas Concluídas");
-        toast.success("Lead movido para Tentativas Concluídas");
+        toast.success("Lead encerrado na cadência");
       }
     } else if (outcome === "outro") {
       if (!freeText.trim()) { toast.error("Descreva o desfecho"); return; }
