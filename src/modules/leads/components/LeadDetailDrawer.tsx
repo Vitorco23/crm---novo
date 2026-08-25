@@ -266,7 +266,7 @@ export default function LeadDetailDrawer({
     return () => window.removeEventListener("paste", onPaste);
   }, [open]);
 
-  const runIcpSuggestion = async (showSuccessToast = true) => {
+  const runIcpSuggestion = async (showSuccessToast = true, throwOnError = false) => {
     if (!lead?.id) return false;
     try {
       const context = [
@@ -300,6 +300,7 @@ export default function LeadDetailDrawer({
     } catch (e) {
       console.error("Sugestão de ICP falhou:", e);
       if (showSuccessToast) toast.error("Não foi possível obter sugestão da IA agora.");
+      if (throwOnError) throw e;
       return false;
     }
   };
@@ -461,7 +462,7 @@ export default function LeadDetailDrawer({
   const handleRefreshAI = async () => {
     setAnalyzingNoteId("ai-global");
     try {
-      const hadSuggestion = await runIcpSuggestion(false);
+      const hadSuggestion = await runIcpSuggestion(false, true);
       if (hadSuggestion) {
         setTab("observacoes");
         toast.success("Sugestão de ICP disponível na aba Notas");
