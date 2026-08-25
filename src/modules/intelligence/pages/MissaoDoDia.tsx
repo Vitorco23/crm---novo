@@ -357,15 +357,16 @@ export default function MissaoDoDia() {
         </CardHeader>
         <CardContent className="space-y-3">
           {primaryAction ? (
-            <div className="rounded-xl border border-accent/30 bg-background/80 p-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="rounded-xl border-2 border-accent/60 bg-accent/5 p-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between shadow-sm">
+              <div className="absolute" aria-hidden="true" />
               <div className="flex items-start gap-3 min-w-0">
                 <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
                   {KIND_ICON[primaryAction.kind]}
                 </span>
                 <div className="min-w-0 space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className={`text-[10px] ${PRIORITY_CLASSES[primaryAction.priority]}`}>
-                      {PRIORITY_LABEL[primaryAction.priority]}
+                    <Badge className="text-[10px] bg-accent text-accent-foreground border-transparent">
+                      PRIORIDADE Nº 1
                     </Badge>
                     <Badge variant="secondary" className="text-[10px]">
                       {sourceLabel(primaryAction)}
@@ -376,8 +377,8 @@ export default function MissaoDoDia() {
                       </Badge>
                     )}
                   </div>
-                  <h2 className="text-base md:text-lg font-semibold text-foreground">{primaryAction.title}</h2>
-                  <p className="text-sm text-muted-foreground">Por quê: {evidenceLine(primaryAction)}</p>
+                  <h2 className="text-lg md:text-xl font-bold text-foreground">{primaryAction.title}</h2>
+                  <p className="text-sm font-medium text-foreground/90">{evidenceLine(primaryAction)}</p>
                   <p className="text-xs text-muted-foreground/80">Tempo estimado: {formatMinutes(primaryAction.estimatedMinutes)}</p>
                 </div>
               </div>
@@ -394,7 +395,9 @@ export default function MissaoDoDia() {
           )}
 
           {commandActions.length > 1 && (
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Depois disso</p>
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
               {commandActions.slice(1).map((action, index) => (
                 <div key={action.id} className="rounded-lg border border-border/60 bg-background/60 p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
@@ -416,6 +419,7 @@ export default function MissaoDoDia() {
                   <div className="flex items-center gap-1 pt-1">{renderActionButtons(action, true)}</div>
                 </div>
               ))}
+              </div>
             </div>
           )}
         </CardContent>
