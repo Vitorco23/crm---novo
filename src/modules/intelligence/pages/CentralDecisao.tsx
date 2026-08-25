@@ -41,7 +41,6 @@ import { computeDailyGoals, computeDailyTotals } from "@/modules/cold-call/servi
 import { uload, usave } from "@/shared/services/userStorage";
 
 import PriorityCard from "@/modules/intelligence/components/PriorityCard";
-import MissionOfTheDayCard from "@/modules/intelligence/components/MissionOfTheDayCard";
 import DiretorComercialIACard from "@/modules/intelligence/components/DiretorComercialIACard";
 import PriorityLeadsBlock from "@/modules/intelligence/components/PriorityLeadsBlock";
 
