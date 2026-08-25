@@ -325,6 +325,17 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {/* SPRINT 5 — interpretação antes dos números */}
+      <Card className="border-accent/30 bg-accent/5">
+        <CardContent className="space-y-1.5 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Como está a operação?</p>
+          <p className="text-base font-semibold text-foreground">
+            {totalCalls === 0 ? "Ainda sem atividade registrada neste período." : totalMeetings === 0 ? "A operação está ativa, mas ainda não há reuniões registradas." : "A operação está avançando com atividade e reuniões registradas."}
+          </p>
+          <p className="text-xs text-muted-foreground">Período ativo: {filterLabels[filter]} · Os números detalhados aparecem abaixo.</p>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <Card key={stat.label} className="border-border/40 bg-card/50 overflow-hidden relative">
