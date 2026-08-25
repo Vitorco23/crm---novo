@@ -43,6 +43,9 @@ export default function Pomodoro() {
     <div className="max-w-5xl mx-auto space-y-6">
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* EXECUÇÃO: timer e registro do trabalho */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Execução</p>
         {/* Timer */}
         <Card>
           <CardContent className="pt-6 flex flex-col items-center">
@@ -127,6 +130,11 @@ export default function Pomodoro() {
           </CardContent>
         </Card>
 
+        </div>
+
+        {/* RESULTADO: histórico do que foi registrado */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Resultado</p>
         {/* Session Log */}
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
