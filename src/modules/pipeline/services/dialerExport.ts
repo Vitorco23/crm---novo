@@ -77,7 +77,7 @@ function leadMemory(l: Lead): string {
     diagnosis?.next_action ? `Próxima ação: ${diagnosis.next_action}` : "",
     l.contact ? `Decisor: ${l.contact}` : "",
     l.notes ? `Notas: ${l.notes}` : "",
-  ].map((v) => String(v || "").replace(/\\s+/g, " ").trim()).filter(Boolean);
+  ].map((v) => String(v || "").replace(/\s+/g, " ").trim()).filter(Boolean);
   return parts.join(" | ").slice(0, 1200);
 }
 
