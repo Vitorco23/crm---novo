@@ -358,7 +358,6 @@ export default function MissaoDoDia() {
         <CardContent className="space-y-3">
           {primaryAction ? (
             <div className="rounded-xl border-2 border-accent/60 bg-accent/5 p-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between shadow-sm">
-              <div className="absolute" aria-hidden="true" />
               <div className="flex items-start gap-3 min-w-0">
                 <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
                   {KIND_ICON[primaryAction.kind]}
