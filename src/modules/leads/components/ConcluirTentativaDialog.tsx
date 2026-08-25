@@ -213,7 +213,7 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
         updateLeadStage(lead.id, terminalColdCallStage());
         toast.success("Lead marcado como contato inválido e encerrado na cadência");
       } else {
-        updateLeadStage(lead.id, "Tentativas Concluídas");
+        updateLeadStage(lead.id, terminalColdCallStage());
         toast.success("Lead encerrado na cadência");
       }
     } else if (outcome === "outro") {
