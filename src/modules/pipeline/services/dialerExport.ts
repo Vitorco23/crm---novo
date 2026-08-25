@@ -55,6 +55,47 @@ export interface DialerRow {
   Nome: string;
   "E-mail": string;
   Empresa: string;
+  WhatsApp: string;
+  Cidade: string;
+  Nicho: string;
+  Instagram: string;
+  "Google Meu Negócio": string;
+  Website: string;
+  Decisor: string;
+  Temperatura: string;
+  Prioridade: string;
+  Etapa: string;
+  Notas: string;
+  "Memória do Lead": string;
+}
+
+function leadMemory(l: Lead): string {
+  const diagnosis = l.autoDiagnosis;
+  const parts = [
+    diagnosis?.summary,
+    diagnosis?.attention ? `Objeção/atenção: ${diagnosis.attention}` : "",
+    diagnosis?.next_action ? `Próxima ação: ${diagnosis.next_action}` : "",
+    l.contact ? `Decisor: ${l.contact}` : "",
+    l.notes ? `Notas: ${l.notes}` : "",
+  ].map((v) => String(v || "").replace(/\\s+/g, " ").trim()).filter(Boolean);
+  return parts.join(" | ").slice(0, 1200);
+}
+
+function leadExportFields(l: Lead) {
+  return {
+    WhatsApp: l.whatsapp || "",
+    Cidade: l.city || "",
+    Nicho: l.niche || "",
+    Instagram: l.instagramLink || "",
+    "Google Meu Negócio": l.gmnLink || "",
+    Website: l.website || "",
+    Decisor: l.contact || "",
+    Temperatura: l.temperature || l.autoDiagnosis?.temperature || "",
+    Prioridade: l.icpStars ? `${l.icpStars} estrelas` : "",
+    Etapa: l.stage || "",
+    Notas: l.notes || "",
+    "Memória do Lead": leadMemory(l),
+  };
 }
 
 export interface ExportStats {
@@ -91,6 +132,7 @@ export function buildDialerRows(leads: Lead[]): { rows: DialerRow[]; stats: Expo
       Nome: company,
       "E-mail": email,
       Empresa: company,
+      ...leadExportFields(l),
     });
   }
 
@@ -122,9 +164,9 @@ export function buildExportFilename(opts: {
 }
 
 export function downloadDialerXlsx(rows: DialerRow[], filename: string): void {
-  const header = ["Telefone", "Nome", "E-mail", "Empresa"];
+  const header = ["Telefone", "Nome", "E-mail", "Empresa", "WhatsApp", "Cidade", "Nicho", "Instagram", "Google Meu Negócio", "Website", "Decisor", "Temperatura", "Prioridade", "Etapa", "Notas", "Memória do Lead"];
   const ws = XLSX.utils.json_to_sheet(rows, { header });
-  ws["!cols"] = [{ wch: 16 }, { wch: 24 }, { wch: 28 }, { wch: 32 }];
+  ws["!cols"] = [16, 24, 28, 32, 16, 18, 22, 32, 36, 32, 24, 14, 14, 20, 36, 80].map((wch) => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Contatos");
   XLSX.writeFile(wb, sanitizeFilename(filename));
@@ -137,10 +179,22 @@ export function downloadCrmXlsx(leads: Lead[], filename: string): number {
     Telefone: l.phone || "",
     Cidade: l.city || "",
     Nicho: l.niche || "",
+    "E-mail": l.email || "",
+    WhatsApp: l.whatsapp || "",
+    Instagram: l.instagramLink || "",
+    "Google Meu Negócio": l.gmnLink || "",
+    Website: l.website || "",
+    Decisor: l.contact || "",
+    Temperatura: l.temperature || l.autoDiagnosis?.temperature || "",
+    Prioridade: l.icpStars ? `${l.icpStars} estrelas` : "",
+    Etapa: l.stage || "",
+    Notas: l.notes || "",
+    "Memória do Lead": leadMemory(l),
   }));
   const ws = XLSX.utils.json_to_sheet(rows, {
-    header: ["Empresa", "Telefone", "Cidade", "Nicho"],
+    header: ["Empresa", "Telefone", "Cidade", "Nicho", "E-mail", "WhatsApp", "Instagram", "Google Meu Negócio", "Website", "Decisor", "Temperatura", "Prioridade", "Etapa", "Notas", "Memória do Lead"],
   });
+  ws["!cols"] = [32, 18, 18, 22, 28, 16, 32, 36, 32, 24, 14, 14, 20, 36, 80].map((wch) => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Leads");
   XLSX.writeFile(wb, sanitizeFilename(filename));
