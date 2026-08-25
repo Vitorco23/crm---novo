@@ -241,7 +241,11 @@ export default function Scrum() {
           {!currentSprint ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
-                Nenhum sprint criado para <strong>{scopeLabel}</strong>. Crie um sprint para começar.
+                <div className="space-y-3">
+                  <p className="text-base font-semibold text-foreground">Nenhum plano ativo</p>
+                  <p className="text-sm text-muted-foreground">Seu Plano de Ação transforma um gargalo identificado pelo CRM em um foco semanal.</p>
+                  <Button size="sm" className="gap-1 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setSprintDialogOpen(true)}><Plus className="h-3.5 w-3.5" /> Criar plano de ação</Button>
+                </div>
               </CardContent>
             </Card>
           ) : (
