@@ -6,6 +6,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { getAllTags } from "@/shared/services/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export type LeadFieldKey =
@@ -77,10 +79,14 @@ interface Props {
 export default function ImportMappingDialog({ open, onOpenChange, headers, rows, onConfirm }: Props) {
   const [mapping, setMapping] = useState<Record<LeadFieldKey, string>>(() => autoDetect(headers));
   const [selectedTag, setSelectedTag] = useState<string>("GMN");
+  const [customTag, setCustomTag] = useState<string>("");
+  const availableTags = getAllTags();
 
   // reset when a new file is opened (headers change)
   useEffect(() => {
     setMapping(autoDetect(headers));
+    setSelectedTag("GMN");
+    setCustomTag("");
   }, [headers]);
 
 
@@ -174,11 +180,28 @@ export default function ImportMappingDialog({ open, onOpenChange, headers, rows,
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="GMN">GMN</SelectItem>
-                <SelectItem value="LUPUS">LUPUS</SelectItem>
-                <SelectItem value="INBOUND">INBOUND</SelectItem>
+                {availableTags.map((tag) => (
+                  <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-1 mt-1">
+              <Input
+                value={customTag}
+                onChange={(e) => setCustomTag(e.target.value.toUpperCase())}
+                placeholder="Nova tag"
+                className="h-7 w-[100px] text-xs"
+                maxLength={30}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                disabled={!customTag.trim()}
+                onClick={() => { setSelectedTag(customTag.trim().toUpperCase()); setCustomTag(""); }}
+              >Usar</Button>
+            </div>
           </div>
           
           <div className="flex items-center gap-2">
