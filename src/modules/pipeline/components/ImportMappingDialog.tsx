@@ -180,7 +180,7 @@ export default function ImportMappingDialog({ open, onOpenChange, headers, rows,
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {availableTags.map((tag) => (
+                {Array.from(new Set([selectedTag, ...availableTags].filter(Boolean))).map((tag) => (
                   <SelectItem key={tag} value={tag}>{tag}</SelectItem>
                 ))}
               </SelectContent>
