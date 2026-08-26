@@ -428,9 +428,7 @@ export function getPipelineForStage(stage: PipelineStage): PipelineName {
 
 // Dispara lembretes sem dependência circular no carregamento inicial.
 function triggerStageReminders(lead: Lead, stage: PipelineStage) {
-  void import("@/modules/agenda/services/reminders")
-    .then(({ createRemindersForStageChange }) => createRemindersForStageChange(lead, stage))
-    .catch((error) => console.warn("[reminders] stage trigger failed", error));
+  void import("@/modules/agenda/services/reminders").then(({ createRemindersForStageChange }) => createRemindersForStageChange(lead, stage)).catch((error) => console.warn("[reminders] stage trigger failed", error));
 }
 
 export function moveLeadToStage(id: string, newStage: PipelineStage) {
@@ -459,7 +457,8 @@ export function moveLeadToStage(id: string, newStage: PipelineStage) {
   usave(MOVEMENTS_KEY, movements.slice(-5000));
 
   saveLeads(all);
-  emit("LeadMovido", { leadId: id, from: oldStage, to: newStage });\n  triggerStageReminders({ ...lead }, newStage);
+  emit("LeadMovido", { leadId: id, from: oldStage, to: newStage });
+  triggerStageReminders({ ...lead }, newStage);
 
   let autoTransfer: PipelineName | undefined;
   if (newStage === "Ganho" && newPipeline === "oportunidades") {
@@ -565,21 +564,238 @@ export function scheduleMeeting(leadId: string, meeting: Omit<Meeting, "id" | "c
   all.push(newMeeting);
   usave(MEETINGS_KEY, all);
   emit("ReuniaoMarcada", newMeeting);
-
   let autoTransfer: PipelineName | undefined;
   if (!options.skipAutoMove) {
     const lead = getLeads().find((item) => item.id === leadId);
     const targetStage = DEFAULT_OPORTUNIDADES_STAGES[0];
-    if (lead && lead.stage !== targetStage) {
-      moveLeadToStage(leadId, targetStage);
-      autoTransfer = "oportunidades";
-    }
+    if (lead && lead.stage !== targetStage) { moveLeadToStage(leadId, targetStage); autoTransfer = "oportunidades"; }
   }
-
-  // Garante que lembretes de reunião usem a reunião recém-criada.
-  const lead = getLeads().find((item) => item.id === leadId);
-  if (lead && !options.skipAutoMove) triggerStageReminders({ ...lead }, DEFAULT_OPORTUNIDADES_STAGES[0]);
-
   return { autoTransfer };
 }
 
+export function updateMeetingDateTime(id: string, date: string, time: string) {
+  const all = getMeetings();
+  const idx = all.findIndex(m => m.id === id);
+  if (idx !== -1) {
+    all[idx].date = date;
+    all[idx].time = time;
+    usave(MEETINGS_KEY, all);
+    emit("ReuniaoAtualizada", all[idx]);
+  }
+}
+
+export function updateMeetingSource(id: string, source: MeetingSource) {
+  const all = getMeetings();
+  const idx = all.findIndex(m => m.id === id);
+  if (idx !== -1) {
+    all[idx].source = source;
+    usave(MEETINGS_KEY, all);
+  }
+}
+
+// ==========================================
+// PUBLIC API: MOVEMENT EVENTS
+// ==========================================
+
+export function getMovementEvents(): MovementEvent[] {
+  return uload<MovementEvent[]>(MOVEMENTS_KEY, []);
+}
+
+// ==========================================
+// PUBLIC API: GOALS
+// ==========================================
+
+export function getGoalsSettings(): GoalsSettings {
+  return uload<GoalsSettings>(GOALS_KEY, {
+    monthlyRevenueGoal: 10000,
+    averageTicket: 1000,
+    callToConnection: 20,
+    connectionToDecisionMaker: 30,
+    decisionMakerToMeetingScheduled: 10,
+    meetingScheduledToHeld: 70,
+    meetingHeldToClose: 20,
+    workingDaysPerWeek: 5,
+    hoursPerDay: 4,
+    minutesPerCall: 5
+  });
+}
+
+export function saveGoalsSettings(settings: GoalsSettings) {
+  usave(GOALS_KEY, settings);
+  emit("MetaAtualizada", settings);
+}
+
+// ==========================================
+// PUBLIC API: ATTACHMENTS, NOTES, INTERACTIONS
+// ==========================================
+
+export function addAttachment(leadId: string, att: Omit<Attachment, "id">) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead) {
+    if (!lead.attachments) lead.attachments = [];
+    const newAtt = { ...att, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    lead.attachments.push(newAtt);
+    saveLeads(all);
+    return newAtt.id;
+  }
+}
+
+export function removeAttachment(leadId: string, attId: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.attachments) {
+    lead.attachments = lead.attachments.filter(a => a.id !== attId);
+    saveLeads(all);
+  }
+}
+
+export function setAttachmentAnalysis(leadId: string, attId: string, analysis: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.attachments) {
+    const att = lead.attachments.find(a => a.id === attId);
+    if (att) {
+      att.aiAnalysis = analysis;
+      saveLeads(all);
+    }
+  }
+}
+
+export function addCallNote(leadId: string, noteData: string | Omit<CallNote, "id" | "createdAt">, scriptUsed?: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead) {
+    if (!lead.callNotes) lead.callNotes = [];
+    let note: Omit<CallNote, "id" | "createdAt">;
+    if (typeof noteData === "string") {
+      note = { text: noteData, scriptUsed };
+    } else {
+      note = noteData;
+    }
+    const newNote = { ...note, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    lead.callNotes.push(newNote);
+    saveLeads(all);
+    emit("InteracaoRegistrada", { leadId, type: "Ligação" });
+  }
+}
+
+export function removeCallNote(leadId: string, noteId: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.callNotes) {
+    lead.callNotes = lead.callNotes.filter(n => n.id !== noteId);
+    saveLeads(all);
+  }
+}
+
+export function setCallNoteAnalysis(leadId: string, noteId: string, analysis: CallNoteAnalysis) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.callNotes) {
+    const note = lead.callNotes.find(n => n.id === noteId);
+    if (note) {
+      note.analysis = analysis;
+      saveLeads(all);
+    }
+  }
+}
+
+export function addInteraction(leadId: string, interaction: Omit<Interaction, "id">) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead) {
+    if (!lead.interactions) lead.interactions = [];
+    const newInt = { ...interaction, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    lead.interactions.push(newInt);
+    saveLeads(all);
+    emit("InteracaoRegistrada", { leadId, ...newInt });
+  }
+}
+
+export function updateInteraction(leadId: string, id: string, updates: Partial<Interaction>) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.interactions) {
+    const idx = lead.interactions.findIndex(i => i.id === id);
+    if (idx !== -1) {
+      lead.interactions[idx] = { ...lead.interactions[idx], ...updates };
+      saveLeads(all);
+    }
+  }
+}
+
+export function removeInteraction(leadId: string, id: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead && lead.interactions) {
+    lead.interactions = lead.interactions.filter(i => i.id !== id);
+    saveLeads(all);
+  }
+}
+
+// ==========================================
+// PUBLIC API: DIAGNOSIS
+// ==========================================
+
+export function setLeadAutoDiagnosis(leadId: string, diag: AutoDiagnosis) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead) {
+    lead.autoDiagnosis = diag;
+    saveLeads(all);
+  }
+}
+
+export function pushLeadDiagnosisVersion(leadId: string, diagnosis: any, changes: string[], origin: string) {
+  const all = getLeads();
+  const lead = all.find(l => l.id === leadId);
+  if (lead) {
+    if (!lead.diagnosisHistory) lead.diagnosisHistory = [];
+    const newVersion: DiagnosisVersion = {
+      id: crypto.randomUUID(),
+      version: lead.diagnosisHistory.length + 1,
+      at: new Date().toISOString(),
+      origin,
+      context: lead.stage,
+      diagnosis,
+      changes
+    };
+    lead.diagnosisHistory.unshift(newVersion);
+    saveLeads(all);
+    return newVersion;
+  }
+}
+
+export function getDiagnosisHistory(lead: Lead): DiagnosisVersion[] {
+  return lead.diagnosisHistory || [];
+}
+
+export function isAutoDiagnosisStale(lead: Lead): boolean {
+  if (!lead.autoDiagnosis) return true;
+  return new Date(lead.stageChangedAt) > new Date(lead.autoDiagnosis.generatedAt);
+}
+
+export function computeDiagnosisInputHash(lead: Lead): string {
+  // Simple hash of content that affects diagnosis
+  const content = [
+    lead.notes,
+    lead.stage,
+    (lead.callNotes || []).length,
+    (lead.interactions || []).length
+  ].join("|");
+  return content; 
+}
+
+// ==========================================
+// PUBLIC API: TAGS
+// ==========================================
+
+export function getAllTags(): string[] {
+  const leads = getLeads();
+  const tags = new Set<string>(["GMN", "LUPUS", "INBOUND"]);
+  leads.forEach(l => {
+    l.tags?.forEach(t => tags.add(t));
+  });
+  return Array.from(tags).sort();
+}
