@@ -215,6 +215,14 @@ export default {
           "0%, 100%": { boxShadow: "0 0 0 0 hsl(78 56% 47% / 0.4)" },
           "50%": { boxShadow: "0 0 0 8px hsl(78 56% 47% / 0)" },
         },
+        "orb-breathe": {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.9" },
+          "50%": { transform: "scale(1.035)", opacity: "1" },
+        },
+        "orb-spin-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -222,6 +230,8 @@ export default {
         "slide-in": "slide-in var(--duration-slow) var(--ease-standard)",
         "fade-in": "fade-in var(--duration-base) var(--ease-standard)",
         "pulse-green": "pulse-green 2s ease-in-out infinite",
+        "orb-breathe": "orb-breathe 6s ease-in-out infinite",
+        "orb-spin-slow": "orb-spin-slow 40s linear infinite",
       },
     },
   },

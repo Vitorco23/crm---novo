@@ -17,6 +17,7 @@ import {
 import NextBestActionCard from "@/modules/intelligence/components/NextBestActionCard";
 import { buildStrategicMemory } from "@/modules/intelligence/services/strategicMemory";
 import { useAIUserContext } from "@/shared/hooks/useProfile";
+import P21Signal from "@/modules/intelligence/components/P21Signal";
 
 function formatDatePt(dateStr: string): string {
   try {
@@ -91,15 +92,13 @@ export default function DiretorComercialIACard() {
   }, [historyOrdered, selectedHistId]);
 
   return (
-    <Card className="border-l-4 border-l-primary">
+    <Card className="border-l-2 border-l-[hsl(var(--mission-accent))]/40">
       <CardHeader>
         <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-md bg-primary/15 text-primary flex items-center justify-center shrink-0">
-            <BrainCircuit className="h-5 w-5" />
-          </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 space-y-1">
+            <P21Signal label="Diretor Comercial" />
             <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
-              📊 Diretor Comercial IA
+              Diretor Comercial IA
               {today && (
                 <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
                   Atualizado hoje

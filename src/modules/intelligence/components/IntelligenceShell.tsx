@@ -13,6 +13,7 @@ import {
   BarChart3
 } from "lucide-react";
 import { cn } from "@/shared/utils/utils";
+import P21Signal from "@/modules/intelligence/components/P21Signal";
 
 interface IntelligenceShellProps {
   children?: ReactNode;
@@ -69,10 +70,16 @@ export function IntelligenceShell({ children, title, description }: Intelligence
 
   return (
     <PageContainer className="space-y-6">
-      <header className="space-y-4">
+      <header
+        className="relative space-y-4 -mx-1 rounded-2xl px-4 py-4 md:px-5"
+        style={{
+          background: "radial-gradient(ellipse 80% 100% at 92% 0%, hsl(var(--mission-accent) / 0.06), transparent 55%)",
+        }}
+      >
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
-            <nav className="flex items-center gap-2 text-muted-foreground mb-1 text-xs" aria-label="Breadcrumb">
+          <div className="space-y-1.5">
+            <P21Signal label="P21 Intelligence" />
+            <nav className="flex items-center gap-2 text-muted-foreground text-xs" aria-label="Breadcrumb">
               <Link to="/inteligencia" className="hover:text-foreground transition-colors focus-visible:outline-none focus-visible:underline">Inteligência</Link>
               {pathname !== "/inteligencia" && (
                 <>
@@ -81,7 +88,7 @@ export function IntelligenceShell({ children, title, description }: Intelligence
                 </>
               )}
             </nav>
-            <h1 className="text-h2 font-bold tracking-tight text-foreground">{displayTitle}</h1>
+            <h1 className="text-h2 font-semibold tracking-tight text-foreground">{displayTitle}</h1>
             {displayDesc && <p className="text-small text-muted-foreground">{displayDesc}</p>}
           </div>
           

@@ -31,7 +31,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-small font-bold text-sidebar-foreground tracking-tight leading-none">Performance21</span>
-              <span className="text-[10px] text-sidebar-foreground/40 font-medium uppercase tracking-[0.2em] mt-1">S.O.C. ENGINE</span>
+              <span className="text-[10px] text-sidebar-foreground/40 font-medium uppercase tracking-[0.2em] mt-1">Revenue Intelligence</span>
             </div>
           )}
         </div>
@@ -64,8 +64,8 @@ export function AppSidebar() {
                             <NavLink
                               to={item.url}
                               end={item.end}
-                              className="flex items-center w-full rounded-lg hover:bg-sidebar-accent/40 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-all duration-200"
-                              activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
+                              className="relative flex items-center w-full rounded-lg hover:bg-sidebar-accent/30 text-sidebar-foreground/65 hover:text-sidebar-foreground transition-all duration-200"
+                              activeClassName="relative bg-gradient-to-r from-[hsl(var(--brand-green))]/[0.16] to-transparent text-sidebar-accent-foreground font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-[3px] before:rounded-full before:bg-[hsl(var(--brand-green))] before:shadow-[0_0_6px_1px_hsl(var(--brand-green))]"
                             >
                               <Icon className="mr-3 h-4 w-4 shrink-0" />
                               {!collapsed && <span className="text-small">{item.title}</span>}

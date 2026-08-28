@@ -14,12 +14,22 @@
 
 @layer base {
   :root {
-    /* Superfície "console" fixa (não alterna com o tema) — usada em painéis
-       tipo sistema-operacional (ex.: abertura da Missão do Dia) que devem
-       manter a leitura azul-marinho/texto claro independente de light/dark. */
-    --console-bg: 222 46% 15%;
-    --console-bg-strong: 222 46% 9%;
-    --console-fg: 0 0% 100%;
+    /* P21 Intelligence OS — superfície fixa (não alterna com o tema),
+       escopada à Missão do Dia (classe .mission-os). Sprint 1.2: fundo
+       quase-preto azulado com profundidade por camada, não por borda.
+       Não é o design system global do CRM — só esta tela usa. */
+    --mission-bg: 222 55% 6%;
+    --mission-bg-elevated: 222 48% 8%;
+    --mission-surface: 222 40% 11%;
+    --mission-surface-2: 222 36% 15%;
+    --mission-border: 222 28% 20%;
+    --mission-text: 210 40% 97%;
+    --mission-text-muted: 215 20% 70%;
+    --mission-text-faint: 215 15% 48%;
+    --mission-accent: 74 60% 58%;
+    --mission-accent-strong: 74 65% 68%;
+    --mission-accent-soft: 74 45% 16%;
+    --mission-blue-glow: 217 91% 60%;
 
     /* -------- LIGHT THEME — clareza, produtividade, leveza -------- */
     --background: 190 70% 97%; /* #F1FBFD aproximado em HSL */
@@ -139,16 +149,16 @@
   }
 
   .dark {
-    /* -------- DARK THEME — grafite profundo, sofisticação, foco --------
-       Inspirado em Linear/Vercel/Stripe: nunca preto absoluto, contraste alto,
-       destaques em azul e verde da marca.                                    */
-    --background: 222 47% 8%; /* Azul Performance ainda mais profundo */
+    /* -------- DARK THEME — P21 Intelligence OS --------
+       Sprint 1.2 (correção/expansão): profundidade real, não preto chapado.
+       Bordas quase invisíveis, sombra faz o trabalho de separar camadas. */
+    --background: 224 52% 6%; /* Base quase-preta, levemente azulada */
     --foreground: 210 40% 96%;
 
-    --card: 222 47% 11%;
+    --card: 223 44% 9.5%;
     --card-foreground: 210 40% 96%;
 
-    --popover: 222 47% 12%;
+    --popover: 223 46% 10%;
     --popover-foreground: 210 40% 96%;
 
     --brand-blue: 217 91% 60%;
@@ -187,8 +197,8 @@
     --info: 199 89% 66%;
     --info-foreground: 222 47% 8%;
 
-    --border: 222 35% 18%;
-    --border-strong: 222 30% 28%;
+    --border: 223 30% 14%; /* baixo contraste com o bg — profundidade vem da sombra, não da linha */
+    --border-strong: 223 28% 22%;
     --input: 222 35% 18%;
     --ring: 74 57% 55%;
 
@@ -242,6 +252,17 @@
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
+  /* Atmosfera ambiente global (Sprint 1.2) — luz difusa muito sutil, fixa no
+     viewport, para o fundo parar de ser um preto chapado em toda tela do
+     CRM. Só dark mode; light mode fica como está. */
+  .dark body {
+    background-image:
+      radial-gradient(ellipse 60% 50% at 12% -8%, hsl(var(--brand-green) / 0.05), transparent 60%),
+      radial-gradient(ellipse 50% 45% at 100% 0%, hsl(var(--brand-blue) / 0.06), transparent 60%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
   :focus-visible {
     outline: none;
     box-shadow: var(--shadow-focus);
@@ -269,5 +290,21 @@
     transition-property: color, background-color, border-color, box-shadow, transform, opacity;
     transition-duration: var(--duration-base);
     transition-timing-function: var(--ease-standard);
+  }
+
+  /* Glass — só para painéis flutuantes/overlays/hero (Sprint 1.2, ponto 14).
+     Não aplicar em todo card — perde o sentido se virar padrão. */
+  .glass {
+    background: hsl(var(--card) / 0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* P21 Intelligence OS (Sprint 1.2) — superfície fixa, escopada à Missão do
+     Dia. Profundidade por camada (bg → elevated → surface → surface-2),
+     não por borda. Não é o tema global do CRM. */
+  .mission-os {
+    background: radial-gradient(ellipse 120% 60% at 15% -10%, hsl(var(--mission-bg-elevated)) 0%, hsl(var(--mission-bg)) 55%);
+    color: hsl(var(--mission-text));
   }
 }

@@ -28,6 +28,8 @@ import { cn } from "@/shared/utils/utils";
 import DailyPriorities from "@/modules/dashboard/components/DailyPriorities";
 import { summarizeActivity } from "@/shared/services/activityLedger";
 import FinancialHealthRow from "@/modules/dashboard/components/FinancialHealthRow";
+import P21Signal from "@/modules/intelligence/components/P21Signal";
+import { analyzeBottleneck, resolveBottleneckPeriod } from "@/modules/cold-call/services/bottleneckEngine";
 
 type Filter = "day" | "week" | "month" | "custom";
 
@@ -256,85 +258,99 @@ const Dashboard = () => {
     { label: "Vendas", value: totalSales, icon: Handshake, color: "text-emerald-500" },
   ];
 
+  // Leitura executiva do dia — reaproveita o mesmo motor de gargalo já usado
+  // no Funil Outbound (bottleneckEngine), não uma lógica nova.
+  const todayBottleneck = useMemo(() => analyzeBottleneck(resolveBottleneckPeriod("today")), []);
+  const operationLine =
+    totalCalls === 0
+      ? "Ainda sem atividade registrada neste período."
+      : totalMeetings === 0
+        ? "A operação está ativa, mas ainda não há reuniões registradas."
+        : "A operação está avançando com atividade e reuniões registradas.";
+  const bottleneckLine = todayBottleneck.hasEnoughData
+    ? ` O principal gargalo hoje está entre ${todayBottleneck.main.from} e ${todayBottleneck.main.to}.`
+    : "";
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Cockpit Operacional</h1>
-          <p className="text-muted-foreground text-sm">Visão geral do desempenho comercial</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2 bg-card/30 p-1.5 rounded-lg border border-border/50">
-          {(Object.keys(filterLabels) as Filter[]).map((f) => (
-            <Button
-              key={f}
-              variant={filter === f ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setFilter(f)}
-              className={cn("h-8 text-xs font-semibold px-4", filter === f && "bg-accent/20 text-accent hover:bg-accent/30")}
-            >
-              {filterLabels[f]}
-            </Button>
-          ))}
-          
-          {filter === "custom" && (
-            <Popover open={customOpen} onOpenChange={setCustomOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs px-3 gap-2 border-accent/30 text-accent" onClick={() => setCustomDraft(customRange)}>
-                  <CalendarIcon className="h-3.5 w-3.5" />
-                  {customRange ? `${format(customRange.start, "dd/MM/yyyy")} — ${format(customRange.end, "dd/MM/yyyy")}` : "Selecionar período"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <div className="border-b border-border/50 px-4 py-3">
-                  <p className="text-xs font-semibold text-foreground">Período personalizado</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Escolha a data inicial e a data final.</p>
-                </div>
-                <CalendarUI
-                  mode="range"
-                  selected={customDraft ? { from: customDraft.start, to: customDraft.end } : undefined}
-                  onSelect={(range) => range?.from && setCustomDraft(range.to ? { start: range.from, end: range.to } : { start: range.from, end: range.from })}
-                  numberOfMonths={2}
-                  locale={ptBR}
-                />
-                <div className="flex items-center justify-between gap-2 border-t border-border/50 p-3">
-                  <Button size="sm" variant="ghost" onClick={() => { setCustomDraft(undefined); setCustomOpen(false); }}>Cancelar</Button>
-                  <Button size="sm" disabled={!customDraft} onClick={() => { if (customDraft) setCustomRange(customDraft); setCustomOpen(false); }}>Aplicar período</Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
+    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+      <section
+        className="relative overflow-hidden rounded-2xl px-5 py-5 md:px-6"
+        style={{
+          background:
+            "radial-gradient(ellipse 85% 90% at 90% 0%, hsl(var(--mission-accent) / 0.07), transparent 55%)",
+        }}
+      >
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="space-y-1.5 max-w-2xl">
+            <P21Signal label="P21 Intelligence · Visão operacional" />
+            <p className="text-lg font-semibold text-foreground [text-wrap:balance]">
+              {operationLine}
+              {bottleneckLine}
+            </p>
+            <p className="text-xs text-muted-foreground">Período: {filterLabels[filter]}</p>
+          </div>
 
-          <div className="h-6 w-px bg-border/50 mx-1 hidden md:block" />
-
-          <ExportExcelDialog 
-            moduleName="Dashboard"
-            moduleSlug="dashboard"
-            build={(range) => buildDashboardSheets(range)}
-            trigger={
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 text-xs px-3 gap-2 hover:bg-accent/10 hover:text-accent border-accent/20"
+          <div className="flex flex-wrap items-center gap-2 bg-card/30 p-1.5 rounded-lg border border-border/50 shrink-0">
+            {(Object.keys(filterLabels) as Filter[]).map((f) => (
+              <Button
+                key={f}
+                variant={filter === f ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setFilter(f)}
+                className={cn("h-8 text-xs font-semibold px-4", filter === f && "bg-accent/20 text-accent hover:bg-accent/30")}
               >
-                <BarChart3 className="h-3.5 w-3.5" />
-                Exportar
+                {filterLabels[f]}
               </Button>
-            }
-          />
-        </div>
-      </header>
+            ))}
 
-      {/* SPRINT 5 — interpretação antes dos números */}
-      <Card className="border-accent/30 bg-accent/5">
-        <CardContent className="space-y-1.5 p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Como está a operação?</p>
-          <p className="text-base font-semibold text-foreground">
-            {totalCalls === 0 ? "Ainda sem atividade registrada neste período." : totalMeetings === 0 ? "A operação está ativa, mas ainda não há reuniões registradas." : "A operação está avançando com atividade e reuniões registradas."}
-          </p>
-          <p className="text-xs text-muted-foreground">Período ativo: {filterLabels[filter]} · Os números detalhados aparecem abaixo.</p>
-        </CardContent>
-      </Card>
+            {filter === "custom" && (
+              <Popover open={customOpen} onOpenChange={setCustomOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-xs px-3 gap-2 border-accent/30 text-accent" onClick={() => setCustomDraft(customRange)}>
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {customRange ? `${format(customRange.start, "dd/MM/yyyy")} — ${format(customRange.end, "dd/MM/yyyy")}` : "Selecionar período"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <div className="border-b border-border/50 px-4 py-3">
+                    <p className="text-xs font-semibold text-foreground">Período personalizado</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">Escolha a data inicial e a data final.</p>
+                  </div>
+                  <CalendarUI
+                    mode="range"
+                    selected={customDraft ? { from: customDraft.start, to: customDraft.end } : undefined}
+                    onSelect={(range) => range?.from && setCustomDraft(range.to ? { start: range.from, end: range.to } : { start: range.from, end: range.from })}
+                    numberOfMonths={2}
+                    locale={ptBR}
+                  />
+                  <div className="flex items-center justify-between gap-2 border-t border-border/50 p-3">
+                    <Button size="sm" variant="ghost" onClick={() => { setCustomDraft(undefined); setCustomOpen(false); }}>Cancelar</Button>
+                    <Button size="sm" disabled={!customDraft} onClick={() => { if (customDraft) setCustomRange(customDraft); setCustomOpen(false); }}>Aplicar período</Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+
+            <div className="h-6 w-px bg-border/50 mx-1 hidden md:block" />
+
+            <ExportExcelDialog
+              moduleName="Dashboard"
+              moduleSlug="dashboard"
+              build={(range) => buildDashboardSheets(range)}
+              trigger={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs px-3 gap-2 hover:bg-accent/10 hover:text-accent border-accent/20"
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Exportar
+                </Button>
+              }
+            />
+          </div>
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat) => (

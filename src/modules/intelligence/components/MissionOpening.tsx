@@ -1,15 +1,20 @@
-// Abertura Inteligente da Missão do Dia — substitui o cabeçalho estático por
-// uma leitura executiva da operação, derivada só de dados já calculados pelo
-// priorityEngine/missionPlanner (nenhum motor novo, nenhum texto inventado).
+// Abertura Inteligente da Missão do Dia — Sprint 1.2 (correção 3).
+// Presença, não personagem: sem núcleo/orb/partículas. A inteligência vem
+// do P21 Signal (ponto + status derivado da missão real) e de luz ambiente
+// no próprio fundo do hero — nunca um objeto separado. Copy curta, derivada
+// só de dados já calculados pelo priorityEngine/missionPlanner/missionStore.
 
 import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { resolveDisplayName, useProfile } from "@/shared/hooks/useProfile";
+import P21Signal from "@/modules/intelligence/components/P21Signal";
 
 interface MissionOpeningProps {
   actionCount: number;
   urgentCount: number;
   generatedAt: string;
+  missionDone: number;
+  missionTotal: number;
   onStart?: () => void;
 }
 
@@ -19,15 +24,20 @@ function greetingWord(hour: number) {
   return "Boa noite";
 }
 
-export default function MissionOpening({ actionCount, urgentCount, generatedAt, onStart }: MissionOpeningProps) {
+export default function MissionOpening({
+  actionCount,
+  urgentCount,
+  generatedAt,
+  missionDone,
+  missionTotal,
+  onStart,
+}: MissionOpeningProps) {
   const { user } = useAuth();
   const { profile } = useProfile();
 
   // Nunca usar o prefixo do e-mail como nome — só display_name/first_name do
-  // perfil ou user_metadata.full_name já existente no Auth. Sem nenhum dos
-  // três, cai para "Bom dia."/"Boa tarde."/"Boa noite." sem nome.
+  // perfil ou user_metadata.full_name já existente no Auth.
   const firstName = resolveDisplayName(profile, user);
-
   const greeting = `${greetingWord(new Date().getHours())}${firstName ? `, ${firstName}` : ""}.`;
 
   const analyzedAt = useMemo(() => {
@@ -37,59 +47,45 @@ export default function MissionOpening({ actionCount, urgentCount, generatedAt, 
       : d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   }, [generatedAt]);
 
-  const recommendation =
+  // Status derivado só do progresso real da missão — nenhum estado inventado.
+  const statusLabel =
+    missionTotal > 0 && missionDone >= missionTotal
+      ? "Missão concluída"
+      : missionDone > 0
+        ? `Missão em andamento · ${missionDone}/${missionTotal}`
+        : `Missão pronta${analyzedAt ? ` · ${analyzedAt}` : ""}`;
+
+  const interpretation =
     actionCount === 0
-      ? "Nenhuma prioridade crítica agora. Você pode iniciar seu bloco de prospecção."
+      ? "Nenhuma prioridade crítica agora — você pode iniciar seu bloco de prospecção."
       : urgentCount > 0
-        ? `Recomendo resolver primeiro ${urgentCount === 1 ? "o retorno urgente" : `os ${urgentCount} retornos urgentes`} e depois seguir para o restante da fila.`
-        : "Nenhum retorno crítico pendente — siga pela fila de prioridades abaixo.";
+        ? `Sua operação pede atenção aos retornos. ${actionCount === 1 ? "1 ação merece" : `${actionCount} ações merecem`} prioridade antes de voltar à prospecção.`
+        : `${actionCount === 1 ? "1 ação identificada" : `${actionCount} ações identificadas`} para hoje — sem retorno crítico pendente.`;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-[hsl(var(--brand-green))]/25 bg-gradient-to-br from-[hsl(var(--console-bg))] to-[hsl(var(--console-bg-strong))] px-6 py-7 text-[hsl(var(--console-fg))] shadow-sm animate-fade-in">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage:
-            "linear-gradient(90deg, currentColor 1px, transparent 1px), linear-gradient(0deg, currentColor 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-        }}
-      />
-      <div className="relative flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-[hsl(var(--console-fg))]/55">
-            Performance21 // Sistema Operacional
-          </p>
-          <div className="flex items-center gap-1.5 rounded-full border border-[hsl(var(--brand-green))]/30 bg-black/10 px-2.5 py-1">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-pulse-green rounded-full bg-[hsl(var(--brand-green))]" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[hsl(var(--brand-green))]" />
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[hsl(var(--console-fg))]/80">
-              Operação analisada{analyzedAt ? ` às ${analyzedAt}` : ""}
-            </span>
-          </div>
-        </div>
+    <section
+      className="relative overflow-hidden rounded-2xl px-5 py-5 md:px-7 md:py-6 animate-fade-in"
+      style={{
+        background:
+          "radial-gradient(ellipse 90% 100% at 88% 0%, hsl(var(--mission-accent) / 0.08), transparent 55%), radial-gradient(ellipse 70% 80% at 100% 100%, hsl(var(--mission-blue-glow) / 0.06), transparent 60%)",
+      }}
+    >
+      <div className="relative space-y-2.5 max-w-2xl">
+        <P21Signal label={statusLabel} />
 
-        <div className="space-y-2">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[hsl(var(--console-fg))]">{greeting}</h1>
-          <p className="text-sm md:text-[15px] text-[hsl(var(--console-fg))]/85 max-w-2xl">
-            Analisei sua operação. Você tem{" "}
-            <span className="font-semibold text-[hsl(var(--brand-green))]">
-              {actionCount} {actionCount === 1 ? "ação prioritária" : "ações prioritárias"}
-            </span>{" "}
-            neste momento.
-          </p>
-          <p className="text-sm text-[hsl(var(--console-fg))]/70 max-w-2xl">{recommendation}</p>
-        </div>
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-[hsl(var(--mission-text))] [text-wrap:balance]">
+          {greeting}
+        </h1>
+
+        <p className="text-sm text-[hsl(var(--mission-text-muted))] leading-relaxed">{interpretation}</p>
 
         {onStart && (
           <button
             type="button"
             onClick={onStart}
-            className="w-fit rounded-lg bg-[hsl(var(--brand-green))] px-4 py-2 text-sm font-semibold text-[hsl(var(--console-bg))] transition-colors hover:opacity-90"
+            className="mt-0.5 w-fit rounded-lg bg-[hsl(var(--mission-accent))] px-4 py-1.5 text-sm font-medium text-[hsl(var(--mission-bg))] transition-all hover:brightness-110 active:scale-[0.98]"
           >
-            Começar meu dia
+            Começar missão
           </button>
         )}
       </div>
