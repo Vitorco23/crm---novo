@@ -78,7 +78,7 @@ export function ManagementShell({ children, title, description }: ManagementShel
                 </>
               )}
             </nav>
-            <h1 className="text-h2 font-bold tracking-tight text-foreground">{displayTitle}</h1>
+            <h1 className="text-h2 font-semibold tracking-tight text-foreground">{displayTitle}</h1>
             {displayDesc && <p className="text-small text-muted-foreground">{displayDesc}</p>}
           </div>
           

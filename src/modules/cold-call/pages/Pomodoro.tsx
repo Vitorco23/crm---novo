@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Pause, Square, Clock, Phone, Users, UserCheck, CalendarCheck, Tag, Pencil, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import P21Signal from "@/modules/intelligence/components/P21Signal";
 
 function fmt(sec: number) {
   const m = Math.floor(sec / 60);
@@ -39,8 +40,16 @@ export default function Pomodoro() {
     state.phase === "break" ? "Pausa" :
     state.phase === "completed" ? "Registre a sessão" : "Pronto";
 
+  const todaySessions = sessions.filter((s) => isToday(new Date(s.startTime)));
+  const todayCalls = todaySessions.reduce((a, s) => a + (s.calls || 0), 0);
+  const performanceLine =
+    todaySessions.length === 0
+      ? "Nenhuma sessão registrada hoje ainda."
+      : `${todaySessions.length} ${todaySessions.length === 1 ? "sessão registrada" : "sessões registradas"} hoje · ${todayCalls} ${todayCalls === 1 ? "ligação" : "ligações"}.`;
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      <P21Signal label={performanceLine} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* EXECUÇÃO: timer e registro do trabalho */}
