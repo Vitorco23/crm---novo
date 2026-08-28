@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { requireUser } from "../_shared/require-auth.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,8 +11,12 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  const auth = await requireUser(req, corsHeaders)
+  if (!auth.ok) return auth.response
+
   try {
     const { action, wabaId } = await req.json()
+    const configuredWabaId = Deno.env.get('WHATSAPP_WABA_ID')
     const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN')
 
     if (!accessToken) {
@@ -21,9 +26,17 @@ serve(async (req) => {
       })
     }
 
-    if (!wabaId) {
+    if (!wabaId || typeof wabaId !== 'string' || !/^\d{5,25}$/.test(wabaId)) {
       return new Response(JSON.stringify({ error: 'wabaId is required' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Nunca usar o access token do projeto para uma WABA arbitrária do chamador.
+    if (configuredWabaId && wabaId !== configuredWabaId) {
+      return new Response(JSON.stringify({ error: 'wabaId not allowed' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }

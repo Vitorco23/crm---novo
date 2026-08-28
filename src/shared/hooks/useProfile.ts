@@ -28,10 +28,21 @@ export type ProfileDraft = Partial<
 
 const profileKey = (userId: string | undefined) => ["profile", userId] as const;
 
+/**
+ * O bucket `avatars` é privado: o banco guarda apenas o caminho do arquivo
+ * e a leitura acontece por URL assinada (1h), gerada sob demanda.
+ */
+async function resolveAvatar(profile: Profile | null): Promise<Profile | null> {
+  if (!profile?.avatar_url) return profile;
+  if (/^https?:\/\//.test(profile.avatar_url)) return profile;
+  const { data } = await supabase.storage.from("avatars").createSignedUrl(profile.avatar_url, 3600);
+  return { ...profile, avatar_url: data?.signedUrl ?? null };
+}
+
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
   if (error) throw error;
-  return data;
+  return resolveAvatar(data);
 }
 
 export function useProfile() {
@@ -70,16 +81,13 @@ export function useProfile() {
         .from("avatars")
         .upload(path, file, { upsert: true, cacheControl: "3600" });
       if (uploadError) throw uploadError;
-      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-      // Cache-bust: mesma URL de path fixo, adiciona query de versão.
-      const avatar_url = `${pub.publicUrl}?v=${Date.now()}`;
       const { data, error } = await supabase
         .from("profiles")
-        .upsert({ id: user.id, avatar_url }, { onConflict: "id" })
+        .upsert({ id: user.id, avatar_url: path }, { onConflict: "id" })
         .select("*")
         .single();
       if (error) throw error;
-      return data as Profile;
+      return (await resolveAvatar(data as Profile)) as Profile;
     },
     onSuccess: (data) => {
       queryClient.setQueryData(profileKey(user?.id), data);

@@ -52,9 +52,12 @@ serve(async (req) => {
     const token = url.searchParams.get('hub.verify_token')
     const challenge = url.searchParams.get('hub.challenge')
 
-    // Prefer the environment secret. The legacy fallback preserves the current
-    // Meta verification until WHATSAPP_VERIFY_TOKEN is configured in production.
-    const verifyToken = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "tmBoItC47EDrcJOXoVoQqtrUZB4si5bJ"
+    // O token de verificação vive APENAS nos secrets da edge function.
+    const verifyToken = Deno.env.get("WHATSAPP_VERIFY_TOKEN")
+    if (!verifyToken) {
+      console.error('[WhatsApp Webhook] WHATSAPP_VERIFY_TOKEN not configured')
+      return new Response('Forbidden', { status: 403 })
+    }
     
     console.log("[WhatsApp Webhook] Verification request", { mode, hasToken: Boolean(token) })
 
