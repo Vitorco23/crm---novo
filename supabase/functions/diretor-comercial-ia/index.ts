@@ -6,7 +6,7 @@ import { callAI } from "../_shared/ai-router.ts";
 import { requireUser } from "../_shared/require-auth.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
-import { composeSystem, createMemoryEngine, startAIExecution } from "../_shared/ai-core/index.ts";
+import { composeSystem, createMemoryEngine, startAIExecution, buildUserContextBlock, parseUserContext } from "../_shared/ai-core/index.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
   wrapUntrusted,
@@ -65,8 +65,13 @@ Deno.serve(async (req) => {
           label: "ANÁLISE DO DIA ANTERIOR (não repita o mesmo texto; mostre evolução)",
         }) + "\n\n"
       : "";
+    // Sprint 1.1 — contexto mínimo de identidade (nome/cargo/empresa), só
+    // exibição/tom de voz. Não afeta metodologia, pesos nem ferramentas.
+    const userContextBlock = buildUserContextBlock(parseUserContext(body?.userContext));
+
     const userPrompt =
       `Data de referência: ${snapshot.today ?? new Date().toISOString().slice(0, 10)}\n\n` +
+      (userContextBlock ? userContextBlock + "\n\n" : "") +
       buildBusinessCalendarBlock() + "\n\n" +
       (memoryBlock ? memoryBlock + "\n\n" : "") +
       previousBlock +

@@ -23,6 +23,7 @@ const Dashboard = lazy(() => import("@/modules/dashboard/pages/Dashboard"));
 const Metas = lazy(() => import("@/modules/metas/pages/Metas"));
 const Financeiro = lazy(() => import("@/modules/financeiro/pages/Financeiro"));
 const Integracoes = lazy(() => import("@/modules/configuracoes/pages/Integracoes"));
+const MeuPerfil = lazy(() => import("@/modules/configuracoes/pages/MeuPerfil"));
 const Lembretes = lazy(() => import("@/modules/agenda/pages/Lembretes"));
 const InteligenciaComercial = lazy(() => import("@/modules/intelligence/pages/InteligenciaComercial"));
 const CentralDecisao = lazy(() => import("@/modules/intelligence/pages/CentralDecisao"));
@@ -79,6 +80,7 @@ const App = () => (
                             <Route path="/metas" element={<ManagementShell title="Metas" description="Acompanhamento de objetivos e conversão"><Metas /></ManagementShell>} />
                             <Route path="/financeiro" element={<ManagementShell title="Financeiro" description="Saúde financeira e receitas"><Financeiro /></ManagementShell>} />
                             <Route path="/integracoes" element={<Integracoes />} />
+                            <Route path="/meu-perfil" element={<MeuPerfil />} />
                             <Route path="/lembretes" element={<Lembretes />} />
                             <Route path="/inteligencia" element={<IntelligenceShell title="Visão Geral" description="Consolidação da inteligência comercial"><InteligenciaComercial /></IntelligenceShell>} />
                             <Route path="/inteligencia/metricas" element={<IntelligenceShell title="Métricas" description="Fechamento diário da operação comercial"><MetricasDiarias /></IntelligenceShell>} />

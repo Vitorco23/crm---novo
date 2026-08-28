@@ -1,17 +1,23 @@
 // Missão do Dia — execução operacional diária do Sistema Operacional Comercial.
 // Consome exclusivamente o resultado do priorityEngine (via missionPlanner)
 // e o estado de execução persistido em missionStore. Nenhum motor novo.
+//
+// Sprint 1 (Command Center): reorganiza hierarquia/visual/microcopy da tela.
+// Nenhuma regra comercial, integração ou fonte de dados foi alterada —
+// todos os handlers abaixo chamam exatamente as mesmas funções de antes.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 import {
   BarChart3,
   Check,
+  ChevronDown,
   Clock,
   Compass,
   ExternalLink,
@@ -21,12 +27,12 @@ import {
   Phone,
   Plus,
   RotateCcw,
-  Sparkles,
   Target,
   Undo2,
   Users,
 } from "lucide-react";
-import { PageContainer, PageHeader } from "@/shared/components/shell";
+import { PageContainer } from "@/shared/components/shell";
+import MissionOpening from "@/modules/intelligence/components/MissionOpening";
 import {
   MISSION_UPDATED_EVENT,
   completeMissionEntry,
@@ -169,9 +175,21 @@ function orderCommandActions(a: CommandCenterAction, b: CommandCenterAction) {
   return b.estimatedMinutes - a.estimatedMinutes;
 }
 
+// Rótulo compacto do CTA que registra a ação na missão — mesma função,
+// só a legenda muda de "Colocar na missão" para soar como execução.
+function addLabel(compact: boolean) {
+  return compact ? "Iniciar" : "Iniciar ação";
+}
+
 export default function MissaoDoDia() {
   const [tick, setTick] = useState(0);
   const bump = useCallback(() => setTick((t) => t + 1), []);
+  const focusRef = useRef<HTMLDivElement>(null);
+
+  const [showAllPriorities, setShowAllPriorities] = useState(false);
+  const [showMissionList, setShowMissionList] = useState(false);
+  const [showPlanning, setShowPlanning] = useState(false);
+  const [showDone, setShowDone] = useState(false);
 
   useEffect(() => { runOneTimeMissionReset(); }, []);
 
@@ -202,7 +220,6 @@ export default function MissaoDoDia() {
   const inMission = useMemo(() => new Set(entries.map((e) => e.ref)), [entries]);
   const pending = entries.filter((e) => e.status === "pendente");
   const done = entries.filter((e) => e.status === "concluida");
-  const meetingsDone = done.filter((e) => e.kind === "meetings").length;
   const remainingCalls = Math.max(0, plan.callsGoal - plan.callsDone);
 
   const suggestions = plan.items.filter((i) => !inMission.has(i.id));
@@ -226,6 +243,8 @@ export default function MissaoDoDia() {
   }, [pending, followupSuggestions, suggestions]);
 
   const primaryAction = commandActions[0];
+  const urgentCount = commandActions.filter((a) => a.priority === "urgente").length;
+  const remainingPrioritiesCount = suggestions.length + followupSuggestions.length;
 
   const handleComplete = (entry: MissionEntry) => {
     completeMissionEntry(entry.id);
@@ -235,13 +254,13 @@ export default function MissaoDoDia() {
 
   const handleAddSuggestion = (item: MissionItem) => {
     addMissionTask(item);
-    toast({ title: "Adicionado à missão", description: item.title });
+    toast({ title: "Ação iniciada", description: item.title });
     bump();
   };
 
   const handleAddFollowup = (followup: FollowupPick) => {
     addFollowupTask(followup);
-    toast({ title: "Follow-up adicionado", description: followup.company });
+    toast({ title: "Ação iniciada", description: followup.company });
     bump();
   };
 
@@ -280,7 +299,7 @@ export default function MissaoDoDia() {
           className={`${compact ? "h-7 px-2 text-[11px]" : ""} gap-1 ${compact ? "" : "bg-accent text-accent-foreground hover:bg-accent/90"}`}
           onClick={() => handleAddSuggestion(action.missionItem!)}
         >
-          <Plus className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /> {compact ? "Missão" : "Colocar na missão"}
+          <Plus className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /> {addLabel(compact)}
         </Button>
       )}
       {action.source === "followup" && action.followup && (
@@ -290,7 +309,7 @@ export default function MissaoDoDia() {
           className={`${compact ? "h-7 px-2 text-[11px]" : ""} gap-1 ${compact ? "" : "bg-accent text-accent-foreground hover:bg-accent/90"}`}
           onClick={() => handleAddFollowup(action.followup!)}
         >
-          <Plus className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /> {compact ? "Missão" : "Colocar na missão"}
+          <Plus className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} /> {addLabel(compact)}
         </Button>
       )}
     </div>
@@ -298,62 +317,31 @@ export default function MissaoDoDia() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Missão do Dia"
-        description="Execução operacional gerada automaticamente pela priorização comercial."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm" className="gap-1">
-              <Link to="/central"><Compass className="h-4 w-4" /> Central de Decisão</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-              <Link to="/inteligencia/metricas"><BarChart3 className="h-4 w-4" /> Fechar métricas do dia</Link>
-            </Button>
-            <Button variant="ghost" size="sm" className="gap-1" onClick={handleReset}>
-              <RotateCcw className="h-4 w-4" /> Reiniciar missão
-            </Button>
-          </div>
-        }
+      {/* Barra de ações discreta — antes era o cabeçalho principal da página. */}
+      <div className="flex items-center justify-end gap-1">
+        <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+          <Link to="/central"><Compass className="h-3.5 w-3.5" /> Central de Decisão</Link>
+        </Button>
+        <Button asChild variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+          <Link to="/inteligencia/metricas"><BarChart3 className="h-3.5 w-3.5" /> Fechar métricas do dia</Link>
+        </Button>
+        <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={handleReset}>
+          <RotateCcw className="h-3.5 w-3.5" /> Reiniciar missão
+        </Button>
+      </div>
+
+      {/* 1 — ABERTURA INTELIGENTE */}
+      <MissionOpening
+        actionCount={commandActions.length}
+        urgentCount={urgentCount}
+        generatedAt={plan.generatedAt}
+        onStart={() => focusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
       />
 
-      <section className="rounded-xl border border-border/60 bg-card/50 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Situação do dia</p>
-            <p className="mt-1 text-sm font-medium text-foreground">
-              {plan.callsDone >= plan.callsGoal ? "No ritmo da meta de ligações." : "Abaixo do ritmo da meta de ligações."}
-            </p>
-          </div>
-          <div className="flex items-center gap-5 text-sm">
-            <div><span className="text-muted-foreground">Ligações</span><p className="font-semibold text-foreground">{plan.callsDone} / {plan.callsGoal}</p></div>
-            <div><span className="text-muted-foreground">Reuniões</span><p className="font-semibold text-foreground">{meetingsDone} / {plan.meetingsGoal}</p></div>
-          </div>
-        </div>
-      </section>
-
-      <Card className="border-accent/40 bg-gradient-to-br from-accent/10 via-card to-card shadow-sm">
+      {/* 2 — FOCO AGORA + 3 — DEPOIS DISSO */}
+      <Card ref={focusRef} className="border-accent/40 shadow-sm scroll-mt-4 animate-slide-in">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                  <Sparkles className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  Central Inteligente do Dia
-                </span>
-              </div>
-              <CardTitle className="text-xl md:text-2xl">Comece por aqui</CardTitle>
-              <p className="text-sm text-muted-foreground max-w-3xl">
-                Uma fila única reúne missão, follow-ups e planejamento do dia para mostrar a próxima ação com mais impacto agora.
-              </p>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-background/70 px-4 py-3 text-right">
-              <p className="text-xs text-muted-foreground">Foco agora</p>
-              <p className="text-2xl font-bold text-foreground">{commandActions.length || pending.length}</p>
-              <p className="text-[11px] text-muted-foreground">ação(ões) priorizadas</p>
-            </div>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Foco agora</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {primaryAction ? (
@@ -385,10 +373,10 @@ export default function MissaoDoDia() {
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border/70 bg-background/60 p-4">
-              <p className="text-sm font-semibold text-foreground">Nenhuma prioridade definida agora.</p>
-              <p className="text-sm text-muted-foreground">Você ainda pode iniciar a prospecção para avançar a meta do dia.</p>
+              <p className="text-sm font-semibold text-foreground">Nenhuma prioridade crítica agora.</p>
+              <p className="text-sm text-muted-foreground">Você pode iniciar seu bloco de prospecção.</p>
               <Button asChild size="sm" className="mt-2 w-fit gap-1 bg-accent text-accent-foreground hover:bg-accent/90">
-                <Link to="/cold-call"><Phone className="h-3.5 w-3.5" /> Ir para prospecção</Link>
+                <Link to="/cold-call"><Phone className="h-3.5 w-3.5" /> Iniciar Cold Call</Link>
               </Button>
             </div>
           )}
@@ -436,148 +424,190 @@ export default function MissaoDoDia() {
         </Card>
       )}
 
+      {/* 4 — PROGRESSO DO DIA (faixa compacta + progresso da missão, sem duplicação) */}
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-foreground">Objetivos do Dia</h2>
+        <h2 className="text-sm font-semibold text-foreground">Progresso do dia</h2>
         <ColdCallOpsPanel refreshKey={tick} />
+        <Card>
+          <CardContent className="py-3 space-y-2">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-sm font-semibold text-foreground">
+                Progresso da missão · {progress.done}/{progress.total} concluídas
+              </p>
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" /> Restam {formatMinutes(progress.minutesLeft)}
+              </span>
+            </div>
+            <Progress value={progress.pct} className="h-2" />
+          </CardContent>
+        </Card>
       </section>
 
-      <OperationalCapacityCard plan={plan} />
-
-      <Card>
-        <CardContent className="py-4 space-y-2">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-sm font-semibold text-foreground">
-              Progresso da missão · {progress.done}/{progress.total} concluídas
-            </p>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" /> Restam {formatMinutes(progress.minutesLeft)}
-              <span className="text-muted-foreground/70 ml-2 tabular-nums">
-                · {plan.callsDone}/{plan.callsGoal} ligações registradas hoje
-              </span>
-            </span>
-          </div>
-          <Progress value={progress.pct} className="h-2" />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Atividades da missão ({pending.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {pending.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma atividade na missão de hoje. Adicione prioridades abaixo ou pela Central de Decisão.
-            </p>
-          )}
-          {pending.map((entry) => (
-            <div key={entry.id} className="rounded-md border border-border/60 bg-card/50 px-3 py-2.5 flex items-start gap-3">
-              <span className="mt-0.5 text-accent shrink-0">{KIND_ICON[entry.kind]}</span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold text-foreground">{entry.title}</p>
-                  <Badge variant="outline" className={`text-[10px] ${PRIORITY_CLASSES[entry.priority]}`}>
-                    {PRIORITY_LABEL[entry.priority]}
-                  </Badge>
-                  {entry.recommendedTime && (
-                    <Badge variant="outline" className="text-[10px] gap-1">
-                      <Clock className="h-2.5 w-2.5" /> {entry.recommendedTime}
-                    </Badge>
-                  )}
-                  {entry.niche && <Badge variant="outline" className="text-[10px]">{entry.niche}</Badge>}
-                  {entry.city && <Badge variant="outline" className="text-[10px]">{entry.city}</Badge>}
-                </div>
-                {entry.company && <p className="text-xs text-muted-foreground mt-0.5">Empresa: {entry.company}</p>}
-                {entry.bullets.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-0.5">Priorizar: {entry.bullets.join(" · ")}</p>
+      {/* 5 — RESUMO OPERACIONAL COMPACTO */}
+      <div className="space-y-2">
+        {/* Atividades da missão — mesma lista de antes, agora secundária/expansível. */}
+        <Collapsible open={showMissionList} onOpenChange={setShowMissionList}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-2 cursor-pointer select-none">
+                <CardTitle className="text-base flex items-center justify-between gap-2">
+                  <span>
+                    {pending.length > 0
+                      ? `${pending.length} ${pending.length === 1 ? "atividade definida" : "atividades definidas"} para agora`
+                      : "Atividades da missão"}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showMissionList ? "rotate-180" : ""}`} />
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-2">
+                {pending.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma atividade pendente — as prioridades acima já cobrem o que fazer agora.
+                  </p>
                 )}
-                {entry.reason && <p className="text-xs text-muted-foreground/80 mt-0.5">Motivo: {entry.reason}</p>}
-                <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                  Tempo estimado: {formatMinutes(entry.estimatedMinutes)}
-                </p>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                {entry.leadId && (
-                  <Button size="sm" variant="ghost" className="h-8 px-2 text-xs gap-1"
-                    onClick={() => openLead(entry.leadId!, { tab: "interacoes" })}>
-                    <ExternalLink className="h-3.5 w-3.5" /> Abrir Lead
-                  </Button>
-                )}
-                <Button size="sm" className="h-8 px-2 text-xs gap-1 bg-accent text-accent-foreground hover:bg-accent/90"
-                  onClick={() => handleComplete(entry)}>
-                  <Check className="h-3.5 w-3.5" /> Concluir
-                </Button>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+                {pending.map((entry) => (
+                  <div key={entry.id} className="rounded-md border border-border/60 bg-card/50 px-3 py-2.5 flex items-start gap-3">
+                    <span className="mt-0.5 text-accent shrink-0">{KIND_ICON[entry.kind]}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground">{entry.title}</p>
+                        <Badge variant="outline" className={`text-[10px] ${PRIORITY_CLASSES[entry.priority]}`}>
+                          {PRIORITY_LABEL[entry.priority]}
+                        </Badge>
+                        {entry.recommendedTime && (
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <Clock className="h-2.5 w-2.5" /> {entry.recommendedTime}
+                          </Badge>
+                        )}
+                        {entry.niche && <Badge variant="outline" className="text-[10px]">{entry.niche}</Badge>}
+                        {entry.city && <Badge variant="outline" className="text-[10px]">{entry.city}</Badge>}
+                      </div>
+                      {entry.company && <p className="text-xs text-muted-foreground mt-0.5">Empresa: {entry.company}</p>}
+                      {entry.bullets.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-0.5">Priorizar: {entry.bullets.join(" · ")}</p>
+                      )}
+                      {entry.reason && <p className="text-xs text-muted-foreground/80 mt-0.5">Motivo: {entry.reason}</p>}
+                      <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                        Tempo estimado: {formatMinutes(entry.estimatedMinutes)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {entry.leadId && (
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs gap-1"
+                          onClick={() => openLead(entry.leadId!, { tab: "interacoes" })}>
+                          <ExternalLink className="h-3.5 w-3.5" /> Abrir Lead
+                        </Button>
+                      )}
+                      <Button size="sm" className="h-8 px-2 text-xs gap-1 bg-accent text-accent-foreground hover:bg-accent/90"
+                        onClick={() => handleComplete(entry)}>
+                        <Check className="h-3.5 w-3.5" /> Concluir
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
-      {(suggestions.length > 0 || followupSuggestions.length > 0) && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Prioridades recomendadas hoje</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {plan.followups.length} de {plan.followupTarget} follow-ups
-              {plan.followupCoverage?.shortfallReason ? ` — ${plan.followupCoverage.shortfallReason}` : ""}
-            </p>
-          </CardHeader>
+        {/* Prioridades recomendadas hoje — antes dominava a tela; agora é um link discreto. */}
+        {remainingPrioritiesCount > 0 && (
+          <Collapsible open={showAllPriorities} onOpenChange={setShowAllPriorities}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="pb-2 cursor-pointer select-none">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between gap-2">
+                    <span>Ver todas as prioridades ({remainingPrioritiesCount})</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showAllPriorities ? "rotate-180" : ""}`} />
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground -mt-1 mb-1">
+                    {plan.followups.length} de {plan.followupTarget} follow-ups
+                    {plan.followupCoverage?.shortfallReason ? ` — ${plan.followupCoverage.shortfallReason}` : ""}
+                  </p>
+                  {suggestions.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 rounded-md border border-border/50 px-2.5 py-2">
+                      <span className="text-accent shrink-0">{KIND_ICON[item.kind]}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
+                        <p className="text-[11px] text-muted-foreground line-clamp-1">{item.reason}</p>
+                      </div>
+                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] gap-1"
+                        onClick={() => handleAddSuggestion(item)}>
+                        <Plus className="h-3 w-3" /> {addLabel(true)}
+                      </Button>
+                    </div>
+                  ))}
+                  {followupSuggestions.map((followup) => (
+                    <div key={followup.leadId} className="flex items-center gap-2 rounded-md px-2.5 py-1.5 hover:bg-muted/50">
+                      <span className="text-xs">{followup.temperature.emoji}</span>
+                      <button className="text-xs font-medium text-foreground truncate flex-1 text-left hover:underline"
+                        onClick={() => openLead(followup.leadId, { tab: "interacoes" })}>
+                        {followup.company}
+                      </button>
+                      <span className="text-[11px] text-muted-foreground truncate hidden md:block max-w-[35%]">{followup.motivo}</span>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] gap-1"
+                        onClick={() => handleAddFollowup(followup)}>
+                        <Plus className="h-3 w-3" /> {addLabel(true)}
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
 
-          <CardContent className="space-y-1.5">
-            {suggestions.map((item) => (
-              <div key={item.id} className="flex items-center gap-2 rounded-md border border-border/50 px-2.5 py-2">
-                <span className="text-accent shrink-0">{KIND_ICON[item.kind]}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
-                  <p className="text-[11px] text-muted-foreground line-clamp-1">{item.reason}</p>
-                </div>
-                <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] gap-1"
-                  onClick={() => handleAddSuggestion(item)}>
-                  <Plus className="h-3 w-3" /> Adicionar à Missão
-                </Button>
-              </div>
-            ))}
-            {followupSuggestions.map((followup) => (
-              <div key={followup.leadId} className="flex items-center gap-2 rounded-md px-2.5 py-1.5 hover:bg-muted/50">
-                <span className="text-xs">{followup.temperature.emoji}</span>
-                <button className="text-xs font-medium text-foreground truncate flex-1 text-left hover:underline"
-                  onClick={() => openLead(followup.leadId, { tab: "interacoes" })}>
-                  {followup.company}
-                </button>
-                <span className="text-[11px] text-muted-foreground truncate hidden md:block max-w-[35%]">{followup.motivo}</span>
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] gap-1"
-                  onClick={() => handleAddFollowup(followup)}>
-                  <Plus className="h-3 w-3" /> Adicionar
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+        {/* Capacidade Operacional — informativo, movido para fora do fluxo principal. */}
+        <Collapsible open={showPlanning} onOpenChange={setShowPlanning}>
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <span>Detalhes do planejamento (capacidade operacional)</span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showPlanning ? "rotate-180" : ""}`} />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <OperationalCapacityCard plan={plan} />
+          </CollapsibleContent>
+        </Collapsible>
 
-      {done.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Concluídas hoje ({done.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {done.map((entry) => (
-              <div key={entry.id} className="flex items-center gap-2 rounded-md px-2 py-1.5">
-                <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                <span className="text-xs text-muted-foreground line-through truncate flex-1">{entry.title}</span>
-                <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] gap-1"
-                  onClick={() => { reopenMissionEntry(entry.id); bump(); }}>
-                  <Undo2 className="h-3 w-3" /> Reabrir
-                </Button>
-                <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]"
-                  onClick={() => { removeMissionEntry(entry.id); bump(); }}>
-                  Remover
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+        {/* Concluídas hoje — preservado, apenas menos dominante. */}
+        {done.length > 0 && (
+          <Collapsible open={showDone} onOpenChange={setShowDone}>
+            <CollapsibleTrigger asChild>
+              <button className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1.5 text-xs text-muted-foreground hover:text-foreground">
+                <span>Concluídas hoje ({done.length})</span>
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDone ? "rotate-180" : ""}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <Card>
+                <CardContent className="py-3 space-y-1">
+                  {done.map((entry) => (
+                    <div key={entry.id} className="flex items-center gap-2 rounded-md px-2 py-1.5">
+                      <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      <span className="text-xs text-muted-foreground line-through truncate flex-1">{entry.title}</span>
+                      <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px] gap-1"
+                        onClick={() => { reopenMissionEntry(entry.id); bump(); }}>
+                        <Undo2 className="h-3 w-3" /> Reabrir
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]"
+                        onClick={() => { removeMissionEntry(entry.id); bump(); }}>
+                        Remover
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </div>
     </PageContainer>
   );
 }

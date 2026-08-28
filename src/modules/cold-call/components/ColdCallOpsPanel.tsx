@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Phone, Users, UserCheck, CalendarCheck, DollarSign, Timer, Target } from "lucide-react";
-import StatCard from "@/modules/cold-call/components/StatCard";
+import { Phone, Users, UserCheck, CalendarCheck, DollarSign, Timer } from "lucide-react";
 import {
   computeDailyGoals,
   computeDailyTotals,
@@ -63,69 +62,19 @@ export default function ColdCallOpsPanel({ refreshKey = 0 }: ColdCallOpsPanelPro
 
   return (
     <div className="space-y-3">
-      {/* Daily operational panel */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        <StatCard
-          icon={<Phone className="h-3.5 w-3.5" />}
-          label="Ligações"
-          value={totals.calls}
-          goal={goals.calls}
-          percent={pct(totals.calls, goals.calls)}
-        />
-        <StatCard
-          icon={<Users className="h-3.5 w-3.5" />}
-          label="Conexões"
-          value={totals.connections}
-          goal={goals.connections}
-          percent={pct(totals.connections, goals.connections)}
-        />
-        <StatCard
-          icon={<UserCheck className="h-3.5 w-3.5" />}
-          label="Decisores"
-          value={totals.decisionMakers}
-          goal={goals.decisionMakers}
-          percent={pct(totals.decisionMakers, goals.decisionMakers)}
-        />
-        <StatCard
-          icon={<CalendarCheck className="h-3.5 w-3.5" />}
-          label="Reuniões"
-          value={totals.meetings}
-          goal={goals.meetings}
-          percent={pct(totals.meetings, goals.meetings)}
-          tone="accent"
-        />
-        <StatCard
-          icon={<DollarSign className="h-3.5 w-3.5" />}
-          label="Receita Prevista"
-          value={BRL(totals.expectedRevenue)}
-          hint="Oportunidades abertas"
-        />
-        <StatCard
-          icon={<Timer className="h-3.5 w-3.5" />}
-          label="Tempo Produtivo"
-          value={timeStr}
-          hint={`${totals.sessions} ${totals.sessions === 1 ? "sessão" : "sessões"}`}
-        />
-      </div>
-
-      {/* Daily goal progress bar (calls) */}
-      <div className="rounded-lg border border-border bg-card p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-          <div className="flex items-center gap-1.5">
-            <Target className="h-3.5 w-3.5 text-accent" />
-            <span className="uppercase tracking-wide">Meta diária de ligações</span>
-          </div>
-          <span>
-            <span className="font-semibold text-card-foreground">{totals.calls}</span>{" "}
-            / {goals.calls} ({pct(totals.calls, goals.calls)}%)
-          </span>
-        </div>
-        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-accent transition-all"
-            style={{ width: `${Math.min(100, pct(totals.calls, goals.calls))}%` }}
-          />
-        </div>
+      {/* Faixa compacta de progresso do dia — uma única linha, sem cards grandes duplicados. */}
+      <div className="flex flex-wrap items-stretch gap-x-6 gap-y-3 rounded-lg border border-border bg-card px-4 py-3">
+        <CompactStat icon={<Phone className="h-3.5 w-3.5" />} label="Ligações" value={totals.calls} goal={goals.calls} percent={pct(totals.calls, goals.calls)} />
+        <CompactDivider />
+        <CompactStat icon={<Users className="h-3.5 w-3.5" />} label="Conexões" value={totals.connections} goal={goals.connections} percent={pct(totals.connections, goals.connections)} />
+        <CompactDivider />
+        <CompactStat icon={<UserCheck className="h-3.5 w-3.5" />} label="Decisores" value={totals.decisionMakers} goal={goals.decisionMakers} percent={pct(totals.decisionMakers, goals.decisionMakers)} />
+        <CompactDivider />
+        <CompactStat icon={<CalendarCheck className="h-3.5 w-3.5" />} label="Reuniões" value={totals.meetings} goal={goals.meetings} percent={pct(totals.meetings, goals.meetings)} accent />
+        <CompactDivider />
+        <CompactStat icon={<DollarSign className="h-3.5 w-3.5" />} label="Receita prevista" value={BRL(totals.expectedRevenue)} hint="oportunidades abertas" />
+        <CompactDivider />
+        <CompactStat icon={<Timer className="h-3.5 w-3.5" />} label="Produtivos" value={timeStr} hint={`${totals.sessions} ${totals.sessions === 1 ? "sessão" : "sessões"}`} />
       </div>
 
       {/* Campaign panel */}
@@ -175,6 +124,44 @@ export default function ColdCallOpsPanel({ refreshKey = 0 }: ColdCallOpsPanelPro
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CompactDivider() {
+  return <div className="hidden sm:block w-px self-stretch bg-border" />;
+}
+
+function CompactStat({
+  icon,
+  label,
+  value,
+  goal,
+  percent,
+  hint,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  goal?: string | number;
+  percent?: number;
+  hint?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 min-w-[128px]">
+      <span className={accent ? "text-accent" : "text-muted-foreground"}>{icon}</span>
+      <div className="leading-tight">
+        <div className="flex items-baseline gap-1">
+          <span className="text-base font-bold tabular-nums text-card-foreground">{value}</span>
+          {goal !== undefined && <span className="text-xs text-muted-foreground">/ {goal}</span>}
+        </div>
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          {label}
+          {typeof percent === "number" ? ` · ${Math.round(percent)}%` : hint ? ` · ${hint}` : ""}
+        </div>
+      </div>
     </div>
   );
 }

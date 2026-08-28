@@ -8,3 +8,4 @@ export * from "./context-builder.ts";
 export * from "./memory-engine.ts";
 export * from "./lead-context.ts";
 export * from "./observability.ts";
+export * from "./user-block.ts";

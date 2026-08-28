@@ -16,6 +16,7 @@ import {
 } from "@/modules/intelligence/services/diretorIA";
 import NextBestActionCard from "@/modules/intelligence/components/NextBestActionCard";
 import { buildStrategicMemory } from "@/modules/intelligence/services/strategicMemory";
+import { useAIUserContext } from "@/shared/hooks/useProfile";
 
 function formatDatePt(dateStr: string): string {
   try {
@@ -34,6 +35,7 @@ export default function DiretorComercialIACard() {
   const [tab, setTab] = useState<"today" | "history">("today");
   const [selectedHistId, setSelectedHistId] = useState<string | null>(null);
   const [autoTried, setAutoTried] = useState(false);
+  const userContext = useAIUserContext();
 
   const refresh = () => {
     setToday(getTodayParecer());
@@ -44,7 +46,7 @@ export default function DiretorComercialIACard() {
     if (loading) return;
     setLoading(true);
     try {
-      const p = await generateParecer();
+      const p = await generateParecer(userContext);
       setToday(p);
       setHistory(getHistory());
       if (!silent) toast.success("Parecer diário gerado");

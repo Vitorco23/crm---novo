@@ -545,7 +545,14 @@ function lastAnalysisDigest(): string {
   ].join("\n");
 }
 
-export async function generateParecer(): Promise<Parecer> {
+/** Sprint 1.1 — identidade mínima para a IA se dirigir ao usuário pelo nome. */
+export interface DiretorUserContext {
+  name?: string;
+  role?: string;
+  company?: string;
+}
+
+export async function generateParecer(userContext?: DiretorUserContext): Promise<Parecer> {
   const snapshot = collectSnapshot();
   const memoriaDigest = buildDecisionMemoryDigest(snapshot.memoriaEstrategica);
   const previousAnalysis = [lastAnalysisDigest(), memoriaDigest]
@@ -553,7 +560,7 @@ export async function generateParecer(): Promise<Parecer> {
     .join("\n\n")
     .slice(0, 2000);
   const { data, error } = await supabase.functions.invoke("diretor-comercial-ia", {
-    body: { snapshot, previousAnalysis },
+    body: { snapshot, previousAnalysis, userContext },
   });
 
   if (error) {
