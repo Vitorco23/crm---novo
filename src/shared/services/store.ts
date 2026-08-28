@@ -568,7 +568,12 @@ export function scheduleMeeting(leadId: string, meeting: Omit<Meeting, "id" | "c
   if (!options.skipAutoMove) {
     const lead = getLeads().find((item) => item.id === leadId);
     const targetStage = DEFAULT_OPORTUNIDADES_STAGES[0];
-    if (lead && lead.stage !== targetStage) { moveLeadToStage(leadId, targetStage); autoTransfer = "oportunidades"; }
+    // Only pull a lead into Oportunidades when it's still in Cold Call — never
+    // yank a lead backwards from a later Oportunidades stage or from Onboarding.
+    if (lead && lead.stage !== targetStage && getPipelineForStage(lead.stage) === "cold_call") {
+      moveLeadToStage(leadId, targetStage);
+      autoTransfer = "oportunidades";
+    }
   }
   return { autoTransfer };
 }

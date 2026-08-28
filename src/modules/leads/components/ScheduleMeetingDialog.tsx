@@ -145,7 +145,7 @@ export default function ScheduleMeetingDialog({ lead, open, onOpenChange, onSche
               ? "Reunião salva no histórico do lead"
               : autoTransfer
                 ? "Lead movido para Oportunidades → Reunião Marcada"
-                : "Lead movido para Reunião Marcada",
+                : "Reunião registrada no histórico do lead",
         }
       );
       onOpenChange(false);
