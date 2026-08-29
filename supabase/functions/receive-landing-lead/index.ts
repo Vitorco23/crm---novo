@@ -546,6 +546,7 @@ Deno.serve(async (req) => {
   const edgeRuntime = (globalThis as any).EdgeRuntime;
   if (typeof edgeRuntime?.waitUntil === "function") {
     edgeRuntime.waitUntil(
+      sendLeadNotification(leadId, dados, rawPayload)
         .catch(e => console.error("[lead-email] critical failure in background task", e))
     );
   } else {
