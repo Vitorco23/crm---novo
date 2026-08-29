@@ -235,5 +235,11 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  // @tailwindcss/typography já era dependência do projeto e as classes
+  // `prose`/`prose-*` já eram usadas (DiretorComercialIACard.tsx, Comando.tsx)
+  // mas o plugin nunca tinha sido registrado aqui — essas classes eram
+  // no-ops silenciosos: sem isso, o Preflight do Tailwind zera list-style
+  // de <ol>/<ul> e nada restaura marcadores/números/espaçamento de listas
+  // Markdown renderizadas.
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;

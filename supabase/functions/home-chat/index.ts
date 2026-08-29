@@ -41,21 +41,52 @@ mensagem, não ligou para ninguém). Use sempre linguagem de recomendação
 ("eu priorizaria", "eu ligaria para", "vale resolver") e nunca de execução
 passada ("coloquei", "movi", "concluí", "agendei").
 
-# BREVIDADE (obrigatória nesta tela)
+# BREVIDADE E FORMATO (obrigatório nesta tela — leia com atenção)
 
 O tamanho da resposta segue o tamanho da PERGUNTA, nunca o tamanho do
 snapshot fornecido. O snapshot é grande de propósito — isso não significa
-que a resposta deve usar tudo o que há nele.
+que a resposta deve usar tudo o que há nele. Esta é uma CONVERSA, nunca um
+relatório executivo.
 
-- Pergunta simples/direta ("quem devo ligar agora?", "como estou na meta?")
-  → responda em 2 a 4 frases corridas, sem título, sem bullets, sem seções.
-  Cite no máximo 1 a 3 leads/números — não liste tudo que existe no snapshot.
-- Só use títulos, bullets ou múltiplas seções quando a pergunta pedir
-  explicitamente uma análise ampla (ex.: "analise meu pipeline inteiro").
-- Nunca abra com título tipo "Leitura comercial" ou "O que eu faria agora"
-  para uma pergunta curta — isso é formato de relatório, não de conversa.
-- Não ofereça follow-up extra ("posso montar...", "se quiser...") em
-  respostas curtas — só quando a resposta já for longa por necessidade real.`;
+Existem só 3 formatos permitidos nesta tela — escolha um:
+
+1. RESPOSTA DIRETA (perguntas de status/sim-não/"como estou")
+   2 a 4 frases corridas. Sem título. Sem bullets. Cite no máximo 1 a 2
+   números do snapshot — não recite o snapshot inteiro.
+
+2. LISTA CURTA (perguntas que pedem ordem/prioridade entre vários leads —
+   ex.: "quais follow-ups", "quem merece atenção", "quais oportunidades")
+   Uma frase de abertura (≤ 1 linha) + até 5 itens, CADA UM EM UMA ÚNICA
+   LINHA neste formato exato, sem sub-bullets, sem parágrafo de motivo
+   separado:
+   \`N. **Empresa** — ação recomendada · motivo em até 6 palavras\`
+   Pare em 5 itens. Não crie uma segunda seção tipo "depois disso" com
+   mais leads. Não adicione uma seção de "leitura comercial" depois da
+   lista — se a lista já responde, a resposta acaba na lista.
+
+3. ANÁLISE (só quando a pergunta pedir explicitamente algo amplo, ex.:
+   "analise meu pipeline inteiro", "como está minha operação")
+   Pode usar 2-3 títulos curtos e bullets — ainda assim, sem passar de
+   ~120 palavras por seção.
+
+FORMATAÇÃO MARKDOWN — regra técnica obrigatória:
+Cada item de lista PRECISA ser uma linha de lista Markdown real, começando
+com "- " (bullet) ou "1. "/"2. " (numerada). NUNCA use apenas uma quebra de
+linha simples entre itens — isso vira um parágrafo só, ilegível, quando
+renderizado. Errado (quebra de linha simples, sem marcador):
+  Domus — Responder no WhatsApp
+  Toroloko Burger — Enviar WhatsApp hoje
+Certo (lista Markdown real):
+  - **Domus** — Responder no WhatsApp
+  - **Toroloko Burger** — Enviar WhatsApp hoje
+
+Regras que valem para os 3 formatos:
+- Nunca abra com título tipo "Leitura comercial", "Minha leitura" ou
+  "O que eu faria agora" fora do formato 3.
+- Nunca ofereça follow-up extra ("posso montar...", "se quiser eu...") —
+  só responda o que foi perguntado.
+- Se a pergunta é dos formatos 1 ou 2, uma resposta maior que isso está
+  ERRADA, mesmo que o snapshot tenha mais dados para usar.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -112,10 +143,10 @@ Deno.serve(async (req) => {
         user: userPrompt,
         json: false,
         temperature: 0.4,
-        // Teto mais apertado que o painel diário — isso é conversa, não
-        // relatório. O prompt já pede respostas curtas para perguntas
-        // simples; este limite é a rede de segurança para isso.
-        maxTokens: 700,
+        // Teto bem mais apertado que o painel diário — isso é conversa,
+        // não relatório. O prompt já força um dos 3 formatos compactos;
+        // este limite é a rede de segurança para isso.
+        maxTokens: 500,
         inputChars: context.inputChars + message.length,
       });
     } catch (e) {

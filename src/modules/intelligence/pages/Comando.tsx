@@ -158,11 +158,17 @@ export default function Comando() {
                     className={
                       m.role === "user"
                         ? "max-w-[85%] rounded-2xl rounded-br-sm bg-[hsl(var(--mission-accent))] text-[hsl(var(--mission-bg))] px-4 py-2.5 text-sm"
-                        : "max-w-[85%] rounded-2xl rounded-bl-sm bg-[hsl(var(--mission-surface))]/60 border border-[hsl(var(--mission-border))] px-4 py-3 text-sm text-[hsl(var(--mission-text))]"
+                        : "max-w-[92%] md:max-w-[80%] rounded-2xl rounded-bl-sm bg-[hsl(var(--mission-surface))]/60 border border-[hsl(var(--mission-border))] px-4 py-3.5 text-sm text-[hsl(var(--mission-text))]"
                     }
                   >
                     {m.role === "assistant" ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0">
+                      <div
+                        className="prose prose-sm dark:prose-invert max-w-none leading-relaxed
+                          prose-p:my-2 prose-ol:my-1 prose-ul:my-1 prose-li:my-1.5 prose-li:pl-1
+                          prose-strong:text-[hsl(var(--mission-text))] prose-strong:font-semibold
+                          marker:text-[hsl(var(--mission-accent))]
+                          prose-headings:text-[hsl(var(--mission-text))] prose-headings:text-[13px] prose-headings:font-semibold prose-headings:uppercase prose-headings:tracking-wide prose-headings:mt-3 prose-headings:mb-1.5"
+                      >
                         <ReactMarkdown>{m.content}</ReactMarkdown>
                       </div>
                     ) : (
