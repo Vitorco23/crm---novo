@@ -491,7 +491,11 @@ export default function LeadDetailDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[80vw] w-[80vw] h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
+      {/* Painel grande e denso (80vw x 85vh) — igual a Sheet, glass prejudica
+          legibilidade aqui. Override explícito do .glass herdado de
+          DialogContent (que é intencional para dialogs pequenos de
+          confirmação): fundo sólido e sem blur, em claro e escuro. */}
+      <DialogContent className="max-w-[80vw] w-[80vw] h-[85vh] p-0 gap-0 flex flex-col overflow-hidden !bg-background !backdrop-blur-none">
         {/* Cabeçalho Fixo e Compacto */}
         <DialogHeader className="px-5 pt-4 pb-3 border-b border-border/60 shrink-0 sticky top-0 bg-background z-10">
           <div className="flex items-start justify-between gap-3">
