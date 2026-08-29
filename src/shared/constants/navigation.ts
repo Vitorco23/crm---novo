@@ -1,8 +1,10 @@
 import {
   PhoneCall, Handshake, Timer, BarChart3, Target, Plug, Rocket, ListChecks,
   DollarSign, Bell, Brain, Compass, FlaskConical, BookMarked,
-  Calendar as CalendarIcon, MessageCircle, Library, Flag, LucideIcon, ShieldCheck
+  Calendar as CalendarIcon, MessageCircle, Library, LucideIcon, ShieldCheck,
+  Sparkles,
 } from "lucide-react";
+import { HOME_AREA_LABEL, HOME_AREA_ROUTE, HOME_AREA_DESCRIPTION } from "@/modules/intelligence/constants/homeArea";
 
 export type NavGroupId = "operacao" | "inteligencia" | "gestao" | "configuracoes";
 
@@ -30,16 +32,20 @@ export const NAV_GROUPS: Record<NavGroupId, { label: string; order: number }> = 
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  // OPERAÇÃO
-  { 
-    title: "Missão do Dia",      
-    url: "/missao",        
-    icon: Flag,         
-    group: "operacao",       
-    description: "Execução operacional do dia" 
+  // Sprint 3 — nova Home conversacional, primeiro item da navegação.
+  // Missão do Dia saiu da navegação principal (rota/serviços preservados,
+  // ver src/App.tsx e src/modules/intelligence/pages/MissaoDoDia.tsx).
+  {
+    title: HOME_AREA_LABEL,
+    url: HOME_AREA_ROUTE,
+    icon: Sparkles,
+    group: "operacao",
+    end: true,
+    description: HOME_AREA_DESCRIPTION,
   },
-  { 
-    title: "Cold Call",          
+  // OPERAÇÃO
+  {
+    title: "Cold Call",
     url: "/cold-call",      
     icon: PhoneCall,    
     group: "operacao",   

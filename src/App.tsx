@@ -13,6 +13,7 @@ import { PomodoroSessionFormDialog } from "@/modules/cold-call/components/Pomodo
 import { IntelligenceShell } from "@/modules/intelligence/components/IntelligenceShell";
 import { ManagementShell } from "@/modules/dashboard/components/ManagementShell";
 import { ConnectivityNotifier } from "@/shared/components/ConnectivityNotifier";
+import { HOME_AREA_ROUTE } from "@/modules/intelligence/constants/homeArea";
 
 const ColdCall = lazy(() => import("@/modules/cold-call/pages/ColdCall"));
 const Oportunidades = lazy(() => import("@/modules/pipeline/pages/Oportunidades"));
@@ -25,6 +26,7 @@ const Financeiro = lazy(() => import("@/modules/financeiro/pages/Financeiro"));
 const Integracoes = lazy(() => import("@/modules/configuracoes/pages/Integracoes"));
 const MeuPerfil = lazy(() => import("@/modules/configuracoes/pages/MeuPerfil"));
 const Lembretes = lazy(() => import("@/modules/agenda/pages/Lembretes"));
+const Comando = lazy(() => import("@/modules/intelligence/pages/Comando"));
 const InteligenciaComercial = lazy(() => import("@/modules/intelligence/pages/InteligenciaComercial"));
 const CentralDecisao = lazy(() => import("@/modules/intelligence/pages/CentralDecisao"));
 const MissaoDoDia = lazy(() => import("@/modules/intelligence/pages/MissaoDoDia"));
@@ -70,7 +72,8 @@ const App = () => (
                       <ProtectedRoute>
                         <AppLayout>
                           <Routes>
-                            <Route path="/" element={<Navigate to="/cold-call" replace />} />
+                            <Route path="/" element={<Navigate to={HOME_AREA_ROUTE} replace />} />
+                            <Route path={HOME_AREA_ROUTE} element={<Comando />} />
                             <Route path="/cold-call" element={<ColdCall />} />
                             <Route path="/oportunidades" element={<Oportunidades />} />
                             <Route path="/onboarding" element={<Onboarding />} />
