@@ -663,6 +663,23 @@ function buildInteractionFromInbound(row: InboundInteractionRow, lead: Lead): {
   type: string; date: string; title: string; summary: string; sellerNotes?: string; createdAt: string;
 } {
   const d = row.dados ?? {};
+
+  // Sprint — agente externo de disparo/prospecção via WhatsApp
+  // (whatsapp-agent-update-lead). Nunca move o lead de etapa — só registra
+  // a interação, igual ao Matteline abaixo.
+  if (d.source === "whatsapp_agent") {
+    const summary = String(d.message || "").trim() || "Mensagem registrada via agente de prospecção.";
+    const metaLines: string[] = [];
+    if (d.status) metaLines.push(`Status informado: ${d.status}`);
+    if (d.nextAction) metaLines.push(`Próxima ação: ${d.nextAction}`);
+    metaLines.push(`Origem: Agente de Prospecção WhatsApp`);
+    const rawDate = String(d.receivedAt || row.created_at || new Date().toISOString());
+    const parsed = new Date(rawDate);
+    const date = isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+    const title = `WhatsApp — ${lead.company || lead.contact || "Lead"}`;
+    return { type: "WhatsApp", date, title, summary, sellerNotes: metaLines.join("\n") || undefined, createdAt: date };
+  }
+
   const seller = d.seller ?? {};
   const sellerName = String(seller.name || seller.email || "").trim();
   const durationSec = typeof d.durationSec === "number" ? d.durationSec : null;
@@ -736,7 +753,7 @@ export async function syncInboundInteractions(): Promise<number> {
   const okIds: string[] = [];
   const affectedLeadIds = new Set<string>();
   const failed: Array<{ id: string; error: string; dados: any }> = [];
-  const ledgerEntries: Array<{ leadId: string; at: string; externalKey: string }> = [];
+  const ledgerEntries: Array<{ leadId: string; at: string; externalKey: string; channel: "call" | "message"; source: "callface" | "interaction" }> = [];
 
   for (const row of rows) {
     try {
@@ -776,7 +793,19 @@ export async function syncInboundInteractions(): Promise<number> {
       needsLeadPersistence = true;
       okIds.push(row.id);
       affectedLeadIds.add(lead.id);
-      ledgerEntries.push({ leadId: lead.id, at: interaction.date, externalKey: interactionId });
+      // Ligação (Matteline) confirma como "callface" — a única fonte que
+      // activityLedger reconhece como ligação real. WhatsApp do agente de
+      // prospecção é uma interação confirmada, mas não é uma ligação —
+      // grava como source "interaction" no canal "message", nunca como
+      // "callface" (isso inflaria o contador de ligações indevidamente).
+      const isWhatsAppAgent = interaction.type === "WhatsApp";
+      ledgerEntries.push({
+        leadId: lead.id,
+        at: interaction.date,
+        externalKey: interactionId,
+        channel: isWhatsAppAgent ? "message" : "call",
+        source: isWhatsAppAgent ? "interaction" : "callface",
+      });
     } catch (e: any) {
       console.error("[inbound-int] row failed", { id: row.id, error: e?.message || String(e) });
       failed.push({ id: row.id, error: e?.message || String(e), dados: row.dados });
@@ -793,7 +822,7 @@ export async function syncInboundInteractions(): Promise<number> {
     try {
       const { recordActivity } = await import("@/shared/services/activityLedger");
       for (const e of ledgerEntries) {
-        recordActivity({ leadId: e.leadId, channel: "call", source: "callface", at: e.at, externalKey: e.externalKey });
+        recordActivity({ leadId: e.leadId, channel: e.channel, source: e.source, at: e.at, externalKey: e.externalKey });
       }
     } catch (e) {
       console.warn("[activityLedger] inbound record failed", e);
