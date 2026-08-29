@@ -100,7 +100,7 @@ export default function Comando() {
 
   if (!daily) {
     return (
-      <PageContainer>
+      <PageContainer bleed className="p-4 md:p-6">
         <div className="mission-os -mx-1 rounded-3xl px-4 py-4 md:px-7 md:py-5">
           <P21Signal label={HOME_AREA_LABEL} />
         </div>
@@ -109,9 +109,12 @@ export default function Comando() {
   }
 
   return (
-    <PageContainer>
-      <div className="mission-os -mx-1 rounded-3xl px-4 py-4 md:px-7 md:py-5">
-        <div className="flex items-center justify-between gap-3 mb-4">
+    // bleed + altura fixa (100vh menos o header sticky de 3.5rem do app):
+    // só a lista de mensagens rola — igual Claude/ChatGPT. O composer fica
+    // sempre na mesma posição, nunca "empurrado" pela resposta nova.
+    <PageContainer bleed className="p-4 md:p-6 h-[calc(100vh-3.5rem)] min-h-0">
+      <div className="mission-os -mx-1 rounded-3xl px-4 py-4 md:px-7 md:py-5 h-full min-h-0 flex flex-col">
+        <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
           <P21Signal label={HOME_AREA_LABEL} />
           {messages.length > 0 && (
             <button
@@ -123,9 +126,9 @@ export default function Comando() {
           )}
         </div>
 
-        <div className="grid gap-5 md:grid-cols-[minmax(200px,28%)_1fr] md:items-start">
+        <div className="grid gap-5 md:grid-cols-[minmax(200px,28%)_1fr] md:items-start flex-1 min-h-0">
           {/* Sugestões — coluna lateral no desktop, compacta acima no mobile */}
-          <aside className="space-y-1.5 md:sticky md:top-4">
+          <aside className="space-y-1.5 md:overflow-y-auto md:max-h-full">
             <p className="text-[10px] uppercase tracking-[0.16em] text-[hsl(var(--mission-text-faint))] mb-2">
               Para começar
             </p>
@@ -143,9 +146,9 @@ export default function Comando() {
             </div>
           </aside>
 
-          {/* Conversa */}
-          <div className="flex flex-col min-h-[60vh] md:min-h-[70vh]">
-            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 pr-1 pb-4">
+          {/* Conversa — única região que rola; composer fica fixo no rodapé desta coluna */}
+          <div className="flex flex-col min-h-0 h-full">
+            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 pb-4">
               {messages.length === 0 && (
                 <p className="text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance] pt-2">
                   {daily.greeting}
