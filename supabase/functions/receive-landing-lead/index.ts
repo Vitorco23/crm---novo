@@ -208,7 +208,7 @@ async function sendLeadNotification(leadId: string, leadData: any, rawPayload: a
     }
   } catch (error) {
     clearTimeout(timeoutId);
-    if (error.name === "AbortError") {
+    if ((error as { name?: string })?.name === "AbortError") {
       console.error(`[lead-email] timeout for lead ${escapeHtml(leadId)}`);
     } else {
       console.error(`[lead-email] exception for lead ${escapeHtml(leadId)}:`, error);
@@ -543,9 +543,9 @@ Deno.serve(async (req) => {
   const leadId = inserted.id as string;
 
   // Envio de notificação por e-mail (Background via EdgeRuntime.waitUntil)
-  if (typeof (EdgeRuntime as any)?.waitUntil === "function") {
-    (EdgeRuntime as any).waitUntil(
-      sendLeadNotification(leadId, dados, rawPayload)
+  const edgeRuntime = (globalThis as any).EdgeRuntime;
+  if (typeof edgeRuntime?.waitUntil === "function") {
+    edgeRuntime.waitUntil(
         .catch(e => console.error("[lead-email] critical failure in background task", e))
     );
   } else {
