@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import {
   type Lead,
+  type InteractionType,
   addCallNote,
   updateLead,
   updateLeadStage,
@@ -16,20 +17,25 @@ import {
 } from "@/shared/services/store";
 import { upsertReminders, type Reminder } from "@/modules/agenda/services/reminders";
 import { getStepForLead, type CadenceChannel } from "@/modules/leads/services/cadence";
-import { recordActivity, type ActivityChannel } from "@/shared/services/activityLedger";
+import { recordActivity, type ActivityChannel, type CadenceOutcome, type TalkedTo } from "@/shared/services/activityLedger";
+import { findCorrelatedCallfaceInteraction } from "@/shared/services/commercialActivity";
 
 // Desfechos canônicos — o rótulo muda por canal, a semântica não.
-type Outcome =
-  | "sem_resposta"       // não atendeu / mensagem enviada sem resposta / interação feita
-  | "caixa_postal"       // só ligação
-  | "respondeu_interesse"
-  | "sem_interesse"
-  | "pediu_retorno"
-  | "agendou"
-  | "contato_invalido"
-  | "outro";
+// Sprint 2A: este é o mesmo vocabulário gravado como dado estruturado no
+// ledger (`CadenceOutcome`) — nunca mais inferido do texto da nota.
+type Outcome = CadenceOutcome;
 
 interface OutcomeOption { value: Outcome; label: string }
+
+/** Outcomes do canal Ligação que, por si só, já provam que houve conversa —
+ * ver definição aprovada do Sprint 2A. Não ambíguo, não pergunta de novo. */
+const LIGACAO_CONNECTED_OUTCOMES = new Set<Outcome>(["sem_interesse", "pediu_retorno", "agendou"]);
+
+const TALKED_TO_OPTIONS: { value: TalkedTo; label: string }[] = [
+  { value: "decisor", label: "Decisor" },
+  { value: "intermediario", label: "Intermediário / recepção" },
+  { value: "nao_identificado", label: "Não identificado" },
+];
 
 const OPTIONS_BY_CHANNEL: Record<CadenceChannel, OutcomeOption[]> = {
   "Ligação": [
@@ -82,6 +88,25 @@ const ACTIVITY_CHANNEL: Record<CadenceChannel, ActivityChannel> = {
   "E-mail": "email",
 };
 
+/** `CadenceChannel` e `InteractionType` usam os mesmos rótulos — mapeamento
+ * direto, sem conversão. Sprint 2A: antes disso, `addCallNote` gravava
+ * sempre "Ligação" aqui, não importa o canal real do passo. */
+const INTERACTION_TYPE: Record<CadenceChannel, InteractionType> = {
+  "Ligação": "Ligação",
+  "WhatsApp": "WhatsApp",
+  "Instagram": "Instagram",
+  "E-mail": "E-mail",
+};
+
+/** Outcomes ambíguos: a tentativa pode ou não ter de fato ocorrido — nunca
+ * inferido, sempre uma confirmação estruturada explícita do vendedor. */
+const AMBIGUOUS_ATTEMPT_OUTCOMES = new Set<Outcome>(["contato_invalido", "outro"]);
+
+/** Outcomes onde a tentativa em si é inequívoca (só falta saber se conectou). */
+const UNAMBIGUOUS_ATTEMPT_OUTCOMES = new Set<Outcome>([
+  "sem_resposta", "caixa_postal", "respondeu_interesse", "sem_interesse", "pediu_retorno", "agendou",
+]);
+
 const TITLE_BY_CHANNEL: Record<CadenceChannel, string> = {
   "Ligação": "Como terminou essa tentativa?",
   "WhatsApp": "Como terminou esse contato no WhatsApp?",
@@ -118,6 +143,10 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
   const [returnTime, setReturnTime] = useState("10:00");
   const [freeText, setFreeText] = useState("");
   const [sentContent, setSentContent] = useState("");
+  // Sprint 2A — captura estruturada, nunca inferida do texto livre.
+  const [attemptPerformed, setAttemptPerformed] = useState(false); // contato_invalido / outro
+  const [connectedOutro, setConnectedOutro] = useState(false); // só quando "outro" + attemptPerformed
+  const [talkedTo, setTalkedTo] = useState<TalkedTo | "">("");
 
   if (!lead) return null;
   const step = getStepForLead(lead);
@@ -127,9 +156,37 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
   const stepLabel = step ? `T${step.attempt} · ${step.channel} · ${step.nextAction}` : lead.stage;
   const labelFor = (v: Outcome) => options.find((o) => o.value === v)?.label || v;
 
+  // Este outcome, neste canal, já prova conexão por si só (ver definição
+  // aprovada do Sprint 2A) — só pergunta "com quem falou" nesses casos.
+  const asksTalkedTo = channel === "Ligação" && outcome !== "" && LIGACAO_CONNECTED_OUTCOMES.has(outcome as Outcome);
+
   const reset = () => {
     setOutcome(""); setReminderDays("none"); setReturnDate(""); setReturnTime("10:00");
     setFreeText(""); setSentContent("");
+    setAttemptPerformed(false); setConnectedOutro(false); setTalkedTo("");
+  };
+
+  /** Grava o evento estruturado de atividade — nunca antes das validações do
+   * formulário terem passado (Sprint 2A, correção do bug de ordenação).
+   * Canal Ligação: procura uma Interaction CallFace do mesmo lead a
+   * correlacionar explicitamente (10min, nunca reutilizada) — só assim o
+   * dedupe em `commercialActivity` deixa de contar a mesma ligação duas
+   * vezes. Sem correlação encontrada, grava normalmente, sem vínculo. */
+  const recordCadence = (extra: { attemptPerformed?: boolean; connected?: boolean } = {}) => {
+    if (!outcome) return;
+    const at = new Date().toISOString();
+    const relatedExternalKey =
+      channel === "Ligação" ? findCorrelatedCallfaceInteraction(lead.interactions, at) : undefined;
+    recordActivity({
+      leadId: lead.id,
+      channel: ACTIVITY_CHANNEL[channel],
+      source: "cadence_attempt",
+      outcome,
+      at,
+      relatedExternalKey,
+      talkedTo: channel === "Ligação" && extra.connected ? (talkedTo || "nao_identificado") : undefined,
+      ...extra,
+    });
   };
 
   const scheduleReminder = (title: string, message: string, whenISO: string) => {
@@ -151,14 +208,11 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
     if (!outcome) { toast.error("Selecione um desfecho"); return; }
     const noteHeader = `[Cadência ${stepLabel}]`;
     const contentSuffix = sentContent.trim() ? ` — Conteúdo: ${sentContent.trim()}` : "";
-    const note = (body: string) => addCallNote(lead.id, `${noteHeader} ${body}${contentSuffix}`);
-
-    // Toda conclusão de tentativa conta como atividade no canal do passo.
-    // O ledger deduplica contra a movimentação/nota gerada logo em seguida.
-    recordActivity({ leadId: lead.id, channel: ACTIVITY_CHANNEL[channel], source: "attempt" });
+    const note = (body: string) => addCallNote(lead.id, `${noteHeader} ${body}${contentSuffix}`, undefined, INTERACTION_TYPE[channel]);
 
     if (outcome === "sem_resposta" || outcome === "caixa_postal") {
       note(`${labelFor(outcome)} — avançando cadência`);
+      recordCadence({ attemptPerformed: true, connected: false });
       const dest = nextAttemptStage(lead.stage);
       // "Sem contato" continua no pipeline cold_call → updateLeadStage é suficiente
       const coldStages = new Set(getStagesForPipeline("cold_call"));
@@ -167,9 +221,11 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
       toast.success(`Lead movido para ${dest}`);
     } else if (outcome === "respondeu_interesse") {
       note(labelFor(outcome));
+      recordCadence({ attemptPerformed: true, connected: true });
       toast.success("Resposta registrada. Lead permanece na etapa.");
     } else if (outcome === "sem_interesse") {
       note(labelFor(outcome));
+      recordCadence({ attemptPerformed: true, connected: true });
       const oppStages = new Set(getStagesForPipeline("oportunidades"));
       const lostStage = "Perdido";
       if (reminderDays !== "none") {
@@ -189,10 +245,13 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
       );
 
     } else if (outcome === "pediu_retorno") {
+      // Validação primeiro — nenhuma atividade é gravada antes de o formulário
+      // estar completo (Sprint 2A, correção do bug de ordenação).
       if (!returnDate || !returnTime) { toast.error("Informe data e hora do retorno"); return; }
       const when = new Date(`${returnDate}T${returnTime}:00`);
       if (isNaN(when.getTime())) { toast.error("Data/hora inválida"); return; }
       note(`Pediu retorno em ${when.toLocaleString("pt-BR")}`);
+      recordCadence({ attemptPerformed: true, connected: true });
       scheduleReminder(
         `Retornar para ${lead.company}`,
         `${lead.contact || lead.company} pediu retorno.`,
@@ -201,6 +260,7 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
       toast.success("Lembrete de retorno criado. Lead permanece na etapa.");
     } else if (outcome === "agendou") {
       note("Agendou reunião");
+      recordCadence({ attemptPerformed: true, connected: true });
       onOpenChange(false);
       reset();
       onRequestSchedule();
@@ -208,6 +268,10 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
       return;
     } else if (outcome === "contato_invalido") {
       note(labelFor(outcome));
+      // Ambíguo por definição — só conta como tentativa se o vendedor
+      // confirmou explicitamente que chegou a discar/contatar antes de
+      // identificar o contato como inválido.
+      recordCadence({ attemptPerformed, connected: false });
       if (channel === "Ligação" || channel === "WhatsApp") {
         updateLead(lead.id, { phoneInvalid: true });
         updateLeadStage(lead.id, terminalColdCallStage());
@@ -217,8 +281,12 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
         toast.success("Lead encerrado na cadência");
       }
     } else if (outcome === "outro") {
+      // Validação primeiro — mesma correção do bug de ordenação.
       if (!freeText.trim()) { toast.error("Descreva o desfecho"); return; }
       note(freeText.trim());
+      // Nunca inferido do texto livre: o vendedor confirma explicitamente se
+      // houve tentativa real e, se houve, se houve conversa.
+      recordCadence({ attemptPerformed, connected: attemptPerformed && connectedOutro });
       toast.success("Anotação registrada");
     }
 
@@ -280,10 +348,58 @@ export default function ConcluirTentativaDialog({ lead, open, onOpenChange, onDo
           </div>
         )}
 
+        {outcome === "contato_invalido" && (
+          <div className="mt-3 space-y-2">
+            <Label className="text-xs text-muted-foreground">Chegou a discar/contatar antes de identificar como inválido?</Label>
+            <div className="grid grid-cols-2 gap-1">
+              <Button type="button" size="sm" variant={attemptPerformed ? "default" : "outline"}
+                onClick={() => setAttemptPerformed(true)}>Sim, tentei</Button>
+              <Button type="button" size="sm" variant={!attemptPerformed ? "default" : "outline"}
+                onClick={() => setAttemptPerformed(false)}>Não, já era inválido</Button>
+            </div>
+          </div>
+        )}
+
         {outcome === "outro" && (
+          <div className="mt-3 space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Descreva o desfecho</Label>
+              <Textarea rows={3} value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="O que aconteceu?" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Isso envolveu uma tentativa real de contato?</Label>
+              <div className="grid grid-cols-2 gap-1">
+                <Button type="button" size="sm" variant={attemptPerformed ? "default" : "outline"}
+                  onClick={() => setAttemptPerformed(true)}>Sim</Button>
+                <Button type="button" size="sm" variant={!attemptPerformed ? "default" : "outline"}
+                  onClick={() => { setAttemptPerformed(false); setConnectedOutro(false); }}>Não</Button>
+              </div>
+            </div>
+            {attemptPerformed && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Houve conversa (conexão)?</Label>
+                <div className="grid grid-cols-2 gap-1">
+                  <Button type="button" size="sm" variant={connectedOutro ? "default" : "outline"}
+                    onClick={() => setConnectedOutro(true)}>Sim</Button>
+                  <Button type="button" size="sm" variant={!connectedOutro ? "default" : "outline"}
+                    onClick={() => setConnectedOutro(false)}>Não</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(asksTalkedTo || (outcome === "outro" && attemptPerformed && connectedOutro && channel === "Ligação")) && (
           <div className="mt-3">
-            <Label className="text-xs text-muted-foreground">Descreva o desfecho</Label>
-            <Textarea rows={3} value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="O que aconteceu?" />
+            <Label className="text-xs text-muted-foreground">Com quem você falou?</Label>
+            <RadioGroup value={talkedTo} onValueChange={(v) => setTalkedTo(v as TalkedTo)} className="mt-1 space-y-1">
+              {TALKED_TO_OPTIONS.map((o) => (
+                <label key={o.value} className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 cursor-pointer hover:bg-accent/5">
+                  <RadioGroupItem value={o.value} id={`talked-${o.value}`} />
+                  <span className="text-sm">{o.label}</span>
+                </label>
+              ))}
+            </RadioGroup>
           </div>
         )}
 

@@ -46,7 +46,7 @@ export const ONBOARDING_STAGES = DEFAULT_ONBOARDING_STAGES;
 
 export type PipelineStage = string;
 export type ICPStars = 1 | 2 | 3 | 4 | 5;
-export type InteractionType = "Ligação" | "WhatsApp" | "E-mail" | "Reunião" | "Outro" | "Follow-up" | "Envio de Proposta" | "Visita Presencial" | "Reunião Comercial" | "Reunião de Diagnóstico" | "Reunião de Apresentação";
+export type InteractionType = "Ligação" | "WhatsApp" | "Instagram" | "E-mail" | "Reunião" | "Outro" | "Follow-up" | "Envio de Proposta" | "Visita Presencial" | "Reunião Comercial" | "Reunião de Diagnóstico" | "Reunião de Apresentação";
 export type MeetingSource = "Manual" | "Disparo" | "GMN" | "Ligação";
 
 const STORAGE_KEY = "p21_leads";
@@ -667,7 +667,18 @@ export function setAttachmentAnalysis(leadId: string, attId: string, analysis: s
   }
 }
 
-export function addCallNote(leadId: string, noteData: string | Omit<CallNote, "id" | "createdAt">, scriptUsed?: string) {
+/**
+ * `activityType` identifica o canal real da nota (Ligação/WhatsApp/Instagram/
+ * E-mail/...). Omitido, mantém o comportamento histórico ("Ligação") para não
+ * quebrar chamadores existentes — `callNotes` sempre foi usado como log
+ * genérico por lead, não só para ligações.
+ */
+export function addCallNote(
+  leadId: string,
+  noteData: string | Omit<CallNote, "id" | "createdAt">,
+  scriptUsed?: string,
+  activityType: InteractionType = "Ligação",
+) {
   const all = getLeads();
   const lead = all.find(l => l.id === leadId);
   if (lead) {
@@ -681,7 +692,7 @@ export function addCallNote(leadId: string, noteData: string | Omit<CallNote, "i
     const newNote = { ...note, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     lead.callNotes.push(newNote);
     saveLeads(all);
-    emit("InteracaoRegistrada", { leadId, type: "Ligação" });
+    emit("InteracaoRegistrada", { leadId, type: activityType });
   }
 }
 

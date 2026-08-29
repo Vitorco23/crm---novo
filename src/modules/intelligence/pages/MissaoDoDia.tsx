@@ -178,10 +178,14 @@ function orderCommandActions(a: CommandCenterAction, b: CommandCenterAction) {
   return b.estimatedMinutes - a.estimatedMinutes;
 }
 
-// Rótulo compacto do CTA que registra a ação na missão — mesma função,
-// só a legenda muda de "Colocar na missão" para soar como execução.
-function addLabel(compact: boolean) {
-  return compact ? "Iniciar" : "Iniciar ação";
+// Sprint 2A — semântica honesta dos CTAs de missão.
+// Um item "mission" já foi assumido pelo vendedor: o único clique possível
+// nele é concluir o item na missão (não dispara nenhuma ação comercial).
+// Um item "suggestion"/"followup" ainda não foi assumido: o clique apenas
+// adiciona à missão de hoje — não liga, não abre WhatsApp, não executa nada.
+function missionCTA(source: ActionSource, compact: boolean): string {
+  if (source === "mission") return compact ? "Concluir" : "Concluir item";
+  return compact ? "Adicionar" : "Adicionar à missão";
 }
 
 export default function MissaoDoDia() {
@@ -206,6 +210,15 @@ export default function MissaoDoDia() {
       on("LeadAtualizado", bump),
       on("LeadMovido", bump),
       on("MetaAtualizada", bump),
+      // Sprint 2A: reunião é o sinal de maior peso no Priority Engine
+      // (meetingSoon = 60, meetingToday = 30) — a Missão precisa recalcular
+      // dados derivados quando uma reunião é marcada/reagendada/realizada.
+      // Isso NÃO troca o Foco Agora sozinho: só força o mesmo recálculo que
+      // já roda a cada bump() — a ordenação e o item #1 seguem inalterados
+      // pelas mesmas regras de sempre (ver orderCommandActions).
+      on("ReuniaoMarcada", bump),
+      on("ReuniaoAtualizada", bump),
+      on("ReuniaoRealizada", bump),
     ];
     window.addEventListener(MISSION_UPDATED_EVENT, bump);
     window.addEventListener("p21:priority-leads-updated", bump);
@@ -252,19 +265,19 @@ export default function MissaoDoDia() {
 
   const handleComplete = (entry: MissionEntry) => {
     completeMissionEntry(entry.id);
-    toast({ title: "Atividade concluída", description: entry.title });
+    toast({ title: "Item concluído na missão", description: entry.title });
     bump();
   };
 
   const handleAddSuggestion = (item: MissionItem) => {
     addMissionTask(item);
-    toast({ title: "Ação iniciada", description: item.title });
+    toast({ title: "Adicionado à missão", description: item.title });
     bump();
   };
 
   const handleAddFollowup = (followup: FollowupPick) => {
     addFollowupTask(followup);
-    toast({ title: "Ação iniciada", description: followup.company });
+    toast({ title: "Adicionado à missão", description: followup.company });
     bump();
   };
 
@@ -361,15 +374,18 @@ export default function MissaoDoDia() {
                       onClick={() => openLead(primaryAction.leadId!, { tab: "interacoes" })}
                       className="text-sm text-[hsl(var(--mission-text-muted))] hover:text-[hsl(var(--mission-text))] transition-colors underline-offset-4 hover:underline"
                     >
-                      Ver lead
+                      {/* Navegação real para o lead — o rótulo usa o verbo já calculado
+                          pelo motor (ex.: "Ligar agora", "Responder no WhatsApp"), nunca
+                          um texto inventado; sem verbo claro, cai em "Abrir lead". */}
+                      {splitAction(primaryAction).company ? splitAction(primaryAction).verb || "Abrir lead" : "Abrir lead"}
                     </button>
                   )}
                   <Button
                     onClick={primaryHandler}
                     className="gap-1.5 bg-[hsl(var(--mission-accent))] text-[hsl(var(--mission-bg))] hover:brightness-110 shadow-[0_0_24px_hsl(var(--mission-accent)/0.25)]"
                   >
-                    {primaryAction.source === "mission" ? <Check className="h-4 w-4" /> : <Phone className="h-4 w-4" />}
-                    {primaryAction.source === "mission" ? "Concluir" : "Iniciar ação"}
+                    {primaryAction.source === "mission" ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    {missionCTA(primaryAction.source, false)}
                   </Button>
                 </div>
               </div>
@@ -426,7 +442,7 @@ export default function MissaoDoDia() {
                           onClick={queueHandler(action)}
                           className="inline-flex items-center gap-0.5 text-xs font-medium text-[hsl(var(--mission-accent))] hover:brightness-110"
                         >
-                          {addLabel(true)} <ChevronRight className="h-3 w-3" />
+                          {missionCTA(action.source, true)} <ChevronRight className="h-3 w-3" />
                         </button>
                       </div>
                     </div>
@@ -542,7 +558,7 @@ export default function MissaoDoDia() {
                       </div>
                       <button onClick={() => handleAddSuggestion(item)}
                         className="text-[11px] font-medium text-[hsl(var(--mission-accent))] hover:brightness-110 shrink-0">
-                        {addLabel(true)}
+                        {missionCTA("suggestion", true)}
                       </button>
                     </div>
                   ))}
@@ -556,7 +572,7 @@ export default function MissaoDoDia() {
                       <span className="text-[11px] text-[hsl(var(--mission-text-faint))] truncate hidden md:block max-w-[35%]">{followup.motivo}</span>
                       <button onClick={() => handleAddFollowup(followup)}
                         className="text-[11px] font-medium text-[hsl(var(--mission-accent))] hover:brightness-110 shrink-0">
-                        {addLabel(true)}
+                        {missionCTA("suggestion", true)}
                       </button>
                     </div>
                   ))}

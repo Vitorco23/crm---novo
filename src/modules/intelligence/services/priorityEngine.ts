@@ -196,6 +196,14 @@ function urgencyFor(tier: PriorityTier): NBAUrgency {
 // Núcleo: prioridade de um lead
 // ---------------------------------------------------------------------------
 
+// Sprint 2A — gap documentado, não resolvido neste sprint: meetingSoon/
+// meetingToday comparam Meeting.time contra Date.now() só no instante do
+// render (buildIndex é recalculado a cada chamada, nunca por um timer). Uma
+// reunião pode entrar na janela de 45min sem nenhum evento do eventBus ser
+// emitido — ela só é refletida na próxima vez que algo mais disparar bump().
+// Não introduzir polling de segundos para cobrir esse gap agora; o gatilho
+// temporal (ex.: um tick de baixa frequência coordenado com o resto do
+// sistema) é decisão do Sprint 2B, junto com o motor de recomendação.
 interface EngineIndex {
   overdueReminders: Map<string, number>;
   pendingReminders: Map<string, number>;

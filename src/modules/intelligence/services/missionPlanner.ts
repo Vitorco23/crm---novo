@@ -32,6 +32,7 @@ import {
 import { displayTemperature } from "@/modules/intelligence/services/leadInsights";
 import { getCache as getPriorityLeadsCache } from "@/modules/intelligence/services/priorityLeads";
 import { computePriorities, type LeadPriority } from "@/modules/intelligence/services/priorityEngine";
+import { computeDailyGoals as computeDailyGoalsShared } from "@/shared/services/dailyGoals";
 
 // ---------------------------------------------------------------------------
 // Constantes operacionais (nenhum número comercial fixo — apenas parâmetros)
@@ -170,20 +171,11 @@ export interface DailyGoals {
 }
 
 export function getDailyGoals(): DailyGoals {
-  const g = getGoalsSettings();
-  const r = (n: number) => Math.max(n, 0.0001) / 100;
-  const closes = g.averageTicket > 0 ? g.monthlyRevenueGoal / g.averageTicket : 0;
-  const meetingsHeld = closes / r(g.meetingHeldToClose);
-  const meetingsScheduled = meetingsHeld / r(g.meetingScheduledToHeld);
-  const decisionMakers = meetingsScheduled / r(g.decisionMakerToMeetingScheduled);
-  const connections = decisionMakers / r(g.connectionToDecisionMaker);
-  const calls = connections / r(g.callToConnection);
-  const workingDaysPerMonth = (g.workingDaysPerWeek || 5) * 4.33;
-  const perDay = (n: number) => (workingDaysPerMonth > 0 ? Math.ceil(n / workingDaysPerMonth) : 0);
+  const shared = computeDailyGoalsShared(getGoalsSettings());
   return {
-    calls: perDay(calls),
-    meetings: perDay(meetingsScheduled),
-    decisionMakers: perDay(decisionMakers),
+    calls: shared.calls,
+    meetings: shared.meetings,
+    decisionMakers: shared.decisionMakers,
   };
 }
 

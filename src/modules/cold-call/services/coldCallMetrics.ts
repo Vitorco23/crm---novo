@@ -11,6 +11,7 @@ import {
   type Lead,
   type PipelineStage,
 } from "@/shared/services/store";
+import { computeDailyGoals as computeDailyGoalsShared } from "@/shared/services/dailyGoals";
 
 function startOfToday(): number {
   const d = new Date();
@@ -37,22 +38,7 @@ export interface DailyGoals {
 }
 
 export function computeDailyGoals(): DailyGoals {
-  const g = getGoalsSettings();
-  const r = (n: number) => Math.max(n, 0.0001) / 100;
-  const closes = g.averageTicket > 0 ? g.monthlyRevenueGoal / g.averageTicket : 0;
-  const meetingsHeld = closes / r(g.meetingHeldToClose);
-  const meetingsScheduled = meetingsHeld / r(g.meetingScheduledToHeld);
-  const decisionMakers = meetingsScheduled / r(g.decisionMakerToMeetingScheduled);
-  const connections = decisionMakers / r(g.connectionToDecisionMaker);
-  const calls = connections / r(g.callToConnection);
-  const workingDaysPerMonth = g.workingDaysPerWeek * 4.33;
-  const d = workingDaysPerMonth > 0 ? workingDaysPerMonth : 1;
-  return {
-    calls: Math.round(calls / d),
-    connections: Math.round(connections / d),
-    decisionMakers: Math.round(decisionMakers / d),
-    meetings: Math.max(1, Math.round(meetingsScheduled / d)),
-  };
+  return computeDailyGoalsShared(getGoalsSettings());
 }
 
 export interface DailyTotals {
