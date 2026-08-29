@@ -111,7 +111,7 @@ serve(async (req) => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       )
 
-      for (const entry of body.entry) {
+      for (const entry of ((body as any).entry ?? []) as any[]) {
         for (const change of entry.changes) {
           const value = change.value
           if (!value) continue
