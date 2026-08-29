@@ -26,6 +26,26 @@ import {
 } from "@/modules/intelligence/services/homeChat";
 import { HOME_AREA_LABEL } from "@/modules/intelligence/constants/homeArea";
 
+/**
+ * Campos estruturados (texto_narrativo, itens, pergunta_fechamento) são
+ * texto puro por design — não passam por ReactMarkdown. Mas o prompt só
+ * consegue *pedir* ao modelo pra não usar markdown, não garantir: na
+ * prática o modelo às vezes ainda escreve `**destaque**` por hábito. Em vez
+ * de deixar os asteriscos literais aparecerem (bug visual reportado em
+ * 2026-08-29), interpretamos só esse um marcador — nada de listas, títulos
+ * ou links aqui, é deliberadamente mínimo.
+ */
+function renderInlineBold(text: string): React.ReactNode {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
+    const m = /^\*\*([^*]+)\*\*$/.exec(part);
+    return m ? (
+      <strong key={i} className="font-semibold text-[hsl(var(--mission-text))]">{m[1]}</strong>
+    ) : (
+      <span key={i}>{part}</span>
+    );
+  });
+}
+
 export default function Comando() {
   // Não usar useAIUserContext() direto aqui: precisamos saber quando o
   // perfil TERMINOU de carregar antes de gravar a saudação/sugestões do dia
@@ -168,7 +188,7 @@ export default function Comando() {
                       m.structured ? (
                         <div className="space-y-3">
                           <p className="whitespace-pre-line leading-relaxed">
-                            {m.structured.texto_narrativo}
+                            {renderInlineBold(m.structured.texto_narrativo)}
                           </p>
 
                           {m.structured.itens.length > 0 && (
@@ -179,10 +199,10 @@ export default function Comando() {
                                   className="rounded-md border border-[hsl(var(--mission-border))]/60 bg-[hsl(var(--mission-surface-2))]/60 px-3 py-2.5"
                                 >
                                   <p className="text-sm font-semibold text-[hsl(var(--mission-text))] truncate">
-                                    {it.nome}
+                                    {renderInlineBold(it.nome)}
                                   </p>
                                   <p className="text-xs font-medium text-[hsl(var(--mission-accent))] mt-0.5">
-                                    {it.acao}
+                                    {renderInlineBold(it.acao)}
                                   </p>
                                   {it.metricas.length > 0 && (
                                     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
@@ -190,7 +210,7 @@ export default function Comando() {
                                         <span key={mi} className="text-[11px] text-[hsl(var(--mission-text-faint))]">
                                           {mt.label}{" "}
                                           <span className="font-medium tabular-nums text-[hsl(var(--mission-text-muted))]">
-                                            {mt.valor}
+                                            {renderInlineBold(mt.valor)}
                                           </span>
                                         </span>
                                       ))}
@@ -203,7 +223,7 @@ export default function Comando() {
 
                           {m.structured.pergunta_fechamento && (
                             <p className="text-[13px] italic text-[hsl(var(--mission-text-muted))] border-l-2 border-[hsl(var(--mission-accent))]/40 pl-2.5">
-                              {m.structured.pergunta_fechamento}
+                              {renderInlineBold(m.structured.pergunta_fechamento)}
                             </p>
                           )}
                         </div>
