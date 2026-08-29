@@ -4,7 +4,7 @@ export function normalizePhoneBR(raw: string | undefined | null): string {
   if (!digits) return "";
   if (digits.startsWith("55") && digits.length >= 12) return digits;
   if (digits.startsWith("0")) return `55${digits}`;
-  if (digits.length === 10 || digits.length === 11) return `550${digits}`;
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
   return digits;
 }
 

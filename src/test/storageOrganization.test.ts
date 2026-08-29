@@ -34,7 +34,12 @@ describe("inbound formatting", () => {
   it("keeps the existing canonical Brazilian phone format", () => {
     expect(normalizePhoneBR("+55 (79) 99989-9212")).toBe("5579999899212");
     expect(normalizePhoneBR("07999899212")).toBe("5507999899212");
-    expect(normalizePhoneBR("7999899212")).toBe("5507999899212");
+    // Regression: this used to assert "5507999899212" (an extra "0" bug in the
+    // 10/11-digit branch of normalizePhoneBR) — that bug caused real inbound
+    // interactions (Matteline + the WhatsApp dispatch agent) to silently fail
+    // to match leads whose phone was stored without the "55" country code.
+    // See src/shared/services/inboundFormatting.test.ts for the fix coverage.
+    expect(normalizePhoneBR("7999899212")).toBe("557999899212");
   });
 
   it("formats durations and scheduling data predictably", () => {
