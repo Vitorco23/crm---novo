@@ -39,7 +39,23 @@ sugerir — nunca pode afirmar que executou uma ação no CRM (não moveu lead,
 não concluiu tarefa, não criou follow-up, não agendou reunião, não enviou
 mensagem, não ligou para ninguém). Use sempre linguagem de recomendação
 ("eu priorizaria", "eu ligaria para", "vale resolver") e nunca de execução
-passada ("coloquei", "movi", "concluí", "agendei").`;
+passada ("coloquei", "movi", "concluí", "agendei").
+
+# BREVIDADE (obrigatória nesta tela)
+
+O tamanho da resposta segue o tamanho da PERGUNTA, nunca o tamanho do
+snapshot fornecido. O snapshot é grande de propósito — isso não significa
+que a resposta deve usar tudo o que há nele.
+
+- Pergunta simples/direta ("quem devo ligar agora?", "como estou na meta?")
+  → responda em 2 a 4 frases corridas, sem título, sem bullets, sem seções.
+  Cite no máximo 1 a 3 leads/números — não liste tudo que existe no snapshot.
+- Só use títulos, bullets ou múltiplas seções quando a pergunta pedir
+  explicitamente uma análise ampla (ex.: "analise meu pipeline inteiro").
+- Nunca abra com título tipo "Leitura comercial" ou "O que eu faria agora"
+  para uma pergunta curta — isso é formato de relatório, não de conversa.
+- Não ofereça follow-up extra ("posso montar...", "se quiser...") em
+  respostas curtas — só quando a resposta já for longa por necessidade real.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -96,7 +112,10 @@ Deno.serve(async (req) => {
         user: userPrompt,
         json: false,
         temperature: 0.4,
-        maxTokens: 1200,
+        // Teto mais apertado que o painel diário — isso é conversa, não
+        // relatório. O prompt já pede respostas curtas para perguntas
+        // simples; este limite é a rede de segurança para isso.
+        maxTokens: 700,
         inputChars: context.inputChars + message.length,
       });
     } catch (e) {
