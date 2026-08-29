@@ -29,7 +29,14 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
+  optimizeDeps: {
+    // Pré-empacota deps pesadas usadas em rotas lazy (ex.: /comando) para evitar
+    // re-otimização no meio da sessão, que invalida os módulos já carregados e
+    // causa "Failed to fetch dynamically imported module".
+    include: ["react-markdown"],
+  },
   build: {
+
     rollupOptions: {
       output: {
         manualChunks(id) {
