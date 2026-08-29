@@ -28,7 +28,14 @@ const corsHeaders = {
 
 // Sprint 3 — reforça, além do estilo já definido em intel.diretor.chat, o
 // limite específico desta tela: somente leitura, nunca afirmar execução.
-const READ_ONLY_CLAUSE = `# REGRA DESTA TELA (Home conversacional — Sprint 3)
+//
+// Redesign pós-Sprint-3 (resposta estruturada): a resposta deixou de ser
+// markdown livre — o schema JSON abaixo (RESPONSE_SCHEMA) já FORÇA a forma
+// (narrativa curta + cards de lead + pergunta de fechamento). O prompt só
+// precisa dizer o QUE colocar em cada campo, não mais "como formatar
+// markdown" — isso elimina de raiz a classe de bug onde o modelo escrevia
+// listas sem marcador Markdown e a UI renderizava tudo como um parágrafo só.
+const READ_ONLY_CLAUSE = `# REGRA DESTA TELA (Home conversacional)
 
 Os dados fornecidos abaixo (SNAPSHOT OPERACIONAL DO CRM) são a fonte factual
 real da operação agora. Nunca invente números ausentes — se um dado não
@@ -41,52 +48,176 @@ mensagem, não ligou para ninguém). Use sempre linguagem de recomendação
 ("eu priorizaria", "eu ligaria para", "vale resolver") e nunca de execução
 passada ("coloquei", "movi", "concluí", "agendei").
 
-# BREVIDADE E FORMATO (obrigatório nesta tela — leia com atenção)
+# FORMATO DE SAÍDA — resposta estruturada (obrigatório, sempre 3 campos)
 
 O tamanho da resposta segue o tamanho da PERGUNTA, nunca o tamanho do
 snapshot fornecido. O snapshot é grande de propósito — isso não significa
 que a resposta deve usar tudo o que há nele. Esta é uma CONVERSA, nunca um
 relatório executivo.
 
-Existem só 3 formatos permitidos nesta tela — escolha um:
+1. "texto_narrativo" — 1 a 2 frases em linguagem natural e direta, como se
+   você estivesse comentando o resultado com a pessoa, não abrindo um
+   relatório. Nunca comece com "Prioridade:", "Análise:" ou título em
+   caixa alta, e nunca use markdown (sem **negrito**, sem listas, sem
+   títulos) — é texto corrido puro. Cite no máximo 1 a 2 números aqui; os
+   números de cada lead vão em "itens", não aqui.
+   Tom de exemplo: "Hoje você tem 5 follow-ups que valem atenção — dois já
+   estão atrasados e com boa chance de resposta rápida."
+   Só quando a pergunta pedir uma análise ampla e explícita (ex.: "analise
+   meu pipeline inteiro", "como está minha operação") este campo pode ter
+   até 3 parágrafos curtos (separe parágrafos com uma linha em branco) —
+   continua sem títulos e sem markdown.
 
-1. RESPOSTA DIRETA (perguntas de status/sim-não/"como estou")
-   2 a 4 frases corridas. Sem título. Sem bullets. Cite no máximo 1 a 2
-   números do snapshot — não recite o snapshot inteiro.
+2. "itens" — 0 a 5 cards, USADOS SOMENTE quando a resposta envolve
+   leads/oportunidades específicos (priorização, follow-ups, "quem devo
+   ligar", oportunidades esfriando). Perguntas de status simples ("como
+   estou na meta?", "quantas ligações fiz?") devem devolver itens: [].
+   Nunca ultrapasse 5 itens — se houver mais candidatos no snapshot,
+   mostre só os 5 mais relevantes para a pergunta.
+   Cada item:
+     - nome: nome do lead/empresa, exatamente como aparece no snapshot.
+     - acao: ação recomendada, curta, no imperativo ("Responder no
+       WhatsApp", "Ligar agora", "Enviar proposta").
+     - metricas: 1 a 3 pares {label, valor} com os dados do snapshot que
+       justificam a prioridade (ex.: label "Dias sem contato" valor "17";
+       label "Tarefas vencidas" valor "2"; label "Score" valor "82").
+       Nunca invente números fora do snapshot.
+   Nunca inclua na lista um lead que não está no snapshot.
 
-2. LISTA CURTA (perguntas que pedem ordem/prioridade entre vários leads —
-   ex.: "quais follow-ups", "quem merece atenção", "quais oportunidades")
-   Uma frase de abertura (≤ 1 linha) + até 5 itens, CADA UM EM UMA ÚNICA
-   LINHA neste formato exato, sem sub-bullets, sem parágrafo de motivo
-   separado:
-   \`N. **Empresa** — ação recomendada · motivo em até 6 palavras\`
-   Pare em 5 itens. Não crie uma segunda seção tipo "depois disso" com
-   mais leads. Não adicione uma seção de "leitura comercial" depois da
-   lista — se a lista já responde, a resposta acaba na lista.
+3. "pergunta_fechamento" — uma pergunta curta (até ~20 palavras) que fecha
+   a resposta em cima do dado mais forte que você acabou de mostrar —
+   nunca genérica ("posso ajudar em algo mais?", "precisa de mais
+   informações?"). Se a resposta citou um lead específico, mencione esse
+   lead na pergunta. Use null só quando a pergunta original for puramente
+   factual e não houver nenhuma ação sensata para sugerir.
+   Exemplo: "A Anma Odontologia está há 17 dias sem interação — quer que
+   eu já prepare esse contato?"
 
-3. ANÁLISE (só quando a pergunta pedir explicitamente algo amplo, ex.:
-   "analise meu pipeline inteiro", "como está minha operação")
-   Pode usar 2-3 títulos curtos e bullets — ainda assim, sem passar de
-   ~120 palavras por seção.
+Regras gerais:
+- Nunca ofereça follow-up genérico fora da pergunta de fechamento (não
+  duplique "posso ajudar em algo mais" dentro de texto_narrativo).
+- Se a pergunta pede um dos formatos simples (status, sim/não), uma
+  resposta mais longa que isso está ERRADA, mesmo que o snapshot tenha
+  mais dados para usar.`;
 
-FORMATAÇÃO MARKDOWN — regra técnica obrigatória:
-Cada item de lista PRECISA ser uma linha de lista Markdown real, começando
-com "- " (bullet) ou "1. "/"2. " (numerada). NUNCA use apenas uma quebra de
-linha simples entre itens — isso vira um parágrafo só, ilegível, quando
-renderizado. Errado (quebra de linha simples, sem marcador):
-  Domus — Responder no WhatsApp
-  Toroloko Burger — Enviar WhatsApp hoje
-Certo (lista Markdown real):
-  - **Domus** — Responder no WhatsApp
-  - **Toroloko Burger** — Enviar WhatsApp hoje
+// Schema estrito (OpenAI Structured Outputs) — mesma forma descrita acima.
+// Mantido em paridade manual com StructuredChatContent em
+// src/modules/intelligence/services/homeChat.ts (fonte de verdade do tipo
+// no lado do cliente; esta function roda em Deno e não importa de src/).
+const RESPONSE_SCHEMA = {
+  name: "home_chat_response",
+  schema: {
+    type: "object",
+    properties: {
+      texto_narrativo: { type: "string" },
+      itens: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            nome: { type: "string" },
+            acao: { type: "string" },
+            metricas: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  label: { type: "string" },
+                  valor: { type: "string" },
+                },
+                required: ["label", "valor"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["nome", "acao", "metricas"],
+          additionalProperties: false,
+        },
+      },
+      pergunta_fechamento: { type: ["string", "null"] },
+    },
+    required: ["texto_narrativo", "itens", "pergunta_fechamento"],
+    additionalProperties: false,
+  },
+};
 
-Regras que valem para os 3 formatos:
-- Nunca abra com título tipo "Leitura comercial", "Minha leitura" ou
-  "O que eu faria agora" fora do formato 3.
-- Nunca ofereça follow-up extra ("posso montar...", "se quiser eu...") —
-  só responda o que foi perguntado.
-- Se a pergunta é dos formatos 1 ou 2, uma resposta maior que isso está
-  ERRADA, mesmo que o snapshot tenha mais dados para usar.`;
+interface StructuredMetric {
+  label: string;
+  valor: string;
+}
+
+interface StructuredItem {
+  nome: string;
+  acao: string;
+  metricas: StructuredMetric[];
+}
+
+interface StructuredChatContent {
+  texto_narrativo: string;
+  itens: StructuredItem[];
+  pergunta_fechamento: string | null;
+}
+
+const MAX_ITEMS = 5;
+const MAX_METRICS = 4;
+
+function cap(v: unknown, max: number): string {
+  return typeof v === "string" ? v.trim().slice(0, max) : "";
+}
+
+/**
+ * Valida e sanitiza o JSON devolvido pelo modelo — defensivo mesmo com
+ * schema estrito, porque o fallback de tier (gpt-5.4-nano) ou uma resposta
+ * malformada ainda podem chegar aqui. Retorna null se não der para montar
+ * uma resposta estruturada minimamente válida (o chamador cai para texto
+ * puro nesse caso, nunca quebra a conversa).
+ */
+function sanitizeStructured(parsed: unknown): StructuredChatContent | null {
+  if (!parsed || typeof parsed !== "object") return null;
+  const p = parsed as Record<string, unknown>;
+
+  const texto = cap(p.texto_narrativo, 1500);
+  if (!texto) return null;
+
+  const itensRaw = Array.isArray(p.itens) ? p.itens : [];
+  const itens: StructuredItem[] = itensRaw
+    .slice(0, MAX_ITEMS)
+    .map((it): StructuredItem => {
+      const i = (it && typeof it === "object" ? it : {}) as Record<string, unknown>;
+      const metricasRaw = Array.isArray(i.metricas) ? i.metricas : [];
+      const metricas = metricasRaw
+        .slice(0, MAX_METRICS)
+        .map((m): StructuredMetric => {
+          const mm = (m && typeof m === "object" ? m : {}) as Record<string, unknown>;
+          return { label: cap(mm.label, 40), valor: cap(mm.valor, 60) };
+        })
+        .filter((m) => m.label && m.valor);
+      return { nome: cap(i.nome, 120), acao: cap(i.acao, 160), metricas };
+    })
+    .filter((it) => it.nome && it.acao);
+
+  const pergunta = typeof p.pergunta_fechamento === "string" ? cap(p.pergunta_fechamento, 300) : "";
+
+  return { texto_narrativo: texto, itens, pergunta_fechamento: pergunta || null };
+}
+
+/** Representação em texto puro — usada como `content` (histórico enviado de
+ * volta à IA em turnos seguintes, e fallback de exibição). */
+function flattenStructured(s: StructuredChatContent): string {
+  const parts: string[] = [s.texto_narrativo];
+  if (s.itens.length > 0) {
+    parts.push(
+      s.itens
+        .map((it) => {
+          const metrics = it.metricas.map((m) => `${m.label}: ${m.valor}`).join(" · ");
+          return `- ${it.nome} — ${it.acao}${metrics ? ` (${metrics})` : ""}`;
+        })
+        .join("\n"),
+    );
+  }
+  if (s.pergunta_fechamento) parts.push(s.pergunta_fechamento);
+  return parts.filter(Boolean).join("\n\n").slice(0, 6000);
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -141,12 +272,13 @@ Deno.serve(async (req) => {
         task: "diretor_comercial",
         system: composeSystem("intel.diretor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE, READ_ONLY_CLAUSE),
         user: userPrompt,
-        json: false,
+        schema: RESPONSE_SCHEMA,
         temperature: 0.4,
         // Teto bem mais apertado que o painel diário — isso é conversa,
-        // não relatório. O prompt já força um dos 3 formatos compactos;
-        // este limite é a rede de segurança para isso.
-        maxTokens: 500,
+        // não relatório. O schema já força a forma da resposta (narrativa
+        // curta + até 5 cards + pergunta de fechamento); este limite é a
+        // rede de segurança para o tamanho total.
+        maxTokens: 900,
         inputChars: context.inputChars + message.length,
       });
     } catch (e) {
@@ -165,14 +297,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    const content = (result.content || "").trim().slice(0, 6000);
-    if (!content) {
+    const raw = (result.content || "").trim();
+    if (!raw) {
       await telemetry.failure(new Error("empty_response"), { inputChars: userPrompt.length });
       return new Response(
         JSON.stringify({ error: "Não recebi uma resposta válida. Tente novamente." }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    // Com schema estrito (json_schema, strict: true) nos dois modelos do tier
+    // diretor_comercial, uma falha de parse aqui só deve acontecer se a
+    // resposta foi cortada por maxTokens no meio do JSON — nunca por
+    // markdown/texto solto. Nesse caso é melhor pedir para tentar de novo
+    // (a UI já tem esse fluxo) do que exibir JSON quebrado na conversa.
+    let structured: StructuredChatContent | null = null;
+    try {
+      structured = sanitizeStructured(JSON.parse(raw));
+    } catch { /* segue null */ }
+
+    if (!structured) {
+      await telemetry.failure(new Error("structured_parse_failed"), { inputChars: userPrompt.length });
+      return new Response(
+        JSON.stringify({ error: "Não consegui montar a resposta agora. Tente novamente." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const content = flattenStructured(structured);
 
     await telemetry.success({
       model: result.modelUsed ?? null,
@@ -181,7 +333,7 @@ Deno.serve(async (req) => {
     });
 
     return new Response(
-      JSON.stringify({ content, model: result.modelUsed }),
+      JSON.stringify({ content, structured, model: result.modelUsed }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

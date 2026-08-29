@@ -187,3 +187,40 @@ describe("sendMessage", () => {
     expect(getCommercialContext).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("sendMessage — resposta estruturada (redesign narrativa + cards + pergunta)", () => {
+  const structured = {
+    texto_narrativo: "Hoje você tem 2 follow-ups atrasados que valem atenção.",
+    itens: [
+      { nome: "Anma Odontologia", acao: "Ligar agora", metricas: [{ label: "Dias sem contato", valor: "17" }] },
+    ],
+    pergunta_fechamento: "Quer que eu prepare esse contato agora?",
+  };
+
+  it("persiste data.structured na mensagem do assistente quando presente", async () => {
+    invoke.mockResolvedValue({
+      data: { content: "Hoje você tem 2 follow-ups atrasados que valem atenção.", structured, model: "openai/gpt-5.4-mini" },
+      error: null,
+    });
+    const res = await sendMessage("Quais follow-ups devo resolver primeiro?");
+    expect(res.ok).toBe(true);
+    expect(res.message?.structured).toEqual(structured);
+    const msgs = getMessages();
+    expect(msgs[1].structured).toEqual(structured);
+  });
+
+  it("mensagens antigas/legado sem data.structured continuam funcionando (structured fica ausente)", async () => {
+    invoke.mockResolvedValue({ data: { content: "Você fez 10 ligações hoje." }, error: null });
+    const res = await sendMessage("Como estou?");
+    expect(res.ok).toBe(true);
+    expect(res.message?.structured).toBeUndefined();
+    expect(res.message?.content).toBe("Você fez 10 ligações hoje.");
+  });
+
+  it("data.structured malformado (não-objeto) é ignorado, mensagem ainda é salva pelo content", async () => {
+    invoke.mockResolvedValue({ data: { content: "ok", structured: "não é objeto" }, error: null });
+    const res = await sendMessage("teste");
+    expect(res.ok).toBe(true);
+    expect(res.message?.structured).toBeUndefined();
+  });
+});

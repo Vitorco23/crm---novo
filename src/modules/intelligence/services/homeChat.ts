@@ -20,10 +20,40 @@ import { getCommercialContext, type CommercialContext } from "@/shared/services/
 
 export type ChatRole = "user" | "assistant";
 
+export interface ChatCardMetric {
+  label: string;
+  valor: string;
+}
+
+export interface ChatCardItem {
+  nome: string;
+  acao: string;
+  metricas: ChatCardMetric[];
+}
+
+/**
+ * Resposta estruturada do assistente (redesign pós-Sprint-3): narrativa
+ * curta + até 5 cards de lead/oportunidade + pergunta de fechamento
+ * contextual. Espelha `StructuredChatContent` em
+ * supabase/functions/home-chat/index.ts (Deno não importa de src/, então a
+ * forma é mantida em paridade manual nos dois lados).
+ *
+ * Mensagens salvas ANTES deste redesign não têm este campo — `structured`
+ * é sempre opcional, e a UI cai para o texto em `content` (markdown antigo)
+ * quando ele está ausente.
+ */
+export interface StructuredChatContent {
+  texto_narrativo: string;
+  itens: ChatCardItem[];
+  pergunta_fechamento: string | null;
+}
+
 export interface ChatMessage {
   id: string;
   role: ChatRole;
   content: string;
+  /** Só presente em respostas do assistente geradas após o redesign estruturado. */
+  structured?: StructuredChatContent | null;
   createdAt: string;
 }
 
@@ -66,8 +96,9 @@ function saveMessages(list: ChatMessage[]) {
   notify();
 }
 
-export function appendMessage(role: ChatRole, content: string): ChatMessage {
+export function appendMessage(role: ChatRole, content: string, structured?: StructuredChatContent | null): ChatMessage {
   const msg: ChatMessage = { id: crypto.randomUUID(), role, content, createdAt: new Date().toISOString() };
+  if (structured) msg.structured = structured;
   saveMessages([...getMessages(), msg]);
   return msg;
 }
@@ -195,7 +226,12 @@ export async function sendMessage(text: string, profile: HomeChatProfile = {}): 
     const content = typeof data?.content === "string" ? data.content.trim() : "";
     if (!content) throw new Error("Não recebi uma resposta válida. Tente novamente.");
 
-    const assistantMsg = appendMessage("assistant", content);
+    const structured =
+      data?.structured && typeof data.structured === "object"
+        ? (data.structured as StructuredChatContent)
+        : null;
+
+    const assistantMsg = appendMessage("assistant", content, structured);
     return { ok: true, message: assistantMsg };
   } catch (e) {
     return { ok: false, errorMessage: (e as Error).message || "Não foi possível obter resposta agora." };

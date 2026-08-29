@@ -165,15 +165,59 @@ export default function Comando() {
                     }
                   >
                     {m.role === "assistant" ? (
-                      <div
-                        className="prose prose-sm dark:prose-invert max-w-none leading-relaxed
-                          prose-p:my-2 prose-ol:my-1 prose-ul:my-1 prose-li:my-1.5 prose-li:pl-1
-                          prose-strong:text-[hsl(var(--mission-text))] prose-strong:font-semibold
-                          marker:text-[hsl(var(--mission-accent))]
-                          prose-headings:text-[hsl(var(--mission-text))] prose-headings:text-[13px] prose-headings:font-semibold prose-headings:uppercase prose-headings:tracking-wide prose-headings:mt-3 prose-headings:mb-1.5"
-                      >
-                        <ReactMarkdown>{m.content}</ReactMarkdown>
-                      </div>
+                      m.structured ? (
+                        <div className="space-y-3">
+                          <p className="whitespace-pre-line leading-relaxed">
+                            {m.structured.texto_narrativo}
+                          </p>
+
+                          {m.structured.itens.length > 0 && (
+                            <div className="space-y-1.5">
+                              {m.structured.itens.map((it, idx) => (
+                                <div
+                                  key={idx}
+                                  className="rounded-md border border-[hsl(var(--mission-border))]/60 bg-[hsl(var(--mission-surface-2))]/60 px-3 py-2.5"
+                                >
+                                  <p className="text-sm font-semibold text-[hsl(var(--mission-text))] truncate">
+                                    {it.nome}
+                                  </p>
+                                  <p className="text-xs font-medium text-[hsl(var(--mission-accent))] mt-0.5">
+                                    {it.acao}
+                                  </p>
+                                  {it.metricas.length > 0 && (
+                                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                                      {it.metricas.map((mt, mi) => (
+                                        <span key={mi} className="text-[11px] text-[hsl(var(--mission-text-faint))]">
+                                          {mt.label}{" "}
+                                          <span className="font-medium tabular-nums text-[hsl(var(--mission-text-muted))]">
+                                            {mt.valor}
+                                          </span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {m.structured.pergunta_fechamento && (
+                            <p className="text-[13px] italic text-[hsl(var(--mission-text-muted))] border-l-2 border-[hsl(var(--mission-accent))]/40 pl-2.5">
+                              {m.structured.pergunta_fechamento}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          className="prose prose-sm dark:prose-invert max-w-none leading-relaxed
+                            prose-p:my-2 prose-ol:my-1 prose-ul:my-1 prose-li:my-1.5 prose-li:pl-1
+                            prose-strong:text-[hsl(var(--mission-text))] prose-strong:font-semibold
+                            marker:text-[hsl(var(--mission-accent))]
+                            prose-headings:text-[hsl(var(--mission-text))] prose-headings:text-[13px] prose-headings:font-semibold prose-headings:uppercase prose-headings:tracking-wide prose-headings:mt-3 prose-headings:mb-1.5"
+                        >
+                          <ReactMarkdown>{m.content}</ReactMarkdown>
+                        </div>
+                      )
                     ) : (
                       <span className="whitespace-pre-wrap">{m.content}</span>
                     )}
