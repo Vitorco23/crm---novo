@@ -35,6 +35,18 @@ export { normalizePhoneBR } from "@/shared/services/inboundFormatting";
 // Values are JSON strings (same shape as localStorage).
 const memCache = new Map<string, string>();
 
+// Auditoria 30/08: parsedCache mirrors memCache but holds the already-parsed
+// object, not the raw string. Some screens (Dashboard/StrategicIntelligencePanel)
+// call uload("p21_leads", ...) many independent times in the same render —
+// with a leads dataset in the thousands, re-running JSON.parse on the same
+// blob every single time was the real cause of a multi-second stall (NOT a
+// routing bug — see git log 2026-08-30). Keyed by the same full scoped key
+// (`u:<uid>:<key>`) as memCache, so it's naturally isolated per user without
+// needing its own clear-on-login logic; still cleared alongside memCache on
+// logout for memory hygiene. Only used for heavy keys — light keys already
+// read straight from localStorage.getItem, which is cheap.
+const parsedCache = new Map<string, unknown>();
+
 
 let currentUserId: string | null = null;
 
@@ -58,6 +70,7 @@ export function setCurrentUser(userId: string | null, email?: string | null) {
     localStorage.removeItem("p21_current_user_id");
     localStorage.removeItem("p21_current_user_email");
     memCache.clear();
+    parsedCache.clear();
   }
 }
 
@@ -82,6 +95,10 @@ function readScoped(scoped: string, heavy: boolean): string | null {
 function writeScoped(scoped: string, val: string, heavy: boolean) {
   if (heavy) {
     memCache.set(scoped, val);
+    // Invalidada aqui (não repopulada) — usave() já grava o valor parseado
+    // certo em parsedCache logo depois, com a referência de objeto que o
+    // chamador passou, sem precisar re-parsear o que acabou de stringificar.
+    parsedCache.delete(scoped);
     // fire-and-forget — durability comes from the mem cache + IDB write
     void idbSet(scoped, val);
   } else {
@@ -92,6 +109,7 @@ function writeScoped(scoped: string, val: string, heavy: boolean) {
 function deleteScoped(scoped: string, heavy: boolean) {
   if (heavy) {
     memCache.delete(scoped);
+    parsedCache.delete(scoped);
     void idbDelete(scoped);
   } else {
     localStorage.removeItem(scoped);
@@ -100,8 +118,14 @@ function deleteScoped(scoped: string, heavy: boolean) {
 
 export function uload<T>(key: string, fallback: T): T {
   try {
-    const raw = readScoped(scopedKey(key), isHeavy(key));
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    const heavy = isHeavy(key);
+    const scoped = scopedKey(key);
+    if (heavy && parsedCache.has(scoped)) return parsedCache.get(scoped) as T;
+    const raw = readScoped(scoped, heavy);
+    if (!raw) return fallback;
+    const value = JSON.parse(raw) as T;
+    if (heavy) parsedCache.set(scoped, value);
+    return value;
   } catch {
     return fallback;
   }
@@ -109,7 +133,10 @@ export function uload<T>(key: string, fallback: T): T {
 
 export function usave<T>(key: string, data: T) {
   const str = JSON.stringify(data);
-  writeScoped(scopedKey(key), str, isHeavy(key));
+  const heavy = isHeavy(key);
+  const scoped = scopedKey(key);
+  writeScoped(scoped, str, heavy);
+  if (heavy) parsedCache.set(scoped, data);
   if (isScopedKey(key)) {
     // Guard: never push an empty value for protected config keys.
     if (isProtectedConfigKey(key) && isEmptyValue(data)) return;

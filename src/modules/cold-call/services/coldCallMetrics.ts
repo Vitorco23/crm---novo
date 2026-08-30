@@ -8,6 +8,7 @@ import {
   getMovementEvents,
   getGoalsSettings,
   getStagesForPipeline,
+  getPipelineForStage,
   type Lead,
   type PipelineStage,
 } from "@/shared/services/store";
@@ -163,8 +164,20 @@ export function computeLeadTemperature(lead: Lead): LeadTemperature {
   const calls = lead.callNotes?.length ?? 0;
   const isFirstStage = /novo lead/i.test(lead.stage);
   if (isFirstStage && calls === 0 && days < 1) return "new";
-  if (days >= 5) return "cold";
-  if (days >= 2) return "warm";
+
+  // Auditoria 30/08: esta régua nasceu pra cold call (tentativa parada = lead
+  // esfriando). Reaproveitada genericamente via displayTemperature() para
+  // TODO lead, ela classificava "Reunião Marcada" (funil de Oportunidades,
+  // não cold_call) como "Frio" só por estar 5+ dias na etapa — mesmo que
+  // isso só signifique "esperando a data da reunião chegar". Etapas fora do
+  // cold_call usam limiares mais largos, refletindo um ciclo natural mais
+  // longo entre toques.
+  const isColdCallStage = getPipelineForStage(lead.stage as PipelineStage) === "cold_call";
+  const coldThreshold = isColdCallStage ? 5 : 10;
+  const warmThreshold = isColdCallStage ? 2 : 4;
+
+  if (days >= coldThreshold) return "cold";
+  if (days >= warmThreshold) return "warm";
   return "hot";
 }
 
