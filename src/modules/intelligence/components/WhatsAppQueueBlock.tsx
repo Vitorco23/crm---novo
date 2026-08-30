@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Loader2, Lock, Clock } from "lucide-react";
+import { MessageCircle, Loader2, Lock, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import {
   getQueueState, shouldGenerateNewQueue, generateAndLockQueue,
@@ -22,13 +22,36 @@ const TIER_LABEL: Record<number, { label: string; cls: string }> = {
   5: { label: "5 · Tentativa repetida", cls: "bg-muted text-muted-foreground border-border" },
 };
 
+/**
+ * Diagnóstico 30/08: o bloco desapareceu sem erro visível em produção, sem
+ * ErrorBoundary nenhum no app pra denunciar. Reescrito pra NUNCA sumir por
+ * completo: qualquer exceção nas funções de whatsappQueue.ts é capturada
+ * aqui e vira uma mensagem visível dentro do próprio card (com o título já
+ * sempre presente, isso dá um sinal inequívoco pra distinguir "componente
+ * não montou" — nem o título aparece, é deploy — de "montou mas quebrou" —
+ * título aparece com aviso de erro embaixo). console.info de montagem
+ * ajuda a confirmar pelo DevTools se o componente sequer chegou a rodar.
+ */
 export default function WhatsAppQueueBlock() {
-  const [state, setState] = useState<WhatsAppQueueState | null>(() => getQueueState());
+  const [state, setState] = useState<WhatsAppQueueState | null>(null);
   const [loading, setLoading] = useState(false);
   const [tick, setTick] = useState(0);
+  const [blockError, setBlockError] = useState<string | null>(null);
 
   useEffect(() => {
-    const refresh = () => setState(getQueueState());
+    console.info("[WhatsAppQueueBlock] montado");
+    try {
+      setState(getQueueState());
+    } catch (e) {
+      console.error("[WhatsAppQueueBlock] falha ao ler estado salvo", e);
+      setBlockError((e as Error)?.message || "Falha ao ler o estado salvo da fila.");
+    }
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => {
+      try { setState(getQueueState()); } catch (e) { console.error("[WhatsAppQueueBlock] refresh falhou", e); }
+    };
     window.addEventListener(WHATSAPP_QUEUE_UPDATED_EVENT, refresh);
     return () => window.removeEventListener(WHATSAPP_QUEUE_UPDATED_EVENT, refresh);
   }, []);
@@ -42,21 +65,44 @@ export default function WhatsAppQueueBlock() {
 
   useEffect(() => {
     if (loading) return;
-    if (!shouldGenerateNewQueue(state, new Date())) return;
+    try {
+      if (!shouldGenerateNewQueue(state, new Date())) return;
+    } catch (e) {
+      console.error("[WhatsAppQueueBlock] shouldGenerateNewQueue falhou", e);
+      setBlockError((e as Error)?.message || "Falha ao avaliar a janela de geração.");
+      return;
+    }
     setLoading(true);
-    generateAndLockQueue(false).then((res) => {
-      setLoading(false);
-      if (res.ok && res.state) {
-        setState(res.state);
-        if (res.state.items.length > 0) toast.success(`Fila de WhatsApp de hoje pronta — ${res.state.items.length} contato(s) priorizado(s).`);
-      } else if (!res.ok) {
-        toast.error(res.errorMessage || "Não foi possível calcular a fila de WhatsApp de hoje.");
-      }
-    });
+    generateAndLockQueue(false)
+      .then((res) => {
+        setLoading(false);
+        if (res.ok && res.state) {
+          setState(res.state);
+          if (res.state.items.length > 0) toast.success(`Fila de WhatsApp de hoje pronta — ${res.state.items.length} contato(s) priorizado(s).`);
+        } else if (!res.ok) {
+          toast.error(res.errorMessage || "Não foi possível calcular a fila de WhatsApp de hoje.");
+        }
+      })
+      .catch((e) => {
+        setLoading(false);
+        console.error("[WhatsAppQueueBlock] generateAndLockQueue falhou", e);
+        setBlockError(e?.message || "Falha inesperada ao calcular a fila.");
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 
-  const draft = useMemo<DraftPreviewItem[]>(() => (state ? [] : buildDraftPreview()), [state, tick]);
+  const draft = useMemo<DraftPreviewItem[]>(() => {
+    if (state) return [];
+    try {
+      return buildDraftPreview();
+    } catch (e) {
+      // Não chama setState aqui dentro (estamos em fase de render) — só
+      // loga; os outros pontos (efeitos) já cobrem o aviso visível.
+      console.error("[WhatsAppQueueBlock] buildDraftPreview falhou", e);
+      return [];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, tick]);
   const used = usedCount(state);
 
   const handleSend = (item: WhatsAppQueueState["items"][number]) => {
@@ -83,6 +129,12 @@ export default function WhatsAppQueueBlock() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
+        {blockError && (
+          <p className="text-[11px] text-rose-500 flex items-start gap-1.5 rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>Este bloco encontrou um erro e não conseguiu calcular a fila: {blockError}</span>
+          </p>
+        )}
         {!state && !loading && (
           <>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pb-1">
