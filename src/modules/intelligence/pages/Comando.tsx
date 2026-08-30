@@ -46,6 +46,39 @@ function renderInlineBold(text: string): React.ReactNode {
   });
 }
 
+/**
+ * Efeito de digitação para a saudação inicial — "sendo escrita para você" no
+ * momento em que a tela carrega. Só roda para o texto vazio→completo (uma
+ * vez por montagem da tela, já que a saudação some assim que a conversa
+ * começa); respeita prefers-reduced-motion mostrando o texto completo direto.
+ */
+function useTypewriter(text: string): { shown: string; done: boolean } {
+  const [shown, setShown] = useState("");
+
+  useEffect(() => {
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      setShown(text);
+      return;
+    }
+
+    setShown("");
+    let i = 0;
+    const totalMs = Math.min(1400, Math.max(500, text.length * 22));
+    const stepMs = Math.max(12, totalMs / Math.max(text.length, 1));
+    const id = setInterval(() => {
+      i += 1;
+      setShown(text.slice(0, i));
+      if (i >= text.length) clearInterval(id);
+    }, stepMs);
+    return () => clearInterval(id);
+  }, [text]);
+
+  return { shown, done: shown.length >= text.length };
+}
+
 export default function Comando() {
   // Não usar useAIUserContext() direto aqui: precisamos saber quando o
   // perfil TERMINOU de carregar antes de gravar a saudação/sugestões do dia
@@ -118,6 +151,10 @@ export default function Comando() {
 
   const lastFailedText = error ? messages[messages.length - 1]?.content : undefined;
 
+  // Hook chamado incondicionalmente (regra dos hooks) mesmo antes de `daily`
+  // existir — some ainda dentro do `if (!daily)` abaixo.
+  const { shown: greetingShown, done: greetingDone } = useTypewriter(daily?.greeting ?? "");
+
   if (!daily) {
     return (
       <PageContainer bleed className="p-4 md:p-6">
@@ -170,9 +207,26 @@ export default function Comando() {
           <div className="flex flex-col min-h-0 h-full">
             <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 pb-4">
               {messages.length === 0 && (
-                <p className="text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance] pt-2">
-                  {daily.greeting}
-                </p>
+                <div className="relative pt-2">
+                  {/* Glow ambiente atrás da saudação — presença, não objeto (ver
+                      comentário em tailwind.config.ts sobre o Intelligence Core
+                      descartado). Só decorativo: aria-hidden, para de animar em
+                      prefers-reduced-motion. */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -left-10 -top-16 h-56 w-56 rounded-full blur-3xl animate-comando-ambient motion-reduce:animate-none motion-reduce:opacity-25"
+                    style={{ background: "radial-gradient(circle, hsl(var(--mission-accent) / 0.55), transparent 70%)" }}
+                  />
+                  <p className="relative text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance]">
+                    {greetingShown}
+                    <span
+                      aria-hidden
+                      className={`inline-block w-[2px] h-[1em] -mb-[0.15em] ml-0.5 bg-[hsl(var(--mission-accent))] ${
+                        greetingDone ? "opacity-0 transition-opacity duration-500" : "animate-pulse"
+                      }`}
+                    />
+                  </p>
+                </div>
               )}
 
               {messages.map((m) => (
@@ -273,6 +327,12 @@ export default function Comando() {
             )}
 
             <div className="flex items-end gap-2 rounded-xl border border-[hsl(var(--mission-border))] bg-[hsl(var(--mission-surface))]/50 p-2">
+              {/* Indicador "pronto para ouvir" — mesma linguagem visual do
+                  ponto do P21Signal, sem texto, só presença discreta. */}
+              <span className="relative mb-2.5 ml-1 flex h-1.5 w-1.5 shrink-0" aria-hidden title="Pronto">
+                <span className="absolute inline-flex h-full w-full animate-pulse-green rounded-full bg-[hsl(var(--mission-accent))] motion-reduce:animate-none" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(var(--mission-accent))]" />
+              </span>
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

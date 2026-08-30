@@ -223,6 +223,15 @@ export default {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
         },
+        // Comando (Sprint pós-3) — glow ambiente atrás da saudação inicial.
+        // Deliberadamente NÃO é orb-breathe/orb-spin-slow: aquelas ficaram do
+        // "Intelligence Core" (esfera/partículas/órbitas) descartado em
+        // Sprint 1.2 por ficar sci-fi demais (ver P21Signal.tsx) — este é só
+        // um borrão de luz ambiente, sem contorno definido, sem rotação.
+        "comando-ambient": {
+          "0%, 100%": { opacity: "0.22", transform: "scale(1)" },
+          "50%": { opacity: "0.4", transform: "scale(1.08)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -232,6 +241,7 @@ export default {
         "pulse-green": "pulse-green 2s ease-in-out infinite",
         "orb-breathe": "orb-breathe 6s ease-in-out infinite",
         "orb-spin-slow": "orb-spin-slow 40s linear infinite",
+        "comando-ambient": "comando-ambient 5s ease-in-out infinite",
       },
     },
   },

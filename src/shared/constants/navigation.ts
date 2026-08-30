@@ -1,7 +1,7 @@
 import {
   PhoneCall, Handshake, Timer, BarChart3, Target, Plug, Rocket, ListChecks,
   DollarSign, Bell, Brain, Compass, FlaskConical, BookMarked,
-  Calendar as CalendarIcon, MessageCircle, Library, LucideIcon, ShieldCheck,
+  Calendar as CalendarIcon, Library, LucideIcon, ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { HOME_AREA_LABEL, HOME_AREA_ROUTE, HOME_AREA_DESCRIPTION } from "@/modules/intelligence/constants/homeArea";
@@ -75,13 +75,14 @@ export const NAV_ITEMS: NavItem[] = [
       { title: "Pomodoro", url: "/pomodoro" }
     ]
   },
-  { 
-    title: "WhatsApp",          
-    url: "/whatsapp",      
-    icon: MessageCircle, 
-    group: "operacao",   
-    description: "Comunicação via WhatsApp" 
-  },
+  // "WhatsApp" (gestão de conexão QR) saiu do menu principal — auditoria de
+  // 2026-08-30: aponta para um servidor próprio (whatsapp-server/, sessão
+  // via whatsapp-web.js) que nunca foi hospedado/configurado
+  // (VITE_WHATSAPP_API_URL ausente), então a tela só mostrava erro de
+  // configuração. É um recurso DIFERENTE do webhook whatsapp-agent-update-lead
+  // (esse já está em produção — recebe status do agente externo de disparo).
+  // Rota (/whatsapp) e componente preservados; só some do menu até alguém
+  // hospedar o servidor e configurar a variável.
 
   // INTELIGÊNCIA
   { 

@@ -608,7 +608,12 @@ export default function LeadDetailDrawer({
                   </div>
                   <div className="grid gap-2 text-xs sm:grid-cols-2">
                     <div><p className="font-semibold text-muted-foreground">Motivo</p><p className="line-clamp-2 text-foreground/80">{step?.objective || draft.notes || "Sem motivo registrado."}</p></div>
-                    <div><p className="font-semibold text-muted-foreground">Última interação</p><p className="text-foreground/80">{callNotes.length ? "Interação registrada — veja a aba Interações." : "Sem contato registrado."}</p></div>
+                    {/* Bug de auditoria (30/08): antes só olhava callNotes, então
+                        leads com Interaction registrada mas sem callNote (ex.:
+                        WhatsApp, reunião) mostravam "Sem contato registrado"
+                        mesmo com histórico. Mesmo critério de LastContactLabel
+                        em LeadExecutiveSummary.tsx: interactions OU callNotes. */}
+                    <div><p className="font-semibold text-muted-foreground">Última interação</p><p className="text-foreground/80">{(callNotes.length || (lead.interactions?.length ?? 0)) ? "Interação registrada — veja a aba Interações." : "Sem contato registrado."}</p></div>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
