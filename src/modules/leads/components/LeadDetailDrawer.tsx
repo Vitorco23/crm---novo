@@ -37,6 +37,7 @@ import { CallAuditView } from "@/modules/laboratorio/components/CallAuditView";
 import InteracoesTimeline from "@/modules/leads/components/InteracoesTimeline";
 import LeadExecutiveSummary from "@/modules/leads/components/LeadExecutiveSummary";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { WhatsAppSendMenu } from "@/shared/components/WhatsAppSendMenu";
 
 
 
@@ -618,7 +619,16 @@ export default function LeadDetailDrawer({
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {draft.phone && <Button asChild size="sm" className="h-8 gap-1 bg-accent px-2 text-[10px] text-accent-foreground hover:bg-accent/90"><a href={`tel:${draft.phone}`} aria-label="Ligar agora"><Phone className="h-3.5 w-3.5" /> Ligar</a></Button>}
-                  {whatsUrl && <Button asChild size="sm" variant="outline" className="h-8 px-2 text-[10px] border-emerald-500/30 text-emerald-500"><a href={whatsUrl} target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp"><MessageCircle className="h-3.5 w-3.5" /></a></Button>}
+                  {whatsUrl && (
+                    <WhatsAppSendMenu
+                      lead={draft}
+                      meeting={meetings[0]}
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-2 text-[10px] border-emerald-500/30 text-emerald-500"
+                      label=""
+                    />
+                  )}
                   <Button asChild size="sm" variant="outline" className="h-8 px-2 text-[10px]"><a href={mapsUrlFor(draft)} target="_blank" rel="noopener noreferrer" aria-label="Abrir Google Maps"><MapPin className="h-3.5 w-3.5" /></a></Button>
                   {draft.instagramLink && <Button asChild size="sm" variant="outline" className="h-8 px-2 text-[10px] border-pink-500/30 text-pink-500"><a href={draft.instagramLink} target="_blank" rel="noopener noreferrer" aria-label="Abrir Instagram"><Instagram className="h-3.5 w-3.5" /></a></Button>}
                   {isColdCall && step && <Button size="sm" variant="outline" className="h-8 gap-1 px-2 text-[10px]" onClick={() => setScriptOpen(true)}><FileText className="h-3.5 w-3.5" /> Script</Button>}

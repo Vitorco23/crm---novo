@@ -20,6 +20,7 @@ import {
   type ReminderTemplate, type ReminderAnchor, type ReminderDirection, type ReminderUnit,
 } from "@/modules/agenda/services/reminders";
 import { requestNotificationPermission } from "@/modules/agenda/hooks/useReminderNotifications";
+import { WhatsAppSendMenu } from "@/shared/components/WhatsAppSendMenu";
 import { getLeads, getStagesForPipeline, getMeetingsForLead } from "@/shared/services/store";
 import { pullKeysFromCloud, syncFromCloud } from "@/shared/services/userStorage";
 import { toast } from "sonner";
@@ -191,6 +192,15 @@ export default function Lembretes() {
                       </pre>
                       <div className="flex items-center gap-2 mt-2">
                         <Button size="sm" variant="outline" onClick={() => copy(r)}><Copy className="h-3.5 w-3.5 mr-1" /> Copiar</Button>
+                        {lead && (
+                          <WhatsAppSendMenu
+                            lead={lead}
+                            presetMessage={renderedMessage}
+                            size="sm"
+                            variant="outline"
+                            className="border-emerald-500/30 text-emerald-500"
+                          />
+                        )}
                         {r.status === "pending" && (
                           <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => markSent(r)}>
                             <Check className="h-3.5 w-3.5 mr-1" /> Marcar como enviado

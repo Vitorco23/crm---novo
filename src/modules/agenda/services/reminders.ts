@@ -126,14 +126,30 @@ function fmtTime(d: Date) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+/**
+ * Resumo da ligação mais recente do lead — mesma fonte que já alimenta a
+ * priorização (`latestAudit()` em priorityLeads.ts): primeiro o diagnóstico
+ * profundo (CallAuditData.resumoExecutivo, quando o Auditor Comercial foi
+ * rodado manualmente numa ligação), senão o diagnóstico automático leve
+ * (autoDiagnosis.summary, que roda sozinho em toda ligação do Matteline).
+ */
+function latestCallSummary(lead: Lead): string {
+  const notes = lead.callNotes || [];
+  for (let i = notes.length - 1; i >= 0; i--) {
+    const resumo = notes[i]?.analysis?.data?.resumoExecutivo;
+    if (resumo) return resumo;
+  }
+  return lead.autoDiagnosis?.summary || "";
+}
+
 export function renderReminderTemplate(text: string, lead: Lead, meeting?: Meeting) {
   if (!text) return "";
-  
+
   const nome = firstName(meeting?.contactName || lead.contact || lead.company);
   const empresa = lead.company;
   const decisor = lead.contact || lead.company;
   const meetingAt = meeting ? new Date(`${meeting.date}T${meeting.time}:00`) : null;
-  
+
   // Data map with lowercased keys for normalization
   const map: Record<string, string> = {
     "nome": nome,
@@ -146,6 +162,15 @@ export function renderReminderTemplate(text: string, lead: Lead, meeting?: Meeti
     "protocolo": protocolFor(lead),
     "decisor": decisor,
     "responsavel": decisor, // alias
+    // Mensagens de follow-up de cold call (fora do funil de reunião) — só
+    // preenche o que dá pra inferir com segurança de dado estruturado
+    // existente. "[contexto breve]" e "[sócio/pessoa]" ficam de propósito
+    // sem mapeamento: exigem julgamento do que foi dito na ligação, então
+    // permanecem como marcador literal no texto pro vendedor completar à
+    // mão antes de enviar — o mesmo comportamento de fallback abaixo
+    // (chave sem mapa = devolve o marcador original).
+    "resumo curto": latestCallSummary(lead).slice(0, 220),
+    "assunto": lead.niche || "",
   };
   
   // Regex that captures content inside brackets, case-insensitive
