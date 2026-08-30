@@ -10,10 +10,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { AgendaRepository } from "@/modules/agenda/services/AgendaRepository";
 import { IntelligenceRepository } from "@/modules/intelligence/services/IntelligenceRepository";
 import { parseISO } from "date-fns";
-import { 
-  CalendarIcon, Loader2, Pencil, Copy, FileText, Building2, Flame, Thermometer, Snowflake, 
+import {
+  CalendarIcon, Loader2, Pencil, Copy, FileText, Building2,
   MapPin, Globe, MessageCircle, User as UserIcon, RefreshCw
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { computeLeadPriority, TIER_META, type LeadPriority } from "@/modules/intelligence/services/priorityEngine";
+import { displayTemperature } from "@/modules/intelligence/services/leadInsights";
 import { upsertOnboardingRevenue, findTransactionByClient, deleteTransaction } from "@/modules/financeiro/services/finance";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -160,11 +163,39 @@ function MeetingRow({ lead, draft, meeting, onChanged }: { lead: Lead; draft: Le
   );
 }
 
-function priorityLabel(icp: ICPStars) {
-  if (icp >= 4) return { label: "Muito Alta", cls: "bg-accent/30 text-accent border-accent/50" };
-  if (icp === 3) return { label: "Alta", cls: "bg-accent/20 text-accent border-accent/40" };
-  if (icp === 2) return { label: "Média", cls: "bg-primary/20 text-primary-foreground border-primary/40" };
-  return { label: "Baixa", cls: "bg-muted text-muted-foreground border-border" };
+/** Badge de prioridade operacional (computeLeadPriority) com tooltip
+ * explicando os motivos — mesmos `reasons` já computados/ordenados pelo
+ * motor, nunca um recálculo paralelo. Sem motivos (lead fechado ou sem
+ * sinal relevante), mostra só o badge sem tooltip. */
+function PriorityBadgeWithReasons({
+  priority, tierMeta, variant, className,
+}: {
+  priority: LeadPriority | null;
+  tierMeta: { label: string; cls: string };
+  variant?: "outline";
+  className?: string;
+}) {
+  const badge = (
+    <Badge variant={variant} className={`border ${tierMeta.cls} ${className || ""}`}>
+      {tierMeta.label}
+    </Badge>
+  );
+  if (!priority || priority.reasons.length === 0) return badge;
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipContent className="max-w-[240px] text-xs">
+          <p className="font-semibold mb-1">Por que esta prioridade:</p>
+          <ul className="space-y-0.5">
+            {priority.reasons.map((r) => (
+              <li key={r.key}>• {r.label}</li>
+            ))}
+          </ul>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
 
 function mapsUrlFor(lead: Lead) {
@@ -333,11 +364,19 @@ export default function LeadDetailDrawer({
 
   const step = isColdCall ? getStepForLead(lead) : null;
   const cadence = isColdCall ? getCadenceForNiche(lead.niche) : [];
-  const prio = priorityLabel(draft.icpStars);
-  const temp = draft.temperature ?? "Frio";
-  const tempIcon = temp === "Quente" ? Flame : temp === "Morno" ? Thermometer : Snowflake;
-  const TempIcon = tempIcon;
-  const tempCls = temp === "Quente" ? "text-orange-500" : temp === "Morno" ? "text-yellow-500" : "text-sky-400";
+  // Bug de auditoria (30/08): "prio" vinha de priorityLabel(icpStars) — uma
+  // nota de FIT do lead (ICP, atribuída na criação), rotulada genericamente
+  // como "Prioridade" ao lado da temperatura. E "temp" lia draft.temperature
+  // direto (campo em inglês "hot"/"warm"/"cold", nunca igual às strings em
+  // português comparadas logo abaixo — praticamente sempre caía em "Frio"
+  // por default). Isso é o que produzia "MUITO ALTA" + "Frio" juntos sem
+  // nenhuma relação real entre os dois números. Troca pra computeLeadPriority
+  // (mesmo motor usado em Central de Decisão/Missão do Dia — considera
+  // reunião marcada, follow-up vencido, diagnóstico da IA etc.) e o
+  // temperature que ele já calcula corretamente via displayTemperature().
+  const priority = computeLeadPriority(draft);
+  const tierMeta = TIER_META[priority?.tier ?? "baixa"];
+  const dispTemp = priority?.temperature ?? displayTemperature(draft);
 
   const readFileAsDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -511,9 +550,9 @@ export default function LeadDetailDrawer({
                 <span>{lead.stage}</span>
                 <span>•</span>
                 <span>⏱ {formatDistanceToNow(new Date(lead.stageChangedAt), { locale: ptBR, addSuffix: true })}</span>
-                <Badge className={`border ${prio.cls} ml-1`}>{prio.label}</Badge>
-                <TempIcon className={`h-3 w-3 ${tempCls}`} />
-                <span>{temp}</span>
+                <PriorityBadgeWithReasons priority={priority} tierMeta={tierMeta} className="ml-1" />
+                <span className={dispTemp.cls}>{dispTemp.emoji}</span>
+                <span>{dispTemp.label}</span>
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -600,8 +639,8 @@ export default function LeadDetailDrawer({
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Resumo executivo</p>
-                    <Badge variant="outline" className={`${prio.cls} text-[10px]`}>{prio.label}</Badge>
-                    <Badge variant="outline" className="text-[10px]">{temp}</Badge>
+                    <PriorityBadgeWithReasons priority={priority} tierMeta={tierMeta} variant="outline" className="text-[10px]" />
+                    <Badge variant="outline" className="text-[10px]">{dispTemp.emoji} {dispTemp.label}</Badge>
                   </div>
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Próxima ação</p>
