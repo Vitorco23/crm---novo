@@ -43,6 +43,7 @@ import { uload, usave } from "@/shared/services/userStorage";
 import PriorityCard from "@/modules/intelligence/components/PriorityCard";
 import DiretorComercialIACard from "@/modules/intelligence/components/DiretorComercialIACard";
 import PriorityLeadsBlock from "@/modules/intelligence/components/PriorityLeadsBlock";
+import WhatsAppQueueBlock from "@/modules/intelligence/components/WhatsAppQueueBlock";
 
 // ============================================================
 // TIPOS E FILTROS LOCAIS DA CENTRAL
@@ -283,6 +284,7 @@ export default function CentralDecisao() {
       {/* 4. DETALHAMENTO COMPLEMENTAR (LEADS PRIORITÁRIOS + METAS) */}
       <div className="grid grid-cols-1 gap-6">
         <PriorityLeadsBlock />
+        <WhatsAppQueueBlock />
         <GoalsBlock data={data} tick={tick} />
       </div>
     </div>
