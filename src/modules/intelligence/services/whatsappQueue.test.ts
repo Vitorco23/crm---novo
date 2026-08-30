@@ -147,6 +147,18 @@ describe("buildQueueCandidates — pool de candidatos (auditoria 30/08: consider
     const cands = buildQueueCandidates(AFTER_WINDOW);
     expect(cands.length).toBeLessThanOrEqual(60);
   });
+
+  it("evento de ligação com 'at' malformado (dado legado) é ignorado, nunca derruba a tela inteira", () => {
+    mockLeads = [makeLead({ id: "L1", stage: "Reunião Marcada" })];
+    mockLedger = [
+      { id: "e1", at: "isso-nao-e-uma-data", leadId: "L1", channel: "call", source: "callface", outcome: "sem_resposta" },
+      { id: "e2", at: undefined as unknown as string, leadId: "L1", channel: "call", source: "callface", outcome: "sem_resposta" },
+    ];
+    expect(() => buildQueueCandidates(AFTER_WINDOW)).not.toThrow();
+    const cands = buildQueueCandidates(AFTER_WINDOW);
+    // ainda entra no pool (é lead de etapa Reunião Marcada), só sem sinal de "ligado hoje" vindo desses eventos quebrados.
+    expect(cands.find((c) => c.id === "L1")?.ligacaoHoje).toBeNull();
+  });
 });
 
 describe("generateAndLockQueue — trava a lista, mapeia mensagem e link", () => {

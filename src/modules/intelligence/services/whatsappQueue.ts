@@ -41,7 +41,12 @@ function notify() {
   try { window.dispatchEvent(new CustomEvent(WHATSAPP_QUEUE_UPDATED_EVENT)); } catch { /* ignore */ }
 }
 
+/** Defensivo: um `ActivityEvent.at` malformado/ausente (dado legado) não
+ * pode derrubar o bloco inteiro — Intl.DateTimeFormat lança RangeError em
+ * cima de uma Date inválida. Devolve uma chave que nunca bate com "hoje",
+ * então o evento só é ignorado, nunca quebra a tela. */
 function todayKeySP(now: Date = new Date()): string {
+  if (Number.isNaN(now.getTime())) return "invalid-date";
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
     year: "numeric", month: "2-digit", day: "2-digit",
