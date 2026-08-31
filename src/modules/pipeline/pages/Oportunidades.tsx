@@ -63,6 +63,7 @@ export default function Oportunidades() {
         company: form.company.trim(),
         contact: form.contact.trim(),
         phone: form.phone.trim(),
+        email: form.email.trim(),
         niche: form.niche.trim(),
         city: form.city.trim(),
         gmnLink: "",
@@ -131,8 +132,9 @@ export default function Oportunidades() {
 
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Empresa *</Label>
+              <Label htmlFor="opp-company" className="text-xs">Empresa *</Label>
               <Input
+                id="opp-company"
                 autoFocus
                 value={form.company}
                 onChange={(e) => setForm({ ...form, company: e.target.value })}
@@ -141,34 +143,49 @@ export default function Oportunidades() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Contato</Label>
+                <Label htmlFor="opp-contact" className="text-xs">Contato</Label>
                 <Input
+                  id="opp-contact"
                   value={form.contact}
                   onChange={(e) => setForm({ ...form, contact: e.target.value })}
                   placeholder="Nome do decisor"
                 />
               </div>
               <div>
-                <Label className="text-xs">Telefone</Label>
+                <Label htmlFor="opp-phone" className="text-xs">Telefone</Label>
                 <Input
+                  id="opp-phone"
+                  type="tel"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="+55 11 99999-9999"
                 />
               </div>
             </div>
+            <div>
+              <Label htmlFor="opp-email" className="text-xs">E-mail</Label>
+              <Input
+                id="opp-email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="contato@empresa.com"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Nicho</Label>
+                <Label htmlFor="opp-niche" className="text-xs">Nicho</Label>
                 <Input
+                  id="opp-niche"
                   value={form.niche}
                   onChange={(e) => setForm({ ...form, niche: e.target.value })}
                   placeholder="Ex: Odontologia"
                 />
               </div>
               <div>
-                <Label className="text-xs">Cidade</Label>
+                <Label htmlFor="opp-city" className="text-xs">Cidade</Label>
                 <Input
+                  id="opp-city"
                   value={form.city}
                   onChange={(e) => setForm({ ...form, city: e.target.value })}
                   placeholder="Ex: São Paulo"
@@ -176,8 +193,9 @@ export default function Oportunidades() {
               </div>
             </div>
             <div>
-              <Label className="text-xs">Observações</Label>
+              <Label htmlFor="opp-notes" className="text-xs">Observações</Label>
               <Textarea
+                id="opp-notes"
                 rows={2}
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
