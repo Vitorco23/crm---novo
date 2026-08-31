@@ -14,7 +14,7 @@ import {
   exportWorkbook, resolvePeriod, PERIOD_LABELS,
   type PeriodPreset, type SheetSpec, type DateRange,
 } from "@/modules/pipeline/services/exportEngine";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/shared/utils/utils";
 
 interface Props {
@@ -57,14 +57,13 @@ export default function ExportExcelDialog({
           sheets,
           moduleSlug,
         );
-        toast({
-          title: "Exportação concluída",
+        toast("Exportação concluída", {
           description: `${sheets.length + 1} abas geradas para o período ${range.label.toLowerCase()}.`,
         });
         setOpen(false);
       } catch (e) {
         console.error(e);
-        toast({ title: "Falha na exportação", description: String(e), variant: "destructive" });
+        toast.error("Falha na exportação", { description: String(e) });
       } finally {
         setBusy(false);
       }

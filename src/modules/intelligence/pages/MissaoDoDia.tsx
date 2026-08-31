@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   BarChart3,
   Check,
@@ -265,25 +265,25 @@ export default function MissaoDoDia() {
 
   const handleComplete = (entry: MissionEntry) => {
     completeMissionEntry(entry.id);
-    toast({ title: "Item concluído na missão", description: entry.title });
+    toast("Item concluído na missão", { description: entry.title });
     bump();
   };
 
   const handleAddSuggestion = (item: MissionItem) => {
     addMissionTask(item);
-    toast({ title: "Adicionado à missão", description: item.title });
+    toast("Adicionado à missão", { description: item.title });
     bump();
   };
 
   const handleAddFollowup = (followup: FollowupPick) => {
     addFollowupTask(followup);
-    toast({ title: "Adicionado à missão", description: followup.company });
+    toast("Adicionado à missão", { description: followup.company });
     bump();
   };
 
   const handleReset = () => {
     resetMissionDay();
-    toast({ title: "Missão do dia reiniciada", description: "Nenhum dado comercial foi alterado." });
+    toast("Missão do dia reiniciada", { description: "Nenhum dado comercial foi alterado." });
     bump();
   };
 
