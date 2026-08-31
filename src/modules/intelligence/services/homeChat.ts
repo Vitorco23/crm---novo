@@ -161,16 +161,32 @@ export interface DailyChatState {
 }
 
 /**
- * Sugestões e saudação são calculadas uma vez por dia e ficam estáveis
- * durante toda a conversa daquele dia — nunca recalculadas a cada mensagem.
+ * Sugestões são calculadas uma vez por dia e ficam estáveis durante toda a
+ * conversa daquele dia — nunca recalculadas a cada mensagem (evita a fila
+ * de sugestões mudando embaixo do vendedor no meio do uso).
+ *
+ * A saudação é diferente (ajuste 31/08): o TEXTO fica igual dentro do
+ * mesmo carregamento, mas a PALAVRA (Bom dia/Boa tarde/Boa noite) é
+ * recalculada a cada chamada — ou seja, atualiza a cada novo acesso à
+ * tela, mesmo no mesmo dia, em vez de travar no horário do primeiro
+ * acesso do dia. Isso é local ao navegador (p21_home_chat_daily nunca
+ * sincroniza pra nuvem) — cada aba/origem calcula a sua.
  */
 export function getOrCreateDailyState(ctx: CommercialContext, name: string | undefined, now: Date = new Date()): DailyChatState {
   const key = todayKey(now);
   const stored = uload<DailyChatState | null>(DAILY_KEY, null);
-  if (stored && stored.date === key) return stored;
+  const greeting = computeGreeting(name, now);
+
+  if (stored && stored.date === key) {
+    if (stored.greeting === greeting) return stored;
+    const updated: DailyChatState = { ...stored, greeting };
+    usave(DAILY_KEY, updated);
+    return updated;
+  }
+
   const fresh: DailyChatState = {
     date: key,
-    greeting: computeGreeting(name, now),
+    greeting,
     suggestions: computeDailySuggestions(ctx),
   };
   usave(DAILY_KEY, fresh);
