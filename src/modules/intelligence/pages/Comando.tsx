@@ -97,6 +97,12 @@ export default function Comando() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => getMessages());
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  // Trava síncrona contra envio duplicado (bug 31/08: dois "submit" quase
+  // simultâneos — ex.: Enter disparando duas vezes em sequência rápida —
+  // liam `sending` ainda como false, já que o setState do React não
+  // commitou a tempo, e os dois passavam da checagem. useState sozinho não
+  // fecha essa brecha; useRef atualiza na hora, sem esperar re-render.
+  const sendingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<DailyChatState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -124,11 +130,13 @@ export default function Comando() {
   }, [messages.length, sending]);
 
   const submit = async (text: string) => {
-    if (sending || !text.trim()) return;
+    if (sendingRef.current || !text.trim()) return;
+    sendingRef.current = true;
     setSending(true);
     setError(null);
     setInput("");
     const res = await sendMessage(text, profile);
+    sendingRef.current = false;
     setSending(false);
     if (!res.ok) {
       setError(res.errorMessage || "Não foi possível obter resposta agora.");
