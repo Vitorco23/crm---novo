@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => ({
     // Pré-empacota deps pesadas usadas em rotas lazy (ex.: /comando) para evitar
     // re-otimização no meio da sessão, que invalida os módulos já carregados e
     // causa "Failed to fetch dynamically imported module".
-    include: ["react-markdown"],
+    include: ["react-markdown", "@tanstack/query-core"],
   },
   build: {
 
