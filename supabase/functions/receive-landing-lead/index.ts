@@ -243,6 +243,11 @@ Deno.serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const LANDING_WEBHOOK_SECRET = Deno.env.get("LANDING_WEBHOOK_SECRET");
+  // Migração 30/08: aceita também um segredo "next", pra girar o valor sem
+  // derrubar quem ainda usa o antigo (landing/link pages ainda hospedadas no
+  // Lovable durante o teste em paralelo no Vercel). Remover LANDING_WEBHOOK_SECRET_NEXT
+  // (e este bloco) quando a migração terminar e só sobrar um segredo em uso.
+  const LANDING_WEBHOOK_SECRET_NEXT = Deno.env.get("LANDING_WEBHOOK_SECRET_NEXT");
   if (!SUPABASE_URL || !SERVICE_ROLE) {
     return json(500, { error: "server_misconfigured" });
   }
@@ -252,8 +257,11 @@ Deno.serve(async (req) => {
   }
 
   const provided = extractLandingSecret(req);
-  const secretMatches = provided && constantTimeEqual(provided, LANDING_WEBHOOK_SECRET);
-  
+  const secretMatches =
+    !!provided &&
+    (constantTimeEqual(provided, LANDING_WEBHOOK_SECRET) ||
+      (!!LANDING_WEBHOOK_SECRET_NEXT && constantTimeEqual(provided, LANDING_WEBHOOK_SECRET_NEXT)));
+
   if (!secretMatches) {
     // Never dump request headers: they may contain webhook secrets or bearer tokens.
     console.warn("[receive-landing-lead] unauthorized request", {

@@ -96,16 +96,26 @@ describe("computeDailySuggestions", () => {
   });
 });
 
-describe("getOrCreateDailyState — 7) estável durante o dia", () => {
-  it("mesma chamada no mesmo dia devolve o mesmo estado, mesmo se o contexto mudou", () => {
+describe("getOrCreateDailyState — 7) sugestões estáveis no dia, saudação acompanha o horário (ajuste 31/08)", () => {
+  it("mesmo dia, horário avança: a PALAVRA da saudação muda, mas sugestões continuam as do primeiro cálculo do dia", () => {
+    const morning = new Date(2026, 7, 15, 9, 0, 0);
+    const first = getOrCreateDailyState(emptyContext as any, "Vitor", morning);
+    expect(first.greeting).toBe("Bom dia, Vitor. Por onde começamos?");
+
+    const night = new Date(2026, 7, 15, 20, 0, 0);
+    const changedCtx = { ...emptyContext, followUps: { ...emptyContext.followUps, overdueCount: 5 } };
+    const second = getOrCreateDailyState(changedCtx as any, "Vitor", night);
+
+    expect(second.greeting).toBe("Boa noite, Vitor. Por onde começamos?");
+    expect(second.date).toBe(first.date);
+    expect(second.suggestions).toEqual(first.suggestions); // contexto mudou, mas sugestões não recalculam no mesmo dia
+  });
+
+  it("chamar de novo na mesma hora devolve o mesmo conteúdo (nada mudou pra regravar)", () => {
     const now = new Date(2026, 7, 15, 9, 0, 0);
     const first = getOrCreateDailyState(emptyContext as any, "Vitor", now);
-
-    const laterSameDay = new Date(2026, 7, 15, 18, 0, 0);
-    const changedCtx = { ...emptyContext, followUps: { ...emptyContext.followUps, overdueCount: 5 } };
-    const second = getOrCreateDailyState(changedCtx as any, "Vitor", laterSameDay);
-
-    expect(second).toEqual(first); // sugestões e saudação não mudaram
+    const again = getOrCreateDailyState(emptyContext as any, "Vitor", now);
+    expect(again).toEqual(first);
   });
 
   it("dia seguinte recalcula com o novo contexto", () => {
