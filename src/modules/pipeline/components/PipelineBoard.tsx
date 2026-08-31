@@ -1,7 +1,6 @@
 import { memo, useState, useCallback, useRef, useMemo, useEffect, useDeferredValue } from "react";
 import { getAvailableOptions, getCorrelatedOptions } from "@/modules/pipeline/services/correlatedFilters";
 import { uload, usave } from "@/shared/services/userStorage";
-import * as XLSX from "xlsx";
 import {
   type Lead,
   type PipelineStage,
@@ -641,7 +640,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         let headers: string[] = [];
         let rows: Record<string, string>[] = [];
@@ -650,6 +649,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           headers = parsed.headers;
           rows = parsed.rows;
         } else {
+          const XLSX = await import("xlsx");
           const data = new Uint8Array(reader.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: "array" });
           const sheet = workbook.Sheets[workbook.SheetNames[0]];

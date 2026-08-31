@@ -93,7 +93,12 @@ Deno.serve(async (req) => {
         userPrompt,
         jsonMode: true,
         temperature: 0.3,
-        maxOutputTokens: 2000,
+        // Gemini tende a ser mais verboso que o GPT-5.4-mini nos campos de
+        // texto (diagnostico/gargalo/tendencia) para o mesmo prompt — 2000
+        // tokens (igual ao original) truncava a resposta no meio do JSON de
+        // forma consistente (3/3 tentativas em teste real). Sobe a margem
+        // de segurança sem mudar o prompt/schema.
+        maxOutputTokens: 4000,
       });
     } catch (e) {
       const err = e as GeminiCallError;
