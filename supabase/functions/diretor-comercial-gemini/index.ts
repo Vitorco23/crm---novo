@@ -10,7 +10,15 @@ import { callGeminiDirect, GeminiCallError } from "../_shared/gemini-direct.ts";
 import { requireUser } from "../_shared/require-auth.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
-import { composeSystem, createMemoryEngine, startAIExecution, buildUserContextBlock, parseUserContext } from "../_shared/ai-core/index.ts";
+// Import direto dos módulos (não via barrel ../_shared/ai-core/index.ts):
+// esse barrel reexporta tool-registry.ts, que por sua vez importa
+// knowledge-engine.ts — arquivo que não existe no repositório (feature
+// nunca commitada), quebrando o bundle de QUALQUER function que use o
+// barrel. home-chat-gemini já evita isso do mesmo jeito.
+import { composeSystem } from "../_shared/ai-core/prompt-registry.ts";
+import { createMemoryEngine } from "../_shared/ai-core/memory-engine.ts";
+import { startAIExecution } from "../_shared/ai-core/observability.ts";
+import { buildUserContextBlock, parseUserContext } from "../_shared/ai-core/user-block.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
   wrapUntrusted,
