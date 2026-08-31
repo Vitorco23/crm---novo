@@ -27,6 +27,9 @@ export interface GeminiCallOptions {
   systemInstruction: string;
   userPrompt: string;
   responseSchema?: GeminiSchema;
+  /** JSON mode sem schema estrito — mesmo espírito do `callAI({ json: true })`
+   * do AI Router. Ignorado se responseSchema já foi passado. */
+  jsonMode?: boolean;
   temperature?: number;
   maxOutputTokens?: number;
   timeoutMs?: number;
@@ -61,6 +64,8 @@ export async function callGeminiDirect(opts: GeminiCallOptions): Promise<GeminiC
   if (opts.responseSchema) {
     generationConfig.responseMimeType = "application/json";
     generationConfig.responseSchema = opts.responseSchema;
+  } else if (opts.jsonMode) {
+    generationConfig.responseMimeType = "application/json";
   }
 
   const body = {
