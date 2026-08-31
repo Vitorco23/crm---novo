@@ -559,7 +559,11 @@ export async function generateParecer(userContext?: DiretorUserContext): Promise
     .filter(Boolean)
     .join("\n\n")
     .slice(0, 2000);
-  const { data, error } = await supabase.functions.invoke("diretor-comercial-ia", {
+  // Branch migracao-gemini: aponta pra function de teste (Gemini 2.5 Flash
+  // via Google AI Studio direto). Na main/produção continua
+  // "diretor-comercial-ia" (GPT-5.4-mini via Lovable Gateway) — nunca as
+  // duas juntas. Mesmo padrão de homeChat.ts.
+  const { data, error } = await supabase.functions.invoke("diretor-comercial-gemini", {
     body: { snapshot, previousAnalysis, userContext },
   });
 
