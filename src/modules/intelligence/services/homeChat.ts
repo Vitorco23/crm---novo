@@ -217,7 +217,10 @@ export async function sendMessage(text: string, profile: HomeChatProfile = {}): 
 
     const commercialContext = getCommercialContext({ profile });
 
-    const { data, error } = await supabase.functions.invoke("home-chat", {
+    // Branch migracao-gemini: aponta pra function de teste (Gemini 2.5
+    // Flash via Google AI Studio direto). Na main/produção continua
+    // "home-chat" (GPT-5.4-mini via Lovable Gateway) — nunca as duas juntas.
+    const { data, error } = await supabase.functions.invoke("home-chat-gemini", {
       body: { message: trimmed, history, commercialContext, userContext: profile },
     });
 
