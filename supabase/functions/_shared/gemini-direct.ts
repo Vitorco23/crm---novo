@@ -60,6 +60,13 @@ export async function callGeminiDirect(opts: GeminiCallOptions): Promise<GeminiC
   const generationConfig: Record<string, unknown> = {
     temperature: opts.temperature ?? 0.3,
     maxOutputTokens: opts.maxOutputTokens ?? 2048,
+    // Gemini 2.5 Flash "pensa" por padrão, e esses tokens de raciocínio
+    // saem do MESMO orçamento de maxOutputTokens, antes do texto visível —
+    // em prompts grandes isso consumia o orçamento inteiro e cortava o
+    // JSON no início, mesmo com maxOutputTokens alto (visto em teste real:
+    // truncava quase no mesmo ponto em 2000 e em 4000 tokens). Não há
+    // necessidade de raciocínio visível aqui, só a resposta estruturada.
+    thinkingConfig: { thinkingBudget: 0 },
   };
   if (opts.responseSchema) {
     generationConfig.responseMimeType = "application/json";
