@@ -715,20 +715,20 @@ export default function LeadDetailDrawer({
               <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1">Contato</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                 <div className="space-y-1">
-                   <Label className="text-[10px] text-muted-foreground">Decisor / Contato</Label>
-                   <Input size={1} className="h-8 text-xs" value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} onBlur={() => commitOnBlur({ contact: draft.contact })} />
+                   <Label htmlFor="lead-contact" className="text-[10px] text-muted-foreground">Decisor / Contato</Label>
+                   <Input id="lead-contact" size={1} className="h-8 text-xs" value={draft.contact} onChange={(e) => setDraft({ ...draft, contact: e.target.value })} onBlur={() => commitOnBlur({ contact: draft.contact })} />
                 </div>
                 <div className="space-y-1">
-                   <Label className="text-[10px] text-muted-foreground">Telefone</Label>
-                   <Input size={1} className="h-8 text-xs" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} onBlur={() => commitOnBlur({ phone: draft.phone })} />
+                   <Label htmlFor="lead-phone" className="text-[10px] text-muted-foreground">Telefone</Label>
+                   <Input id="lead-phone" type="tel" size={1} className="h-8 text-xs" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} onBlur={() => commitOnBlur({ phone: draft.phone })} />
                 </div>
                 <div className="space-y-1">
-                   <Label className="text-[10px] text-muted-foreground">WhatsApp</Label>
-                   <Input size={1} className="h-8 text-xs" value={draft.whatsapp || ""} placeholder={draft.phone} onChange={(e) => setDraft({ ...draft, whatsapp: e.target.value })} onBlur={() => commitOnBlur({ whatsapp: draft.whatsapp })} />
+                   <Label htmlFor="lead-whatsapp" className="text-[10px] text-muted-foreground">WhatsApp</Label>
+                   <Input id="lead-whatsapp" type="tel" size={1} className="h-8 text-xs" value={draft.whatsapp || ""} placeholder={draft.phone} onChange={(e) => setDraft({ ...draft, whatsapp: e.target.value })} onBlur={() => commitOnBlur({ whatsapp: draft.whatsapp })} />
                 </div>
                 <div className="space-y-1">
-                   <Label className="text-[10px] text-muted-foreground">Instagram</Label>
-                   <Input size={1} className="h-8 text-xs" value={draft.instagramLink} onChange={(e) => setDraft({ ...draft, instagramLink: e.target.value })} onBlur={() => commitOnBlur({ instagramLink: draft.instagramLink })} />
+                   <Label htmlFor="lead-instagram" className="text-[10px] text-muted-foreground">Instagram</Label>
+                   <Input id="lead-instagram" size={1} className="h-8 text-xs" value={draft.instagramLink} onChange={(e) => setDraft({ ...draft, instagramLink: e.target.value })} onBlur={() => commitOnBlur({ instagramLink: draft.instagramLink })} />
                 </div>
               </div>
             </section>
@@ -740,12 +740,12 @@ export default function LeadDetailDrawer({
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                 <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">Nicho</Label>
-                  <Input className="h-8 text-xs" value={draft.niche} onChange={(e) => setDraft({ ...draft, niche: e.target.value })} onBlur={() => commitOnBlur({ niche: draft.niche })} />
+                  <Label htmlFor="lead-niche" className="text-[10px] text-muted-foreground">Nicho</Label>
+                  <Input id="lead-niche" className="h-8 text-xs" value={draft.niche} onChange={(e) => setDraft({ ...draft, niche: e.target.value })} onBlur={() => commitOnBlur({ niche: draft.niche })} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">Cidade</Label>
-                  <Input className="h-8 text-xs" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} onBlur={() => commitOnBlur({ city: draft.city })} />
+                  <Label htmlFor="lead-city" className="text-[10px] text-muted-foreground">Cidade</Label>
+                  <Input id="lead-city" className="h-8 text-xs" value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} onBlur={() => commitOnBlur({ city: draft.city })} />
                 </div>
                 <div className="flex items-center justify-between p-2 rounded bg-muted/20">
                   <span className="text-xs">Prioridade ICP</span>
@@ -800,12 +800,12 @@ export default function LeadDetailDrawer({
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                 <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">Website</Label>
-                  <Input className="h-8 text-xs" value={draft.website ?? ""} onChange={(e) => setDraft({ ...draft, website: e.target.value })} onBlur={() => commitOnBlur({ website: draft.website })} />
+                  <Label htmlFor="lead-website" className="text-[10px] text-muted-foreground">Website</Label>
+                  <Input id="lead-website" className="h-8 text-xs" value={draft.website ?? ""} onChange={(e) => setDraft({ ...draft, website: e.target.value })} onBlur={() => commitOnBlur({ website: draft.website })} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">Google Maps</Label>
-                  <Input className="h-8 text-xs" value={draft.gmnLink} onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })} onBlur={() => commitOnBlur({ gmnLink: draft.gmnLink })} />
+                  <Label htmlFor="lead-gmn" className="text-[10px] text-muted-foreground">Google Maps</Label>
+                  <Input id="lead-gmn" className="h-8 text-xs" value={draft.gmnLink} onChange={(e) => setDraft({ ...draft, gmnLink: e.target.value })} onBlur={() => commitOnBlur({ gmnLink: draft.gmnLink })} />
                 </div>
               </div>
             </section>
@@ -816,12 +816,12 @@ export default function LeadDetailDrawer({
                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 pb-1">Negócio</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                   <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground uppercase">Valor Contrato</Label>
-                    <Input type="number" className="h-8 text-xs" value={draft.contractValue ?? ""} onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })} onBlur={() => commitOnBlur({ contractValue: draft.contractValue })} />
+                    <Label htmlFor="lead-contract-value" className="text-[10px] text-muted-foreground uppercase">Valor Contrato</Label>
+                    <Input id="lead-contract-value" type="number" className="h-8 text-xs" value={draft.contractValue ?? ""} onChange={(e) => setDraft({ ...draft, contractValue: e.target.value === "" ? undefined : Number(e.target.value) })} onBlur={() => commitOnBlur({ contractValue: draft.contractValue })} />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground uppercase">Serviço</Label>
-                    <Input className="h-8 text-xs" value={draft.serviceType ?? ""} onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })} onBlur={() => commitOnBlur({ serviceType: draft.serviceType })} />
+                    <Label htmlFor="lead-service-type" className="text-[10px] text-muted-foreground uppercase">Serviço</Label>
+                    <Input id="lead-service-type" className="h-8 text-xs" value={draft.serviceType ?? ""} onChange={(e) => setDraft({ ...draft, serviceType: e.target.value })} onBlur={() => commitOnBlur({ serviceType: draft.serviceType })} />
                   </div>
                 </div>
               </section>
@@ -886,10 +886,11 @@ export default function LeadDetailDrawer({
             )}
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Label htmlFor="lead-notes" className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <FileText className="h-3.5 w-3.5" /> Notas Permanentes
               </Label>
               <Textarea
+                id="lead-notes"
                 value={draft.notes}
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
                 onBlur={() => commitOnBlur({ notes: draft.notes })}
