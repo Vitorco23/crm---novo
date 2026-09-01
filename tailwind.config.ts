@@ -236,7 +236,7 @@ export default {
         // efeito de máquina de escrever (setInterval por caractere) por um
         // fade+subida suave em CSS puro, escalonado via animationDelay.
         "comando-word-in": {
-          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
       },
@@ -249,7 +249,7 @@ export default {
         "orb-breathe": "orb-breathe 6s ease-in-out infinite",
         "orb-spin-slow": "orb-spin-slow 40s linear infinite",
         "comando-ambient": "comando-ambient 5s ease-in-out infinite",
-        "comando-word-in": "comando-word-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "comando-word-in": "comando-word-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both",
       },
     },
   },
