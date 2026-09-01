@@ -47,36 +47,24 @@ function renderInlineBold(text: string): React.ReactNode {
 }
 
 /**
- * Efeito de digitação para a saudação inicial — "sendo escrita para você" no
- * momento em que a tela carrega. Só roda para o texto vazio→completo (uma
- * vez por montagem da tela, já que a saudação some assim que a conversa
- * começa); respeita prefers-reduced-motion mostrando o texto completo direto.
+ * Revelação suave da saudação inicial, palavra por palavra (CSS, sem
+ * setInterval) — troca o efeito de "máquina de escrever muito rápida" por
+ * um fade+subida com leve atraso escalonado entre palavras, no mesmo
+ * espírito do texto de boas-vindas do Claude/ChatGPT. Roda uma vez por
+ * montagem da tela (a saudação some assim que a conversa começa) e respeita
+ * prefers-reduced-motion mostrando o texto completo direto, sem animação.
  */
-function useTypewriter(text: string): { shown: string; done: boolean } {
-  const [shown, setShown] = useState("");
+function useGreetingReveal(text: string): { words: string[]; animate: boolean } {
+  const [animate, setAnimate] = useState(false);
 
   useEffect(() => {
     const reduceMotion =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) {
-      setShown(text);
-      return;
-    }
-
-    setShown("");
-    let i = 0;
-    const totalMs = Math.min(1400, Math.max(500, text.length * 22));
-    const stepMs = Math.max(12, totalMs / Math.max(text.length, 1));
-    const id = setInterval(() => {
-      i += 1;
-      setShown(text.slice(0, i));
-      if (i >= text.length) clearInterval(id);
-    }, stepMs);
-    return () => clearInterval(id);
+    setAnimate(!reduceMotion);
   }, [text]);
 
-  return { shown, done: shown.length >= text.length };
+  return { words: text ? text.split(" ") : [], animate };
 }
 
 export default function Comando() {
@@ -161,7 +149,7 @@ export default function Comando() {
 
   // Hook chamado incondicionalmente (regra dos hooks) mesmo antes de `daily`
   // existir — some ainda dentro do `if (!daily)` abaixo.
-  const { shown: greetingShown, done: greetingDone } = useTypewriter(daily?.greeting ?? "");
+  const { words: greetingWords, animate: greetingAnimate } = useGreetingReveal(daily?.greeting ?? "");
 
   if (!daily) {
     return (
@@ -225,14 +213,16 @@ export default function Comando() {
                     className="pointer-events-none absolute -left-10 -top-16 h-56 w-56 rounded-full blur-3xl animate-comando-ambient motion-reduce:animate-none motion-reduce:opacity-25"
                     style={{ background: "radial-gradient(circle, hsl(var(--mission-accent) / 0.55), transparent 70%)" }}
                   />
-                  <p className="relative text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance]">
-                    {greetingShown}
-                    <span
-                      aria-hidden
-                      className={`inline-block w-[2px] h-[1em] -mb-[0.15em] ml-0.5 bg-[hsl(var(--mission-accent))] ${
-                        greetingDone ? "opacity-0 transition-opacity duration-500" : "animate-pulse"
-                      }`}
-                    />
+                  <p className="relative flex flex-wrap gap-x-[0.35em] gap-y-1 text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance]">
+                    {greetingWords.map((word, i) => (
+                      <span
+                        key={i}
+                        className={greetingAnimate ? "inline-block animate-comando-word-in motion-reduce:animate-none" : "inline-block"}
+                        style={greetingAnimate ? { animationDelay: `${i * 45}ms` } : undefined}
+                      >
+                        {word}
+                      </span>
+                    ))}
                   </p>
                 </div>
               )}

@@ -37,7 +37,7 @@ vi.mock("@/shared/services/commercialContext", () => ({
 import {
   computeGreeting, computeDailySuggestions, getOrCreateDailyState,
   UNIVERSAL_SUGGESTIONS, appendMessage, getMessages, clearConversation,
-  sendMessage, todayKey,
+  sendMessage, todayKey, GREETING_CLOSINGS,
 } from "./homeChat";
 import { getCommercialContext } from "@/shared/services/commercialContext";
 
@@ -47,20 +47,30 @@ beforeEach(() => {
   vi.mocked(getCommercialContext).mockReset().mockReturnValue(emptyContext as any);
 });
 
+const closingsPattern = GREETING_CLOSINGS.map((c) => c.replace(/[.?]/g, "\\$&")).join("|");
+
 describe("computeGreeting", () => {
   it("2) com perfil, usa o nome resolvido e o horário", () => {
     const morning = new Date(2026, 7, 15, 8, 0, 0);
-    expect(computeGreeting("Vitor", morning)).toBe("Bom dia, Vitor. Por onde começamos?");
+    expect(computeGreeting("Vitor", morning)).toMatch(new RegExp(`^Bom dia, Vitor\\. (${closingsPattern})$`));
   });
 
   it("3) sem perfil, cai para saudação neutra sem quebrar", () => {
     const afternoon = new Date(2026, 7, 15, 15, 0, 0);
-    expect(computeGreeting(undefined, afternoon)).toBe("Boa tarde. Por onde começamos?");
+    expect(computeGreeting(undefined, afternoon)).toMatch(new RegExp(`^Boa tarde\\. (${closingsPattern})$`));
   });
 
   it("noite (>=18h) usa 'Boa noite'", () => {
     const night = new Date(2026, 7, 15, 20, 0, 0);
-    expect(computeGreeting("Ana", night)).toBe("Boa noite, Ana. Por onde começamos?");
+    expect(computeGreeting("Ana", night)).toMatch(new RegExp(`^Boa noite, Ana\\. (${closingsPattern})$`));
+  });
+
+  it("mesmo dia sempre escolhe a mesma variação de fechamento, dia diferente pode variar", () => {
+    const day1a = new Date(2026, 7, 15, 8, 0, 0);
+    const day1b = new Date(2026, 7, 15, 22, 0, 0);
+    const closing1a = computeGreeting("Vitor", day1a).split(". ")[1];
+    const closing1b = computeGreeting("Vitor", day1b).split(". ")[1];
+    expect(closing1a).toBe(closing1b);
   });
 });
 
@@ -100,13 +110,14 @@ describe("getOrCreateDailyState — 7) sugestões estáveis no dia, saudação a
   it("mesmo dia, horário avança: a PALAVRA da saudação muda, mas sugestões continuam as do primeiro cálculo do dia", () => {
     const morning = new Date(2026, 7, 15, 9, 0, 0);
     const first = getOrCreateDailyState(emptyContext as any, "Vitor", morning);
-    expect(first.greeting).toBe("Bom dia, Vitor. Por onde começamos?");
+    expect(first.greeting).toMatch(new RegExp(`^Bom dia, Vitor\\. (${closingsPattern})$`));
 
     const night = new Date(2026, 7, 15, 20, 0, 0);
     const changedCtx = { ...emptyContext, followUps: { ...emptyContext.followUps, overdueCount: 5 } };
     const second = getOrCreateDailyState(changedCtx as any, "Vitor", night);
 
-    expect(second.greeting).toBe("Boa noite, Vitor. Por onde começamos?");
+    expect(second.greeting).toMatch(new RegExp(`^Boa noite, Vitor\\. (${closingsPattern})$`));
+    expect(second.greeting.split(". ")[1]).toBe(first.greeting.split(". ")[1]);
     expect(second.date).toBe(first.date);
     expect(second.suggestions).toEqual(first.suggestions); // contexto mudou, mas sugestões não recalculam no mesmo dia
   });

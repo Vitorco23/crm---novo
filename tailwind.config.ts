@@ -232,6 +232,13 @@ export default {
           "0%, 100%": { opacity: "0.22", transform: "scale(1)" },
           "50%": { opacity: "0.4", transform: "scale(1.08)" },
         },
+        // Revelação da saudação, palavra por palavra — substitui o antigo
+        // efeito de máquina de escrever (setInterval por caractere) por um
+        // fade+subida suave em CSS puro, escalonado via animationDelay.
+        "comando-word-in": {
+          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -242,6 +249,7 @@ export default {
         "orb-breathe": "orb-breathe 6s ease-in-out infinite",
         "orb-spin-slow": "orb-spin-slow 40s linear infinite",
         "comando-ambient": "comando-ambient 5s ease-in-out infinite",
+        "comando-word-in": "comando-word-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both",
       },
     },
   },
