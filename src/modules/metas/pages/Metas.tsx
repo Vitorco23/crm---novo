@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { MissionThemeProvider } from "@/components/ui/mission-theme";
 import {
   getGoalsSettings, saveGoalsSettings, type GoalsSettings,
   getSessions, getMovementEvents,
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Target, DollarSign, TrendingUp, Phone, UserCheck, CalendarCheck,
-  Trophy, Calendar, Clock, Percent, Activity,
+  Trophy, Calendar, Clock, Percent, Activity, TriangleAlert, type LucideIcon,
 } from "lucide-react";
 import { isToday } from "date-fns";
 import ExportExcelDialog from "@/modules/pipeline/components/ExportExcelDialog";
@@ -36,7 +37,7 @@ function InputNum({
             const v = e.target.value;
             onChange(v === "" ? 0 : parseFloat(v));
           }}
-          className={suffix ? "pr-10" : ""}
+          className={`mission-input ${suffix ? "pr-10" : ""}`}
         />
         {suffix && (
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
@@ -48,14 +49,20 @@ function InputNum({
   );
 }
 
-function Stat({ icon: Icon, label, value, sub, accent }: any) {
+function Stat({ icon: Icon, label, value, sub, accent }: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: boolean;
+}) {
   return (
-    <div className={`rounded-md border p-3 ${accent ? "border-accent/40 bg-accent/5" : "bg-card"}`}>
+    <div className={`rounded-md border p-3 ${accent ? "border-accent/40 bg-accent/10" : "bg-[hsl(var(--mission-surface-2))]"}`}>
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
         <Icon className="h-3.5 w-3.5" /> {label}
       </div>
       <p className={`text-2xl font-bold ${accent ? "text-accent" : "text-foreground"}`}>{value}</p>
-      {sub && <p className="text-[10px] text-muted-foreground/80 mt-0.5">{sub}</p>}
+      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -96,7 +103,8 @@ export default function Metas() {
   }, [g]);
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <MissionThemeProvider value={true}>
+    <div className="mission-os mission-theme max-w-7xl mx-auto rounded-3xl p-4 md:p-6">
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <div>
@@ -109,7 +117,7 @@ export default function Metas() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* LEFT: Inputs */}
         <div className="space-y-4">
-          <Card>
+          <Card className="mission-card shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5">
                 <DollarSign className="h-4 w-4 text-accent" /> Meta Financeira
@@ -123,7 +131,7 @@ export default function Metas() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="mission-card shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5">
                 <Percent className="h-4 w-4 text-accent" /> Taxas de Conversão
@@ -143,7 +151,7 @@ export default function Metas() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="mission-card shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5">
                 <Clock className="h-4 w-4 text-accent" /> Gestão de Tempo
@@ -187,7 +195,7 @@ export default function Metas() {
 
 
           {/* Daily */}
-          <Card>
+          <Card className="mission-card shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5">
                 <Calendar className="h-4 w-4 text-accent" /> Metas Diárias
@@ -201,7 +209,7 @@ export default function Metas() {
           </Card>
 
           {/* Monthly */}
-          <Card>
+          <Card className="mission-card shadow-none">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5">
                 <TrendingUp className="h-4 w-4 text-accent" /> Metas Mensais
@@ -218,7 +226,7 @@ export default function Metas() {
           </Card>
 
           {/* Golden numbers */}
-          <Card className="border-accent/30 bg-accent/5">
+          <Card className="mission-card shadow-none border-accent/30 bg-accent/10">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5">
                 <Trophy className="h-4 w-4 text-accent" /> Números de Ouro
@@ -236,7 +244,7 @@ export default function Metas() {
           </Card>
 
           {/* Feasibility */}
-          <Card>
+          <Card className="mission-card shadow-none">
             <CardContent className="pt-4 pb-3">
               <div className="flex items-start gap-2">
                 <Clock className="h-4 w-4 text-accent mt-0.5" />
@@ -268,8 +276,9 @@ export default function Metas() {
                     </Badge>
                   </div>
                   {calc.feasible > 1 && (
-                    <p className="text-[10px] text-destructive mt-1">
-                      ⚠ Meta acima da capacidade. Aumente horas/dia ou taxas de conversão.
+                    <p className="flex items-center gap-1 text-[10px] text-destructive mt-1">
+                      <TriangleAlert className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      Meta acima da capacidade. Aumente horas/dia ou taxas de conversão.
                     </p>
                   )}
                 </div>
@@ -279,6 +288,7 @@ export default function Metas() {
         </div>
       </div>
     </div>
+    </MissionThemeProvider>
   );
 }
 
@@ -319,7 +329,7 @@ function TodayProgress({
   ];
 
   return (
-    <Card>
+    <Card className="mission-card shadow-none">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-1.5">
           <Activity className="h-4 w-4 text-accent" /> Progresso de Hoje
