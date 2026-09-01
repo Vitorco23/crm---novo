@@ -34,7 +34,7 @@ export default function RealConversionPanel({ estimates, onApplyReal }: RealConv
   const applicable = report.rates.filter((r) => r.rate !== null);
 
   return (
-    <Card className="border-accent/30">
+    <Card className="mission-card shadow-none border-accent/30">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm flex items-center gap-1.5">
@@ -129,7 +129,7 @@ export default function RealConversionPanel({ estimates, onApplyReal }: RealConv
 
 function VolumeChip({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border bg-card px-2 py-1.5 text-center">
+    <div className="rounded-md border bg-[hsl(var(--mission-surface-2))] px-2 py-1.5 text-center">
       <p className="text-[9px] text-muted-foreground truncate">{label}</p>
       <p className="text-sm font-bold text-foreground tabular-nums">{value}</p>
     </div>
