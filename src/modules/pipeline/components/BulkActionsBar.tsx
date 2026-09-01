@@ -26,11 +26,11 @@ export default function BulkActionsBar({
   if (count === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 mb-3 animate-slide-in">
+    <div className="flex flex-wrap items-center gap-3 bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 mb-3 animate-slide-in">
       <span className="text-sm font-medium text-foreground">
         {count} lead{count > 1 ? "s" : ""} selecionado{count > 1 ? "s" : ""}
       </span>
-      <div className="flex items-center gap-2 ml-auto">
+      <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
         <Select value={targetStage} onValueChange={setTargetStage}>
           <SelectTrigger className="h-8 w-48 text-xs">
             <SelectValue placeholder="Mover para etapa..." />

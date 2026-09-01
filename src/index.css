@@ -31,6 +31,7 @@
     --mission-text-muted: 215 16% 42%;
     --mission-text-faint: 215 14% 55%;
     --mission-accent: 74 55% 35%;
+    --mission-on-accent: 0 0% 100%;
     --mission-accent-strong: 74 60% 42%;
     --mission-accent-soft: 74 45% 92%;
     --mission-blue-glow: 217 80% 50%;
@@ -165,6 +166,7 @@
     --mission-text-muted: 215 20% 70%;
     --mission-text-faint: 215 15% 48%;
     --mission-accent: 74 60% 58%;
+    --mission-on-accent: 222 55% 6%;
     --mission-accent-strong: 74 65% 68%;
     --mission-accent-soft: 74 45% 16%;
     --mission-blue-glow: 217 91% 60%;
@@ -327,6 +329,51 @@
   .mission-os {
     background: radial-gradient(ellipse 120% 60% at 15% -10%, hsl(var(--mission-bg-elevated)) 0%, hsl(var(--mission-bg)) 55%);
     color: hsl(var(--mission-text));
+  }
+
+  /* Scoped adapter for shared controls. Portaled content receives the same
+     class through MissionThemeProvider, without changing other screens. */
+  .mission-theme {
+    --background: var(--mission-bg);
+    --foreground: var(--mission-text);
+    --card: var(--mission-surface);
+    --card-foreground: var(--mission-text);
+    --popover: var(--mission-surface);
+    --popover-foreground: var(--mission-text);
+    --primary: var(--mission-accent);
+    --primary-foreground: var(--mission-on-accent);
+    --primary-hover: var(--mission-accent);
+    --primary-active: var(--mission-accent);
+    --secondary: var(--mission-surface-2);
+    --secondary-foreground: var(--mission-text);
+    --secondary-hover: var(--mission-accent-soft);
+    --muted: var(--mission-surface-2);
+    --muted-foreground: var(--mission-text-muted);
+    --accent: var(--mission-accent);
+    --accent-foreground: var(--mission-on-accent);
+    --accent-hover: var(--mission-accent);
+    --accent-active: var(--mission-accent);
+    --border: var(--mission-border);
+    --border-strong: var(--mission-border);
+    --input: var(--mission-border);
+    --ring: var(--mission-accent);
+    --text-primary: var(--mission-text);
+    --text-secondary: var(--mission-text-muted);
+    --text-muted: var(--mission-text-muted);
+    --text-disabled: var(--mission-text-faint);
+    --icon-primary: var(--mission-text);
+    --icon-secondary: var(--mission-text-muted);
+    --surface-1: var(--mission-surface);
+    --surface-2: var(--mission-surface-2);
+    --surface-3: var(--mission-surface-2);
+    --surface-hover: var(--mission-surface-2);
+    --surface-elevated: var(--mission-surface);
+    --shadow-focus: 0 0 0 3px hsl(var(--mission-accent) / 0.45);
+    color: hsl(var(--mission-text));
+  }
+
+  .mission-theme.glass {
+    background: hsl(var(--mission-surface));
   }
 
   /* Dentro de .mission-os, o anel de foco acompanha o accent da própria

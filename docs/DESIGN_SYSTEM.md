@@ -197,3 +197,21 @@ Regra de ouro da migração: uma tela migrada troca **todos** os tokens de cor d
 (nunca deixar mission-os e tokens antigos misturados na mesma tela) — evita uma
 Frankenstein visual pior do que não ter migrado. Tipografia/espaçamento/ícones (seções 2,
 3, 10) não mudam nessa migração.
+
+### Componentes compartilhados e portais (Pipeline)
+
+O Pipeline usa `MissionThemeProvider value={true}` e a classe `mission-theme`
+no container da tela. Essa classe adapta os tokens semânticos dos controles
+compartilhados (`card`, `popover`, `primary`, `muted`, `ring`, etc.) aos tokens
+`mission-*`, sem mudar a aparência desses controles em telas não migradas.
+`mission-os` continua responsável pelo gradiente do canvas; `mission-theme`
+não acrescenta gradiente a cada menu ou formulário.
+
+Dialog, Sheet, AlertDialog, Popover, Select, DropdownMenu e Tooltip recebem o
+escopo pelo contexto React, inclusive quando renderizados em portais fora do
+container. O provider deve envolver também os diálogos irmãos do quadro, como
+o cadastro de Nova Oportunidade. Não adicionar `mission-theme` ao `body`.
+
+`--mission-on-accent` define o texto sobre botões preenchidos: branco no tema
+claro e fundo escuro no tema escuro. Cores de status (erro, sucesso, alerta) e
+cores específicas de canais mantêm seu significado.
