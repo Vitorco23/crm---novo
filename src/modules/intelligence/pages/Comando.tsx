@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/shared/components/shell";
 import P21Signal from "@/modules/intelligence/components/P21Signal";
-import IntelligenceOrb from "@/modules/intelligence/components/IntelligenceOrb";
 import { useProfile, resolveDisplayName } from "@/shared/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCommercialContext } from "@/shared/services/commercialContext";
@@ -205,14 +204,16 @@ export default function Comando() {
             <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 pb-4">
               {messages.length === 0 && (
                 <div className="relative pt-2">
-                  {/* Orbe de inteligência atrás da saudação (ver
-                      IntelligenceOrb.tsx) — puramente decorativo, sem custo
-                      de IA. Para de animar em prefers-reduced-motion. */}
-                  <IntelligenceOrb
-                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-40 blur-[1px]"
-                    size={200}
+                  {/* Glow ambiente atrás da saudação — presença, não objeto (ver
+                      comentário em tailwind.config.ts sobre o Intelligence Core
+                      descartado). Só decorativo: aria-hidden, para de animar em
+                      prefers-reduced-motion. */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -left-10 -top-16 h-56 w-56 rounded-full blur-3xl animate-comando-ambient motion-reduce:animate-none motion-reduce:opacity-25"
+                    style={{ background: "radial-gradient(circle, hsl(var(--mission-accent) / 0.55), transparent 70%)" }}
                   />
-                  <p className="relative z-10 flex flex-wrap gap-x-[0.35em] gap-y-1 text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance]">
+                  <p className="relative flex flex-wrap gap-x-[0.35em] gap-y-1 text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance]">
                     {greetingWords.map((word, i) => (
                       <span
                         key={i}
