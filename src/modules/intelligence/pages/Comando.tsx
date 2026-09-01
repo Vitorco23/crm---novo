@@ -200,19 +200,19 @@ export default function Comando() {
           </aside>
 
           {/* Conversa — única região que rola; composer fica fixo no rodapé desta coluna */}
-          <div className="flex flex-col min-h-0 h-full">
+          <div className="relative isolate flex flex-col min-h-0 h-full">
+            {/* Fora da região rolável: o blur precisa se dissipar além das
+                bordas da conversa, sem ser recortado pelo overflow-y-auto. */}
+            {messages.length === 0 && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -z-10 -left-10 -top-14 h-56 w-56 rounded-full blur-3xl animate-comando-ambient motion-reduce:animate-none motion-reduce:opacity-25"
+                style={{ background: "radial-gradient(circle, hsl(var(--mission-accent) / 0.55), transparent 70%)" }}
+              />
+            )}
             <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 pb-4">
               {messages.length === 0 && (
                 <div className="relative pt-2">
-                  {/* Glow ambiente atrás da saudação — presença, não objeto (ver
-                      comentário em tailwind.config.ts sobre o Intelligence Core
-                      descartado). Só decorativo: aria-hidden, para de animar em
-                      prefers-reduced-motion. */}
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute -left-10 -top-16 h-56 w-56 rounded-full blur-3xl animate-comando-ambient motion-reduce:animate-none motion-reduce:opacity-25"
-                    style={{ background: "radial-gradient(circle, hsl(var(--mission-accent) / 0.55), transparent 70%)" }}
-                  />
                   <p className="relative flex flex-wrap gap-x-[0.35em] gap-y-1 text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance]">
                     {greetingWords.map((word, i) => (
                       <span
