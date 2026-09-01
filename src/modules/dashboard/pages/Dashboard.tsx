@@ -148,10 +148,10 @@ function OutboundFunnelCard({ filter, custom }: { filter: Filter; custom?: Custo
   const metaR1 = goals.monthlyRevenueGoal > 0 ? Math.round(goals.monthlyRevenueGoal / (goals.averageTicket || 1)) : 0;
 
   return (
-    <Card className="border-border/40 bg-card/50">
+    <Card className="border-[hsl(var(--mission-border)/0.4)] bg-[hsl(var(--mission-surface)/0.5)] text-[hsl(var(--mission-text))]">
       <CardContent className="p-4 space-y-4">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-3.5 w-3.5 text-accent" />
+          <TrendingUp className="h-3.5 w-3.5 text-[hsl(var(--mission-accent))]" />
           <h3 className="text-xs font-bold uppercase tracking-widest">Funil Outbound</h3>
         </div>
 
@@ -160,7 +160,7 @@ function OutboundFunnelCard({ filter, custom }: { filter: Filter; custom?: Custo
             <div key={s.label} className="space-y-1">
               <div className="flex items-center justify-between text-[10px] font-bold">
                 <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground uppercase">{s.label}</span>
+                  <span className="text-[hsl(var(--mission-text-muted))] uppercase">{s.label}</span>
                   {s.delta && (
                     <span className={cn("text-[9px] flex items-center", s.delta.dir === "up" ? "text-emerald-500" : "text-rose-500")}>
                       {s.delta.dir === "up" ? <TrendingUp className="h-2 w-2 mr-0.5" /> : <TrendingDown className="h-2 w-2 mr-0.5" />}
@@ -168,14 +168,14 @@ function OutboundFunnelCard({ filter, custom }: { filter: Filter; custom?: Custo
                     </span>
                   )}
                 </div>
-                <span className="text-foreground">{s.val}</span>
+                <span className="text-[hsl(var(--mission-text))]">{s.val}</span>
               </div>
-              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-accent transition-all duration-700 rounded-full" 
+              <div className="h-1.5 w-full bg-[hsl(var(--mission-surface-2))] rounded-full overflow-hidden">
+                <div className="h-full bg-[hsl(var(--mission-accent))] transition-all duration-700 rounded-full" 
                   style={{ width: `${(s.val / max) * 100}%`, opacity: 1 - (i * 0.15) }} />
               </div>
               {i > 0 && stages[i-1].val > 0 && (
-                <div className="text-[9px] text-accent font-black text-right">
+                <div className="text-[9px] text-[hsl(var(--mission-accent))] font-black text-right">
                   {(s.val / stages[i-1].val * 100).toFixed(1)}% de conversão
                 </div>
               )}
@@ -183,11 +183,11 @@ function OutboundFunnelCard({ filter, custom }: { filter: Filter; custom?: Custo
           ))}
         </div>
 
-        <div className="pt-2 border-t border-border/30 space-y-2 text-[10px] text-muted-foreground">
+        <div className="pt-2 border-t border-[hsl(var(--mission-border)/0.3)] space-y-2 text-[10px] text-[hsl(var(--mission-text-muted))]">
            <div className="flex justify-between items-center">
               <span>Decisores sem R1:</span>
               <div className="flex items-center gap-1">
-                <span className="font-black text-foreground">{Math.max(0, cur.dms - cur.meets)}</span>
+                <span className="font-black text-[hsl(var(--mission-text))]">{Math.max(0, cur.dms - cur.meets)}</span>
                 <TooltipProvider>
                   <Tooltip>
                       <TooltipTrigger asChild>
@@ -203,7 +203,7 @@ function OutboundFunnelCard({ filter, custom }: { filter: Filter; custom?: Custo
            <p className="text-[9px] italic">Saldo aproximado para acompanhamento com base nos registros dos Pomodoros.</p>
         </div>
 
-        <div className="pt-2 border-t border-border/30 space-y-1 text-[10px] font-bold">
+        <div className="pt-2 border-t border-[hsl(var(--mission-border)/0.3)] space-y-1 text-[10px] font-bold">
            <div className="flex justify-between">
               <span>Principal gargalo:</span>
               <span className="text-rose-500">{bottleNeck.label} — {(bottleNeck.val * 100).toFixed(0)}%</span>
@@ -211,7 +211,7 @@ function OutboundFunnelCard({ filter, custom }: { filter: Filter; custom?: Custo
            {metaR1 > 0 && (
              <div className="flex justify-between">
                <span>Ritmo da meta:</span>
-               <span className="text-accent">{cur.meets} de {metaR1} R1 — {(cur.meets/metaR1 * 100).toFixed(0)}%</span>
+               <span className="text-[hsl(var(--mission-accent))]">{cur.meets} de {metaR1} R1 — {(cur.meets/metaR1 * 100).toFixed(0)}%</span>
              </div>
            )}
         </div>
@@ -253,7 +253,7 @@ const Dashboard = () => {
 
   const stats = [
     { label: "Ligações", value: totalCalls, icon: Phone, color: "text-blue-500" },
-    { label: "Leads Criados", value: filteredLeads.length, icon: Users, color: "text-accent" },
+    { label: "Leads Criados", value: filteredLeads.length, icon: Users, color: "text-[hsl(var(--mission-accent))]" },
     { label: "Reuniões", value: totalMeetings, icon: CalendarCheck, color: "text-orange-500" },
     { label: "Vendas", value: totalSales, icon: Handshake, color: "text-emerald-500" },
   ];
@@ -272,7 +272,7 @@ const Dashboard = () => {
     : "";
 
   return (
-    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+    <div className="mission-os -mx-1 rounded-3xl px-3 py-3 md:px-4 md:py-4 space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
       <section
         className="relative overflow-hidden rounded-2xl px-5 py-5 md:px-6"
         style={{
@@ -283,21 +283,21 @@ const Dashboard = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-1.5 max-w-2xl">
             <P21Signal label="P21 Intelligence · Visão operacional" />
-            <p className="text-lg font-semibold text-foreground [text-wrap:balance]">
+            <p className="text-lg font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance]">
               {operationLine}
               {bottleneckLine}
             </p>
-            <p className="text-xs text-muted-foreground">Período: {filterLabels[filter]}</p>
+            <p className="text-xs text-[hsl(var(--mission-text-muted))]">Período: {filterLabels[filter]}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 bg-card/30 p-1.5 rounded-lg border border-border/50 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 bg-[hsl(var(--mission-surface)/0.3)] p-1.5 rounded-lg border border-[hsl(var(--mission-border)/0.5)] shrink-0">
             {(Object.keys(filterLabels) as Filter[]).map((f) => (
               <Button
                 key={f}
                 variant={filter === f ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setFilter(f)}
-                className={cn("h-8 text-xs font-semibold px-4", filter === f && "bg-accent/20 text-accent hover:bg-accent/30")}
+                className={cn("h-8 text-xs font-semibold px-4", filter === f && "bg-[hsl(var(--mission-accent)/0.2)] text-[hsl(var(--mission-accent))] hover:bg-[hsl(var(--mission-accent)/0.3)]")}
               >
                 {filterLabels[f]}
               </Button>
@@ -306,15 +306,15 @@ const Dashboard = () => {
             {filter === "custom" && (
               <Popover open={customOpen} onOpenChange={setCustomOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 text-xs px-3 gap-2 border-accent/30 text-accent" onClick={() => setCustomDraft(customRange)}>
+                  <Button variant="outline" size="sm" className="h-8 text-xs px-3 gap-2 border-[hsl(var(--mission-accent)/0.3)] text-[hsl(var(--mission-accent))]" onClick={() => setCustomDraft(customRange)}>
                     <CalendarIcon className="h-3.5 w-3.5" />
                     {customRange ? `${format(customRange.start, "dd/MM/yyyy")} — ${format(customRange.end, "dd/MM/yyyy")}` : "Selecionar período"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
-                  <div className="border-b border-border/50 px-4 py-3">
-                    <p className="text-xs font-semibold text-foreground">Período personalizado</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">Escolha a data inicial e a data final.</p>
+                  <div className="border-b border-[hsl(var(--mission-border)/0.5)] px-4 py-3">
+                    <p className="text-xs font-semibold text-[hsl(var(--mission-text))]">Período personalizado</p>
+                    <p className="mt-1 text-[11px] text-[hsl(var(--mission-text-muted))]">Escolha a data inicial e a data final.</p>
                   </div>
                   <CalendarUI
                     mode="range"
@@ -323,7 +323,7 @@ const Dashboard = () => {
                     numberOfMonths={2}
                     locale={ptBR}
                   />
-                  <div className="flex items-center justify-between gap-2 border-t border-border/50 p-3">
+                  <div className="flex items-center justify-between gap-2 border-t border-[hsl(var(--mission-border)/0.5)] p-3">
                     <Button size="sm" variant="ghost" onClick={() => { setCustomDraft(undefined); setCustomOpen(false); }}>Cancelar</Button>
                     <Button size="sm" disabled={!customDraft} onClick={() => { if (customDraft) setCustomRange(customDraft); setCustomOpen(false); }}>Aplicar período</Button>
                   </div>
@@ -341,7 +341,7 @@ const Dashboard = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs px-3 gap-2 hover:bg-accent/10 hover:text-accent border-accent/20"
+                  className="h-8 text-xs px-3 gap-2 hover:bg-[hsl(var(--mission-accent)/0.1)] hover:text-[hsl(var(--mission-accent))] border-[hsl(var(--mission-accent)/0.2)]"
                 >
                   <BarChart3 className="h-3.5 w-3.5" />
                   Exportar
@@ -354,12 +354,12 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.label} className="border-border/40 bg-card/50 overflow-hidden relative">
+          <Card key={stat.label} className="border-[hsl(var(--mission-border)/0.4)] bg-[hsl(var(--mission-surface)/0.5)] text-[hsl(var(--mission-text))] overflow-hidden relative">
             <CardContent className="p-4 flex flex-col gap-1">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+              <p className="text-[10px] font-bold text-[hsl(var(--mission-text-muted))] uppercase tracking-wider">{stat.label}</p>
               <div className="flex items-center justify-between">
                 <span className="text-2xl font-black">{stat.value}</span>
-                <div className={cn("p-1.5 rounded-md bg-muted/50", stat.color)}>
+                <div className={cn("p-1.5 rounded-md bg-[hsl(var(--mission-surface-2)/0.5)]", stat.color)}>
                   <stat.icon className="h-4 w-4" />
                 </div>
               </div>
@@ -374,15 +374,15 @@ const Dashboard = () => {
           
           <StrategicIntelligencePanel period={filter === "day" ? "today" : filter === "week" ? "last7" : filter === "month" ? "thisMonth" : "last30"} />
           
-          <Card className="border-border/40 bg-card/50">
+          <Card className="border-[hsl(var(--mission-border)/0.4)] bg-[hsl(var(--mission-surface)/0.5)] text-[hsl(var(--mission-text))]">
             <CardContent className="p-0">
-               <div className="p-4 border-b border-border/40 flex items-center justify-between">
+               <div className="p-4 border-b border-[hsl(var(--mission-border)/0.4)] flex items-center justify-between">
                  <div className="flex items-center gap-2">
-                   <Activity className="h-4 w-4 text-accent" />
+                   <Activity className="h-4 w-4 text-[hsl(var(--mission-accent))]" />
                    <h3 className="text-sm font-bold uppercase tracking-widest">Atividade Detalhada</h3>
                  </div>
                </div>
-               <div className="p-6 h-[300px] flex flex-col items-center justify-center text-muted-foreground space-y-2">
+               <div className="p-6 h-[300px] flex flex-col items-center justify-center text-[hsl(var(--mission-text-muted))] space-y-2">
                  <BarChart3 className="h-8 w-8 opacity-20" />
                  <p className="text-xs">Gráfico de atividade evolutiva será exibido aqui</p>
                </div>
