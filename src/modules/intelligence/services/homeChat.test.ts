@@ -181,11 +181,11 @@ describe("sendMessage", () => {
     expect(msgs[0].role).toBe("user");
   });
 
-  it("20) chama exclusivamente a função home-chat via supabase.functions.invoke — nenhum outro provider", async () => {
+  it("20) [branch migracao-gemini] chama exclusivamente a função home-chat-gemini via supabase.functions.invoke", async () => {
     invoke.mockResolvedValue({ data: { content: "ok" }, error: null });
     await sendMessage("teste");
     expect(invoke).toHaveBeenCalledTimes(1);
-    expect(invoke).toHaveBeenCalledWith("home-chat", expect.objectContaining({
+    expect(invoke).toHaveBeenCalledWith("home-chat-gemini", expect.objectContaining({
       body: expect.objectContaining({ message: "teste" }),
     }));
   });

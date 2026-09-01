@@ -36,7 +36,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, GripVertical, Phone, MapPin, Instagram, ExternalLink,
   Star, Upload, Paperclip, FileAudio, Pencil, Check, X as XIcon, Settings2, AlertCircle, Copy, Search, LayoutGrid, List as ListIcon, Download, ArrowRight,
-  MoreVertical, Sparkles, MessageSquare, PhoneCall
+  MoreVertical, Sparkles, MessageSquare, PhoneCall, Clock
 } from "lucide-react";
 import { computeLeadTemperature, lastInteractionLabel, nextActionLabel } from "@/modules/cold-call/services/coldCallMetrics";
 import { getStepForLead, executionMoment } from "@/modules/leads/services/cadence";
@@ -115,16 +115,18 @@ function StarRating({ value, onChange }: { value: ICPStars; onChange?: (v: ICPSt
 }
 
 const LeadCard = memo(function LeadCard({
-  lead, pipeline, onDragStart, onDelete, onRefresh, onClick, selected, onToggleSelect,
+  lead, pipeline, stages, onDragStart, onDelete, onRefresh, onClick, selected, onToggleSelect, onMoveToStage,
 }: {
   lead: Lead;
   pipeline: PipelineName;
+  stages: PipelineStage[];
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDelete: (id: string) => void;
   onRefresh: () => void;
   onClick: (lead: Lead) => void;
   selected: boolean;
   onToggleSelect: (id: string) => void;
+  onMoveToStage: (id: string, stage: PipelineStage) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -177,6 +179,20 @@ const LeadCard = memo(function LeadCard({
                 </button>
               </TooltipTrigger>
               <TooltipContent><p className="text-[10px]">Excluir lead</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <select
+                  aria-label={`Mover "${lead.company}" para outra etapa`}
+                  value={lead.stage}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => { e.stopPropagation(); onMoveToStage(lead.id, e.target.value as PipelineStage); }}
+                  className="text-[9px] h-4 max-w-[16px] opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus:max-w-none bg-transparent border border-border/60 rounded text-muted-foreground cursor-pointer"
+                >
+                  {stages.map((s) => (<option key={s} value={s}>{s}</option>))}
+                </select>
+              </TooltipTrigger>
+              <TooltipContent><p className="text-[10px]">Mover para outra etapa (teclado)</p></TooltipContent>
             </Tooltip>
           </div>
         </div>
@@ -231,8 +247,9 @@ const LeadCard = memo(function LeadCard({
         </div>
 
         <div className="flex items-center justify-between text-[10px] pt-1">
-          <div className="flex items-center gap-2 text-muted-foreground/60">
-            <span>⏱ {timeInStage(lead.stageChangedAt)}</span>
+          <div className="flex items-center gap-1 text-muted-foreground/60">
+            <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+            <span>{timeInStage(lead.stageChangedAt)}</span>
           </div>
           <div className="flex items-center gap-2">
              {pipeline === "oportunidades" && lead.contractValue && lead.contractValue > 0 && (
@@ -729,25 +746,10 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const onDrop = (e: React.DragEvent, stage: PipelineStage) => {
-    e.preventDefault();
-    const draggedStage = e.dataTransfer.getData("application/x-stage");
-    if (draggedStage) {
-      if (draggedStage === stage) return;
-      const current = [...stages];
-      const from = current.indexOf(draggedStage);
-      const to = current.indexOf(stage);
-      if (from === -1 || to === -1) return;
-      current.splice(from, 1);
-      current.splice(to, 0, draggedStage);
-      reorderStages(pipeline, current);
-      refresh();
-      return;
-    }
-    const id = e.dataTransfer.getData("text/plain");
+  const moveLead = useCallback((id: string, stage: PipelineStage) => {
     const lead = leads.find((l) => l.id === id);
     if (!lead || lead.stage === stage) return;
-    
+
     const isLost = stage.toLowerCase().includes("não quer") || stage.toLowerCase().includes("nao quer") || stage === "Perdido";
     if (isLost) {
       setLostReasonLead({ id, stage });
@@ -766,6 +768,25 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
       toast.success(`Lead transferido automaticamente para ${labels[result.autoTransfer] ?? result.autoTransfer}!`);
     }
     if (stage === "Reunião Realizada") maybePromptAlignment(id);
+  }, [leads]);
+
+  const onDrop = (e: React.DragEvent, stage: PipelineStage) => {
+    e.preventDefault();
+    const draggedStage = e.dataTransfer.getData("application/x-stage");
+    if (draggedStage) {
+      if (draggedStage === stage) return;
+      const current = [...stages];
+      const from = current.indexOf(draggedStage);
+      const to = current.indexOf(stage);
+      if (from === -1 || to === -1) return;
+      current.splice(from, 1);
+      current.splice(to, 0, draggedStage);
+      reorderStages(pipeline, current);
+      refresh();
+      return;
+    }
+    const id = e.dataTransfer.getData("text/plain");
+    moveLead(id, stage);
   };
 
   const onDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -1151,12 +1172,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                         key={lead.id}
                         lead={lead}
                         pipeline={pipeline}
+                        stages={stages}
                         selected={selectedIds.has(lead.id)}
                         onToggleSelect={handleToggleSelect}
                         onClick={handleCardClick}
                         onDelete={handleDelete}
                         onDragStart={onDragStart}
                         onRefresh={refresh}
+                        onMoveToStage={moveLead}
                       />
                     ))
                   )}

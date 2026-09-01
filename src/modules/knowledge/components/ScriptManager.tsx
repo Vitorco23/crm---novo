@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FlaskConical, Pencil, Trash2, Plus, Check, X, RefreshCw } from "lucide-react";
 import { getScripts, addScript, renameScript, removeScript } from "@/modules/knowledge/services/scripts";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { syncFromCloud } from "@/shared/services/userStorage";
 
 
@@ -22,9 +22,9 @@ export default function ScriptManager() {
     try {
       await syncFromCloud();
       refresh();
-      toast({ title: "Scripts sincronizados", description: "Os dados foram atualizados com a nuvem." });
+      toast("Scripts sincronizados", { description: "Os dados foram atualizados com a nuvem." });
     } catch (error) {
-      toast({ title: "Erro na sincronização", variant: "destructive" });
+      toast.error("Erro na sincronização");
     } finally {
       setSyncing(false);
     }
@@ -40,24 +40,24 @@ export default function ScriptManager() {
 
   const handleAdd = () => {
     const r = addScript(newName);
-    if (!r.ok) return toast({ title: "Não foi possível adicionar", description: r.error, variant: "destructive" });
+    if (!r.ok) return toast.error("Não foi possível adicionar", { description: r.error });
     setNewName("");
-    toast({ title: "Script adicionado" });
+    toast("Script adicionado");
   };
 
   const handleRename = (oldName: string) => {
     const r = renameScript(oldName, editValue);
-    if (!r.ok) return toast({ title: "Não foi possível renomear", description: r.error, variant: "destructive" });
+    if (!r.ok) return toast.error("Não foi possível renomear", { description: r.error });
     setEditing(null);
     setEditValue("");
-    toast({ title: "Script renomeado", description: "Histórico atualizado automaticamente." });
+    toast("Script renomeado", { description: "Histórico atualizado automaticamente." });
   };
 
   const handleRemove = (name: string) => {
     if (!confirm(`Remover "${name}" da lista? O histórico é preservado.`)) return;
     const r = removeScript(name);
-    if (!r.ok) return toast({ title: "Não foi possível remover", description: r.error, variant: "destructive" });
-    toast({ title: "Script removido" });
+    if (!r.ok) return toast.error("Não foi possível remover", { description: r.error });
+    toast("Script removido");
   };
 
   return (
