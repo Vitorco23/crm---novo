@@ -13,43 +13,47 @@ const FinancialHealthRow = ({ revenue, goal }: FinancialHealthRowProps) => {
   const remaining = Math.max(0, goal - revenue);
 
   return (
-    <Card className="border-border/40 bg-card/50 overflow-hidden">
+    <Card className="bg-[hsl(var(--mission-surface)/0.5)] border-[hsl(var(--mission-border)/0.4)] overflow-hidden">
       <CardContent className="p-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-md bg-accent/10 text-accent">
+              <div className="p-1.5 rounded-md bg-[hsl(var(--mission-accent)/0.1)] text-[hsl(var(--mission-accent))]">
                 <Target className="h-4 w-4" />
               </div>
-              <h3 className="text-sm font-bold uppercase tracking-widest">Saúde Financeira do Mês</h3>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-[hsl(var(--mission-text))]">Saúde Financeira do Mês</h3>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black">{formatBRL(revenue)}</span>
-              <span className="text-xs text-muted-foreground font-medium">de {formatBRL(goal)}</span>
+              <span className="text-2xl font-black text-[hsl(var(--mission-text))]">{formatBRL(revenue)}</span>
+              <span className="text-xs text-[hsl(var(--mission-text-muted))] font-medium">de {formatBRL(goal)}</span>
             </div>
           </div>
 
           <div className="flex-1 space-y-2">
             <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
-              <span className="text-muted-foreground">Progresso da Meta</span>
-              <span className="text-accent">{percentage.toFixed(1)}%</span>
+              <span className="text-[hsl(var(--mission-text-muted))]">Progresso da Meta</span>
+              <span className="text-[hsl(var(--mission-accent))]">{percentage.toFixed(1)}%</span>
             </div>
-            <Progress value={percentage} className="h-2 bg-muted" />
+            <Progress
+              value={percentage}
+              className="h-2 bg-[hsl(var(--mission-surface-2))]"
+              indicatorClassName="bg-[hsl(var(--mission-accent))]"
+            />
             {remaining > 0 && (
-              <p className="text-[10px] text-muted-foreground font-medium italic">
+              <p className="text-[10px] text-[hsl(var(--mission-text-muted))] font-medium italic">
                 Faltam {formatBRL(remaining)} para atingir a meta
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-4 border-l border-border/20 pl-4 hidden md:flex">
+          <div className="flex items-center gap-4 border-l border-[hsl(var(--mission-border)/0.2)] pl-4 hidden md:flex">
              <div className="text-center">
-                <p className="text-[9px] font-bold text-muted-foreground uppercase">Status</p>
+                <p className="text-[9px] font-bold text-[hsl(var(--mission-text-muted))] uppercase">Status</p>
                 <div className="mt-1">
                    {percentage >= 100 ? (
                      <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">META BATIDA</span>
                    ) : percentage >= 70 ? (
-                     <span className="text-[10px] font-black text-accent bg-accent/10 px-2 py-0.5 rounded-full">NO RITMO</span>
+                     <span className="text-[10px] font-black text-[hsl(var(--mission-accent))] bg-[hsl(var(--mission-accent)/0.1)] px-2 py-0.5 rounded-full">NO RITMO</span>
                    ) : (
                      <span className="text-[10px] font-black text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full">EM RISCO</span>
                    )}

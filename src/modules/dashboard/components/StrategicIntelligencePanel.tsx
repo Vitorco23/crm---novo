@@ -194,7 +194,7 @@ function OpportunitiesBlock({ tick }: { tick: number }) {
   }, [tick]);
 
   return (
-    <Card>
+    <Card className="bg-[hsl(var(--mission-surface))] border-[hsl(var(--mission-border))] text-[hsl(var(--mission-text))]">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-emerald-500" />
@@ -206,13 +206,13 @@ function OpportunitiesBlock({ tick }: { tick: number }) {
       </CardHeader>
       <CardContent className="space-y-2">
         {items.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">
+          <p className="text-xs text-[hsl(var(--mission-text-muted))] py-2">
             Sem oportunidades destacadas no momento. Aumente volume de dados para
             ativar comparações de cidade, nicho, campanha, horário e script.
           </p>
         ) : (
           items.map((i) => (
-            <div key={i.id} className="rounded-md border border-l-4 border-l-emerald-500 bg-emerald-500/5 p-3">
+            <div key={i.id} className="rounded-md border border-[hsl(var(--mission-border))] border-l-4 border-l-emerald-500 bg-emerald-500/5 p-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
                 <span className="text-sm font-semibold">{i.title}</span>
@@ -220,10 +220,10 @@ function OpportunitiesBlock({ tick }: { tick: number }) {
                   {CATEGORY_LABELS[i.category]}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{i.description}</p>
+              <p className="text-xs text-[hsl(var(--mission-text-muted))] mt-1">{i.description}</p>
               <p className="text-[11px] mt-1">
-                <span className="font-semibold text-foreground/80">Base: </span>
-                <span className="text-muted-foreground">{i.reason}</span>
+                <span className="font-semibold text-[hsl(var(--mission-text)/0.8)]">Base: </span>
+                <span className="text-[hsl(var(--mission-text-muted))]">{i.reason}</span>
               </p>
               <p className="text-[11px] mt-1 flex items-start gap-1">
                 <ArrowRight className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />
@@ -277,27 +277,27 @@ function ChangesBlock({ data, tick }: { data: CentralDataset; tick: number }) {
   if (changes.leaderChange) items.push({ label: "Gargalo", value: changes.leaderChange, dir: "flat" });
 
   return (
-    <Card>
+    <Card className="bg-[hsl(var(--mission-surface))] border-[hsl(var(--mission-border))] text-[hsl(var(--mission-text))]">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
-          <Activity className="h-4 w-4 text-accent" />
+          <Activity className="h-4 w-4 text-[hsl(var(--mission-accent))]" />
           O que mudou vs. período anterior
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {items.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">
+          <p className="text-xs text-[hsl(var(--mission-text-muted))] py-2">
             Sem mudanças relevantes registradas em relação ao período anterior.
           </p>
         ) : (
           items.map((it, idx) => (
-            <div key={idx} className="flex items-start gap-2 rounded-md border p-2.5 bg-card">
+            <div key={idx} className="flex items-start gap-2 rounded-md border border-[hsl(var(--mission-border))] p-2.5 bg-[hsl(var(--mission-surface))]">
               {it.dir === "up" && <TrendingUp className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />}
               {it.dir === "down" && <TrendingDown className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />}
-              {it.dir === "flat" && <ChevronRight className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />}
+              {it.dir === "flat" && <ChevronRight className="h-4 w-4 text-[hsl(var(--mission-text-muted))] mt-0.5 shrink-0" />}
               <div className="text-xs">
-                <span className="font-semibold text-foreground/80">{it.label}: </span>
-                <span className="text-muted-foreground">{it.value}</span>
+                <span className="font-semibold text-[hsl(var(--mission-text)/0.8)]">{it.label}: </span>
+                <span className="text-[hsl(var(--mission-text-muted))]">{it.value}</span>
               </div>
             </div>
           ))
@@ -387,15 +387,15 @@ function leadershipShifts(cur: Bottleneck, prev: Bottleneck): string | null {
 function ExecutiveSummary({ data, tick }: { data: CentralDataset; tick: number }) {
   const summary = useMemo(() => buildExecutiveSummary(data), [data, tick]);
   return (
-    <Card className="border-l-4 border-l-primary/70">
+    <Card className="bg-[hsl(var(--mission-surface))] border-[hsl(var(--mission-border))] text-[hsl(var(--mission-text))] border-l-4 border-l-[hsl(var(--mission-accent)/0.7)]">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
+          <Sparkles className="h-4 w-4 text-[hsl(var(--mission-accent))]" />
           Resumo Executivo · {data.range.label}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-foreground/90 leading-relaxed">{summary}</p>
+        <p className="text-sm text-[hsl(var(--mission-text)/0.9)] leading-relaxed">{summary}</p>
       </CardContent>
     </Card>
   );
@@ -493,11 +493,11 @@ function PipelineBlock({ data }: { data: CentralDataset }) {
   const maxCount = Math.max(1, ...summary.perStage.map((s) => s.count));
 
   return (
-    <Card>
+    <Card className="bg-[hsl(var(--mission-surface))] border-[hsl(var(--mission-border))] text-[hsl(var(--mission-text))]">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Layers className="h-4 w-4 text-accent" />
+            <Layers className="h-4 w-4 text-[hsl(var(--mission-accent))]" />
             Pipeline · Oportunidades
           </CardTitle>
           <Link to="/oportunidades">
@@ -525,20 +525,20 @@ function PipelineBlock({ data }: { data: CentralDataset }) {
         <div className="space-y-1.5">
           {summary.perStage.map((row) => (
             <div key={row.stage} className="flex items-center gap-2 text-[11px]">
-              <span className="w-44 truncate text-muted-foreground">{row.stage}</span>
-              <div className="flex-1 h-2 bg-muted rounded-sm overflow-hidden">
+              <span className="w-44 truncate text-[hsl(var(--mission-text-muted))]">{row.stage}</span>
+              <div className="flex-1 h-2 bg-[hsl(var(--mission-surface-2))] rounded-sm overflow-hidden">
                 <div
                   className={
                     row.stage === "Ganho" ? "h-full bg-emerald-500"
                     : row.stage === "Perdido" ? "h-full bg-rose-500"
-                    : "h-full bg-accent"
+                    : "h-full bg-[hsl(var(--mission-accent))]"
                   }
                   style={{ width: `${(row.count / maxCount) * 100}%` }}
                 />
               </div>
               <span className="w-10 text-right tabular-nums">{row.count}</span>
-              <span className="w-24 text-right tabular-nums text-muted-foreground">{formatBRL(row.value)}</span>
-              <span className="w-16 text-right tabular-nums text-muted-foreground">{row.avgDays}d</span>
+              <span className="w-24 text-right tabular-nums text-[hsl(var(--mission-text-muted))]">{formatBRL(row.value)}</span>
+              <span className="w-16 text-right tabular-nums text-[hsl(var(--mission-text-muted))]">{row.avgDays}d</span>
             </div>
           ))}
         </div>
@@ -549,9 +549,9 @@ function PipelineBlock({ data }: { data: CentralDataset }) {
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border p-2">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="text-sm font-semibold text-foreground">{value}</div>
+    <div className="rounded-md border border-[hsl(var(--mission-border))] p-2">
+      <div className="text-[10px] uppercase tracking-wide text-[hsl(var(--mission-text-muted))]">{label}</div>
+      <div className="text-sm font-semibold text-[hsl(var(--mission-text))]">{value}</div>
     </div>
   );
 }
