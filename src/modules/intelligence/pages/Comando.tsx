@@ -218,7 +218,7 @@ export default function Comando() {
                       <span
                         key={i}
                         className={greetingAnimate ? "inline-block animate-comando-word-in motion-reduce:animate-none" : "inline-block"}
-                        style={greetingAnimate ? { animationDelay: `${i * 45}ms` } : undefined}
+                        style={greetingAnimate ? { animationDelay: `${i * 110}ms` } : undefined}
                       >
                         {word}
                       </span>
