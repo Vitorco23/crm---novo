@@ -1,5 +1,13 @@
 # SOC Performance21 — Design System
 
+> **Aviso (2026-09-01):** este documento descreve o sistema de cores azul/verde
+> (seções 1-13), que está sendo **substituído** pelo P21 Intelligence OS
+> ("mission-os") como padrão visual do CRM. Toda tela **nova** ou em
+> reformulação de UX deve usar os tokens `mission-*` (seção 14), não os
+> tokens desta seção. Telas ainda não migradas continuam funcionando nos
+> tokens antigos até serem migradas — as duas paletas coexistem durante a
+> transição. Ver seção 14 para o guia completo.
+
 Fundação visual única do CRM. Todo componente novo deve consumir **exclusivamente** os tokens abaixo.
 Nenhum estilo hard-coded (`#xxxxxx`, `text-white`, `bg-black`, `shadow-[...]`, valores arbitrários) é permitido.
 
@@ -136,3 +144,56 @@ Infraestrutura pronta:
 - **Componente**: `<ThemeToggle />` em `src/components/ThemeToggle.tsx` — botão ícone Sun/Moon acessível, pronto para colar em qualquer header.
 - **Persistência**: `localStorage` chave `soc-theme`; suporta `light | dark | system`.
 - **Aplicação**: alterna classe `.dark` no `<html>` — todos os componentes reagem automaticamente via tokens.
+
+---
+
+## 14. P21 Intelligence OS (mission-os) — design system vigente
+
+Nasceu como experimento isolado da tela Comando/Missão do Dia (Sprint 1.2) e virou o
+padrão visual do CRM em 2026-09-01. Fundo com gradiente radial sutil (profundidade por
+camada, não por borda), acento verde-oliva em vez do azul/verde da seção 1.
+
+### Tokens
+
+| Token | Uso |
+|---|---|
+| `--mission-bg` / `--mission-bg-elevated` | canvas da tela (gradiente radial via `.mission-os`) |
+| `--mission-surface` | cards, painéis, inputs |
+| `--mission-surface-2` | superfície secundária (dentro de um card, ex: linha de tabela hover) |
+| `--mission-border` | contornos, divisores |
+| `--mission-text` | texto principal |
+| `--mission-text-muted` | texto secundário |
+| `--mission-text-faint` | texto terciário/legendas (uppercase tracking, labels pequenos) |
+| `--mission-accent` / `--mission-accent-strong` | ações, destaque, ícones ativos |
+| `--mission-accent-soft` | fundo de badge/highlight sutil |
+| `--mission-blue-glow` | glow decorativo secundário (usar com moderação — ver comentário sobre "Intelligence Core" descartado em `tailwind.config.ts`) |
+
+Todos têm valores light e dark (`:root` e `.dark` em `src/index.css`) — nunca hardcode.
+
+### Classes utilitárias prontas
+
+- `.mission-os` — aplicar no container raiz da tela/seção migrada (define fundo + cor de texto base).
+- `.mission-card` — substitui `bg-card border border-border rounded-lg`.
+- `.mission-input` — substitui `bg-background border border-input` em inputs/selects/textareas; já inclui hover, focus (anel na cor do accent, não o `--ring` azul) e disabled.
+- Dentro de `.mission-os`, `:focus-visible` já usa o accent verde-oliva automaticamente — não precisa de classe extra.
+
+Para o resto (texto, espaçamento, ícones, motion, z-index, breakpoints), continuam valendo as
+seções 2, 3, 6, 7, 8, 10 e 12 acima — só as **cores** (seção 1) e o card/input padrão mudam.
+
+### Guia de migração (tela por tela)
+
+| Token/classe antiga | Equivalente mission-os |
+|---|---|
+| `bg-background` / `text-foreground` no container raiz | classe `.mission-os` no wrapper da tela |
+| `bg-card` `border-border` `rounded-lg` | `.mission-card` |
+| `bg-background border-input` (Input/Select/Textarea) | `.mission-input` |
+| `text-muted-foreground` | `text-[hsl(var(--mission-text-muted))]` |
+| `text-muted-foreground` (legendas/uppercase pequeno) | `text-[hsl(var(--mission-text-faint))]` |
+| `border-border` (divisor solto, fora de card) | `border-[hsl(var(--mission-border))]` |
+| `bg-accent` / `text-accent` / `bg-primary` | `bg-[hsl(var(--mission-accent))]` / `text-[hsl(var(--mission-accent))]` |
+| `ring`/`focus:ring` manual em componente customizado | remover — `:focus-visible` dentro de `.mission-os` já cobre |
+
+Regra de ouro da migração: uma tela migrada troca **todos** os tokens de cor de uma vez
+(nunca deixar mission-os e tokens antigos misturados na mesma tela) — evita uma
+Frankenstein visual pior do que não ter migrado. Tipografia/espaçamento/ícones (seções 2,
+3, 10) não mudam nessa migração.
