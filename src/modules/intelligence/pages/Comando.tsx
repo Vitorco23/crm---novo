@@ -208,8 +208,11 @@ export default function Comando() {
                   {/* Orbe de inteligência atrás da saudação (ver
                       IntelligenceOrb.tsx) — puramente decorativo, sem custo
                       de IA. Para de animar em prefers-reduced-motion. */}
-                  <IntelligenceOrb className="absolute -left-16 -top-24 opacity-60 blur-[0.5px]" size={280} />
-                  <p className="relative flex flex-wrap gap-x-[0.35em] gap-y-1 text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance]">
+                  <IntelligenceOrb
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-40 blur-[1px]"
+                    size={200}
+                  />
+                  <p className="relative z-10 flex flex-wrap gap-x-[0.35em] gap-y-1 text-xl md:text-2xl font-semibold text-[hsl(var(--mission-text))] [text-wrap:balance]">
                     {greetingWords.map((word, i) => (
                       <span
                         key={i}
