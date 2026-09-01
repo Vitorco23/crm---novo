@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, Save, Sparkles } from "lucide-react";
 import {
   DIFFICULTY_OPTIONS,
@@ -130,13 +130,13 @@ export default function MetricasDiarias() {
     setReport(saved);
     setHistory(listReports());
     setStatus("saved");
-    toast({ title: "Fechamento salvo", description: `Relatório de ${date} atualizado.` });
+    toast("Fechamento salvo", { description: `Relatório de ${date} atualizado.` });
   }, [report, ai, date]);
 
   const handleAi = useCallback(async () => {
     const persisted = getReport(date);
     if (status !== "saved" || !persisted) {
-      toast({ title: "Salve o fechamento antes de gerar a análise opcional" });
+      toast("Salve o fechamento antes de gerar a análise opcional");
       return;
     }
     setAiLoading(true);
@@ -146,11 +146,11 @@ export default function MetricasDiarias() {
       saveReport({ ...persisted, ai: analysis });
       setAi(analysis);
       setHistory(listReports());
-      toast({ title: "Análise por IA gerada" });
+      toast("Análise por IA gerada");
     } catch (e) {
       const msg = (e as Error).message;
       setAiError(msg);
-      toast({ title: "Não foi possível gerar a análise por IA", description: msg, variant: "destructive" });
+      toast.error("Não foi possível gerar a análise por IA", { description: msg });
     } finally {
       setAiLoading(false);
     }

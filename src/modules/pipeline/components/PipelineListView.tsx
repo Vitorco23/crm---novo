@@ -1,16 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Lead, PipelineStage } from "@/shared/services/store";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   ArrowDown, ArrowUp, ChevronsUpDown, Star, MapPin, Paperclip, AlertCircle,
-  Phone, MessageCircle, Instagram, ExternalLink,
+  Phone, MessageCircle, Instagram, ExternalLink, Clock, Users,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { EmptyState } from "@/shared/components/shell/states/EmptyState";
 
 type SortKey = "company" | "contact" | "niche" | "city" | "stage" | "icpStars" | "phone" | "stageChangedAt" | "contractValue";
 
@@ -60,6 +63,8 @@ export default function PipelineListView({
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("stageChangedAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const sorted = useMemo(() => {
     const arr = [...leads];
@@ -79,6 +84,17 @@ export default function PipelineListView({
     else { setSortKey(k); setSortDir("asc"); }
   };
 
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(0);
+  }, [totalPages, page]);
+
+  const paged = useMemo(
+    () => sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+    [sorted, page],
+  );
+
   const SortIcon = ({ k }: { k: SortKey }) => {
     if (sortKey !== k) return <ChevronsUpDown className="h-3 w-3 opacity-40" />;
     return sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
@@ -97,7 +113,8 @@ export default function PipelineListView({
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
 
   return (
-    <div className="flex-1 overflow-auto scrollbar-thin border border-border rounded-lg">
+    <div className="flex-1 flex flex-col min-h-0 border border-border rounded-lg overflow-hidden">
+    <div className="flex-1 overflow-auto scrollbar-thin">
       <table className="w-full text-sm border-collapse">
         <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur border-b border-border">
           <tr>
@@ -122,12 +139,17 @@ export default function PipelineListView({
         <tbody>
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={showContractValue ? 10 : 9} className="text-center py-8 text-xs text-muted-foreground">
-                Nenhum lead encontrado
+              <td colSpan={showContractValue ? 10 : 9} className="p-0">
+                <EmptyState
+                  icon={Users}
+                  title="Nenhum lead encontrado"
+                  description="Ajuste os filtros ou adicione um novo lead a este pipeline."
+                  className="border-0 rounded-none bg-transparent"
+                />
               </td>
             </tr>
           )}
-          {sorted.map((lead) => {
+          {paged.map((lead) => {
             const isSelected = selectedIds.has(lead.id);
             const stale = (Date.now() - new Date(lead.stageChangedAt).getTime()) / 86400000 >= 1;
             const whats = lead.whatsapp || lead.phone;
@@ -211,7 +233,8 @@ export default function PipelineListView({
                 )}
                 <td className="px-3 py-1.5 text-[11px] text-muted-foreground whitespace-nowrap">
                   <span className="inline-flex items-center gap-1">
-                    ⏱ {formatDistanceToNow(new Date(lead.stageChangedAt), { locale: ptBR, addSuffix: false })}
+                    <Clock className="h-3 w-3" aria-hidden="true" />
+                    {formatDistanceToNow(new Date(lead.stageChangedAt), { locale: ptBR, addSuffix: false })}
                     {stale && <AlertCircle className="h-3 w-3 text-destructive" />}
                   </span>
                 </td>
@@ -220,6 +243,34 @@ export default function PipelineListView({
           })}
         </tbody>
       </table>
+    </div>
+      {sorted.length > 0 && (
+        <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground shrink-0">
+          <span>
+            {sorted.length} lead{sorted.length !== 1 ? "s" : ""} · página {page + 1} de {totalPages}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

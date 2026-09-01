@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Pause, Square, Clock, Phone, Users, UserCheck, CalendarCheck, Tag, Pencil, Trash2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { format, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import P21Signal from "@/modules/intelligence/components/P21Signal";
@@ -199,7 +199,7 @@ export default function Pomodoro() {
                             if (confirm("Excluir esta sessão? As métricas serão atualizadas em todo o sistema.")) {
                               deleteSession(s.id);
                               refresh();
-                              toast({ title: "Sessão excluída" });
+                              toast("Sessão excluída");
                             }
                           }}
                           title="Excluir sessão"
@@ -270,10 +270,10 @@ function EditSessionDialog({
         startTime: form.startTime || new Date().toISOString(),
         endTime: form.endTime || new Date().toISOString(),
       });
-      toast({ title: "Sessão registrada", description: "O log manual foi adicionado com sucesso." });
+      toast("Sessão registrada", { description: "O log manual foi adicionado com sucesso." });
     } else {
       updateSession(session.id, data);
-      toast({ title: "Sessão atualizada", description: "As métricas foram recalculadas em todo o sistema." });
+      toast("Sessão atualizada", { description: "As métricas foram recalculadas em todo o sistema." });
     }
     onSaved();
   };

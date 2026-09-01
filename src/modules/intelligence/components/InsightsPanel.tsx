@@ -18,7 +18,7 @@ import {
   CATEGORY_LABELS, PRIORITY_LABELS,
   type Insight, type InsightPriority, type InsightCategory,
 } from "@/modules/intelligence/services/insights";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const PRIORITY_STYLES: Record<InsightPriority, { badge: string; dot: string; ring: string }> = {
   critica: { badge: "bg-rose-500/15 text-rose-500 border-rose-500/30", dot: "bg-rose-500", ring: "border-l-rose-500" },
@@ -69,8 +69,7 @@ export default function InsightsPanel() {
       refresh();
       setRunning(false);
       if (!silent) {
-        toast({
-          title: "Motor executado",
+        toast("Motor executado", {
           description: `${r.createdCount} novos · ${r.updatedCount} atualizados · ${r.resolvedCount} resolvidos.`,
         });
       }

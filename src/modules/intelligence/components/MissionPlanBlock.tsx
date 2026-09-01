@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Check, Plus, Phone, Users, Target, FileText, Flame, ListChecks, ExternalLink } from "lucide-react";
 import {
   buildMissionPlan,
@@ -67,13 +67,13 @@ export default function MissionPlanBlock() {
 
   const handleAdd = useCallback((item: MissionItem) => {
     addMissionTask(item);
-    toast({ title: "Adicionado à Missão do Dia", description: item.title });
+    toast("Adicionado à Missão do Dia", { description: item.title });
     setTick((t) => t + 1);
   }, []);
 
   const handleAddFollowup = useCallback((f: FollowupPick) => {
     addFollowupTask(f);
-    toast({ title: "Follow-up na Missão", description: f.company });
+    toast("Follow-up na Missão", { description: f.company });
     setTick((t) => t + 1);
   }, []);
 
