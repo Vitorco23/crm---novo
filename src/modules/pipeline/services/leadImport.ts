@@ -43,6 +43,16 @@ function parseIcp(value: string): ICPStars {
   return Math.min(5, Math.max(1, Number.isFinite(parsed) ? parsed : 2)) as ICPStars;
 }
 
+// Evita duplicar a MESMA nota importada quando a planilha traz a mesma
+// linha mais de uma vez (ou é reimportada) e casa com um lead já
+// existente. Não remove nem reordena nada que já esteja em current.
+function appendImportedNoteOnce(current: string | undefined, incoming: string) {
+  if (!incoming) return current;
+  if (!current) return incoming;
+  const alreadyPresent = current.split("\n").some((line) => line.trim() === incoming.trim());
+  return alreadyPresent ? current : `${current}\n${incoming}`;
+}
+
 export function importLeadsWithTag(
   existing: Lead[],
   rows: Record<string, string>[],
@@ -107,7 +117,7 @@ export function importLeadsWithTag(
         city: city || current.city,
         gmnLink: gmnLink || current.gmnLink,
         instagramLink: get("instagramLink") || current.instagramLink,
-        notes: notes ? (current.notes ? `${current.notes}\n${notes}` : notes) : current.notes,
+        notes: notes ? appendImportedNoteOnce(current.notes, notes) : current.notes,
         googleRating: Number.isFinite(rating) ? rating : current.googleRating,
         googleReviews: Number.isFinite(reviews) ? reviews : current.googleReviews,
         icpStars: mapping.icpStars && mapping.icpStars !== "__none__" ? importedIcp : current.icpStars,
