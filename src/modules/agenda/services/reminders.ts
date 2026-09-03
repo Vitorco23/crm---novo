@@ -191,6 +191,11 @@ export function renderReminderTemplate(text: string, lead: Lead, meeting?: Meeti
     // (chave sem mapa = devolve o marcador original).
     "resumo curto": humanizeCallSummary(latestCallSummary(lead), nome).slice(0, 220),
     "assunto": lead.niche || "",
+    // "Follow-up geral" (cold call): nicho é categoria, não assunto de
+    // conversa — usa a empresa. Inclui o " sobre as oportunidades pra X"
+    // inteiro (com o espaço à esquerda já embutido) pra sumir de vez,
+    // sem sobrar espaço/pontuação estranha, quando não há empresa cadastrada.
+    "assunto followup": empresa ? ` sobre as oportunidades pra ${empresa}` : "",
   };
   
   // Regex that captures content inside brackets, case-insensitive
