@@ -64,7 +64,7 @@ export const COLD_CALL_WHATSAPP_MESSAGES: ColdCallMessageOption[] = [
   {
     id: "followup_geral",
     label: "Follow-up geral (sem contexto específico)",
-    text: "Oi, tudo bem? Vítor da Performance21 aqui. Passando pra saber se ainda faz sentido a gente conversar sobre [assunto]. Qualquer coisa me chama.",
+    text: "Oi, tudo bem? Vítor da Performance21 aqui. Passando pra saber se ainda faz sentido a gente conversar[assunto followup]. Qualquer coisa me chama.",
   },
 ];
 

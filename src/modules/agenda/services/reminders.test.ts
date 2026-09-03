@@ -100,6 +100,20 @@ describe("renderReminderTemplate — novos placeholders de cold call (auditoria 
     expect(renderReminderTemplate("[resumo curto]", lead)).toBe("Urgência média.");
   });
 
+  it("[assunto followup] usa a empresa (auditoria 03/09 — nicho não é assunto de conversa)", () => {
+    const lead = makeLead({ company: "Regulus Energia" });
+    expect(
+      renderReminderTemplate("conversar[assunto followup]. Qualquer coisa me chama.", lead),
+    ).toBe("conversar sobre as oportunidades pra Regulus Energia. Qualquer coisa me chama.");
+  });
+
+  it("[assunto followup] some por completo (sem espaço/pontuação sobrando) quando não há empresa", () => {
+    const lead = makeLead({ company: "" });
+    expect(
+      renderReminderTemplate("conversar[assunto followup]. Qualquer coisa me chama.", lead),
+    ).toBe("conversar. Qualquer coisa me chama.");
+  });
+
   it("[assunto] usa o nicho do lead", () => {
     const lead = makeLead({ niche: "Odontologia" });
     expect(renderReminderTemplate("sobre [assunto]", lead)).toBe("sobre Odontologia");
