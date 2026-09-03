@@ -142,6 +142,26 @@ function latestCallSummary(lead: Lead): string {
   return lead.autoDiagnosis?.summary || "";
 }
 
+/**
+ * Ajusta o resumo da ligação (já em frase corrida, escrito pela IA a partir
+ * do resumo bruto do Callface) pro tom de mensagem curta de WhatsApp:
+ * nomeia a pessoa em vez de "o lead" e nunca usa "marketing" (mesmo que o
+ * texto original traga essa palavra), trocando por linguagem de Engenharia
+ * de Receita. Puramente determinístico — não reescreve a lógica do resumo,
+ * só esses dois ajustes de tom, direto no texto que a IA já produziu.
+ */
+function humanizeCallSummary(summary: string, nome: string): string {
+  if (!summary) return summary;
+  let out = summary;
+  if (nome) {
+    out = out.replace(/\bo\s+lead\b/gi, (match) => (match[0] === "O" ? `O ${nome}` : `o ${nome}`));
+  }
+  out = out.replace(/\bmarketing\b/gi, "estratégia comercial");
+  // Colapsa pontuação duplicada que pode sobrar da troca acima (ex: "média..").
+  out = out.replace(/([.!?]){2,}/g, "$1").replace(/\s{2,}/g, " ").trim();
+  return out;
+}
+
 export function renderReminderTemplate(text: string, lead: Lead, meeting?: Meeting) {
   if (!text) return "";
 
@@ -169,7 +189,7 @@ export function renderReminderTemplate(text: string, lead: Lead, meeting?: Meeti
     // permanecem como marcador literal no texto pro vendedor completar à
     // mão antes de enviar — o mesmo comportamento de fallback abaixo
     // (chave sem mapa = devolve o marcador original).
-    "resumo curto": latestCallSummary(lead).slice(0, 220),
+    "resumo curto": humanizeCallSummary(latestCallSummary(lead), nome).slice(0, 220),
     "assunto": lead.niche || "",
   };
   

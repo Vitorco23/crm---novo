@@ -38,7 +38,7 @@ export const COLD_CALL_WHATSAPP_MESSAGES: ColdCallMessageOption[] = [
   {
     id: "pediu_mais_info",
     label: "Decisor pediu mais informação",
-    text: "Vítor da Performance21 aqui. Separei o que conversamos por escrito, caso ajude: [resumo curto]. Qualquer dúvida me chama.",
+    text: "Vítor da Performance21 aqui. Separei por escrito o que conversamos, caso ajude: [resumo curto]. Qualquer dúvida, me chama.",
   },
   {
     id: "reativacao_frio",
@@ -59,7 +59,7 @@ export const COLD_CALL_WHATSAPP_MESSAGES: ColdCallMessageOption[] = [
     id: "numero_errado",
     label: "Número errado / empresa não é mais essa",
     suggestedForOutcomes: ["contato_invalido"],
-    text: "Oi, desculpa o contato. Parece que esse número não é mais da [empresa] — se puder me confirmar, agradeço, assim atualizo por aqui.",
+    text: "Oi, desculpa o contato. Parece que esse número não é mais da [empresa]. Se puder confirmar, agradeço, assim atualizo por aqui.",
   },
   {
     id: "followup_geral",
