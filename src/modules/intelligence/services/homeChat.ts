@@ -17,6 +17,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { uload, usave } from "@/shared/services/userStorage";
 import { getCommercialContext, type CommercialContext } from "@/shared/services/commercialContext";
+import { getLeads } from "@/shared/services/store";
+import { findMentionedLead, buildLeadContextBlock } from "@/shared/services/leadLookup";
 
 export type ChatRole = "user" | "assistant";
 
@@ -260,11 +262,18 @@ export async function sendMessage(text: string, profile: HomeChatProfile = {}): 
 
     const commercialContext = getCommercialContext({ profile });
 
+    // Busca determinística por lead específico (auditoria 03/09 — Comando só
+    // enxergava o top-15 de computePriorities(), nunca "todos os leads").
+    // Se a pergunta cita um lead pelo nome/empresa, ele entra no contexto
+    // mesmo sem score, autoDiagnosis ou lugar no top-15.
+    const mentionedLead = findMentionedLead(trimmed, getLeads());
+    const leadContext = mentionedLead ? buildLeadContextBlock(mentionedLead) : null;
+
     // Branch migracao-gemini: aponta pra function de teste (Gemini 2.5
     // Flash via Google AI Studio direto). Na main/produção continua
     // "home-chat" (GPT-5.4-mini via Lovable Gateway) — nunca as duas juntas.
     const { data, error } = await supabase.functions.invoke("home-chat-gemini", {
-      body: { message: trimmed, history, commercialContext, userContext: profile },
+      body: { message: trimmed, history, commercialContext, userContext: profile, leadContext },
     });
 
     if (error) throw new Error(await extractInvokeError(error));

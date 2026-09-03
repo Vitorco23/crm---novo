@@ -76,14 +76,47 @@ relatório executivo.
        Nunca invente números fora do snapshot.
    Nunca inclua na lista um lead que não está no snapshot.
 
-3. "pergunta_fechamento" — uma pergunta curta (até ~20 palavras) que fecha
-   a resposta em cima do dado mais forte que você acabou de mostrar —
-   nunca genérica ("posso ajudar em algo mais?", "precisa de mais
-   informações?"). Se a resposta citou um lead específico, mencione esse
-   lead na pergunta. Use null só quando a pergunta original for puramente
-   factual e não houver nenhuma ação sensata para sugerir.
+3. "pergunta_fechamento" — OPCIONAL. Só use quando genuinamente ajudar a
+   continuidade da conversa (ex.: dado ambíguo, falta uma decisão do
+   usuário). Nunca genérica ("posso ajudar em algo mais?", "precisa de
+   mais informações?", "quer que eu...?"). Use null sempre que:
+   (a) a pergunta original for puramente factual, ou
+   (b) o usuário já pediu uma entrega explícita e você a entregou em
+       "texto_narrativo" — nesse caso NÃO pergunte se ele quer o que ele
+       já pediu.
    Exemplo: "A Anma Odontologia está há 17 dias sem interação — quer que
-   eu já prepare esse contato?"
+   eu já prepare esse contato?" (só cabe quando o usuário NÃO pediu essa
+   entrega ainda — se ele já pediu, prepare o contato direto no texto).
+
+# QUANDO O USUÁRIO PEDE UMA ENTREGA EXPLÍCITA
+
+Pedidos como "me ajude a pensar na abordagem", "escreva uma mensagem",
+"o que eu falo nessa ligação", "monta um roteiro" são pedidos de ENTREGA,
+não de orientação. Nesses casos:
+- "texto_narrativo" deve conter a entrega em si (a mensagem pronta, o
+  roteiro, a abordagem concreta usando os dados reais do lead disponíveis
+  no snapshot/contexto do lead) — pode passar de 1-2 frases quando o
+  conteúdo pedido exigir (uma mensagem de WhatsApp, um roteiro de
+  ligação), mesmo fora do caso "análise ampla do pipeline".
+- Nunca devolva só orientação genérica ("mantenha a cadência", "reforce o
+  valor da solução") no lugar da entrega pedida.
+- Nunca termine perguntando permissão para fazer o que já foi pedido
+  ("quer que eu escreva essa mensagem?" depois de já terem pedido pra
+  escrever) — "pergunta_fechamento" vira null nesse caso.
+- Isso não muda a regra de não executar ações no CRM: continue sem
+  afirmar que moveu lead, concluiu tarefa ou enviou mensagem de verdade —
+  você está redigindo o conteúdo, não a ação de enviá-lo.
+
+# LEAD ESPECÍFICO NO CONTEXTO
+
+Se houver um bloco de lead específico no contexto (encontrado por nome/
+empresa mencionado na pergunta), ele é a fonte factual PRIORITÁRIA sobre
+esse lead — use etapa, notas, interações recentes e diagnóstico dali,
+mesmo que esse lead não apareça no SNAPSHOT OPERACIONAL (que só traz os
+leads mais prioritários do dia, não todos). Se a pergunta cita um nome de
+lead e esse bloco não veio preenchido, diga que não encontrou esse lead —
+nunca invente etapa, dado ou histórico para um lead que não está em
+nenhum dos dois blocos.
 
 Regras gerais:
 - Nunca ofereça follow-up genérico fora da pergunta de fechamento (não
@@ -233,9 +266,15 @@ Deno.serve(async (req) => {
     const history = normalizeHistory(body?.history);
     const userContextBlock = buildUserContextBlock(parseUserContext(body?.userContext));
 
+    // Lead específico encontrado deterministicamente no client (leadLookup.ts)
+    // quando a pergunta menciona um lead pelo nome/empresa — nunca depende de
+    // score/autoDiagnosis/top-15 do priorityEngine (auditoria 03/09).
+    const leadContext =
+      body?.leadContext && typeof body.leadContext === "object" ? body.leadContext : undefined;
+
     const context = buildChatContext({
       history,
-      crm: { dashboardSnapshot: commercialContext, page: "home" },
+      crm: { dashboardSnapshot: commercialContext, leadContext, page: "home" },
     });
 
     const userPrompt =
@@ -243,20 +282,47 @@ Deno.serve(async (req) => {
       context.text +
       buildQuestionBlock(sanitizeExternal(message, 2000));
 
+    // Erro transitório (rate limit / instabilidade momentânea do provedor /
+    // timeout de rede) vale 1 nova tentativa — erro de conteúdo (schema
+    // inválido, resposta bloqueada, chave ausente) não deve ser repetido.
+    const TRANSIENT_STATUS = new Set([429, 500, 502, 503, 504]);
+    function isTransient(err: GeminiCallError): boolean {
+      return TRANSIENT_STATUS.has(err.status);
+    }
+    function sleep(ms: number) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
     let result;
     try {
-      result = await callGeminiDirect({
-        model: "gemini-2.5-flash",
-        systemInstruction: composeSystem("intel.diretor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE, READ_ONLY_CLAUSE),
-        userPrompt,
-        responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.4,
-        // Igual ao original (900) truncou o JSON em teste real (Gemini foi
-        // mais verboso que o GPT-5.4-mini pro mesmo prompt). Margem extra
-        // pra reduzir a taxa de "Tentar novamente" sem inflar demais —
-        // continua sendo uma resposta de conversa, não relatório.
-        maxOutputTokens: 1400,
-      });
+      try {
+        result = await callGeminiDirect({
+          model: "gemini-2.5-flash",
+          systemInstruction: composeSystem("intel.diretor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE, READ_ONLY_CLAUSE),
+          userPrompt,
+          responseSchema: RESPONSE_SCHEMA,
+          temperature: 0.4,
+          // Igual ao original (900) truncou o JSON em teste real (Gemini foi
+          // mais verboso que o GPT-5.4-mini pro mesmo prompt). Margem extra
+          // pra reduzir a taxa de "Tentar novamente" sem inflar demais —
+          // continua sendo uma resposta de conversa, não relatório.
+          maxOutputTokens: 1400,
+        });
+      } catch (firstErr) {
+        const err = firstErr as GeminiCallError;
+        if (!isTransient(err)) throw err;
+        // Retry único (auditoria 03/09 — sem retry, falha transitória virava
+        // erro definitivo pro usuário sem nenhuma segunda chance).
+        await sleep(600);
+        result = await callGeminiDirect({
+          model: "gemini-2.5-flash",
+          systemInstruction: composeSystem("intel.diretor.chat", UNTRUSTED_INPUT_SYSTEM_CLAUSE, READ_ONLY_CLAUSE),
+          userPrompt,
+          responseSchema: RESPONSE_SCHEMA,
+          temperature: 0.4,
+          maxOutputTokens: 1400,
+        });
+      }
     } catch (e) {
       const err = e as GeminiCallError;
       const status = err.status ?? 502;
