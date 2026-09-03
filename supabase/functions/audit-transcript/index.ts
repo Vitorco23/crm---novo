@@ -2,7 +2,7 @@
 // Requer usuário autenticado (JWT válido) para evitar abuso anônimo de créditos de IA.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { callAI } from "../_shared/ai-router.ts";
+import { callAI } from "../_shared/ai-router-gemini.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
   wrapUntrusted,

@@ -12,7 +12,7 @@
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { callAI } from "../_shared/ai-router.ts";
+import { callAI } from "../_shared/ai-router-gemini.ts";
 import { embedText } from "../_shared/memory-retrieval.ts";
 import { requireUser } from "../_shared/require-auth.ts";
 import { startAIExecution } from "../_shared/ai-core/observability.ts";

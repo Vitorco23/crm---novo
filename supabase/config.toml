@@ -12,3 +12,8 @@ verify_jwt = false
 
 [functions.whatsapp-webhook]
 verify_jwt = false
+
+# Callback do OAuth do Google — chamado pelo navegador via redirect do
+# Google, nunca por uma sessão autenticada do CRM.
+[functions.google-oauth-callback]
+verify_jwt = false

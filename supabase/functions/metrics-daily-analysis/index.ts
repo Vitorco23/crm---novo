@@ -4,7 +4,7 @@
 // Nenhuma lista de leads, telefone, interação, transcrição ou áudio trafega aqui.
 // Sprint 2: a resposta é JSON estruturado e validado no backend.
 
-import { callAI } from "../_shared/ai-router.ts";
+import { callAI } from "../_shared/ai-router-gemini.ts";
 import { requireUser } from "../_shared/require-auth.ts";
 
 const corsHeaders = {

@@ -9,7 +9,7 @@
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { callAI } from "../_shared/ai-router.ts";
+import { callAI } from "../_shared/ai-router-gemini.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
   validateShape,
@@ -19,10 +19,12 @@ import {
 } from "../_shared/untrusted-input.ts";
 import {
   buildLeadContextPrompt,
+  type LeadIntelligenceInput,
+} from "../_shared/ai-core/lead-context.ts";
+import {
   startAIExecution,
   type AIExecutionRecorder,
-  type LeadIntelligenceInput,
-} from "../_shared/ai-core/index.ts";
+} from "../_shared/ai-core/observability.ts";
 
 
 // Contrato de entrada = contrato de contexto de lead do AI Core (Fase 3B).

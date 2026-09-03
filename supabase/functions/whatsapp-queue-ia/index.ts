@@ -11,7 +11,7 @@
 // auto_diagnosis) já vem pronto no payload de candidatos; esta function não
 // analisa ligação nenhuma, só decide e ordena.
 
-import { callAI } from "../_shared/ai-router.ts";
+import { callAI } from "../_shared/ai-router-gemini.ts";
 import { requireUser } from "../_shared/require-auth.ts";
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,
