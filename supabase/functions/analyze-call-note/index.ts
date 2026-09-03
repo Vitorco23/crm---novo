@@ -4,8 +4,8 @@
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { callAI } from '../_shared/ai-router.ts';
-import { createMemoryEngine } from "../_shared/ai-core/index.ts";
+import { callAI } from '../_shared/ai-router-gemini.ts';
+import { createMemoryEngine } from "../_shared/ai-core/memory-engine.ts";
 import { NBA_PROMPT_BLOCK, extractNBA, sanitizeNBA } from '../_shared/nba-types.ts';
 import { buildBusinessCalendarBlock } from '../_shared/business-calendar.ts';
 import {

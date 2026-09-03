@@ -5,7 +5,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { computePatterns, formatPatternsForPrompt } from "./memory-patterns.ts";
 
-const EMBEDDING_MODEL = "google/gemini-embedding-2";
+// Google AI Studio direto (Generative Language API) — sem Lovable no meio.
+// gemini-embedding-001 produz vetores de 3072 dimensões por padrão, mesma
+// dimensão já usada na coluna commercial_memory.embedding (vector(3072)) e
+// no parâmetro query_embedding do RPC match_commercial_memory — nenhuma
+// migration de schema foi necessária pra essa troca.
+const EMBEDDING_MODEL = "gemini-embedding-001";
 
 export interface MemoryHit {
   id: string;
@@ -18,26 +23,28 @@ export interface MemoryHit {
 }
 
 export async function embedText(text: string): Promise<number[] | null> {
-  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  const apiKey = Deno.env.get("GOOGLE_AI_STUDIO_API_KEY");
   if (!apiKey || !text.trim()) return null;
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent`,
+      {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: { parts: [{ text: text.slice(0, 6000) }] },
+        }),
       },
-      body: JSON.stringify({
-        model: EMBEDDING_MODEL,
-        input: text.slice(0, 6000),
-      }),
-    });
+    );
     if (!res.ok) {
       console.warn("[memory-retrieval] embed failed", res.status);
       return null;
     }
     const data = await res.json();
-    const vec = data?.data?.[0]?.embedding;
+    const vec = data?.embedding?.values;
     return Array.isArray(vec) ? vec : null;
   } catch (e) {
     console.warn("[memory-retrieval] embed error", (e as Error).message);

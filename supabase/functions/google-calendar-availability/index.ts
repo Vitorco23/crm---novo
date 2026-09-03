@@ -11,14 +11,13 @@
 // segunda a sexta, calendário "primary".
 
 import { requireUser } from "../_shared/require-auth.ts";
+import { googleCalendarFetch } from "../_shared/google-calendar-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 
 interface Body {
   fromISO?: string;
@@ -84,12 +83,6 @@ Deno.serve(async (req) => {
   const auth = await requireUser(req, corsHeaders);
   if (!auth.ok) return auth.response;
 
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
-  if (!LOVABLE_API_KEY || !GOOGLE_CALENDAR_API_KEY) {
-    return json(500, { error: "google_calendar_not_connected" });
-  }
-
   let body: Body = {};
   if (req.method === "POST") {
     try { body = (await req.json()) as Body; } catch { body = {}; }
@@ -116,23 +109,23 @@ Deno.serve(async (req) => {
   const to = body.toISO ? new Date(body.toISO) : new Date(from.getTime() + days * 24 * 60 * 60_000);
 
   // 1. freebusy do Google
-  const fbResp = await fetch(`${GATEWAY_URL}/freeBusy`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "X-Connection-Api-Key": GOOGLE_CALENDAR_API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      timeMin: from.toISOString(),
-      timeMax: to.toISOString(),
-      timeZone,
-      items: [{ id: calendarId }],
-    }),
-  });
-  const fbData = await fbResp.json();
-  if (!fbResp.ok) {
-    return json(502, { error: "google_api_error", status: fbResp.status, details: fbData });
+  let fbData: any;
+  try {
+    const fbResp = await googleCalendarFetch("/freeBusy", {
+      method: "POST",
+      body: JSON.stringify({
+        timeMin: from.toISOString(),
+        timeMax: to.toISOString(),
+        timeZone,
+        items: [{ id: calendarId }],
+      }),
+    });
+    fbData = await fbResp.json();
+    if (!fbResp.ok) {
+      return json(502, { error: "google_api_error", status: fbResp.status, details: fbData });
+    }
+  } catch (err) {
+    return json(400, { error: "google_calendar_not_connected", message: (err as Error)?.message });
   }
 
   const busy: { start: string; end: string }[] =

@@ -3,6 +3,7 @@
 // Google Calendar reutilizando a lógica de create-google-meeting.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { constantTimeEqual, escapeHtml, readWebhookJson } from "../_shared/webhook-security.ts";
+import { googleCalendarFetch, GoogleCalendarNotConnectedError } from "../_shared/google-calendar-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +13,6 @@ const corsHeaders = {
 
 const OWNER_EMAIL = "vitor@performance21.com.br";
 const FIRST_OPP_STAGE = "Reunião Marcada";
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 
 interface LandingPayload {
   nome?: string;
@@ -48,11 +48,6 @@ function json(status: number, body: unknown) {
 }
 
 async function createCalendarEvent(payload: LandingPayload, leadName: string, company: string) {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
-  if (!LOVABLE_API_KEY || !GOOGLE_CALENDAR_API_KEY) {
-    return { ok: false, error: "google_calendar_not_connected" as const };
-  }
   if (!payload.meetingISO || isNaN(new Date(payload.meetingISO).getTime())) {
     return { ok: false, error: "invalid_meetingISO" as const };
   }
@@ -87,18 +82,18 @@ async function createCalendarEvent(payload: LandingPayload, leadName: string, co
   if (withMeet) params.set("conferenceDataVersion", "1");
   if (payload.email) params.set("sendUpdates", "all");
 
-  const resp = await fetch(
-    `${GATEWAY_URL}/calendars/primary/events?${params.toString()}`,
-    {
+  let resp: Response;
+  try {
+    resp = await googleCalendarFetch(`/calendars/primary/events?${params.toString()}`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": GOOGLE_CALENDAR_API_KEY,
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(event),
+    });
+  } catch (err) {
+    if (err instanceof GoogleCalendarNotConnectedError) {
+      return { ok: false, error: "google_calendar_not_connected" as const };
     }
-  );
+    throw err;
+  }
 
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {

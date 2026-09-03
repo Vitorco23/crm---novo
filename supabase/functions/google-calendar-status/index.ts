@@ -1,5 +1,6 @@
 // Verifica se o Google Calendar está conectado e se as credenciais funcionam
 import { requireUser } from "../_shared/require-auth.ts";
+import { googleCalendarFetch, isGoogleCalendarConfigured } from "../_shared/google-calendar-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,11 +13,7 @@ Deno.serve(async (req) => {
   const auth = await requireUser(req, corsHeaders);
   if (!auth.ok) return auth.response;
 
-
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
-
-  if (!LOVABLE_API_KEY || !GOOGLE_CALENDAR_API_KEY) {
+  if (!isGoogleCalendarConfigured()) {
     return new Response(
       JSON.stringify({ connected: false, reason: "missing_env" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -24,22 +21,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const resp = await fetch(
-      "https://connector-gateway.lovable.dev/api/v1/verify_credentials",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "X-Connection-Api-Key": GOOGLE_CALENDAR_API_KEY,
-        },
-      }
-    );
+    // Chamada leve só pra confirmar que o refresh_token ainda é válido.
+    const resp = await googleCalendarFetch("/calendars/primary");
     const data = await resp.json().catch(() => ({}));
     return new Response(
       JSON.stringify({
-        connected: resp.ok && (data.outcome === "verified" || data.outcome === "skipped"),
-        outcome: data.outcome,
-        error: data.error || null,
+        connected: resp.ok,
+        outcome: resp.ok ? "verified" : "failed",
+        error: resp.ok ? null : (data?.error?.message || null),
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

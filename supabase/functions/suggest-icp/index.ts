@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { callAI } from "../_shared/ai-router.ts";
+import { callAI } from "../_shared/ai-router-gemini.ts";
 import { requireUser } from "../_shared/require-auth.ts";
 
 const corsHeaders = {
