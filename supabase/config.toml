@@ -10,7 +10,7 @@ verify_jwt = false
 [functions.receive-landing-lead]
 verify_jwt = false
 
-[functions.receive-agent-update]
+[functions.whatsapp-agent-update-lead]
 verify_jwt = false
 
 [functions.receive-matteline-call]

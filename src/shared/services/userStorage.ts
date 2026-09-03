@@ -747,6 +747,51 @@ function buildInteractionFromInbound(row: InboundInteractionRow, lead: Lead): {
   };
 }
 
+// Etapas do Cold Call em ordem de progressão — duplicado aqui (em vez de
+// importar de store.ts) só pra decidir se "Tentativa 1" pode avançar sem
+// regressão de pipeline; store.ts já importa userStorage.ts (uload/usave),
+// então um import estático de volta criaria ciclo. Mantido em sincronia
+// manual com DEFAULT_COLD_CALL_STAGES — só usado pra comparar índice.
+const COLD_CALL_STAGE_ORDER = [
+  "Novo Lead", "Tentativa 1", "Tentativa 2", "Tentativa 3", "Tentativa 4",
+  "Tentativa 5", "Tentativa 6", "Tentativa 7", "Tentativa 8", "Tentativa 9",
+  "Tentativas Concluídas",
+];
+
+/**
+ * Move o lead pra "Tentativa 1" quando o agente externo informa esse status,
+ * SE (e só se) a etapa atual ainda for uma etapa de Cold Call anterior a
+ * "Tentativa 1" — nunca regride um lead que já avançou (Oportunidades,
+ * Onboarding, ou mesmo Tentativa 2+ dentro do próprio Cold Call) e é
+ * idempotente (já em "Tentativa 1" não gera novo movimento). Retorna o
+ * MovementEvent equivalente ao que moveLeadToStage() grava no browser
+ * (mesmo formato de store.ts), ou null se não houve mudança.
+ */
+export function applyAgentStageProgression(
+  lead: Lead,
+  status: string | undefined,
+  nowISO: string,
+): { id: string; leadId: string; fromStage: string; toStage: string; timestamp: string; type: "movement" } | null {
+  if (status !== "Tentativa 1") return null;
+  const currentIdx = COLD_CALL_STAGE_ORDER.indexOf(lead.stage);
+  const targetIdx = COLD_CALL_STAGE_ORDER.indexOf("Tentativa 1");
+  // currentIdx === -1: etapa fora do Cold Call (Oportunidades/Onboarding) — não mexe.
+  // currentIdx >= targetIdx: já em Tentativa 1 ou mais adiante — idempotente, não mexe.
+  if (currentIdx === -1 || currentIdx >= targetIdx) return null;
+
+  const fromStage = lead.stage;
+  lead.stage = "Tentativa 1";
+  lead.stageChangedAt = nowISO;
+  return {
+    id: crypto.randomUUID(),
+    leadId: lead.id,
+    fromStage,
+    toStage: "Tentativa 1",
+    timestamp: nowISO,
+    type: "movement",
+  };
+}
+
 export async function syncInboundInteractions(): Promise<number> {
   const uid = getCurrentUserId();
   if (!uid) return 0;
@@ -781,6 +826,7 @@ export async function syncInboundInteractions(): Promise<number> {
   const affectedLeadIds = new Set<string>();
   const failed: Array<{ id: string; error: string; dados: any }> = [];
   const ledgerEntries: Array<{ leadId: string; at: string; externalKey: string; channel: "call" | "message"; source: "callface" | "interaction" }> = [];
+  const movementEntries: Array<{ id: string; leadId: string; fromStage: string; toStage: string; timestamp: string; type: "movement" }> = [];
 
   for (const row of rows) {
     try {
@@ -797,6 +843,20 @@ export async function syncInboundInteractions(): Promise<number> {
       if (!lead) {
         failed.push({ id: row.id, error: `lead_not_found:${phone}`, dados: row.dados });
         continue;
+      }
+
+      // Progressão de etapa (Cold Call, "Tentativa 1") é checada pra TODA
+      // linha do agente que casa com um lead — inclusive quando a Interaction
+      // já tinha sido gravada numa tentativa anterior (retry parcial) — a
+      // própria função é idempotente (não regride, não duplica movimento),
+      // então rodar de novo aqui é seguro e cobre esse caso de borda.
+      if (row.dados?.source === "whatsapp_agent") {
+        const nowISO = new Date().toISOString();
+        const movement = applyAgentStageProgression(lead, row.dados?.status, nowISO);
+        if (movement) {
+          movementEntries.push(movement);
+          needsLeadPersistence = true;
+        }
       }
 
       const interactionId = `inbound:${row.id}`;
@@ -844,6 +904,15 @@ export async function syncInboundInteractions(): Promise<number> {
     await saveAndConfirm<Lead[]>("p21_leads", leads);
   }
 
+  // Movimentação de etapa gerada pelo agente (ex: Novo Lead → Tentativa 1)
+  // — mesmo registro (p21_movements) que moveLeadToStage() grava no browser,
+  // pra métricas/funil (bottleneckEngine, coldCallMetrics, realConversion
+  // etc.) continuarem enxergando esse avanço. Cap em 5000 igual store.ts.
+  if (movementEntries.length > 0) {
+    const movements = uload<any[]>("p21_movements", []);
+    usave("p21_movements", [...movements, ...movementEntries].slice(-5000));
+  }
+
   // Ledger de atividade estimada — import dinâmico evita ciclo de módulos.
   if (ledgerEntries.length > 0) {
     try {
@@ -877,7 +946,7 @@ export async function syncInboundInteractions(): Promise<number> {
     }
   }
 
-  if (appended > 0) {
+  if (appended > 0 || movementEntries.length > 0) {
     window.dispatchEvent(new Event("p21:storage-synced"));
     window.dispatchEvent(
       new CustomEvent("p21:leads-changed", { detail: { source: "inbound-interactions", count: appended } })
