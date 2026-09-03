@@ -10,6 +10,9 @@ verify_jwt = false
 [functions.receive-landing-lead]
 verify_jwt = false
 
+[functions.receive-agent-update]
+verify_jwt = false
+
 [functions.receive-matteline-call]
 verify_jwt = false
 
