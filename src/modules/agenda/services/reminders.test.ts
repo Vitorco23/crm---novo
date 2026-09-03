@@ -61,6 +61,45 @@ describe("renderReminderTemplate — novos placeholders de cold call (auditoria 
     expect(renderReminderTemplate("Resumo: [resumo curto]", lead)).toBe("Resumo: ");
   });
 
+  it("[resumo curto] troca 'o lead' pelo primeiro nome do contato (auditoria 03/09)", () => {
+    const lead = makeLead({
+      contact: "João da Silva",
+      autoDiagnosis: {
+        summary: "O lead tem interesse em otimizar o funil de vendas.",
+        temperature: "quente",
+        next_action: "Ligar amanhã",
+        generatedAt: "2026-09-01T10:00:00",
+      } as any,
+    });
+    expect(renderReminderTemplate("[resumo curto]", lead)).toBe("O João tem interesse em otimizar o funil de vendas.");
+  });
+
+  it("[resumo curto] nunca usa 'marketing', mesmo se o resumo original trouxer essa palavra", () => {
+    const lead = makeLead({
+      autoDiagnosis: {
+        summary: "Interesse em estratégias de marketing e fidelização de clientes.",
+        temperature: "quente",
+        next_action: "Ligar amanhã",
+        generatedAt: "2026-09-01T10:00:00",
+      } as any,
+    });
+    const out = renderReminderTemplate("[resumo curto]", lead);
+    expect(out.toLowerCase()).not.toContain("marketing");
+    expect(out).toBe("Interesse em estratégias de estratégia comercial e fidelização de clientes.");
+  });
+
+  it("[resumo curto] colapsa pontuação duplicada deixada pela troca de palavras", () => {
+    const lead = makeLead({
+      autoDiagnosis: {
+        summary: "Urgência média..",
+        temperature: "morno",
+        next_action: "Ligar amanhã",
+        generatedAt: "2026-09-01T10:00:00",
+      } as any,
+    });
+    expect(renderReminderTemplate("[resumo curto]", lead)).toBe("Urgência média.");
+  });
+
   it("[assunto] usa o nicho do lead", () => {
     const lead = makeLead({ niche: "Odontologia" });
     expect(renderReminderTemplate("sobre [assunto]", lead)).toBe("sobre Odontologia");

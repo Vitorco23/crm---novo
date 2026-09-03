@@ -1,12 +1,11 @@
 // Edge function: atualiza data/horário de um evento no Google Calendar
 import { requireUser } from "../_shared/require-auth.ts";
+import { googleCalendarFetch, GoogleCalendarNotConnectedError } from "../_shared/google-calendar-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 
 interface RequestBody {
   eventId: string;
@@ -30,20 +29,6 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.response;
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY missing" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (!GOOGLE_CALENDAR_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "google_calendar_not_connected" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const body = (await req.json()) as RequestBody;
     if (!body.eventId) {
       return new Response(JSON.stringify({ error: "invalid_eventId" }), {
@@ -66,15 +51,8 @@ Deno.serve(async (req) => {
     const params = new URLSearchParams();
     params.set("sendUpdates", body.sendUpdates === false ? "none" : "all");
 
-    const url = `${GATEWAY_URL}/calendars/${calendarId}/events/${eventId}?${params.toString()}`;
-
-    const resp = await fetch(url, {
+    const resp = await googleCalendarFetch(`/calendars/${calendarId}/events/${eventId}?${params.toString()}`, {
       method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": GOOGLE_CALENDAR_API_KEY,
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
         start: { dateTime: body.startISO, timeZone: body.timeZone },
         end: { dateTime: body.endISO, timeZone: body.timeZone },
@@ -99,6 +77,11 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    if (err instanceof GoogleCalendarNotConnectedError) {
+      return new Response(JSON.stringify({ error: "google_calendar_not_connected" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const message = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({ error: "internal_error", message }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

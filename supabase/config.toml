@@ -1,4 +1,7 @@
-project_id = "mvfglrfcnzfrfgxsaagj"
+# Projeto Supabase proprio (fora do Lovable Cloud), migrado em 2026-09-03.
+# O antigo (mvfglrfcnzfrfgxsaagj) era gerenciado pela organizacao do
+# Lovable e ficava inacessivel quando os creditos da conta zeravam.
+project_id = "dxcmacdudfrzlgatolzn"
 
 [functions.audit-transcript]
 verify_jwt = false
@@ -7,8 +10,16 @@ verify_jwt = false
 [functions.receive-landing-lead]
 verify_jwt = false
 
+[functions.whatsapp-agent-update-lead]
+verify_jwt = false
+
 [functions.receive-matteline-call]
 verify_jwt = false
 
 [functions.whatsapp-webhook]
+verify_jwt = false
+
+# Callback do OAuth do Google — chamado pelo navegador via redirect do
+# Google, nunca por uma sessão autenticada do CRM.
+[functions.google-oauth-callback]
 verify_jwt = false

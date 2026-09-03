@@ -57,9 +57,9 @@ export default function DailyPriorities() {
 
   if (priorities.length === 0) {
     return (
-      <Card className="border-dashed">
+      <Card className="border-dashed bg-[hsl(var(--mission-surface))] border-[hsl(var(--mission-border))]">
         <CardContent className="py-8 text-center">
-          <p className="text-sm text-muted-foreground">Tudo em dia! Nenhuma prioridade crítica para agora.</p>
+          <p className="text-sm text-[hsl(var(--mission-text-muted))]">Tudo em dia! Nenhuma prioridade crítica para agora.</p>
         </CardContent>
       </Card>
     );
@@ -68,11 +68,11 @@ export default function DailyPriorities() {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-3 px-1">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-[hsl(var(--mission-text))] flex items-center gap-2">
           <AlertCircle className="h-4 w-4 text-orange-500" />
           Próximas Ações
         </h3>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        <span className="text-[10px] uppercase tracking-wider text-[hsl(var(--mission-text-muted))] font-medium">
           {priorities.length} ITENS
         </span>
       </div>
@@ -81,7 +81,7 @@ export default function DailyPriorities() {
         {priorities.map((p) => (
           <div 
             key={p.leadId}
-            className="group relative flex items-center justify-between p-3 rounded-xl border border-border bg-card hover:border-accent/40 transition-all cursor-pointer"
+            className="group relative flex items-center justify-between p-3 rounded-xl border border-[hsl(var(--mission-border))] bg-[hsl(var(--mission-surface))] hover:border-[hsl(var(--mission-accent)/0.4)] transition-all cursor-pointer"
             onClick={() => setSelectedLeadId(p.leadId)}
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -89,27 +89,27 @@ export default function DailyPriorities() {
                 "h-10 w-10 rounded-full flex items-center justify-center shrink-0",
                 p.tier === "critica" ? "bg-red-500/10 text-red-500" :
                 p.tier === "alta" ? "bg-orange-500/10 text-orange-500" :
-                "bg-accent/10 text-accent"
+                "bg-[hsl(var(--mission-accent)/0.1)] text-[hsl(var(--mission-accent))]"
               )}>
                 {getActionIcon(p.action)}
               </div>
               
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-bold text-foreground truncate">
+                  <span className="text-sm font-bold text-[hsl(var(--mission-text))] truncate">
                     {p.company}
                   </span>
                   <Badge variant="outline" className={cn(
                     "text-[9px] h-4 px-1.5 uppercase font-bold border-transparent",
                     p.tier === "critica" ? "bg-red-500/10 text-red-500" :
                     p.tier === "alta" ? "bg-orange-500/10 text-orange-500" :
-                    "bg-accent/10 text-accent"
+                    "bg-[hsl(var(--mission-accent)/0.1)] text-[hsl(var(--mission-accent))]"
                   )}>
                     {p.tier}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-md">
+                  <span className="text-xs text-[hsl(var(--mission-text-muted))] truncate max-w-[200px] sm:max-w-md">
                     {p.actionReason}
                   </span>
                 </div>
@@ -118,15 +118,15 @@ export default function DailyPriorities() {
 
             <div className="flex items-center gap-3 shrink-0 ml-4">
               <div className="hidden sm:flex flex-col items-end text-right">
-                <span className="text-[10px] font-medium text-foreground">
+                <span className="text-[10px] font-medium text-[hsl(var(--mission-text))]">
                   {p.actionLabel}
                 </span>
-                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <span className="text-[10px] text-[hsl(var(--mission-text-muted))] flex items-center gap-1">
                   <Clock className="h-2.5 w-2.5" />
                   ~{p.estimatedMinutes} min
                 </span>
               </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors" />
+              <ChevronRight className="h-4 w-4 text-[hsl(var(--mission-text-muted))] group-hover:text-[hsl(var(--mission-accent))] transition-colors" />
             </div>
           </div>
         ))}

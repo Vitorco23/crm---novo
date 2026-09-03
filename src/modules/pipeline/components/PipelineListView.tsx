@@ -113,10 +113,10 @@ export default function PipelineListView({
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 border border-border rounded-lg overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 mission-card overflow-hidden">
     <div className="flex-1 overflow-auto scrollbar-thin">
       <table className="w-full text-sm border-collapse">
-        <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur border-b border-border">
+        <thead className="sticky top-0 z-10 bg-muted border-b border-border">
           <tr>
             <th className="w-8 px-2 py-2">
               <Checkbox
@@ -179,7 +179,7 @@ export default function PipelineListView({
                 </td>
                 <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}>
                   <Select value={lead.stage} onValueChange={(v) => onChangeStage(lead.id, v)}>
-                    <SelectTrigger className="h-7 text-xs w-[160px] border-border/50 bg-background/50">
+                    <SelectTrigger className="h-7 text-xs w-[160px] border-border bg-card">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

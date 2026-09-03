@@ -1,13 +1,12 @@
 // Edge function: cria evento no Google Calendar via Connector Gateway
 // e retorna { eventId, htmlLink, meetLink }
 import { requireUser } from "../_shared/require-auth.ts";
+import { googleCalendarFetch, GoogleCalendarNotConnectedError } from "../_shared/google-calendar-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 
 interface RequestBody {
   summary: string;
@@ -37,24 +36,6 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.response;
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "LOVABLE_API_KEY is not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
-    if (!GOOGLE_CALENDAR_API_KEY) {
-      return new Response(
-        JSON.stringify({
-          error: "google_calendar_not_connected",
-          message: "Google Calendar não está conectado neste projeto.",
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const body = (await req.json()) as RequestBody;
 
     // ---- validation ----
@@ -112,15 +93,8 @@ Deno.serve(async (req) => {
     if (withMeet) params.set("conferenceDataVersion", "1");
     if (body.attendeeEmail) params.set("sendUpdates", "all");
 
-    const url = `${GATEWAY_URL}/calendars/${calendarId}/events?${params.toString()}`;
-
-    const resp = await fetch(url, {
+    const resp = await googleCalendarFetch(`/calendars/${calendarId}/events?${params.toString()}`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": GOOGLE_CALENDAR_API_KEY,
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(event),
     });
 
@@ -150,6 +124,12 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    if (err instanceof GoogleCalendarNotConnectedError) {
+      return new Response(
+        JSON.stringify({ error: "google_calendar_not_connected", message: "Google Calendar não está conectado neste projeto." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     console.error("create-google-meeting error", err);
     const message = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({ error: "internal_error", message }), {

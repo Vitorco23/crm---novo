@@ -14,11 +14,14 @@
 
 @layer base {
   :root {
-    /* P21 Intelligence OS — escopada à Missão do Dia (classe .mission-os).
-       Sprint 1.2: profundidade por camada, não por borda. Acompanha o tema
-       claro/escuro do CRM (valores light aqui; overrides em .dark abaixo) —
-       não é um "console" permanentemente escuro. Não é o design system
-       global do CRM — só esta tela usa. */
+    /* P21 Intelligence OS (classe .mission-os) — DESIGN SYSTEM VIGENTE do
+       CRM (decisão de 2026-09-01: substitui gradualmente a paleta azul/verde
+       da seção 1 abaixo). Profundidade por camada, não por borda. Acompanha
+       o tema claro/escuro do CRM (valores light aqui; overrides em .dark
+       abaixo) — não é um "console" permanentemente escuro. Migração é
+       incremental tela por tela: enquanto uma tela não foi migrada, ela
+       continua nos tokens antigos (background/foreground/card/etc.) — ver
+       docs/DESIGN_SYSTEM.md seção 14 para o guia de migração. */
     --mission-bg: 210 45% 98%;
     --mission-bg-elevated: 210 38% 96%;
     --mission-surface: 0 0% 100%;
@@ -28,6 +31,7 @@
     --mission-text-muted: 215 16% 42%;
     --mission-text-faint: 215 14% 55%;
     --mission-accent: 74 55% 35%;
+    --mission-on-accent: 0 0% 100%;
     --mission-accent-strong: 74 60% 42%;
     --mission-accent-soft: 74 45% 92%;
     --mission-blue-glow: 217 80% 50%;
@@ -151,7 +155,8 @@
 
   .dark {
     /* P21 Intelligence OS — override para o tema escuro (mesmas variáveis
-       definidas em :root para o tema claro, acima). */
+       definidas em :root para o tema claro, acima). Design system vigente
+       — ver comentário em :root e docs/DESIGN_SYSTEM.md seção 14. */
     --mission-bg: 222 55% 6%;
     --mission-bg-elevated: 222 48% 8%;
     --mission-surface: 222 40% 11%;
@@ -161,6 +166,7 @@
     --mission-text-muted: 215 20% 70%;
     --mission-text-faint: 215 15% 48%;
     --mission-accent: 74 60% 58%;
+    --mission-on-accent: 222 55% 6%;
     --mission-accent-strong: 74 65% 68%;
     --mission-accent-soft: 74 45% 16%;
     --mission-blue-glow: 217 91% 60%;
@@ -316,11 +322,97 @@
     -webkit-backdrop-filter: blur(16px);
   }
 
-  /* P21 Intelligence OS (Sprint 1.2) — superfície fixa, escopada à Missão do
-     Dia. Profundidade por camada (bg → elevated → surface → surface-2),
-     não por borda. Não é o tema global do CRM. */
+  /* P21 Intelligence OS — design system vigente do CRM (ver comentário em
+     :root). Profundidade por camada (bg → elevated → surface → surface-2),
+     não por borda. Aplicar em toda tela migrada (ver docs/DESIGN_SYSTEM.md
+     seção 14 para o guia de migração e as classes abaixo). */
   .mission-os {
     background: radial-gradient(ellipse 120% 60% at 15% -10%, hsl(var(--mission-bg-elevated)) 0%, hsl(var(--mission-bg)) 55%);
     color: hsl(var(--mission-text));
+  }
+
+  /* Scoped adapter for shared controls. Portaled content receives the same
+     class through MissionThemeProvider, without changing other screens. */
+  .mission-theme {
+    --background: var(--mission-bg);
+    --foreground: var(--mission-text);
+    --card: var(--mission-surface);
+    --card-foreground: var(--mission-text);
+    --popover: var(--mission-surface);
+    --popover-foreground: var(--mission-text);
+    --primary: var(--mission-accent);
+    --primary-foreground: var(--mission-on-accent);
+    --primary-hover: var(--mission-accent);
+    --primary-active: var(--mission-accent);
+    --secondary: var(--mission-surface-2);
+    --secondary-foreground: var(--mission-text);
+    --secondary-hover: var(--mission-accent-soft);
+    --muted: var(--mission-surface-2);
+    --muted-foreground: var(--mission-text-muted);
+    --accent: var(--mission-accent);
+    --accent-foreground: var(--mission-on-accent);
+    --accent-hover: var(--mission-accent);
+    --accent-active: var(--mission-accent);
+    --border: var(--mission-border);
+    --border-strong: var(--mission-border);
+    --input: var(--mission-border);
+    --ring: var(--mission-accent);
+    --text-primary: var(--mission-text);
+    --text-secondary: var(--mission-text-muted);
+    --text-muted: var(--mission-text-muted);
+    --text-disabled: var(--mission-text-faint);
+    --icon-primary: var(--mission-text);
+    --icon-secondary: var(--mission-text-muted);
+    --surface-1: var(--mission-surface);
+    --surface-2: var(--mission-surface-2);
+    --surface-3: var(--mission-surface-2);
+    --surface-hover: var(--mission-surface-2);
+    --surface-elevated: var(--mission-surface);
+    --shadow-focus: 0 0 0 3px hsl(var(--mission-accent) / 0.45);
+    color: hsl(var(--mission-text));
+  }
+
+  .mission-theme.glass {
+    background: hsl(var(--mission-surface));
+  }
+
+  /* Dentro de .mission-os, o anel de foco acompanha o accent da própria
+     paleta (verde-oliva) em vez do --ring azul do sistema antigo — evita
+     um anel de cor "errada" aparecer sobre a superfície mission-os. */
+  .mission-os :focus-visible {
+    box-shadow: 0 0 0 3px hsl(var(--mission-accent) / 0.45);
+  }
+
+  /* Card padrão do mission-os — substitui bg-card/border-border/rounded-lg
+     do sistema antigo. Sem sombra própria: a profundidade vem do contraste
+     de camada (superfície mais clara que o fundo), não de shadow. */
+  .mission-card {
+    background: hsl(var(--mission-surface));
+    border: 1px solid hsl(var(--mission-border));
+    border-radius: var(--radius-lg);
+    color: hsl(var(--mission-text));
+  }
+
+  /* Input/select/textarea no mission-os — substitui bg-background +
+     border-input + focus:ring do sistema antigo. Estados: default, hover
+     (borda um tom mais forte), focus-visible (anel accent, ver acima),
+     disabled (opacity reduzida + cursor not-allowed, igual seção 9 do
+     DESIGN_SYSTEM.md). */
+  .mission-input {
+    background: hsl(var(--mission-surface));
+    border: 1px solid hsl(var(--mission-border));
+    color: hsl(var(--mission-text));
+    border-radius: var(--radius-md);
+    transition: border-color var(--duration-base) var(--ease-standard);
+  }
+  .mission-input:hover:not(:disabled) {
+    border-color: hsl(var(--mission-accent) / 0.5);
+  }
+  .mission-input::placeholder {
+    color: hsl(var(--mission-text-faint));
+  }
+  .mission-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }

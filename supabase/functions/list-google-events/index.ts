@@ -1,12 +1,11 @@
 // Lista eventos do Google Calendar em uma janela de tempo.
 import { requireUser } from "../_shared/require-auth.ts";
+import { googleCalendarFetch, GoogleCalendarNotConnectedError } from "../_shared/google-calendar-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_calendar/calendar/v3";
 
 interface Body {
   timeMin: string;
@@ -20,13 +19,6 @@ Deno.serve(async (req) => {
   const auth = await requireUser(req, corsHeaders);
   if (!auth.ok) return auth.response;
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY");
-    if (!LOVABLE_API_KEY || !GOOGLE_CALENDAR_API_KEY) {
-      return new Response(JSON.stringify({ error: "google_calendar_not_connected", events: [] }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
     const body = (await req.json()) as Body;
     if (!body.timeMin || !body.timeMax) {
       return new Response(JSON.stringify({ error: "invalid_range" }), {
@@ -43,12 +35,8 @@ Deno.serve(async (req) => {
     });
     if (body.timeZone) params.set("timeZone", body.timeZone);
 
-    const resp = await fetch(`${GATEWAY_URL}/calendars/${calendarId}/events?${params.toString()}`, {
+    const resp = await googleCalendarFetch(`/calendars/${calendarId}/events?${params.toString()}`, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": GOOGLE_CALENDAR_API_KEY,
-      },
     });
     const data = await resp.json();
     if (!resp.ok) {
@@ -76,6 +64,11 @@ Deno.serve(async (req) => {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    if (err instanceof GoogleCalendarNotConnectedError) {
+      return new Response(JSON.stringify({ error: "google_calendar_not_connected", events: [] }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const message = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({ error: "internal_error", message, events: [] }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

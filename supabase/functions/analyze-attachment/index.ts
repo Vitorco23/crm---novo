@@ -2,8 +2,8 @@
 // Nunca é chamado automaticamente. Áudios NÃO devem ser enviados aqui.
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { callAI } from '../_shared/ai-router.ts';
-import { createMemoryEngine } from "../_shared/ai-core/index.ts";
+import { callAI } from '../_shared/ai-router-gemini.ts';
+import { createMemoryEngine } from "../_shared/ai-core/memory-engine.ts";
 import { requireUser } from '../_shared/require-auth.ts';
 import {
   UNTRUSTED_INPUT_SYSTEM_CLAUSE,

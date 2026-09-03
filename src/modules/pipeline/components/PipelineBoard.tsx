@@ -1,3 +1,4 @@
+import { MissionThemeProvider } from "@/components/ui/mission-theme";
 import { memo, useState, useCallback, useRef, useMemo, useEffect, useDeferredValue } from "react";
 import { getAvailableOptions, getCorrelatedOptions } from "@/modules/pipeline/services/correlatedFilters";
 import { uload, usave } from "@/shared/services/userStorage";
@@ -153,7 +154,7 @@ const LeadCard = memo(function LeadCard({
         draggable
         onDragStart={(e) => onDragStart(e, lead.id)}
         onClick={() => onClick(lead)}
-        className="group rounded-lg border border-border/60 p-2.5 bg-card shadow-sm cursor-pointer hover:border-accent/50 hover:shadow transition-all space-y-2 relative [content-visibility:auto] [contain-intrinsic-size:120px]"
+        className="group mission-card p-2.5 cursor-pointer hover:border-accent/50 transition-colors space-y-2 relative [content-visibility:auto] [contain-intrinsic-size:120px]"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -163,7 +164,7 @@ const LeadCard = memo(function LeadCard({
               {lead.contact && <p className="text-[10px] text-muted-foreground truncate">{lead.contact} {lead.phone && <span className="text-[9px] opacity-60">· {lead.phone}</span>}</p>}
             </div>
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }} className="text-muted-foreground hover:text-accent p-0.5">
@@ -187,7 +188,7 @@ const LeadCard = memo(function LeadCard({
                   value={lead.stage}
                   onClick={(e) => e.stopPropagation()}
                   onChange={(e) => { e.stopPropagation(); onMoveToStage(lead.id, e.target.value as PipelineStage); }}
-                  className="text-[9px] h-4 max-w-[16px] opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus:max-w-none bg-transparent border border-border/60 rounded text-muted-foreground cursor-pointer"
+                  className="text-[9px] h-4 max-w-[16px] opacity-100 focus:opacity-100 focus:max-w-none bg-card border border-border rounded text-muted-foreground cursor-pointer"
                 >
                   {stages.map((s) => (<option key={s} value={s}>{s}</option>))}
                 </select>
@@ -247,7 +248,7 @@ const LeadCard = memo(function LeadCard({
         </div>
 
         <div className="flex items-center justify-between text-[10px] pt-1">
-          <div className="flex items-center gap-1 text-muted-foreground/60">
+          <div className="flex items-center gap-1 text-muted-foreground">
             <Clock className="h-2.5 w-2.5" aria-hidden="true" />
             <span>{timeInStage(lead.stageChangedAt)}</span>
           </div>
@@ -257,7 +258,7 @@ const LeadCard = memo(function LeadCard({
                 {lead.contractValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </span>
             )}
-            <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
                <button onClick={(e) => { e.stopPropagation(); window.open(`tel:${lead.phone}`, '_self'); }} className="p-1 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground">
                   <PhoneCall className="h-3 w-3" />
                </button>
@@ -792,32 +793,35 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
   const onDragOver = (e: React.DragEvent) => e.preventDefault();
 
   const stageColors: Record<string, string> = {
-    "Novo Lead": "bg-accent/20 border-accent/40",
-    "Ganho": "bg-success/10 border-success/30",
-    "Perdido": "bg-destructive/10 border-destructive/30",
-    "Onboarding": "bg-accent/15 border-accent/30",
-    "Escala": "bg-success/10 border-success/30",
+    "Novo Lead": "bg-accent",
+    "Ganho": "bg-success",
+    "Perdido": "bg-destructive",
+    "Onboarding": "bg-accent",
+    "Escala": "bg-success",
   };
 
   return (
-    <div className="p-4 h-full flex flex-col">
+    <MissionThemeProvider value={true}>
+    <div className="mission-os mission-theme p-4 h-full min-w-0 flex flex-col">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-bold text-foreground tracking-tight">{title}</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle || `${pipelineLeads.length} leads no total`}</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex items-center rounded-md border border-border bg-muted/30 p-0.5">
             <button
+              aria-pressed={view === "kanban"}
               onClick={() => setView("kanban")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-all ${view === "kanban" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-all ${view === "kanban" ? "bg-[hsl(var(--mission-accent-soft))] text-accent shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
             >
               <LayoutGrid className="h-3.5 w-3.5" /> Kanban
             </button>
             <button
+              aria-pressed={view === "list"}
               onClick={() => setView("list")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-all ${view === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-sm transition-all ${view === "list" ? "bg-[hsl(var(--mission-accent-soft))] text-accent shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
             >
               <ListIcon className="h-3.5 w-3.5" /> Lista
             </button>
@@ -897,21 +901,21 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-4 bg-muted/20 p-2 rounded-lg border border-border/40">
+      <div className="flex flex-wrap items-center gap-2 mb-4 mission-card p-2">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Pesquisar leads..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 text-xs pl-8 border-border/60 bg-background/50 focus:bg-background"
+            className="h-8 text-xs pl-8 border-border bg-card focus:bg-card"
           />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-[11px] font-normal border-border/60 bg-background/50 gap-2 min-w-[140px] justify-between">
+              <Button variant="outline" size="sm" className="h-8 text-[11px] font-normal border-border bg-card gap-2 min-w-[140px] justify-between">
                 <span className="truncate">
                   {filterNiches.length === 0 ? "Nichos" : `${filterNiches.length} nicho(s)`}
                 </span>
@@ -921,7 +925,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             <PopoverContent className="w-[200px] p-2" align="start">
               <div className="max-h-[240px] overflow-y-auto space-y-0.5">
                 {getCorrelatedOptions(leads, "niche", { city: filterCities }).map((n) => (
-                  <label key={n} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                  <label key={n} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent/10 cursor-pointer text-xs">
                     <Checkbox
                       checked={filterNiches.includes(n)}
                       onCheckedChange={() => setFilterNiches((prev) => toggleFilterValue(prev, n))}
@@ -936,7 +940,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-[11px] font-normal border-border/60 bg-background/50 gap-2 min-w-[140px] justify-between">
+              <Button variant="outline" size="sm" className="h-8 text-[11px] font-normal border-border bg-card gap-2 min-w-[140px] justify-between">
                 <span className="truncate">
                   {filterCities.length === 0 ? "Cidades" : `${filterCities.length} cidade(s)`}
                 </span>
@@ -946,7 +950,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             <PopoverContent className="w-[200px] p-2" align="start">
               <div className="max-h-[240px] overflow-y-auto space-y-0.5">
                 {getCorrelatedOptions(leads, "city", { niche: filterNiches }).map((c) => (
-                  <label key={c} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                  <label key={c} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent/10 cursor-pointer text-xs">
                     <Checkbox
                       checked={filterCities.includes(c)}
                       onCheckedChange={() => setFilterCities((prev) => toggleFilterValue(prev, c))}
@@ -961,7 +965,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
           
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-[11px] font-normal border-border/60 bg-background/50 gap-2 min-w-[140px] justify-between">
+              <Button variant="outline" size="sm" className="h-8 text-[11px] font-normal border-border bg-card gap-2 min-w-[140px] justify-between">
                 <span className="truncate">
                   {filterTags.length === 0 ? "Tags" : `${filterTags.length} tag(s)`}
                 </span>
@@ -971,7 +975,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             <PopoverContent className="w-[200px] p-2" align="start">
               <div className="max-h-[240px] overflow-y-auto space-y-0.5">
                 {getAvailableOptions(leads, "tags").map((t) => (
-                  <label key={t} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent cursor-pointer text-xs">
+                  <label key={t} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent/10 cursor-pointer text-xs">
                     <Checkbox
                       checked={filterTags.includes(t)}
                       onCheckedChange={() => setFilterTags((prev) => toggleFilterValue(prev, t))}
@@ -986,7 +990,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
 
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="h-8 text-[11px] font-normal w-[160px] border-border/60 bg-background/50">
+            <SelectTrigger className="h-8 text-[11px] font-normal w-[160px] border-border bg-card">
               <SelectValue placeholder="Ordenar" />
             </SelectTrigger>
             <SelectContent>
@@ -1083,12 +1087,12 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                 key={stage}
                 onDrop={(e) => onDrop(e, stage)}
                 onDragOver={onDragOver}
-                className="flex flex-col min-w-[280px] w-[280px] bg-muted/10 rounded-xl border border-border/40 transition-shadow hover:shadow-md"
+                className="flex flex-col min-w-[280px] w-[280px] bg-[hsl(var(--mission-bg-elevated))] rounded-xl border border-border"
               >
-                <div className="p-2.5 border-b border-border/40 bg-muted/5">
+                <div className="p-2.5 border-b border-border bg-muted/30 rounded-t-xl">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
-                      <div className="w-1 h-3 rounded-full shrink-0" style={{ backgroundColor: stageColors[stage]?.match(/bg-([a-z0-9-]+)/)?.[1] ? `var(--${stageColors[stage].match(/bg-([a-z0-9-]+)/)[1]})` : '#9ABD33' }} />
+                      <div className={`w-1 h-3 rounded-full shrink-0 ${stageColors[stage] ?? "bg-accent"}`} aria-hidden="true" />
                       
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <Checkbox 
@@ -1127,14 +1131,14 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                         )}
                       </div>
                       
-                      <span className="text-[9px] font-bold text-muted-foreground/50 bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
+                      <span className="text-[9px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
                         {stageLeads.length}
                       </span>
                     </div>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="text-muted-foreground/30 hover:text-foreground transition-colors p-1">
+                        <button className="text-muted-foreground hover:text-foreground transition-colors p-1">
                           <MoreVertical className="h-3 w-3" />
                         </button>
                       </DropdownMenuTrigger>
@@ -1153,7 +1157,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
                   
                   {pipeline === "oportunidades" && totalValue > 0 && (
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-muted-foreground/60 uppercase font-medium">Vol.</span>
+                      <span className="text-[9px] text-muted-foreground uppercase font-medium">Vol.</span>
                       <span className="text-[10px] font-bold text-accent">
                         {totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
                       </span>
@@ -1163,8 +1167,8 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
                 <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[calc(100vh-280px)] scrollbar-hide content-visibility-auto">
                   {stageLeads.length === 0 ? (
-                    <div className="h-20 flex items-center justify-center border border-dashed border-border/20 rounded-lg">
-                      <p className="text-[9px] text-muted-foreground/30 italic">Vazio</p>
+                    <div className="h-20 flex items-center justify-center border border-dashed border-border rounded-lg">
+                      <p className="text-[9px] text-muted-foreground italic">Vazio</p>
                     </div>
                   ) : (
                     stageLeads.map((lead) => (
@@ -1191,7 +1195,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
 
           <div className="min-w-[280px] w-[280px]">
             {showAddStage ? (
-              <div className="bg-muted/10 border border-accent/40 rounded-xl p-3 flex flex-col gap-2">
+              <div className="bg-card border border-accent/40 rounded-xl p-3 flex flex-col gap-2">
                 <Input
                   autoFocus
                   placeholder="Nome da etapa"
@@ -1208,7 +1212,7 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
             ) : (
               <button
                 onClick={() => setShowAddStage(true)}
-                className="flex flex-col items-center justify-center w-full h-[80px] border border-dashed border-border/20 rounded-xl text-muted-foreground/40 hover:text-foreground hover:border-accent/40 hover:bg-accent/5 transition-all group"
+                className="flex flex-col items-center justify-center w-full h-[80px] border border-dashed border-border rounded-xl text-muted-foreground hover:text-foreground hover:border-accent/40 hover:bg-accent/5 transition-all group"
               >
                 <div className="w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center mb-2 group-hover:bg-accent/10">
                   <Plus className="h-3 w-3" />
@@ -1277,5 +1281,6 @@ export default function PipelineBoard({ pipeline, title, subtitle, showAddLead =
         }}
       />
     </div>
+    </MissionThemeProvider>
   );
 }

@@ -118,10 +118,37 @@ function greetingWord(hour: number): string {
   return "Boa noite";
 }
 
+/**
+ * Variações do fechamento da saudação — mesmo espírito do "Como posso ajudar
+ * hoje?" que muda a cada sessão no Claude/ChatGPT. A escolha é determinística
+ * por dia (ver `pickGreetingClosing`), não aleatória a cada render: assim a
+ * frase fica estável durante toda a conversa do dia (mesma garantia que já
+ * existia pra "Bom dia/Boa tarde/Boa noite"), só varia de um dia pro outro.
+ */
+export const GREETING_CLOSINGS = [
+  "Por onde começamos?",
+  "O que vamos resolver hoje?",
+  "Bora organizar o dia?",
+  "O que precisa da sua atenção agora?",
+  "Qual é a prioridade agora?",
+  "Como está a operação hoje?",
+  "Vamos direto ao ponto?",
+] as const;
+
+function pickGreetingClosing(dateKey: string): string {
+  let hash = 0;
+  for (let i = 0; i < dateKey.length; i++) {
+    hash = (hash * 31 + dateKey.charCodeAt(i)) | 0;
+  }
+  const index = Math.abs(hash) % GREETING_CLOSINGS.length;
+  return GREETING_CLOSINGS[index];
+}
+
 /** `name` já deve vir resolvido pelo chamador via resolveDisplayName (nunca e-mail). */
 export function computeGreeting(name: string | undefined, now: Date = new Date()): string {
   const word = greetingWord(now.getHours());
-  return `${word}${name ? `, ${name}` : ""}. Por onde começamos?`;
+  const closing = pickGreetingClosing(todayKey(now));
+  return `${word}${name ? `, ${name}` : ""}. ${closing}`;
 }
 
 // ---------------------------------------------------------------------------

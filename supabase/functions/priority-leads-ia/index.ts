@@ -2,9 +2,9 @@
 // Recebe uma lista compacta de candidatos (já pré-filtrada pelo cliente)
 // e devolve uma seleção com motivo da prioridade e próxima melhor ação.
 
-import { callAI } from "../_shared/ai-router.ts";
+import { callAI } from "../_shared/ai-router-gemini.ts";
 import { requireUser } from "../_shared/require-auth.ts";
-import { createMemoryEngine } from "../_shared/ai-core/index.ts";
+import { createMemoryEngine } from "../_shared/ai-core/memory-engine.ts";
 import { NBA_PROMPT_BLOCK, sanitizeNBA } from "../_shared/nba-types.ts";
 import { buildBusinessCalendarBlock } from "../_shared/business-calendar.ts";
 import {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { MissionThemeProvider } from "@/components/ui/mission-theme";
 import PipelineBoard from "@/modules/pipeline/components/PipelineBoard";
 import ScheduleMeetingDialog from "@/modules/leads/components/ScheduleMeetingDialog";
 import { Button } from "@/components/ui/button";
@@ -84,7 +85,7 @@ export default function Oportunidades() {
   };
 
   return (
-    <>
+    <MissionThemeProvider value={true}>
       <PipelineBoard
         key={refreshKey}
         pipeline="oportunidades"
@@ -93,7 +94,7 @@ export default function Oportunidades() {
         showAddLead={false}
         showImport={false}
         extraActions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -223,6 +224,6 @@ export default function Oportunidades() {
         }}
         onScheduled={() => setRefreshKey((k) => k + 1)}
       />
-    </>
+    </MissionThemeProvider>
   );
 }
