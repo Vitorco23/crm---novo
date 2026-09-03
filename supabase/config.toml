@@ -1,4 +1,7 @@
-project_id = "mvfglrfcnzfrfgxsaagj"
+# Projeto Supabase proprio (fora do Lovable Cloud), migrado em 2026-09-03.
+# O antigo (mvfglrfcnzfrfgxsaagj) era gerenciado pela organizacao do
+# Lovable e ficava inacessivel quando os creditos da conta zeravam.
+project_id = "dxcmacdudfrzlgatolzn"
 
 [functions.audit-transcript]
 verify_jwt = false
